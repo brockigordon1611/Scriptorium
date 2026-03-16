@@ -180,7 +180,7 @@ const Auth = {
 const BIBLE = [
   {n:1,name:'Genesis',v:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26]},
   {n:2,name:'Exodus',v:[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38]},
-  {n:3,name:'Leviticus',v:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,24,16,17]},
+  {n:3,name:'Leviticus',v:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34]},
   {n:4,name:'Numbers',v:[54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13]},
   {n:5,name:'Deuteronomy',v:[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12]},
   {n:6,name:'Joshua',v:[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33]},
@@ -1318,7 +1318,7 @@ function App(){
 
   async function copySelectedVerses(){
     const sorted=[...readSelVerses].sort((a,b)=>a-b);
-    const lines=sorted.map(v=>{const row=readVerses.find(r=>r.verse===v);return row?`${readBk?.name} ${readCh}:${v}\u2002\u2002${row.text}`:null;}).filter(Boolean);
+    const lines=sorted.map(v=>{const row=readVerses.find(r=>r.verse===v);return row?`${readBk?.name} ${readCh}:${v}\u2002\u2002${row.text.replace(/<[^>]*>/g,'')}`:null;}).filter(Boolean);
     if(!lines.length)return;
     try{await navigator.clipboard.writeText(lines.join('\n'));}catch{
       // Fallback for older browsers
@@ -1450,9 +1450,9 @@ function App(){
       {/* ═══ HEADER ═══ */}
       <div className="no-print" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'7px 12px',flexShrink:0,position:'relative'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
-        <div style={{display:'flex',alignItems:'center',gap:10,marginTop:2}}>
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2,minHeight:0,overflowX:'auto',flexWrap:'nowrap'}}>
           {/* Logo */}
-          <div style={{flexShrink:0}}>
+          <div className="hide-mobile" style={{flexShrink:0}}>
             <h1 style={{fontFamily:FS,fontSize:17,fontWeight:700,color:T.gT,letterSpacing:'0.07em',margin:0,lineHeight:1}}>Scriptorium</h1>
             <div className="hide-mobile" style={{fontFamily:FS,fontSize:8,color:T.gD,letterSpacing:'0.18em',textTransform:'uppercase',fontWeight:500,marginTop:2}}>{data.versions.map(v=>v.label).join(' - ')}</div>
           </div>
@@ -1463,7 +1463,29 @@ function App(){
             <button type="button" onClick={()=>setTab('compare')}
               style={{background:tab==='compare'?T.gF:'transparent',border:`1px solid ${tab==='compare'?T.gD:'transparent'}`,borderRadius:6,color:tab==='compare'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',fontWeight:tab==='compare'?600:400,cursor:'pointer',transition:'all .15s'}}>&#8862; Compare</button>
           </div>
-          <div style={{flex:1}}/>
+          {/* Read controls (desktop only) - right of tabs */}
+          <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+            <select className="s-btn" value={readVid||''} onChange={e=>setReadVid(e.target.value)}
+              style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:8,letterSpacing:'0.04em',padding:'4px 5px',outline:'none',fontWeight:600}}>
+              {(data?.versions||[]).map(v=><option key={v.id} value={v.id}>{v.label}</option>)}
+            </select>
+            <select className="s-btn" value={readBook} onChange={e=>{setReadBook(parseInt(e.target.value));setReadCh(1);}}
+              style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:10,padding:'4px 4px',outline:'none',maxWidth:100}}>
+              {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
+            </select>
+            <select className="s-btn" value={readCh} onChange={e=>setReadCh(parseInt(e.target.value))}
+              style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:10,padding:'4px 3px',outline:'none',width:38}}>
+              {Array.from({length:readTotalCh},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+            </select>
+            <span style={{color:T.gD,fontSize:10}}>•</span>
+            <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
+              placeholder="Search…"
+              style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:9,padding:'4px 6px',outline:'none',width:140}}/>
+            <button type="button" className="s-btn s-ghost" onClick={doReadSearch} disabled={readSearching}
+              style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,padding:'4px 6px',fontWeight:500,flexShrink:0,fontSize:10}}>{readSearching?<Spinner/>:'⌕'}</button>
+            {readSearchRes&&<button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}} style={{background:'none',border:'none',color:T.dim,fontSize:11,cursor:'pointer',flexShrink:0}}>✕</button>}
+          </div>
+          <div className="hide-mobile" style={{flex:1}}/>
           {/* Desktop: full button row */}
           <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:500,color:saveStatus==='saving'?T.gM:'#62c484'}}>{saveStatus==='saving'?'● Saving…':'✓ Saved'}</span>
@@ -1473,11 +1495,42 @@ function App(){
             <GhostBtn T={T} ch="⋯" onClick={()=>setModal({type:'help'})} title="Help & more"/>
             <button type="button" className="s-btn s-ghost" onClick={()=>Auth.signOut()} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.08em',padding:'4px 9px',fontWeight:500}}>Sign Out</button>
           </div>
-          {/* Mobile: save dot + hamburger only */}
-          <div className="show-mobile" style={{alignItems:'center',gap:7}}>
-            <span style={{fontFamily:FS,fontSize:10,color:saveStatus==='saving'?T.gM:'#62c484'}}>{saveStatus==='saving'?'●':'✓'}</span>
-            <button type="button" className="s-btn s-ghost" onClick={()=>setMobileSheet('menu')}
-              style={{background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:7,color:T.gT,padding:'5px 10px',fontSize:17,lineHeight:1,fontWeight:400}}>☰</button>
+          {/* Mobile: read nav controls + save + hamburger */}
+          <div className="show-mobile" style={{flex:1,alignItems:'center',gap:4,minWidth:0}}>
+            {tab==='read'&&<>
+              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('nav')}
+                style={{flex:'1 1 0',minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:15,padding:'7px 8px',textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                <svg width="14" height="16" viewBox="0 0 14 16" style={{marginRight:6,verticalAlign:'middle',flexShrink:0,display:'inline-block'}} fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/>
+                  <rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/>
+                  <line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
+                  <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+                {readBk?.name} {readCh}
+              </button>
+              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('version')}
+                style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',fontWeight:600,padding:'7px 11px',whiteSpace:'nowrap'}}>
+                {readVerLabel||'—'}
+              </button>
+              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('search')}
+                style={{flexShrink:0,background:readMobileSheet==='search'||readSearchRes?T.gF:'transparent',border:`1px solid ${readSearchRes?T.gD:T.bd}`,borderRadius:7,color:readSearchRes?T.gT:T.dim,padding:'7px 11px',fontSize:16,lineHeight:1}}>
+                {readSearching?<Spinner/>:'⌕'}
+              </button>
+            </>}
+            {tab==='compare'&&<>
+              <input className="s-btn" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…"
+                style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:14,padding:'6px 8px',outline:'none'}}/>
+              {q&&<button type="button" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:13,padding:'2px 4px',flexShrink:0,cursor:'pointer'}}>✕</button>}
+              <button type="button" className="s-btn s-tbtn" onClick={openAdd}
+                style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',fontWeight:600,padding:'7px 11px',whiteSpace:'nowrap'}}>＋</button>
+              <button type="button" className="s-btn s-ghost" onClick={()=>setMobileSheet('compare')}
+                style={{flexShrink:0,background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:7,color:T.gM,fontFamily:FS,fontSize:9,letterSpacing:'0.06em',padding:'6px 10px',fontWeight:600,whiteSpace:'nowrap'}}>⚙</button>
+            </>}
+            <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,marginLeft:'auto'}}>
+              <span style={{fontFamily:FS,fontSize:10,color:saveStatus==='saving'?T.gM:'#62c484'}}>{saveStatus==='saving'?'●':'✓'}</span>
+              <button type="button" className="s-btn s-ghost" onClick={()=>setMobileSheet('menu')}
+                style={{background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:7,color:T.gT,padding:'5px 10px',fontSize:17,lineHeight:1,fontWeight:400}}>☰</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1507,68 +1560,6 @@ function App(){
       {/* ═══ READ TAB ═══ */}
       {tab==='read'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          {/* Read controls bar */}
-          <div style={{background:T.bgCH,borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-            {/* ── DESKTOP: two-row layout ── */}
-            <div className="hide-mobile">
-              {/* Row 1: navigation selectors */}
-              <div style={{display:'flex',alignItems:'center',gap:5,padding:'6px 8px 4px',flexWrap:'nowrap',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-                <select className="s-btn" value={readVid||''} onChange={e=>setReadVid(e.target.value)}
-                  style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.06em',padding:'5px 6px',outline:'none',fontWeight:600,flexShrink:0}}>
-                  {(data?.versions||[]).map(v=><option key={v.id} value={v.id}>{v.label}</option>)}
-                </select>
-                <select className="s-btn" value={readBook} onChange={e=>{setReadBook(parseInt(e.target.value));setReadCh(1);}}
-                  style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:14,padding:'5px 5px',outline:'none',flex:'1 1 80px',minWidth:0,maxWidth:150}}>
-                  {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
-                </select>
-                <select className="s-btn" value={readCh} onChange={e=>setReadCh(parseInt(e.target.value))}
-                  style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:14,padding:'5px 4px',outline:'none',width:50,flexShrink:0}}>
-                  {Array.from({length:readTotalCh},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
-                </select>
-                <select className="s-btn" value="" onChange={e=>{const v=parseInt(e.target.value);if(v){const el=document.getElementById(`rv-${v}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});}}}}
-                  style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FB,fontSize:14,padding:'5px 4px',outline:'none',width:50,flexShrink:0}}>
-                  <option value="">Vs</option>
-                  {Array.from({length:readBk?.v?.[readCh-1]||0},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
-                </select>
-                <div style={{display:'flex',gap:4,marginLeft:'auto',flexShrink:0}}>
-                  <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,padding:'4px 9px',fontSize:14}}>‹</button>
-                  <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,padding:'4px 9px',fontSize:14}}>›</button>
-                </div>
-              </div>
-              {/* Row 2: Search bar */}
-              <div style={{display:'flex',alignItems:'center',gap:5,padding:'0 8px 6px'}}>
-                <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-                  placeholder="Search verses…"
-                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:14,padding:'5px 9px',outline:'none'}}/>
-                <button type="button" className="s-btn s-ghost" onClick={doReadSearch} disabled={readSearching}
-                  style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,padding:'5px 9px',fontWeight:500,flexShrink:0}}>{readSearching?<Spinner/>:'⌕'}</button>
-                {readSearchRes&&<button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}} style={{background:'none',border:'none',color:T.dim,fontSize:13,cursor:'pointer',flexShrink:0}}>✕</button>}
-              </div>
-            </div>
-
-            {/* ── MOBILE: single compact row of icon buttons ── */}
-            <div className="show-mobile" style={{padding:'6px 8px',gap:6,alignItems:'center',flexWrap:'nowrap'}}>
-              {/* Navigation button: "BookName Ch" */}
-              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('nav')}
-                style={{flex:'1 1 0',minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:15,padding:'7px 8px',textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.06em',marginRight:5,fontWeight:500,verticalAlign:'middle'}}>📖</span>
-                {readBk?.name} {readCh}
-              </button>
-              {/* Version button */}
-              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('version')}
-                style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',fontWeight:600,padding:'7px 11px',whiteSpace:'nowrap'}}>
-                {readVerLabel||'—'}
-              </button>
-              {/* Search button */}
-              <button type="button" className="s-btn s-ghost" onClick={()=>setReadMobileSheet('search')}
-                style={{flexShrink:0,background:readMobileSheet==='search'||readSearchRes?T.gF:'transparent',border:`1px solid ${readSearchRes?T.gD:T.bd}`,borderRadius:7,color:readSearchRes?T.gT:T.dim,padding:'7px 11px',fontSize:16,lineHeight:1}}>
-                {readSearching?<Spinner/>:'⌕'}
-              </button>
-              {readSearchRes&&(
-                <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}} style={{background:'none',border:'none',color:T.dim,fontSize:13,cursor:'pointer',flexShrink:0,padding:'4px'}}>✕</button>
-              )}
-            </div>
-          </div>
 
           {/* Mobile popup sheets for Read tab */}
           {readMobileSheet==='nav'&&(
@@ -1644,17 +1635,16 @@ function App(){
             </MobileSheet>
           )}
 
+          {/* Verse content */}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:'8px 18px 64px',maxWidth:760,margin:'0 auto',width:'100%'}}>
           {/* Chapter title */}
           {!readSearchRes&&(
-            <div style={{textAlign:'center',padding:'10px 12px 2px',flexShrink:0,background:T.bg}}>
+            <div style={{textAlign:'center',padding:'10px 12px 2px'}}>
               <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
               <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{readBk?.name} {readCh}</div>
               <div style={{height:1,background:T.accentLine,marginTop:8}}/>
             </div>
           )}
-
-          {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:'8px 18px 64px',maxWidth:760,margin:'0 auto',width:'100%'}}>
             {readSearchRes&&(
               <div>
                 <div style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:14,fontWeight:600}}>{readSearchRes.length} result{readSearchRes.length!==1?'s':''} — "{readSearchQ}"</div>
@@ -1733,13 +1723,13 @@ function App(){
       {/* ═══ COMPARE TAB ═══ */}
       {tab==='compare'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          <Legend T={T} refLabel={data.versions.find(v=>v.isRef)?.label}/>
+          <div className="hide-mobile"><Legend T={T} refLabel={data.versions.find(v=>v.isRef)?.label}/></div>
 
           {/* Sticky controls */}
           <div className="no-print" style={{background:T.bgCard,borderBottom:`1px solid ${T.bd}`,position:'sticky',top:0,zIndex:50,flexShrink:0}}>
 
-            {/* Search row — full width on both desktop and mobile */}
-            <div style={{display:'flex',alignItems:'center',gap:5,padding:'5px 8px 4px'}}>
+            {/* Search row — desktop only (mobile uses header) */}
+            <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:5,padding:'5px 8px 4px'}}>
               <span style={{color:T.gM,fontSize:14,flexShrink:0}}>⌕</span>
               <input className="s-btn" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search passages, text, notes…"
                 style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'5px 8px',outline:'none'}}/>
@@ -1758,8 +1748,8 @@ function App(){
                 style={{background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:9,letterSpacing:'0.06em',padding:'5px 10px',fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>⚙ More</button>
             </div>
 
-            {/* Actions row */}
-            <div style={{display:'flex',alignItems:'center',gap:4,padding:'3px 8px 5px',borderTop:`1px solid ${T.bdS}`,flexWrap:'nowrap',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+            {/* Actions row — desktop only (mobile uses header) */}
+            <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:4,padding:'3px 8px 5px',borderTop:`1px solid ${T.bdS}`,flexWrap:'nowrap',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
               <TBtn T={T} ch="＋ Verse" onClick={openAdd} primary/>
               <TBtn T={T} ch="＋ Section" onClick={openAddSec}/>
               {/* Desktop extras — hidden on mobile */}
@@ -1786,6 +1776,7 @@ function App(){
               </div>
               <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
               {[
+                {icon:'＋',label:'Add Section',fn:()=>{setMobileSheet(null);openAddSec();}},
                 {icon:'⚙',label:'Manage Versions',fn:()=>{setMobileSheet(null);setModal({type:'versions'});}},
                 {icon:'◎',label:'Statistics',fn:()=>{setMobileSheet(null);setModal({type:'stats'});}},
                 {icon:'⬇',label:'Export JSON',fn:()=>{setMobileSheet(null);doExport();}},
