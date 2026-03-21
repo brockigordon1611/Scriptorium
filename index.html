@@ -1418,7 +1418,14 @@ function App(){
   const[readSearchPopover,setReadSearchPopover]=useState(false);
   const[readMobileSheet,setReadMobileSheet]=useState(null); // 'nav'|'version'|'search'|'settings'
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
+  const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
+  const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
+  const[readVerseNums,setReadVerseNums]=useState(()=>{try{return localStorage.getItem('scrip:verseNums')||'super';}catch{return 'super';}});
+  const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||'left';}catch{return 'left';}});
+  const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
+  const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[strongsMode,setStrongsMode]=useState(false);
+  const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
   const navRef=useRef(null);
@@ -2118,21 +2125,104 @@ function App(){
               {dark?'☀ Light':'☾ Dark'}
             </button>
           </div>
-          {/* Font size */}
-          <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'13px 14px',marginBottom:14}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>Text Size</span>
-              <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+          {/* ── Reading Appearance ── */}
+          <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
+            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Reading Appearance</div>
+
+            {/* Text Size */}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Text Size</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+                <input type="range" min="13" max="32" value={readFontSize}
+                  onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
+              </div>
             </div>
-            <input type="range" min="13" max="28" value={readFontSize}
-              onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
-              style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
-            <div style={{display:'flex',justifyContent:'space-between',marginTop:4,marginBottom:12}}>
-              <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-              <span style={{fontFamily:FB,fontSize:18,color:T.dim}}>A</span>
+
+            {/* Line Spacing */}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Line Spacing</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readLineHeight.toFixed(1)}</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Tight</span>
+                <input type="range" min="1.2" max="2.8" step="0.1" value={readLineHeight}
+                  onChange={e=>{const v=Number(e.target.value);setReadLineHeight(v);try{localStorage.setItem('scrip:lineHeight',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Wide</span>
+              </div>
             </div>
-            <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
-              In the beginning God created the heaven and the earth.
+
+            {/* Font Family */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Font</div>
+              <div style={{display:'flex',gap:4}}>
+                {[['serif','Serif'],['sans','Sans-Serif'],['mono','Monospace']].map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>{setReadFontFamily(k);try{localStorage.setItem('scrip:fontFamily',k);}catch{}}}
+                    style={{flex:1,background:readFontFamily===k?T.gF:'transparent',border:`1px solid ${readFontFamily===k?T.gD:T.bd}`,borderRadius:6,color:readFontFamily===k?T.gT:T.dim,fontFamily:k==='serif'?FB:k==='sans'?"'Inter','Segoe UI',system-ui,sans-serif":"'Courier New',monospace",fontSize:12,padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Text Alignment */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Alignment</div>
+              <div style={{display:'flex',gap:4}}>
+                {[['left','Left'],['justify','Justified']].map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>{setReadTextAlign(k);try{localStorage.setItem('scrip:textAlign',k);}catch{}}}
+                    style={{flex:1,background:readTextAlign===k?T.gF:'transparent',border:`1px solid ${readTextAlign===k?T.gD:T.bd}`,borderRadius:6,color:readTextAlign===k?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Verse Numbers */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Verse Numbers</div>
+              <div style={{display:'flex',gap:4}}>
+                {[['super','Superscript'],['inline','Inline'],['hidden','Hidden']].map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>{setReadVerseNums(k);try{localStorage.setItem('scrip:verseNums',k);}catch{}}}
+                    style={{flex:1,background:readVerseNums===k?T.gF:'transparent',border:`1px solid ${readVerseNums===k?T.gD:T.bd}`,borderRadius:6,color:readVerseNums===k?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Toggles row */}
+            <div style={{display:'flex',gap:6,marginBottom:10}}>
+              <button type="button" onClick={()=>{const v=!readParaMode;setReadParaMode(v);try{localStorage.setItem('scrip:paraMode',JSON.stringify(v));}catch{}}}
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readParaMode?T.gF:'transparent',border:`1px solid ${readParaMode?T.gD:T.bd}`,borderRadius:6,color:readParaMode?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Paragraph Mode</span><span style={{fontSize:8,opacity:0.7}}>{readParaMode?'ON':'OFF'}</span>
+              </button>
+              <button type="button" onClick={()=>{const v=!readRedLetter;setReadRedLetter(v);try{localStorage.setItem('scrip:redLetter',JSON.stringify(v));}catch{}}}
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readRedLetter?'rgba(180,50,50,0.15)':'transparent',border:`1px solid ${readRedLetter?'rgba(180,50,50,0.4)':T.bd}`,borderRadius:6,color:readRedLetter?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Red Letter</span><span style={{fontSize:8,opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
+              </button>
+            </div>
+
+            {/* Live preview */}
+            <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
+              <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:6}}>Preview</div>
+              <div style={{color:T.body,fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
+                {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2}}>1</sup>}
+                {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6}}>1</span>}
+                In the beginning God created the heaven and the earth.
+                {readParaMode&&' '}
+                {!readParaMode&&<br/>}
+                {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2}}>2</sup>}
+                {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6}}>2</span>}
+                And the earth was without form, and void.
+              </div>
             </div>
           </div>
           <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
@@ -2386,19 +2476,41 @@ function App(){
               </div>
             )}
             {!readSearchRes&&readVerses.length>0&&(
-              <div>
-                {readVerses.map(({verse:v,text})=>{
-                  const sel=readSelVerses.has(v);
-                  return(
-                    <div key={v} id={`rv-${v}`} className="reading-verse"
-                      onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
-                      style={{display:'flex',gap:10,padding:'3px 4px',cursor:'pointer',borderRadius:6,background:sel?T.gF:'transparent',border:sel?`1px solid ${T.gD}`:'1px solid transparent',marginBottom:1,transition:'background .12s'}}>
-                      <span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,minWidth:20,paddingTop:6,textAlign:'right',userSelect:'none',flexShrink:0,fontWeight:500}}>{v}</span>
-                      <span className="rv-text" style={{fontFamily:FB,fontSize:readFontSize,color:T.body,lineHeight:1.85}} dangerouslySetInnerHTML={{__html:text}}/>
-                    </div>
-                  );
-                })}
-              </div>
+              readParaMode?(
+                <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
+                  {readVerses.map(({verse:v,text})=>{
+                    const sel=readSelVerses.has(v);
+                    return(
+                      <span key={v} id={`rv-${v}`} className="reading-verse"
+                        onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
+                        style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?5:0,padding:sel?'2px 3px':0,boxShadow:sel?`0 0 0 1px ${T.gD}`:'none',transition:'all .12s'}}>
+                        {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
+                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:text}}/>
+                        {' '}
+                      </span>
+                    );
+                  })}
+                </div>
+              ):(
+                <div>
+                  {readVerses.map(({verse:v,text})=>{
+                    const sel=readSelVerses.has(v);
+                    return(
+                      <div key={v} id={`rv-${v}`} className="reading-verse"
+                        onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
+                        style={{display:'flex',gap:readVerseNums==='hidden'?0:10,padding:'4px 6px',cursor:'pointer',borderRadius:6,background:sel?T.gF:'transparent',border:sel?`1.5px solid ${T.gD}`:'1.5px solid transparent',boxShadow:sel?`0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:2,transition:'all .12s',textAlign:readTextAlign}}>
+                        {readVerseNums!=='hidden'&&(
+                          readVerseNums==='super'
+                            ?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,minWidth:16,paddingTop:8,textAlign:'right',userSelect:'none',flexShrink:0,fontWeight:600}}>{v}</sup>
+                            :<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,minWidth:20,paddingTop:6,textAlign:'right',userSelect:'none',flexShrink:0,fontWeight:600}}>{v}</span>
+                        )}
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:text}}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </div>
 
@@ -2471,13 +2583,6 @@ function App(){
               </div>
             </MobileSheet>
           )}
-          {/* Back to Study */}
-          <div style={{padding:'6px 14px 0',flexShrink:0}}>
-            <button type="button" onClick={()=>setTab('study')}
-              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
-              ← Study
-            </button>
-          </div>
           {/* Verse reference header */}
           <div style={{textAlign:'center',padding:'6px 14px 2px',flexShrink:0}}>
             <div style={{fontFamily:FS,fontSize:17,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
@@ -2543,13 +2648,6 @@ function App(){
       {/* ═══ COMPARE TAB ═══ */}
       {tab==='compare'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          {/* Back to Study */}
-          <div style={{padding:'6px 12px 0',flexShrink:0,background:T.bgCard}}>
-            <button type="button" onClick={()=>setTab('study')}
-              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
-              ← Study
-            </button>
-          </div>
           <div className="hide-mobile"><Legend T={T} refLabel={data.versions.find(v=>v.isRef)?.label}/></div>
 
           {/* Sticky controls */}
@@ -2658,12 +2756,6 @@ function App(){
       {/* ═══ STRONG'S CONCORDANCE TAB ═══ */}
       {tab==='strongs'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          <div style={{padding:'6px 14px 0',flexShrink:0}}>
-            <button type="button" onClick={()=>setTab('study')}
-              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
-              ← Study
-            </button>
-          </div>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
@@ -2675,12 +2767,6 @@ function App(){
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          <div style={{padding:'6px 14px 0',flexShrink:0}}>
-            <button type="button" onClick={()=>setTab('study')}
-              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
-              ← Study
-            </button>
-          </div>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>Δ</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Biblical Dictionary</div>
