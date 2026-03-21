@@ -343,6 +343,7 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   .show-mobile{display:none!important;}
   .app-header{height:50px!important;padding:5px 10px 0!important;box-sizing:border-box!important;}
   .app-header-row{height:100%!important;}
+  .srch-bar-fixed{top:50px!important;}
 }
 @media print{.no-print{display:none!important;}body{background:#fff!important;color:#000!important;}.entry-card{border:1px solid #ccc!important;box-shadow:none!important;break-inside:avoid;margin-bottom:8px!important;}}
 `;
@@ -1418,6 +1419,7 @@ function App(){
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
   const navRef=useRef(null);
+  const [navH,setNavH]=useState(0);
   const swipeTouchX=useRef(null);
   const readSearchJumpTo=useRef(null);
 
@@ -1442,6 +1444,14 @@ function App(){
   useEffect(()=>{localStorage.setItem('scrip:hidden',JSON.stringify(hiddenVers));},[hiddenVers]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
+  useEffect(()=>{
+    const measure=()=>{if(navRef.current)setNavH(navRef.current.offsetHeight);};
+    measure();
+    const ro=new ResizeObserver(measure);
+    if(navRef.current)ro.observe(navRef.current);
+    window.addEventListener('resize',measure);
+    return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
+  },[]);
   // ── Jump-To scroll: fires after readSearchLimit extends ──
   useEffect(()=>{
     if(!readSearchJumpTo.current)return;
@@ -2273,10 +2283,11 @@ function App(){
 
           {/* Search results header bar — fixed overlay below nav */}
           {readSearchRes&&(
-            <div style={{position:'fixed',top:navRef.current?navRef.current.offsetHeight:0,left:0,right:0,zIndex:150,
+            <div className="srch-bar-fixed" style={{position:'fixed',top:navH,left:0,right:0,zIndex:150,
               display:'flex',alignItems:'center',gap:10,padding:'6px 18px',
               background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
               backdropFilter:'blur(6px)',boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
+              <div style={{height:1,background:'linear-gradient(90deg,transparent,rgb(74,62,34),rgb(200,168,78),rgb(74,62,34),transparent)',position:'absolute',bottom:0,left:0,right:0,transform:'translateY(100%)'}}/>
               <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}}
                 style={{display:'flex',alignItems:'center',gap:5,background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',border:`1px solid rgba(255,255,255,0.10)`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',fontWeight:600,padding:'6px 12px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',transition:'all .15s'}}>
                 ← Back to Reading
@@ -2350,7 +2361,7 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:`calc(50vh + ${navRef.current?Math.round((navRef.current.offsetHeight-14)/2):33}px)`,transform:'translateY(-50%)',zIndex:200,
+                    <div style={{position:'fixed',right:0,top:`calc(50vh + ${Math.round((navH-14)/2)}px)`,transform:'translateY(-50%)',zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
@@ -2434,7 +2445,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',borderTop:`1px solid rgba(255,255,255,0.06)`,padding:'6px 10px',display:'flex',justifyContent:'space-between',alignItems:'center',backdropFilter:'blur(6px)',boxShadow:'0 -2px 14px rgba(0,0,0,0.22)'}}>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 10px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500}}>
               {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
             </button>
@@ -2518,7 +2529,7 @@ function App(){
             ))}
           </div>
           {/* Bottom nav */}
-          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',borderTop:`1px solid rgba(255,255,255,0.06)`,padding:'6px 10px',display:'flex',justifyContent:'space-between',alignItems:'center',backdropFilter:'blur(6px)',boxShadow:'0 -2px 14px rgba(0,0,0,0.22)'}}>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 10px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
