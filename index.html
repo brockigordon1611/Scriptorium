@@ -1388,7 +1388,7 @@ function App(){
 
   // ── UI ──
   const[dark,setDark]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:dark')|| 'true');}catch{return true;}});
-  const[tab,setTab]=useState('read'); // 'read' | 'compare'
+  const[tab,setTab]=useState('read'); // 'read'|'study'|'parallel'|'compare'|'strongs'|'dictionary'
   const[q,setQ]=useState('');
   const[filters,setFilters]=useState({issueTypes:[],statuses:[],vA:'',vB:''});
   const[hiddenVers,setHiddenVers]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:hidden')||'[]');}catch{return[];}});
@@ -1868,18 +1868,38 @@ function App(){
             <h1 style={{fontFamily:FS,fontSize:17,fontWeight:700,color:T.gT,letterSpacing:'0.07em',margin:0,lineHeight:1}}>Scriptorium</h1>
             <div className="hide-mobile" style={{fontFamily:FS,fontSize:8,color:T.gD,letterSpacing:'0.18em',textTransform:'uppercase',fontWeight:500,marginTop:2}}>{data.versions.map(v=>v.label).join(' - ')}</div>
           </div>
-          {/* Tab switcher */}
-          <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:'5px 3px',gap:2,height:33.33,boxSizing:'border-box',alignItems:'stretch',flexShrink:0}}>
-            <button type="button" onClick={()=>setTab('read')}
-              style={{padding:'0 4px',background:tab==='read'?T.gF:'transparent',border:`1px solid ${tab==='read'?T.gD:'transparent'}`,borderRadius:6,color:tab==='read'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='read'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#10022; Read</button>
-            <button type="button" onClick={()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');}}
-              style={{padding:'0 4px',background:tab==='parallel'?T.gF:'transparent',border:`1px solid ${tab==='parallel'?T.gD:'transparent'}`,borderRadius:6,color:tab==='parallel'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='parallel'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#9553; Parallel</button>
-            <button type="button" onClick={()=>setTab('compare')}
-              style={{padding:'0 4px',background:tab==='compare'?T.gF:'transparent',border:`1px solid ${tab==='compare'?T.gD:'transparent'}`,borderRadius:6,color:tab==='compare'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='compare'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#9998; Study</button>
-          </div>
-          {/* Read controls (desktop only) - right of tabs */}
-          {tab==='read'&&<div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,position:'relative'}}>
-            {/* Version */}
+          {/* ── 6-button nav bar ── */}
+          {(()=>{
+            const studyActive=['parallel','compare','strongs','dictionary'].includes(tab);
+            const nb=(active)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,color:active?T.gT:T.dim});
+            const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:38,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
+            return(
+            <div style={{display:'flex',flex:1,gap:6,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
+              {/* Tab pill: Read | Study */}
+              <div style={{...pill,flex:1}}>
+                <button type="button" onClick={()=>setTab('read')} style={{...nb(tab==='read'),flex:1,fontSize:9.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>setReadMobileSheet('studyTools')} style={{...nb(studyActive),flex:1,fontSize:9.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#9998; Study</button>
+              </div>
+              {/* Tools pill: Search, Version, Navigate */}
+              {tab==='read'&&<div style={pill}>
+                <button type="button" title="Search" onClick={()=>setReadMobileSheet('search')} style={{...nb(!!readSearchRes),width:38,fontSize:17}}>
+                  {readSearching?<Spinner/>:'⌕'}
+                </button>
+                <button type="button" title="Select Version" onClick={()=>setReadMobileSheet('version')} style={{...nb(false),background:T.gF,borderColor:T.gD,color:T.gT,fontSize:9,fontWeight:600,padding:'0 8px',whiteSpace:'nowrap'}}>
+                  {readVerLabel||'—'}
+                </button>
+                <button type="button" title="Navigate" onClick={()=>setReadMobileSheet('nav')} style={{...nb(false),width:38}}>
+                  <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
+                </button>
+              </div>}
+              {/* Settings pill */}
+              <div style={pill}>
+                <button type="button" title="Settings" onClick={()=>setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:38,fontSize:15}}>⚙</button>
+              </div>
+            </div>);
+          })()}
+          {/* Read controls (desktop only) - removed; now in 6-button nav */}
+          {false&&<div className="hide-mobile" style={{display:'none'}}>
             <select className="s-btn" value={readVid||''} onChange={e=>setReadVid(e.target.value)}
               style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.04em',padding:'0 6px',outline:'none',fontWeight:600,flexShrink:0}}>
               {(data?.versions||[]).map(v=><option key={v.id} value={v.id}>{v.label}</option>)}
@@ -2033,59 +2053,7 @@ function App(){
               <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.body,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
             </div>
           </div>
-          {/* Mobile: read nav controls + save + hamburger */}
-          <div className="show-mobile" style={{flex:1,alignItems:'center',gap:4,minWidth:0}}>
-            {tab==='read'&&
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
-                <button type="button" title="Search" onClick={()=>setReadMobileSheet('search')}
-                  style={{width:34,background:readSearchRes?T.gF:'transparent',border:`1px solid ${readSearchRes?T.gD:'transparent'}`,borderRadius:6,color:readSearchRes?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:readSearchRes?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  {readSearching?<Spinner/>:'⌕'}
-                </button>
-                <button type="button" onClick={()=>setReadMobileSheet('version')}
-                  style={{padding:'0 8px',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                  {readVerLabel||'—'}
-                </button>
-                <button type="button" title={`${readBk?.name||''} ${readCh}`} onClick={()=>setReadMobileSheet('nav')}
-                  style={{width:34,background:'transparent',border:'1px solid transparent',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',padding:0,flexShrink:0}}>
-                  <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/>
-                    <rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/>
-                    <line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
-                    <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>}
-            {tab==='parallel'&&
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,flexShrink:0,width:117.13,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
-                <button type="button" onClick={()=>setParallelMobileSheet('nav')}
-                  style={{padding:'0 8px',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flex:1}}>Navigate</button>
-              </div>}
-            {tab==='compare'&&
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
-                <button type="button" title="Search" onClick={()=>setMobileSheet('compareSearch')}
-                  style={{width:34,background:q?T.gF:'transparent',border:`1px solid ${q?T.gD:'transparent'}`,borderRadius:6,color:q?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:q?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>⌕</button>
-                <button type="button" onClick={openAdd}
-                  style={{width:34,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:18,lineHeight:1,fontWeight:600,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>＋</button>
-                <button type="button" title={`${readBk?.name||''} ${readCh}`} onClick={()=>setReadMobileSheet('nav')}
-                  style={{width:34,background:'transparent',border:'1px solid transparent',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',padding:0,flexShrink:0}}>
-                  <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/>
-                    <rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/>
-                    <line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
-                    <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>}
-            <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,marginLeft:'auto'}}>
-              {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>● Saving…</span>}
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch'}}>
-                {(tab==='read'||tab==='parallel')&&<button type="button" title="Reading settings" onClick={()=>setReadMobileSheet('settings')}
-                  style={{width:28,background:readMobileSheet==='settings'?T.gF:'transparent',border:`1px solid ${readMobileSheet==='settings'?T.gD:'transparent'}`,borderRadius:6,color:readMobileSheet==='settings'?T.gT:T.dim,fontSize:15,lineHeight:1,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⚙</button>}
-                {tab==='compare'&&<button type="button" title="Study tools" onClick={()=>setMobileSheet('compare')}
-                  style={{width:28,background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.dim,fontSize:15,lineHeight:1,fontWeight:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⚙</button>}
-              </div>
-            </div>
-          </div>
+          {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
       </div>
 
@@ -2105,6 +2073,80 @@ function App(){
             </button>
           ))}
           <div style={{height:1,background:T.bd,margin:'8px 0 10px'}}/>
+          <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
+            <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>Sign Out
+          </button>
+        </MobileSheet>
+      )}
+
+      {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
+      {readMobileSheet==='studyTools'&&(
+        <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
+          {[
+            {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');setReadMobileSheet(null);}},
+            {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');setReadMobileSheet(null);}},
+            {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');setReadMobileSheet(null);}},
+            {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');setReadMobileSheet(null);}},
+            {icon:'🗺',label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>setReadMobileSheet(null)},
+            {icon:'▦',label:'Charts',sub:'Timelines and visual references',key:'charts',fn:()=>setReadMobileSheet(null)},
+            {icon:'⋯',label:'Other Resources',sub:'Additional study materials',key:'other',fn:()=>setReadMobileSheet(null)},
+          ].map(item=>(
+            <button key={item.key} type="button" className="s-btn s-ghost" onClick={item.fn}
+              style={{display:'flex',alignItems:'center',gap:14,textAlign:'left',width:'100%',background:tab===item.key?T.gF:'transparent',border:`1px solid ${tab===item.key?T.gD:T.bd}`,borderRadius:9,color:tab===item.key?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
+              <span style={{width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontSize:13,flexShrink:0,fontFamily:FS}}>{item.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,letterSpacing:'0.05em',color:tab===item.key?T.gT:T.mut}}>{item.label}</div>
+                <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{item.sub}</div>
+              </div>
+              {tab===item.key&&<span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:T.gM}}>ACTIVE</span>}
+            </button>
+          ))}
+        </MobileSheet>
+      )}
+
+      {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
+      {readMobileSheet==='settings'&&(
+        <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:18,textTransform:'uppercase'}}>Settings</div>
+          {/* Dark / Light */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
+            <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
+            <button type="button" onClick={()=>setDark(d=>!d)}
+              style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:600}}>
+              {dark?'☀ Light':'☾ Dark'}
+            </button>
+          </div>
+          {/* Font size */}
+          <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'13px 14px',marginBottom:14}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>Text Size</span>
+              <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+            </div>
+            <input type="range" min="13" max="28" value={readFontSize}
+              onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
+              style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:4,marginBottom:12}}>
+              <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+              <span style={{fontFamily:FB,fontSize:18,color:T.dim}}>A</span>
+            </div>
+            <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
+              In the beginning God created the heaven and the earth.
+            </div>
+          </div>
+          <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
+          {[
+            {icon:'✦',label:'Bookmarks',fn:()=>{setReadMobileSheet(null);setModal({type:'bookmarks'});}},
+            {icon:'↺',label:'Recent Passages',fn:()=>{setReadMobileSheet(null);setModal({type:'recents'});}},
+            {icon:'⋯',label:'Help & Reference',fn:()=>{setReadMobileSheet(null);setModal({type:'help'});}},
+          ].map(item=>(
+            <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
+              style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
+              <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>{item.icon}</span>{item.label}
+            </button>
+          ))}
+          <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>Sign Out
@@ -2139,63 +2181,6 @@ function App(){
                     style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'10px 16px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Go →</button>
                 </div>
               </div>
-            </MobileSheet>
-          )}
-          {readMobileSheet==='settings'&&(
-            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:18,textTransform:'uppercase'}}>Reading Settings</div>
-              {/* Dark / Light */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
-                <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
-                <button type="button" onClick={()=>setDark(d=>!d)}
-                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:600}}>
-                  {dark?'☀ Light':'☾ Dark'}
-                </button>
-              </div>
-              {/* Strong's */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,marginBottom:14}}>
-                <div>
-                  <div style={{fontFamily:FB,fontSize:16,color:T.mut}}>Strong's Concordance</div>
-                  <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.06em',marginTop:2}}>Coming soon</div>
-                </div>
-                <button type="button" onClick={()=>setStrongsMode(v=>!v)}
-                  style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s',flexShrink:0}}>
-                  {strongsMode?'On':'Off'}
-                </button>
-              </div>
-              {/* Font size */}
-              <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'13px 14px',marginBottom:14}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                  <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>Text Size</span>
-                  <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
-                </div>
-                <input type="range" min="13" max="28" value={readFontSize}
-                  onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
-                  style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
-                <div style={{display:'flex',justifyContent:'space-between',marginTop:4,marginBottom:12}}>
-                  <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-                  <span style={{fontFamily:FB,fontSize:18,color:T.dim}}>A</span>
-                </div>
-                <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
-                  In the beginning God created the heaven and the earth.
-                </div>
-              </div>
-              <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
-              {[
-                {icon:'✦',label:'Bookmarks',fn:()=>{setReadMobileSheet(null);setModal({type:'bookmarks'});}},
-                {icon:'↺',label:'Recent Passages',fn:()=>{setReadMobileSheet(null);setModal({type:'recents'});}},
-                {icon:'⋯',label:'Help & Reference',fn:()=>{setReadMobileSheet(null);setModal({type:'help'});}},
-              ].map(item=>(
-                <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
-                  style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
-                  <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>{item.icon}</span>{item.label}
-                </button>
-              ))}
-              <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
-              <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
-                style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
-                <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>Sign Out
-              </button>
             </MobileSheet>
           )}
           {readMobileSheet==='version'&&(
@@ -2488,8 +2473,15 @@ function App(){
               </div>
             </MobileSheet>
           )}
+          {/* Back to Study */}
+          <div style={{padding:'6px 14px 0',flexShrink:0}}>
+            <button type="button" onClick={()=>setTab('study')}
+              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
+              ← Study
+            </button>
+          </div>
           {/* Verse reference header */}
-          <div style={{textAlign:'center',padding:'10px 14px 2px',flexShrink:0}}>
+          <div style={{textAlign:'center',padding:'6px 14px 2px',flexShrink:0}}>
             <div style={{fontFamily:FS,fontSize:17,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
               {parallelBkData?.name} {parallelCh}:{parallelVs}
             </div>
@@ -2553,6 +2545,13 @@ function App(){
       {/* ═══ COMPARE TAB ═══ */}
       {tab==='compare'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+          {/* Back to Study */}
+          <div style={{padding:'6px 12px 0',flexShrink:0,background:T.bgCard}}>
+            <button type="button" onClick={()=>setTab('study')}
+              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
+              ← Study
+            </button>
+          </div>
           <div className="hide-mobile"><Legend T={T} refLabel={data.versions.find(v=>v.isRef)?.label}/></div>
 
           {/* Sticky controls */}
@@ -2654,6 +2653,40 @@ function App(){
               <div style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:T.dim}}>All renderings should be verified against printed texts.</div>
               <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',marginTop:6,fontWeight:500}}>To God Alone Be the Glory</div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ STRONG'S CONCORDANCE TAB ═══ */}
+      {tab==='strongs'&&(
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+          <div style={{padding:'6px 14px 0',flexShrink:0}}>
+            <button type="button" onClick={()=>setTab('study')}
+              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
+              ← Study
+            </button>
+          </div>
+          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
+            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
+            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
+            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Hebrew & Greek word study tools are coming soon.</div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ DICTIONARY TAB ═══ */}
+      {tab==='dictionary'&&(
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+          <div style={{padding:'6px 14px 0',flexShrink:0}}>
+            <button type="button" onClick={()=>setTab('study')}
+              style={{display:'flex',alignItems:'center',gap:5,background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0'}}>
+              ← Study
+            </button>
+          </div>
+          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
+            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>Δ</div>
+            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Biblical Dictionary</div>
+            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Biblical definitions and references are coming soon.</div>
           </div>
         </div>
       )}
