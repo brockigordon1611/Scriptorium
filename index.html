@@ -2305,7 +2305,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'80px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;}}
             onTouchEnd={e=>{
@@ -2364,7 +2364,7 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:`calc(50vh + ${Math.round((navH-14)/2)}px)`,transform:'translateY(-50%)',zIndex:200,
+                    <div style={{position:'fixed',right:0,top:readSearchRes?'calc(50vh + 20px)':`calc(50vh + ${Math.round((navH-14)/2)}px)`,transform:'translateY(-50%)',zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
