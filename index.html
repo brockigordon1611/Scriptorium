@@ -2135,6 +2135,10 @@ function App(){
               In the beginning God created the heaven and the earth.
             </div>
           </div>
+          <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
+          </button>
           <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{setReadMobileSheet(null);setModal({type:'bookmarks'});}},
@@ -2193,12 +2197,6 @@ function App(){
                   <span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:readVid===v.id?T.gM:T.dim}}>{v.lang}</span>
                 </button>
               ))}
-              <div style={{height:1,background:T.bd,margin:'10px 0 10px'}}/>
-              <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
-                style={{display:'flex',alignItems:'center',gap:10,width:'100%',background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:17,padding:'12px 16px',cursor:'pointer'}}>
-                <span style={{color:T.gT,fontSize:14}}>⚙</span>
-                <span>Manage Bible Versions</span>
-              </button>
             </MobileSheet>
           )}
           {readMobileSheet==='search'&&(
