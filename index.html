@@ -300,7 +300,9 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px) scaleY(0.96);}to{opacity:1;transform:translateY(0) scaleY(1);}}
 @keyframes slideUp{from{opacity:0;transform:translateY(100%);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideDownSheet{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes modalIn{from{opacity:0;transform:scale(0.93) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
+@keyframes modalInTop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes shimmer{0%{background-position:-200% 0;}100%{background-position:200% 0;}}
 @keyframes breathe{0%,100%{opacity:.4;}50%{opacity:1;}}
 @keyframes goldLine{0%{background-position:-100% 0;}100%{background-position:200% 0;}}
@@ -309,6 +311,7 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 .fade-in{animation:fadeIn .3s ease-out both;}
 .slide-down{animation:slideDown .3s cubic-bezier(0.34,1.4,0.64,1) both;}
 .slide-up-sheet{animation:slideUp .3s cubic-bezier(0.32,0.72,0,1) both;}
+.slide-down-sheet{animation:slideDownSheet .3s cubic-bezier(0.32,0.72,0,1) both;}
 .modal-in{animation:modalIn .28s cubic-bezier(0.34,1.4,0.64,1) both;}
 .section-enter{animation:fadeUp .4s cubic-bezier(0.34,1.2,0.64,1) both;}
 .text-reveal{animation:textReveal .35s ease-out both;}
@@ -324,13 +327,13 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   .full-mobile{width:100%!important;}
   .show-mobile{display:flex!important;}
   /* Scripture text: bigger, edge-to-edge */
-  .rv-text{font-size:21px!important;line-height:1.9!important;}
+  .rv-text{line-height:1.9!important;}
   .read-area{padding:8px 10px 80px!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
-  /* Modal: full-screen sheet on mobile */
-  .modal-overlay{padding:0!important;align-items:flex-end!important;}
-  .modal-panel{width:100%!important;max-height:92vh!important;border-radius:16px 16px 0 0!important;}
+  /* Modal: full-screen sheet on mobile — drops from top */
+  .modal-overlay{padding:0!important;align-items:flex-start!important;}
+  .modal-panel{width:100%!important;max-height:92vh!important;border-radius:0 0 16px 16px!important;animation:modalInTop .28s cubic-bezier(0.32,0.72,0,1) both!important;}
   /* Form rows: single column on mobile */
   .form-row{grid-template-columns:1fr!important;}
   /* Tighter modal padding on mobile */
@@ -952,12 +955,12 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
   return(
     <div className="section-enter" style={{marginBottom:28,animationDelay:`${delay}s`}}>
       <div className="s-btn" onClick={()=>setCol(!col)}
-        style={{display:'flex',alignItems:'center',gap:12,background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:col?10:'10px 10px 0 0',padding:'13px 20px',userSelect:'none',transition:'border-radius .2s'}}>
+        style={{display:'flex',alignItems:'center',gap:8,background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:col?10:'10px 10px 0 0',padding:'13px 12px',userSelect:'none',transition:'border-radius .2s',flexWrap:'wrap'}}>
         <span style={{color:T.gM,fontSize:9,display:'inline-block',transition:'transform .2s',transform:col?'rotate(-90deg)':'none'}}>▼</span>
-        <span style={{fontFamily:FS,fontSize:12.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1}}>{sec.title}</span>
+        <span style={{fontFamily:FS,fontSize:12.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1,minWidth:60}}>{sec.title}</span>
         <span style={{fontFamily:FS,fontSize:9.5,color:T.dim,letterSpacing:'0.1em',fontWeight:500}}>{entries.length} {entries.length===1?'entry':'entries'}</span>
         <div style={{display:'flex',gap:5}} onClick={e=>e.stopPropagation()}>
-          <select className="s-btn" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
+          <select className="s-btn hide-mobile" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
             <option value="default">Sort: Default</option><option value="bible">Sort: Bible Order</option><option value="issue">Sort: Issue Type</option><option value="status">Sort: Status</option>
           </select>
           <IBtn T={T} ch="✎" onClick={()=>onEditSec(sec.id)}/>
@@ -1238,7 +1241,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen}){
   const [dragY,setDragY]=React.useState(0);
   const [closing,setClosing]=React.useState(false);
   const startY=React.useRef(null);
@@ -1254,30 +1257,43 @@ function MobileSheet({onClose,children,T,title}){
   function onTouchMove(e){
     if(startY.current===null)return;
     const dy=e.touches[0].clientY-startY.current;
-    if(dy>0)setDragY(dy);
+    if(fromTop){if(dy<0)setDragY(dy);}else{if(dy>0)setDragY(dy);}
   }
   function onTouchEnd(){
-    if(dragY>80){dismiss();}
+    if(Math.abs(dragY)>80){dismiss();}
     else{setDragY(0);}
     startY.current=null;
   }
 
+  const closeTx=fromTop?'translateY(-100%)':'translateY(100%)';
+  const dragTx=`translateY(${dragY}px)`;
+
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)dismiss();}}
       style={{position:'fixed',inset:0,zIndex:180,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)'}}>
-      <div className={closing?'':'slide-up-sheet'} onClick={e=>e.stopPropagation()}
-        style={{position:'absolute',bottom:0,left:0,right:0,background:T.bgCard,borderRadius:'18px 18px 0 0',borderTop:`2px solid ${T.bdA}`,maxHeight:'82vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 -20px 60px rgba(0,0,0,0.5)',
-          transform:closing?'translateY(100%)':`translateY(${dragY}px)`,
+      <div className={closing?'':(fromTop?'slide-down-sheet':'slide-up-sheet')} onClick={e=>e.stopPropagation()}
+        style={{position:'absolute',...(fromTop?{top:0}:{bottom:0}),left:0,right:0,background:T.bgCard,
+          borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
+          ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
+          maxHeight:fullScreen?'100vh':'82vh',height:fullScreen?'100vh':undefined,display:'flex',flexDirection:'column',overflow:'hidden',
+          boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
+          transform:closing?closeTx:dragTx,
           transition:closing?'transform .25s ease-in':dragY===0?'transform .2s ease-out':'none'}}>
-        <div style={{height:3,background:T.accentLine}}/>
-        <div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
+        {!fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
-        </div>
-        <div style={{overflowY:'auto',flex:1,padding:'6px 18px 32px'}}>
+        </div>}
+        <div style={{overflowY:'auto',flex:1,padding:fromTop?'52px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
+        {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
+          <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
+        </div>}
+        {fromTop&&<div style={{height:3,background:T.accentLine}}/>}
       </div>
     </div>
   );
@@ -1389,14 +1405,28 @@ function App(){
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
   const[readSearchRes,setReadSearchRes]=useState(null);
+  const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
+  const[readSearchLimit,setReadSearchLimit]=useState(50);
   const[readSearching,setReadSearching]=useState(false);
   const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'any',caseSensitive:false,partial:false});
   const SEARCH_DEFAULTS={scope:'all',mode:'any',caseSensitive:false,partial:false};
   const[recentSearches,setRecentSearches]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip_recent_searches')||'[]');}catch{return[];}});
   const[readSearchPopover,setReadSearchPopover]=useState(false);
-  const[readMobileSheet,setReadMobileSheet]=useState(null); // 'nav'|'version'|'search'
+  const[readMobileSheet,setReadMobileSheet]=useState(null); // 'nav'|'version'|'search'|'settings'
+  const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
+  const[strongsMode,setStrongsMode]=useState(false);
+  const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
   const swipeTouchX=useRef(null);
+
+  // ── Parallel Verses state ──
+  const[parallelVids,setParallelVids]=useState([]);
+  const[parallelBk,setParallelBk]=useState(1);
+  const[parallelCh,setParallelCh]=useState(1);
+  const[parallelVs,setParallelVs]=useState(1);
+  const[parallelChapters,setParallelChapters]=useState({});
+  const[parallelLoading,setParallelLoading]=useState(false);
+  const[parallelMobileSheet,setParallelMobileSheet]=useState(null);
 
   // ── Bookmarks / Recents ──
   const[bookmarks,setBookmarks]=useState([]);
@@ -1466,6 +1496,7 @@ function App(){
         setData(pd);
       }
       setReadVid(pd.versions.find(v=>v.isRef)?.id||pd.versions[0]?.id||'kjv');
+      setParallelVids(pd.versions.map(v=>v.id));
       setLoadMsg('');setReady(true);
       dbLoadBookmarks(user.id).then(setBookmarks);
       dbLoadRecents(user.id).then(setRecents);
@@ -1485,6 +1516,20 @@ function App(){
     });
     return()=>{cancelled=true;};
   },[readVid,readBook,readCh,ready]);
+
+  // ── Load parallel chapters ──
+  useEffect(()=>{
+    if(!parallelVids.length||!ready)return;
+    let cancelled=false;
+    setParallelLoading(true);
+    Promise.all(parallelVids.map(vid=>dbGetChapter(vid,parallelBk,parallelCh))).then(results=>{
+      if(!cancelled){
+        const map={};parallelVids.forEach((vid,i)=>{map[vid]=results[i]||[];});
+        setParallelChapters(map);setParallelLoading(false);
+      }
+    }).catch(()=>{if(!cancelled)setParallelLoading(false);});
+    return()=>{cancelled=true;};
+  },[parallelVids,parallelBk,parallelCh,ready]);
 
   // ── Keyboard shortcuts ──
   useEffect(()=>{
@@ -1522,77 +1567,110 @@ function App(){
     setTimeout(()=>{const el=document.getElementById(`card-${entry.id}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setPulseId(entry.id);setTimeout(()=>setPulseId(null),1600);}},50);
   }
 
+  // ── Search infinite scroll ──
+  function onSearchScroll(e){
+    const el=e.currentTarget;
+    if(readSearchRes&&readSearchLimit<readSearchRes.length&&el.scrollHeight-el.scrollTop-el.clientHeight<500)
+      setReadSearchLimit(n=>n+50);
+  }
+
   // ── Reading helpers ──
   const readBk=BIBLE.find(b=>b.n===readBook);const readTotalCh=readBk?.v?.length||1;
   const readVerLabel=data?.versions.find(v=>v.id===readVid)?.label||readVid?.toUpperCase()||'';
   function readPrevCh(){if(readCh>1)setReadCh(c=>c-1);else if(readBook>1){const nb=readBook-1;setReadBook(nb);setReadCh(BIBLE.find(b=>b.n===nb)?.v?.length||1);}}
   function readNextCh(){if(readCh<readTotalCh)setReadCh(c=>c+1);else if(readBook<66){setReadBook(b=>b+1);setReadCh(1);}}
+  // ── Parallel helpers ──
+  const parallelBkData=BIBLE.find(b=>b.n===parallelBk);
+  const parallelTotalCh=parallelBkData?.v?.length||1;
+  const parallelTotalVs=parallelBkData?.v?.[parallelCh-1]||1;
+  function parallelPrevVs(){
+    if(parallelVs>1){setParallelVs(v=>v-1);return;}
+    if(parallelCh>1){const pv=BIBLE.find(b=>b.n===parallelBk)?.v?.[parallelCh-2]||1;setParallelCh(c=>c-1);setParallelVs(pv);return;}
+    if(parallelBk>1){const nb=parallelBk-1;const nd=BIBLE.find(b=>b.n===nb);const lc=nd?.v?.length||1;const lv=nd?.v?.[lc-1]||1;setParallelBk(nb);setParallelCh(lc);setParallelVs(lv);}
+  }
+  function parallelNextVs(){
+    if(parallelVs<parallelTotalVs){setParallelVs(v=>v+1);return;}
+    if(parallelCh<parallelTotalCh){setParallelCh(c=>c+1);setParallelVs(1);return;}
+    if(parallelBk<66){setParallelBk(b=>b+1);setParallelCh(1);setParallelVs(1);}
+  }
   function jumpToFromCard(parsed){setReadBook(parsed.bookNum);setReadCh(parsed.chapter);setTab('read');}
   function openFromBookmark(bm){setModal(null);setReadBook(bm.book_num);setReadCh(bm.chapter);setReadVid(bm.version_id);setTab('read');}
   function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(r.version_id);setTab('read');}
 
-  async function doReadSearch(overrideQ){
+  async function doReadSearch(overrideQ,overrideOpts){
     const query=(overrideQ!==undefined?overrideQ:readSearchQ).trim();
     if(!query)return;
     if(overrideQ!==undefined)setReadSearchQ(overrideQ);
-    setReadSearching(true);setReadSearchRes(null);setReadSearchPopover(false);
+    setReadSearching(true);setReadSearchRes(null);setReadSearchLimit(50);setReadSearchPopover(false);
     const newRecent=[query,...recentSearches.filter(r=>r!==query)].slice(0,10);
     setRecentSearches(newRecent);
     try{localStorage.setItem('scrip_recent_searches',JSON.stringify(newRecent));}catch{}
     try{
+      const opts=overrideOpts||searchOpts;
       const token=getToken();
       const words=query.split(/\s+/).filter(Boolean);
-      const cs=searchOpts.caseSensitive;
-      // Scope → DB-level book range (scope is now enforced IN the query before LIMIT)
-      const bookMin=searchOpts.scope==='nt'?40:1;
-      const bookMax=searchOpts.scope==='ot'?39:66;
-      // Helper: build RPC params with scope baked in
-      const rpcParams=(q,limit)=>({p_version_id:readVid,p_query:q,p_limit:limit,p_book_min:bookMin,p_book_max:bookMax});
-      // Client-side match — case/partial/mode refinement after DB pre-filter
+      const cs=opts.caseSensitive;
+      const ww=opts.partial===false;
+      const bookMin=opts.scope==='nt'?40:1;
+      const bookMax=opts.scope==='ot'?39:66;
+      const PAGE=900;
+      const baseParams=(q)=>({p_version_id:readVid,p_query:q,p_limit:PAGE,p_book_min:bookMin,p_book_max:bookMax,p_case_sensitive:cs,p_whole_word:ww});
+      async function fetchAll(q){
+        let all=[];let offset=0;
+        while(true){
+          const{data:res}=await sbRpc('search_verses',{...baseParams(q),p_offset:offset},token);
+          if(!Array.isArray(res)||res.length===0)break;
+          all=all.concat(res);
+          if(res.length<PAGE)break;
+          offset+=res.length;
+        }
+        return all;
+      }
       function matches(text){
         const chk=w=>{
-          if(searchOpts.partial===false){
+          if(opts.partial===false){
             const rx=new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,cs?'':'i');
             return rx.test(text);
           }
           return cs?text.includes(w):text.toLowerCase().includes(w.toLowerCase());
         };
-        if(searchOpts.mode==='phrase') return cs?text.includes(query):text.toLowerCase().includes(query.toLowerCase());
-        if(searchOpts.mode==='all') return words.every(w=>chk(w));
-        return words.some(w=>chk(w)); // 'any'
+        if(opts.mode==='phrase') return cs?text.includes(query):text.toLowerCase().includes(query.toLowerCase());
+        if(opts.mode==='all') return words.every(w=>chk(w));
+        return words.some(w=>chk(w));
       }
-      // DB fetch strategy — RPC does: lower(text) LIKE '%query%' within book range
-      // Multi-word modes need special handling so "grace mercy" doesn't search as a phrase
       let results=[];
-      if(searchOpts.mode==='any'&&words.length>1){
-        // Parallel RPC per word, scoped, then union + dedup
-        const calls=words.map(w=>sbRpc('search_verses',rpcParams(w,200),token));
-        const responses=await Promise.all(calls);
+      if(opts.mode==='any'&&words.length>1){
+        const responses=await Promise.all(words.map(w=>fetchAll(w)));
         const seen=new Set();
-        for(const{data:res}of responses){
-          if(Array.isArray(res)){
-            for(const r of res){
-              const k=`${r.book_num}-${r.chapter}-${r.verse}`;
-              if(!seen.has(k)){seen.add(k);results.push(r);}
-            }
+        for(const res of responses){
+          for(const r of res){
+            const k=`${r.book_num}-${r.chapter}-${r.verse}`;
+            if(!seen.has(k)){seen.add(k);results.push(r);}
           }
         }
-      } else if(searchOpts.mode==='all'&&words.length>1){
-        // Shortest word as DB seed (broadest pre-filter), scoped, all-words check client-side
+      } else if(opts.mode==='all'&&words.length>1){
         const seed=words.slice().sort((a,b)=>a.length-b.length)[0];
-        const{data:res}=await sbRpc('search_verses',rpcParams(seed,500),token);
-        results=Array.isArray(res)?res:[];
+        results=await fetchAll(seed);
       } else {
-        // Phrase or single-word — full query, scoped
-        const{data:res}=await sbRpc('search_verses',rpcParams(query,300),token);
-        results=Array.isArray(res)?res:[];
+        results=await fetchAll(query);
       }
-      // Client-side filter for case sensitivity, partial/whole-word, and multi-word logic
       results=results.filter(r=>matches(r.text||''));
-      // Re-sort after union (any-word parallel results arrive unordered)
       results.sort((a,b)=>a.book_num-b.book_num||a.chapter-b.chapter||a.verse-b.verse);
-      setSearchOpts(SEARCH_DEFAULTS);
-      setReadSearchRes(results.slice(0,50));
+      // Count total occurrences across all matching verses
+      let occ=0;
+      const occWords=opts.mode==='phrase'?[query]:words;
+      results.forEach(r=>{
+        const txt=r.text||'';
+        occWords.forEach(w=>{
+          const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+          const bounded=opts.partial===false?`\\b${pat}\\b`:pat;
+          const rx=new RegExp(bounded,cs?'g':'gi');
+          const m=txt.match(rx);
+          if(m)occ+=m.length;
+        });
+      });
+      setReadSearchOccurrences(occ);
+      setReadSearchRes(results);
     }catch(err){
       setReadSearchRes([]);
     }finally{
@@ -1768,11 +1846,13 @@ function App(){
             <div className="hide-mobile" style={{fontFamily:FS,fontSize:8,color:T.gD,letterSpacing:'0.18em',textTransform:'uppercase',fontWeight:500,marginTop:2}}>{data.versions.map(v=>v.label).join(' - ')}</div>
           </div>
           {/* Tab switcher */}
-          <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:'5px 3px',gap:2,width:153,height:33.33,boxSizing:'border-box',alignItems:'stretch',flexShrink:0}}>
+          <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:'5px 3px',gap:2,height:33.33,boxSizing:'border-box',alignItems:'stretch',flexShrink:0}}>
             <button type="button" onClick={()=>setTab('read')}
-              style={{flex:1,background:tab==='read'?T.gF:'transparent',border:`1px solid ${tab==='read'?T.gD:'transparent'}`,borderRadius:6,color:tab==='read'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:0,fontWeight:tab==='read'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>&#10022; Read</button>
+              style={{padding:'0 4px',background:tab==='read'?T.gF:'transparent',border:`1px solid ${tab==='read'?T.gD:'transparent'}`,borderRadius:6,color:tab==='read'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='read'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#10022; Read</button>
+            <button type="button" onClick={()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');}}
+              style={{padding:'0 4px',background:tab==='parallel'?T.gF:'transparent',border:`1px solid ${tab==='parallel'?T.gD:'transparent'}`,borderRadius:6,color:tab==='parallel'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='parallel'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#9553; Parallel</button>
             <button type="button" onClick={()=>setTab('compare')}
-              style={{flex:1,background:tab==='compare'?T.gF:'transparent',border:`1px solid ${tab==='compare'?T.gD:'transparent'}`,borderRadius:6,color:tab==='compare'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:0,fontWeight:tab==='compare'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>&#8862; Compare</button>
+              style={{padding:'0 4px',background:tab==='compare'?T.gF:'transparent',border:`1px solid ${tab==='compare'?T.gD:'transparent'}`,borderRadius:6,color:tab==='compare'?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:tab==='compare'?600:400,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',whiteSpace:'nowrap'}}>&#9998; Study</button>
           </div>
           {/* Read controls (desktop only) - right of tabs */}
           {tab==='read'&&<div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,position:'relative'}}>
@@ -1798,11 +1878,11 @@ function App(){
               {Array.from({length:readBk?.v?.[readCh-1]||0},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
             {/* Search */}
-            <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-              placeholder="Search…"
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 8px',outline:'none',width:150}}/>
             <button type="button" className="s-btn s-ghost" title="Search" onClick={()=>doReadSearch()} disabled={readSearching}
               style={{height:33.33,boxSizing:'border-box',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,padding:'0 8px',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>{readSearching?<Spinner/>:'⌕'}</button>
+            <input value={readSearchQ} onChange={e=>{setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
+              placeholder="Search…"
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 8px',outline:'none',width:150}}/>
             {/* Options toggle */}
             {(()=>{const act=searchOpts.scope!=='all'||searchOpts.mode!=='any'||searchOpts.caseSensitive||searchOpts.partial;return(
               <button type="button" title="Search options" onClick={()=>setReadSearchPopover(v=>!v)}
@@ -1811,6 +1891,53 @@ function App(){
               </button>
             );})()}
             {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
+            {/* Settings button + popover */}
+            <button type="button" title="Reading settings" onClick={()=>setReadSettingsOpen(v=>!v)}
+              style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:14,display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}>⚙</button>
+            {readSettingsOpen&&<>
+              <div onClick={()=>setReadSettingsOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
+              <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'16px 18px',width:260,boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
+                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.16em',color:T.gM,marginBottom:12,textTransform:'uppercase',fontWeight:600}}>Reading Settings</div>
+                {/* Dark/light */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
+                  <button type="button" onClick={()=>setDark(d=>!d)}
+                    style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600}}>
+                    {dark?'☀ Light':'☾ Dark'}
+                  </button>
+                </div>
+                {/* Strong's */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Strong's Concordance</span>
+                  <button type="button" onClick={()=>setStrongsMode(v=>!v)}
+                    style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s'}}>
+                    {strongsMode?'On':'Off'}
+                  </button>
+                </div>
+                {/* Manage versions */}
+                <button type="button" onClick={()=>{setReadSettingsOpen(false);setModal({type:'versions'});}}
+                  style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'9px 12px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
+                  <span style={{color:T.gT}}>⚙</span> Manage Bible Versions
+                </button>
+                {/* Font size */}
+                <div>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Text Size</span>
+                    <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+                  </div>
+                  <input type="range" min="13" max="28" value={readFontSize}
+                    onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
+                    style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+                  <div style={{display:'flex',justifyContent:'space-between',marginTop:2,marginBottom:8}}>
+                    <span style={{fontFamily:FS,fontSize:8,color:T.dim}}>A</span>
+                    <span style={{fontFamily:FS,fontSize:12,color:T.dim}}>A</span>
+                  </div>
+                  <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:8,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
+                    In the beginning God created the heaven and the earth.
+                  </div>
+                </div>
+              </div>
+            </>}
             {/* Search options popover */}
             {readSearchPopover&&<>
               <div onClick={()=>setReadSearchPopover(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
@@ -1880,23 +2007,23 @@ function App(){
               <GhostBtn T={T} ch="⋯" onClick={()=>setModal({type:'help'})} title="Help & more"/>
             </div>
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3}}>
-              <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
+              <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.body,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
             </div>
           </div>
           {/* Mobile: read nav controls + save + hamburger */}
           <div className="show-mobile" style={{flex:1,alignItems:'center',gap:4,minWidth:0}}>
-            {tab==='read'&&<>
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,width:126.5,height:33,boxSizing:'border-box',alignItems:'stretch'}}>
+            {tab==='read'&&
+              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
                 <button type="button" title="Search" onClick={()=>setReadMobileSheet('search')}
-                  style={{flex:1,background:readSearchRes?T.gF:'transparent',border:`1px solid ${readSearchRes?T.gD:'transparent'}`,borderRadius:6,color:readSearchRes?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:readSearchRes?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  style={{width:34,background:readSearchRes?T.gF:'transparent',border:`1px solid ${readSearchRes?T.gD:'transparent'}`,borderRadius:6,color:readSearchRes?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:readSearchRes?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   {readSearching?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" onClick={()=>setReadMobileSheet('version')}
-                  style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,padding:0,whiteSpace:'nowrap',cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  style={{padding:'0 8px',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   {readVerLabel||'—'}
                 </button>
                 <button type="button" title={`${readBk?.name||''} ${readCh}`} onClick={()=>setReadMobileSheet('nav')}
-                  style={{flex:1,background:'transparent',border:'1px solid transparent',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',padding:0}}>
+                  style={{width:34,background:'transparent',border:'1px solid transparent',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',padding:0,flexShrink:0}}>
                   <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/>
                     <rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/>
@@ -1904,23 +2031,35 @@ function App(){
                     <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
                 </button>
-              </div>
-            </>}
-            {tab==='compare'&&<>
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,width:126.5,height:33,boxSizing:'border-box',alignItems:'stretch'}}>
+              </div>}
+            {tab==='parallel'&&
+              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,flexShrink:0,width:117.13,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
+                <button type="button" onClick={()=>setParallelMobileSheet('nav')}
+                  style={{padding:'0 8px',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flex:1}}>Navigate</button>
+              </div>}
+            {tab==='compare'&&
+              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch',marginLeft:'auto'}}>
                 <button type="button" title="Search" onClick={()=>setMobileSheet('compareSearch')}
-                  style={{flex:1,background:q?T.gF:'transparent',border:`1px solid ${q?T.gD:'transparent'}`,borderRadius:6,color:q?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:q?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⌕</button>
+                  style={{width:34,background:q?T.gF:'transparent',border:`1px solid ${q?T.gD:'transparent'}`,borderRadius:6,color:q?T.gT:T.dim,fontSize:16,lineHeight:1,fontWeight:q?600:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>⌕</button>
                 <button type="button" onClick={openAdd}
-                  style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:18,lineHeight:1,fontWeight:600,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>＋</button>
-                <button type="button" title="Study tools" onClick={()=>setMobileSheet('compare')}
-                  style={{flex:1,background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.dim,fontSize:16,lineHeight:1,fontWeight:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⚙</button>
-              </div>
-            </>}
+                  style={{width:34,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:18,lineHeight:1,fontWeight:600,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>＋</button>
+                <button type="button" title={`${readBk?.name||''} ${readCh}`} onClick={()=>setReadMobileSheet('nav')}
+                  style={{width:34,background:'transparent',border:'1px solid transparent',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',padding:0,flexShrink:0}}>
+                  <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/>
+                    <rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/>
+                    <line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
+                    <line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>}
             <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,marginLeft:'auto'}}>
               {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>● Saving…</span>}
-              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3}}>
-                <button type="button" title="Menu" onClick={()=>setMobileSheet('menu')}
-                  style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:400,padding:'5px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>☰ Menu</button>
+              <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,flexShrink:0,height:33,boxSizing:'border-box',alignItems:'stretch'}}>
+                {(tab==='read'||tab==='parallel')&&<button type="button" title="Reading settings" onClick={()=>setReadMobileSheet('settings')}
+                  style={{width:28,background:readMobileSheet==='settings'?T.gF:'transparent',border:`1px solid ${readMobileSheet==='settings'?T.gD:'transparent'}`,borderRadius:6,color:readMobileSheet==='settings'?T.gT:T.dim,fontSize:15,lineHeight:1,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⚙</button>}
+                {tab==='compare'&&<button type="button" title="Study tools" onClick={()=>setMobileSheet('compare')}
+                  style={{width:28,background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.dim,fontSize:15,lineHeight:1,fontWeight:400,padding:0,cursor:'pointer',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center'}}>⚙</button>}
               </div>
             </div>
           </div>
@@ -1929,7 +2068,8 @@ function App(){
 
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
-        <MobileSheet T={T} title="Menu" onClose={()=>setMobileSheet(null)}>
+        <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Menu</div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{setMobileSheet(null);setModal({type:'bookmarks'});}},
             {icon:'↺',label:'Recent Passages',fn:()=>{setMobileSheet(null);setModal({type:'recents'});}},
@@ -1955,36 +2095,89 @@ function App(){
 
           {/* Mobile popup sheets for Read tab */}
           {readMobileSheet==='nav'&&(
-            <MobileSheet T={T} title="Navigate" onClose={()=>setReadMobileSheet(null)}>
-              <div style={{marginBottom:14}}>
-                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:8,fontWeight:500}}>Book</div>
+            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+              <div>
+                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Navigate</div>
                 <select className="s-btn" value={readBook} onChange={e=>{setReadBook(parseInt(e.target.value));setReadCh(1);}}
-                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:17,padding:'9px 12px',outline:'none'}}>
+                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bdA}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none',marginBottom:8}}>
                   {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
                 </select>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-                <div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:8,fontWeight:500}}>Chapter</div>
+                <div style={{display:'flex',gap:8,alignItems:'stretch'}}>
                   <select className="s-btn" value={readCh} onChange={e=>setReadCh(parseInt(e.target.value))}
-                    style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:17,padding:'9px 12px',outline:'none'}}>
-                    {Array.from({length:readTotalCh},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:16,padding:'10px 10px',outline:'none'}}>
+                    {Array.from({length:readTotalCh},(_,i)=><option key={i+1} value={i+1}>Ch {i+1}</option>)}
                   </select>
-                </div>
-                <div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:8,fontWeight:500}}>Jump to Verse</div>
                   <select className="s-btn" value="" onChange={e=>{const v=parseInt(e.target.value);if(v){const el=document.getElementById(`rv-${v}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});}setReadMobileSheet(null);}}}
-                    style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.dim,fontFamily:FB,fontSize:17,padding:'9px 12px',outline:'none'}}>
-                    <option value="">Vs</option>
-                    {Array.from({length:readBk?.v?.[readCh-1]||0},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FB,fontSize:16,padding:'10px 10px',outline:'none'}}>
+                    <option value="">Jump to verse</option>
+                    {Array.from({length:readBk?.v?.[readCh-1]||0},(_,i)=><option key={i+1} value={i+1}>Verse {i+1}</option>)}
                   </select>
+                  <button type="button" onClick={()=>setReadMobileSheet(null)}
+                    style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'10px 16px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Go →</button>
                 </div>
               </div>
-              <PBtn T={T} ch="Go →" onClick={()=>setReadMobileSheet(null)}/>
+            </MobileSheet>
+          )}
+          {readMobileSheet==='settings'&&(
+            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:18,textTransform:'uppercase'}}>Reading Settings</div>
+              {/* Dark / Light */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
+                <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
+                <button type="button" onClick={()=>setDark(d=>!d)}
+                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:600}}>
+                  {dark?'☀ Light':'☾ Dark'}
+                </button>
+              </div>
+              {/* Strong's */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,marginBottom:14}}>
+                <div>
+                  <div style={{fontFamily:FB,fontSize:16,color:T.mut}}>Strong's Concordance</div>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.06em',marginTop:2}}>Coming soon</div>
+                </div>
+                <button type="button" onClick={()=>setStrongsMode(v=>!v)}
+                  style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s',flexShrink:0}}>
+                  {strongsMode?'On':'Off'}
+                </button>
+              </div>
+              {/* Font size */}
+              <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'13px 14px',marginBottom:14}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>Text Size</span>
+                  <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+                </div>
+                <input type="range" min="13" max="28" value={readFontSize}
+                  onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
+                  style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+                <div style={{display:'flex',justifyContent:'space-between',marginTop:4,marginBottom:12}}>
+                  <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+                  <span style={{fontFamily:FB,fontSize:18,color:T.dim}}>A</span>
+                </div>
+                <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
+                  In the beginning God created the heaven and the earth.
+                </div>
+              </div>
+              <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
+              {[
+                {icon:'✦',label:'Bookmarks',fn:()=>{setReadMobileSheet(null);setModal({type:'bookmarks'});}},
+                {icon:'↺',label:'Recent Passages',fn:()=>{setReadMobileSheet(null);setModal({type:'recents'});}},
+                {icon:'⋯',label:'Help & Reference',fn:()=>{setReadMobileSheet(null);setModal({type:'help'});}},
+              ].map(item=>(
+                <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
+                  style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
+                  <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>{item.icon}</span>{item.label}
+                </button>
+              ))}
+              <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
+              <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
+                style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
+                <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>Sign Out
+              </button>
             </MobileSheet>
           )}
           {readMobileSheet==='version'&&(
-            <MobileSheet T={T} title="Select Version" onClose={()=>setReadMobileSheet(null)}>
+            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Select Version</div>
               {(data?.versions||[]).map(v=>(
                 <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);setReadMobileSheet(null);}}
                   style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:readVid===v.id?T.gF:'transparent',border:`1px solid ${readVid===v.id?T.gD:T.bd}`,borderRadius:9,color:readVid===v.id?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
@@ -1992,10 +2185,17 @@ function App(){
                   <span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:readVid===v.id?T.gM:T.dim}}>{v.lang}</span>
                 </button>
               ))}
+              <div style={{height:1,background:T.bd,margin:'10px 0 10px'}}/>
+              <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
+                style={{display:'flex',alignItems:'center',gap:10,width:'100%',background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:17,padding:'12px 16px',cursor:'pointer'}}>
+                <span style={{color:T.gT,fontSize:14}}>⚙</span>
+                <span>Manage Bible Versions</span>
+              </button>
             </MobileSheet>
           )}
           {readMobileSheet==='search'&&(
-            <MobileSheet T={T} title="Search Verses" onClose={()=>{setReadMobileSheet(null);}}>
+            <MobileSheet T={T} title={null} onClose={()=>{setReadMobileSheet(null);}} onScroll={onSearchScroll} fromTop fullScreen={!!readSearchRes}>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search Verses</div>
               <div style={{display:'flex',gap:8,marginBottom:12}}>
                 <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
@@ -2012,7 +2212,7 @@ function App(){
                 <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                   {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>(
-                    <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,scope:v}))}
+                    <button key={v} type="button" onClick={()=>{const o={...searchOpts,scope:v};setSearchOpts(o);if(readSearchQ)doReadSearch(undefined,o);}}
                       style={{flex:1,background:searchOpts.scope===v?T.gF:'transparent',border:`1px solid ${searchOpts.scope===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.scope===v?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                       {l}
                     </button>
@@ -2021,7 +2221,7 @@ function App(){
                 <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
                   {[['any','Any Word'],['all','All Words'],['phrase','Phrase']].map(([v,l])=>(
-                    <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,mode:v}))}
+                    <button key={v} type="button" onClick={()=>{const o={...searchOpts,mode:v};setSearchOpts(o);if(readSearchQ)doReadSearch(undefined,o);}}
                       style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                       {l}
                     </button>
@@ -2030,7 +2230,7 @@ function App(){
                 <div style={{display:'flex',gap:4,alignItems:'center'}}>
                   <div style={{width:38,flexShrink:0}}/>
                   {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>(
-                    <button key={k} type="button" onClick={()=>setSearchOpts(o=>({...o,[k]:!o[k]}))}
+                    <button key={k} type="button" onClick={()=>{const o={...searchOpts,[k]:!searchOpts[k]};setSearchOpts(o);if(readSearchQ)doReadSearch(undefined,o);}}
                       style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                       {l}
                     </button>
@@ -2061,10 +2261,35 @@ function App(){
                       style={{display:'flex',alignItems:'center',gap:5,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,padding:'7px 13px',cursor:'pointer',whiteSpace:'nowrap'}}>
                       ← Back to Reading
                     </button>
-                    <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',fontWeight:500}}>{readSearchRes.length}{readSearchRes.length===50?'+':''} result{readSearchRes.length!==1?'s':''}</div>
+                    <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',textTransform:'uppercase',fontWeight:500,textAlign:'right'}}>
+                      <span>{readSearchRes.length} verse{readSearchRes.length!==1?'s':''}</span>
+                      <span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>
+                    </div>
                   </div>
-                  {readSearchRes.length===0&&<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No verses found.</div>}
-                  {readSearchRes.map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);return(
+                  {readSearchRes.length===0&&(
+                    <div>
+                      <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15,marginBottom:10}}>No verses found.</div>
+                      {searchOpts.caseSensitive&&(
+                        <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                          ⚠ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
+                          <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Disable it →</button>
+                        </div>
+                      )}
+                      {searchOpts.partial===false&&(
+                        <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                          ⚠ Whole Word mode — partial matches excluded.{' '}
+                          <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Enable Partial Match →</button>
+                        </div>
+                      )}
+                      {searchOpts.scope!=='all'&&(
+                        <div style={{fontSize:12,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                          ⚠ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
+                          <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Search All Scripture →</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);return(
                     <div key={`${r.book_num}-${r.chapter}-${r.verse}`} className="reading-verse s-btn"
                       onClick={()=>{setReadBook(r.book_num);setReadCh(r.chapter);setReadSearchRes(null);setReadMobileSheet(null);}}
                       style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
@@ -2072,7 +2297,12 @@ function App(){
                       <div style={{fontFamily:FB,fontSize:15,color:T.body,lineHeight:1.75}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                     </div>
                   );})}
-                  <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${T.bd}`}}>
+                  {readSearchLimit<readSearchRes.length&&(
+                    <div style={{textAlign:'center',padding:'12px 0',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.12em'}}>
+                      ··· {readSearchRes.length-readSearchLimit} more ···
+                    </div>
+                  )}
+                  <div style={{marginTop:8,paddingTop:12,borderTop:`1px solid ${T.bd}`}}>
                     <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadMobileSheet(null);}}
                       style={{display:'flex',alignItems:'center',gap:5,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',fontWeight:600,padding:'10px 18px',cursor:'pointer',width:'100%',justifyContent:'center'}}>
                       ← Back to Reading
@@ -2085,6 +2315,7 @@ function App(){
 
           {/* Verse content */}
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:'8px 18px 64px',maxWidth:760,margin:'0 auto',width:'100%'}}
+            onScroll={onSearchScroll}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;}}
             onTouchEnd={e=>{
               if(swipeTouchX.current===null)return;
@@ -2108,16 +2339,47 @@ function App(){
                     style={{display:'flex',alignItems:'center',gap:5,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',fontWeight:600,padding:'6px 12px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',transition:'all .15s'}}>
                     ← Back to Reading
                   </button>
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:500}}>{readSearchRes.length}{readSearchRes.length===50?'+':''} result{readSearchRes.length!==1?'s':''} for "{readSearchQ}"</div>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',textTransform:'uppercase',fontWeight:500}}>
+                    <span>{readSearchRes.length} verse{readSearchRes.length!==1?'s':''}</span>
+                    <span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>
+                    <span style={{color:T.dim}}> for "{readSearchQ}"</span>
+                  </div>
                 </div>
-                {readSearchRes.length===0&&<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No verses found.</div>}
-                {readSearchRes.map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);return(
+                {readSearchRes.length===0&&(
+                  <div>
+                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15,marginBottom:10}}>No verses found.</div>
+                    {searchOpts.caseSensitive&&(
+                      <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                        ⚠ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
+                        <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Disable it →</button>
+                      </div>
+                    )}
+                    {searchOpts.partial===false&&(
+                      <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                        ⚠ Whole Word mode — partial matches excluded.{' '}
+                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Enable Partial Match →</button>
+                      </div>
+                    )}
+                    {searchOpts.scope!=='all'&&(
+                      <div style={{fontSize:12,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                        ⚠ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
+                        <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Search All Scripture →</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);return(
                   <div key={`${r.book_num}-${r.chapter}-${r.verse}`} className="reading-verse s-btn" onClick={()=>{setReadBook(r.book_num);setReadCh(r.chapter);setReadSearchRes(null);}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{b?.name} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.75}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
                 );})}
-                <div style={{marginTop:16,paddingTop:12,borderTop:`1px solid ${T.bd}`}}>
+                {readSearchLimit<readSearchRes.length&&(
+                  <div style={{textAlign:'center',padding:'14px 0',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.12em'}}>
+                    ··· {readSearchRes.length-readSearchLimit} more ···
+                  </div>
+                )}
+                <div style={{marginTop:8,paddingTop:12,borderTop:`1px solid ${T.bd}`}}>
                   <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}}
                     style={{display:'flex',alignItems:'center',gap:5,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',transition:'all .15s'}}>
                     ← Back to Reading
@@ -2139,7 +2401,7 @@ function App(){
                       onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
                       style={{display:'flex',gap:10,padding:'3px 4px',cursor:'pointer',borderRadius:6,background:sel?T.gF:'transparent',border:sel?`1px solid ${T.gD}`:'1px solid transparent',marginBottom:1,transition:'background .12s'}}>
                       <span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,minWidth:20,paddingTop:6,textAlign:'right',userSelect:'none',flexShrink:0,fontWeight:500}}>{v}</span>
-                      <span className="rv-text" style={{fontFamily:FB,fontSize:19,color:T.body,lineHeight:1.85}} dangerouslySetInnerHTML={{__html:text}}/>
+                      <span className="rv-text" style={{fontFamily:FB,fontSize:readFontSize,color:T.body,lineHeight:1.85}} dangerouslySetInnerHTML={{__html:text}}/>
                     </div>
                   );
                 })}
@@ -2156,7 +2418,7 @@ function App(){
                   ?<span style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:'#62c484',fontWeight:600}}>✓ Copied to clipboard</span>
                   :<>
                     <span style={{fontFamily:FS,fontSize:9.5,color:T.gM,letterSpacing:'0.1em',fontWeight:500,flexShrink:0}}>
-                      {[...readSelVerses].sort((a,b)=>a-b).join(', ')}
+                      {(s=>{const a=[...s].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return r.join(', ');})(readSelVerses)}
                     </span>
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="Bookmark label…"
                       style={{flex:1,minWidth:60,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:14,padding:'4px 8px',outline:'none'}}/>
@@ -2186,6 +2448,93 @@ function App(){
             </span>
             <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500}}>
               {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PARALLEL VERSES TAB ═══ */}
+      {tab==='parallel'&&(
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+          {/* Mobile nav sheet */}
+          {parallelMobileSheet==='nav'&&(
+            <MobileSheet T={T} title={null} onClose={()=>setParallelMobileSheet(null)} fromTop>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Navigate</div>
+              <select className="s-btn" value={parallelBk} onChange={e=>{setParallelBk(parseInt(e.target.value));setParallelCh(1);setParallelVs(1);}}
+                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none',marginBottom:8}}>
+                {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
+              </select>
+              <div style={{display:'flex',gap:8,alignItems:'stretch'}}>
+                <select className="s-btn" value={parallelCh} onChange={e=>{setParallelCh(parseInt(e.target.value));setParallelVs(1);}}
+                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none'}}>
+                  {Array.from({length:parallelTotalCh},(_,i)=><option key={i+1} value={i+1}>Ch {i+1}</option>)}
+                </select>
+                <select className="s-btn" value={parallelVs} onChange={e=>setParallelVs(parseInt(e.target.value))}
+                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none'}}>
+                  {Array.from({length:parallelTotalVs},(_,i)=><option key={i+1} value={i+1}>Vs {i+1}</option>)}
+                </select>
+                <button type="button" onClick={()=>setParallelMobileSheet(null)}
+                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:14,padding:'0 18px',cursor:'pointer',fontWeight:600}}>Go →</button>
+              </div>
+            </MobileSheet>
+          )}
+          {/* Verse reference header */}
+          <div style={{textAlign:'center',padding:'10px 14px 2px',flexShrink:0}}>
+            <div style={{fontFamily:FS,fontSize:17,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
+              {parallelBkData?.name} {parallelCh}:{parallelVs}
+            </div>
+            <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+          </div>
+          {/* Version cards */}
+          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 16px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+            {parallelLoading&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
+            {!parallelLoading&&parallelVids.map((vid,idx)=>{
+              const verDef=(data?.versions||[]).find(v=>v.id===vid);
+              const rows=parallelChapters[vid]||[];
+              const verseRow=rows.find(r=>r.verse===parallelVs);
+              const isFirst=idx===0;const isLast=idx===parallelVids.length-1;
+              return(
+                <div key={vid} style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 12px',borderBottom:`1px solid ${T.bdS}`,background:T.bgSec}}>
+                    <span style={{flex:1,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',fontWeight:600,color:T.gT}}>{verDef?.label||vid}</span>
+                    <span style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.08em'}}>{verDef?.lang}</span>
+                    <button type="button" title="Move up" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];return a;})} disabled={isFirst}
+                      style={{background:'none',border:'none',color:isFirst?T.dim:T.gM,cursor:isFirst?'default':'pointer',fontSize:16,padding:'0 3px',lineHeight:1}}>↑</button>
+                    <button type="button" title="Move down" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];return a;})} disabled={isLast}
+                      style={{background:'none',border:'none',color:isLast?T.dim:T.gM,cursor:isLast?'default':'pointer',fontSize:16,padding:'0 3px',lineHeight:1}}>↓</button>
+                    <button type="button" title="Remove" onClick={()=>setParallelVids(ids=>ids.filter(id=>id!==vid))}
+                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,padding:'0 3px',lineHeight:1}}>✕</button>
+                  </div>
+                  <div style={{padding:'13px 16px'}}>
+                    {verseRow
+                      ?<div style={{fontFamily:FB,fontSize:20,color:T.body,lineHeight:1.85}}>{verseRow.text}</div>
+                      :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
+                  </div>
+                </div>
+              );
+            })}
+            {/* Add removed versions back */}
+            {(data?.versions||[]).filter(v=>!parallelVids.includes(v.id)).map(v=>(
+              <button key={v.id} type="button" onClick={()=>setParallelVids(ids=>[...ids,v.id])}
+                style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'transparent',border:`1px dashed ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 14px',cursor:'pointer',marginBottom:8,boxSizing:'border-box'}}>
+                ＋ {v.label}
+              </button>
+            ))}
+          </div>
+          {/* Bottom nav */}
+          <div style={{background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 10px',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
+              ‹ Prev
+            </button>
+            <button type="button" className="show-mobile" onClick={()=>setParallelMobileSheet('nav')}
+              style={{background:'none',border:'none',color:T.gD,fontFamily:FS,fontSize:9,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
+              {parallelVs} / {parallelTotalVs}
+            </button>
+            <span className="hide-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
+              {parallelVs} / {parallelTotalVs}
+            </span>
+            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
+              Next ›
             </button>
           </div>
         </div>
@@ -2235,40 +2584,26 @@ function App(){
 
           {/* Compare actions bottom sheet (mobile) */}
           {mobileSheet==='compare'&&(
-            <MobileSheet T={T} title="Study Tools" onClose={()=>setMobileSheet(null)}>
-              {/* Version visibility toggles */}
-              <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:8,fontWeight:600}}>Show Versions</div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
-                {data.versions.map(v=>{const hidden=hiddenVers.includes(v.id);return(
-                  <button key={v.id} type="button" className="s-btn s-tbtn" onClick={()=>togVer(v.id)}
-                    style={{background:hidden?'transparent':T.gF,border:`1px solid ${hidden?T.bd:T.gD}`,borderRadius:7,color:hidden?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:hidden?400:600,opacity:hidden?.45:1,textDecoration:hidden?'line-through':'none',transition:'all .15s'}}>
-                    {v.label}
-                  </button>);})}
-              </div>
-              <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
+            <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
               {[
                 {icon:'＋',label:'Add Section',fn:()=>{setMobileSheet(null);openAddSec();}},
                 {icon:'⚙',label:'Manage Versions',fn:()=>{setMobileSheet(null);setModal({type:'versions'});}},
                 {icon:'◎',label:'Statistics',fn:()=>{setMobileSheet(null);setModal({type:'stats'});}},
                 {icon:'⬇',label:'Export JSON',fn:()=>{setMobileSheet(null);doExport();}},
-                {icon:'▾',label:'Expand All Sections',fn:()=>{setSecToggle({action:'expand',tick:Date.now()});setMobileSheet(null);}},
-                {icon:'▴',label:'Collapse All Sections',fn:()=>{setSecToggle({action:'collapse',tick:Date.now()});setMobileSheet(null);}},
               ].map(item=>(
                 <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
                   style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'12px 14px',width:'100%',marginBottom:5}}>
                   <span style={{width:20,textAlign:'center',color:T.gT,flexShrink:0,fontSize:14}}>{item.icon}</span>{item.label}
                 </button>
               ))}
-              {data.entries.length>0&&(<>
-                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,margin:'10px 0 6px',fontWeight:600}}>Go To Passage</div>
-                <NavBar data={data} T={T} setQ={setQ} onScroll={(ref)=>{scrollTo(ref);setMobileSheet(null);}}/>
-              </>)}
             </MobileSheet>
           )}
 
           {/* Compare search sheet (mobile) */}
           {mobileSheet==='compareSearch'&&(
-            <MobileSheet T={T} title="Search" onClose={()=>setMobileSheet(null)}>
+            <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search</div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
                   placeholder="Search passages, text, notes…"
