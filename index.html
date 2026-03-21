@@ -328,7 +328,7 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   .show-mobile{display:flex!important;}
   /* Scripture text: bigger, edge-to-edge */
   .rv-text{line-height:1.9!important;}
-  .read-area{padding:8px 10px 80px!important;}
+  .read-area{padding-right:10px!important;padding-bottom:80px!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
   /* Modal: full-screen sheet on mobile — drops from top */
@@ -2305,7 +2305,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'48px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'80px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;}}
             onTouchEnd={e=>{
