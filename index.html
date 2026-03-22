@@ -377,6 +377,7 @@ function normRef(raw){if(!raw)return raw;const m=raw.trim().match(/^([\d]*\s*[a-
 function parseRef(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(.+)$/);return m?{book:m[1].trim(),chapter:m[2],verse:m[3].trim()}:null;}
 function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(\d+)/);if(!m)return null;const b=BIBLE.find(x=>x.name.toLowerCase()===m[1].trim().toLowerCase());return b?{bookNum:b.n,chapter:parseInt(m[2]),verse:parseInt(m[3])}:null;}
 function hl(text,q,opts){if(!text)return'';const hasHtml=/<[a-z][^>]*>/i.test(text);if(hasHtml)return text;if(!q)return esc(text);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(text);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
+function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';let t=text.replace(/<\/red>(\s*(?:<i>[^<]*<\/i>\s*)*)<red>/g,'$1');return t.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
 function parseCSVtoRows(content){
   const rows=[];const lines=content.split(/\r?\n/);
@@ -2144,39 +2145,32 @@ function App(){
             <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Reading Appearance</div>
 
             {/* Live preview */}
-            <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:7,padding:'10px 12px',marginBottom:14}}>
-              <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
-              {readParaMode?(
-                <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
-                  {[
-                    {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>',red:false},
-                    {v:2,text:'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',red:true},
-                    {v:3,text:'Jesus wept.',red:false},
-                  ].map(({v,text,red})=>(
-                    <span key={v}>
-                      {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
-                      {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                      <span style={{color:readRedLetter&&red?(T.dark?'#ef5350':'#c62828'):T.body}} dangerouslySetInnerHTML={{__html:text}}/>
-                      {' '}
-                    </span>
-                  ))}
-                </div>
-              ):(
-                <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
-                  {[
-                    {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>',red:false},
-                    {v:2,text:'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',red:true},
-                    {v:3,text:'Jesus wept.',red:false},
-                  ].map(({v,text,red})=>(
-                    <div key={v} style={{marginBottom:1}}>
-                      {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
-                      {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                      <span style={{color:readRedLetter&&red?(T.dark?'#ef5350':'#c62828'):T.body}} dangerouslySetInnerHTML={{__html:text}}/>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {(()=>{
+              const pvVerses=[
+                {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>'},
+                {v:2,text:'But he answered and said, <red>It is written, Man shall not live by bread alone, but by every word that proceedeth out of the mouth of God.</red>'},
+                {v:3,text:'<red>For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.</red>'},
+              ];
+              const vnSup=(v)=>readVerseNums==='super'?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>:null;
+              const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
+              return(
+              <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:7,padding:'10px 12px',marginBottom:14}}>
+                <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
+                {readParaMode?(
+                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
+                    {pvVerses.map(({v,text})=>(
+                      <span key={v}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>{' '}</span>
+                    ))}
+                  </div>
+                ):(
+                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
+                    {pvVerses.map(({v,text})=>(
+                      <div key={v} style={{marginBottom:1}}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/></div>
+                    ))}
+                  </div>
+                )}
+              </div>);
+            })()}
 
             {/* Text Size */}
             <div style={{marginBottom:14}}>
@@ -2523,14 +2517,13 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
-                    const red=readRedLetter&&isWOJ(readBook,readCh,v);
                     return(
                       <span key={v} id={`rv-${v}`} className="reading-verse"
                         onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
                         style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?5:0,padding:sel?'2px 3px':0,boxShadow:sel?`0 0 0 1px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:red?(T.dark?'#ef5350':'#c62828'):T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:text}}/>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
                         {' '}
                       </span>
                     );
@@ -2540,14 +2533,13 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
-                    const red=readRedLetter&&isWOJ(readBook,readCh,v);
                     return(
                       <div key={v} id={`rv-${v}`} className="reading-verse"
                         onClick={()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
                         style={{padding:'2px 4px',cursor:'pointer',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:red?(T.dark?'#ef5350':'#c62828'):T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:text}}/>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
                       </div>
                     );
                   })}
@@ -2654,7 +2646,7 @@ function App(){
                   </div>
                   <div style={{padding:'13px 16px'}}>
                     {verseRow
-                      ?<div style={{fontFamily:FB,fontSize:20,color:T.body,lineHeight:1.85}}>{verseRow.text}</div>
+                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
                       :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
                   </div>
                 </div>
