@@ -1857,7 +1857,7 @@ function App(){
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
 
   return(
-    <div style={{fontFamily:FB,background:T.bg,minHeight:'100vh',color:T.body,fontSize:16,display:'flex',flexDirection:'column'}}>
+    <div style={{fontFamily:FB,background:T.bg,height:'100vh',overflow:'hidden',color:T.body,fontSize:16,display:'flex',flexDirection:'column'}}>
       <style>{CSS}</style>
 
       {/* ═══ EMAIL VERIFIED WELCOME OVERLAY ═══ */}
@@ -2594,15 +2594,15 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'14px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500}}>
               {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
             </button>
             <span style={{textAlign:'center'}}>
               <span style={{display:'block',fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
               <span className="show-mobile" style={{display:'block',fontFamily:FS,fontSize:8,color:T.gD,letterSpacing:'0.12em',opacity:0.55,marginTop:1}}>‹ swipe ›</span>
             </span>
-            <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500}}>
+            <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500}}>
               {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
             </button>
           </div>
@@ -2642,7 +2642,7 @@ function App(){
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
           {/* Version cards */}
-          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 16px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 72px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
@@ -2696,8 +2696,8 @@ function App(){
             ))}
           </div>
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'14px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500,cursor:'pointer'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
             <button type="button" className="show-mobile" onClick={()=>setParallelMobileSheet('nav')}
@@ -2707,7 +2707,7 @@ function App(){
             <span className="hide-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
               {parallelVs} / {parallelTotalVs}
             </span>
-            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500,cursor:'pointer'}}>
+            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
               Next ›
             </button>
           </div>
