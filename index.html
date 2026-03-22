@@ -2143,6 +2143,41 @@ function App(){
           {tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
             <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Reading Appearance</div>
 
+            {/* Live preview */}
+            <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:7,padding:'10px 12px',marginBottom:14}}>
+              <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
+              {readParaMode?(
+                <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
+                  {[
+                    {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>',red:false},
+                    {v:2,text:'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',red:true},
+                    {v:3,text:'Jesus wept.',red:false},
+                  ].map(({v,text,red})=>(
+                    <span key={v}>
+                      {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
+                      {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
+                      <span style={{color:readRedLetter&&red?(T.dark?'#ef5350':'#c62828'):T.body}} dangerouslySetInnerHTML={{__html:text}}/>
+                      {' '}
+                    </span>
+                  ))}
+                </div>
+              ):(
+                <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
+                  {[
+                    {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>',red:false},
+                    {v:2,text:'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',red:true},
+                    {v:3,text:'Jesus wept.',red:false},
+                  ].map(({v,text,red})=>(
+                    <div key={v} style={{marginBottom:1}}>
+                      {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
+                      {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
+                      <span style={{color:readRedLetter&&red?(T.dark?'#ef5350':'#c62828'):T.body}} dangerouslySetInnerHTML={{__html:text}}/>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Text Size */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
@@ -2224,20 +2259,6 @@ function App(){
               </button>
             </div>
 
-            {/* Live preview */}
-            <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
-              <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:6}}>Preview</div>
-              <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign}}>
-                {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2}}>16</sup>}
-                {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6}}>16</span>}
-                <span style={{color:readRedLetter?(T.dark?'#ef5350':'#c62828'):T.body}}>For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.</span>
-                {readParaMode&&' '}
-                {!readParaMode&&<br/>}
-                {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2}}>17</sup>}
-                {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6}}>17</span>}
-                <span style={{color:readRedLetter?(T.dark?'#ef5350':'#c62828'):T.body}}>For God sent not his Son into the world to condemn the world; but that the world through him might be saved.</span>
-              </div>
-            </div>
           </div>}
           <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
