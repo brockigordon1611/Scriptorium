@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Scriptorium">
   <style>
-    html,body{margin:0;padding:0;background:#0e0d0b;overflow-x:hidden;height:100%;overscroll-behavior:none;}
-    #root{min-height:100vh;height:100%;display:flex;flex-direction:column;}
+    html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;touch-action:manipulation;}
+    #root{height:100%;display:flex;flex-direction:column;overflow:hidden;}
   </style>
 </head>
 <body>
@@ -1857,7 +1857,7 @@ function App(){
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
 
   return(
-    <div style={{fontFamily:FB,background:T.bg,height:'100vh',overflow:'hidden',color:T.body,fontSize:16,display:'flex',flexDirection:'column'}}>
+    <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <style>{CSS}</style>
 
       {/* ═══ EMAIL VERIFIED WELCOME OVERLAY ═══ */}
@@ -1881,9 +1881,9 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative'}}>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
-        <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflowX:'clip',flexWrap:'nowrap'}}>
+        <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
             <h1 style={{fontFamily:FS,fontSize:17,fontWeight:700,color:T.gT,letterSpacing:'0.07em',margin:0,lineHeight:1}}>Scriptorium</h1>
@@ -2594,7 +2594,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500}}>
               {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
             </button>
@@ -2696,7 +2696,7 @@ function App(){
             ))}
           </div>
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'8px 18px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
