@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Scriptorium">
   <style>
-    html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;touch-action:manipulation;}
+    html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;}
     #root{height:100%;display:flex;flex-direction:column;overflow:hidden;}
   </style>
 </head>
@@ -1989,7 +1989,7 @@ function App(){
                     <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Text Size</span>
                     <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
                   </div>
-                  <input type="range" min="13" max="28" value={readFontSize}
+                  <input type="range" min="13" max="42" value={readFontSize}
                     onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                     style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
                   <div style={{display:'flex',justifyContent:'space-between',marginTop:2,marginBottom:8}}>
@@ -2151,7 +2151,7 @@ function App(){
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-                <input type="range" min="13" max="32" value={readFontSize}
+                <input type="range" min="13" max="42" value={readFontSize}
                   onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
@@ -2166,7 +2166,7 @@ function App(){
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Tight</span>
-                <input type="range" min="1.2" max="2.8" step="0.1" value={readLineHeight}
+                <input type="range" min="1.0" max="2.8" step="0.1" value={readLineHeight}
                   onChange={e=>{const v=Number(e.target.value);setReadLineHeight(v);try{localStorage.setItem('scrip:lineHeight',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Wide</span>
@@ -2414,7 +2414,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 8px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
@@ -2567,7 +2567,7 @@ function App(){
 
           {/* Selection action strip */}
           {readSelVerses.size>0&&(
-            <div className="slide-down" style={{background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'8px 10px',display:'flex',alignItems:'center',gap:8,flexShrink:0,flexWrap:'wrap'}}>
+            <div className="slide-down" style={{position:'fixed',bottom:42,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'8px 10px',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:'#62c484',fontWeight:600}}>✓ Bookmarked</span>
                 :readCopyOk
