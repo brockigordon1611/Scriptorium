@@ -2610,22 +2610,22 @@ function App(){
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
-              <span style={{position:'absolute',left:0,right:0,top:0,bottom:0,display:'flex',alignItems:'center',justifyContent:'center',gap:6,pointerEvents:'none'}}>
-                <span style={{fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
-                <span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.12em',opacity:0.55}}>· swipe</span>
-              </span>
+              <button type="button" onClick={()=>{setReadFullScreen(true);setReadSelVerses(new Set());}}
+                style={{background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:'6px 16px',cursor:'pointer',fontWeight:500}}>
+                ✦ Full Screen
+              </button>
               <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
               </button>
             </div>
           </>}
-          {/* Fullscreen toggle pill — same position and style in both modes */}
-          <div style={{position:'fixed',bottom:14,left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
-            <button type="button" onClick={()=>{setReadFullScreen(f=>!f);setReadSelVerses(new Set());}}
-              style={{pointerEvents:'auto',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:'8px 20px',cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
-              {readFullScreen?'✦ Exit Full Screen Reading':'✦ Full Screen Reading'}
+          {/* Floating exit fullscreen pill — only visible in fullscreen */}
+          {readFullScreen&&<div style={{position:'fixed',bottom:14,left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+            <button type="button" onClick={()=>setReadFullScreen(false)}
+              style={{pointerEvents:'auto',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:'6px 16px',cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
+              ✦ Exit Full Screen
             </button>
-          </div>
+          </div>}
         </div>
       )}
 
