@@ -1436,6 +1436,7 @@ function App(){
   const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||'left';}catch{return 'left';}});
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
+  const[readFullScreen,setReadFullScreen]=useState(false);
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
@@ -1882,7 +1883,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      {!(readFullScreen&&tab==='read')&&<div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -1899,8 +1900,8 @@ function App(){
             <div style={{display:'flex',flex:1,gap:6,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
               {/* Tab pill: Read | Study */}
               <div style={{...pill,flex:1}}>
-                <button type="button" onClick={()=>setTab('read')} style={{...nb(tab==='read'),flex:1,fontSize:9.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>setReadMobileSheet('studyTools')} style={{...nb(studyActive),flex:1,fontSize:9.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{setReadFullScreen(false);setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:9.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{setReadFullScreen(false);setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:9.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
@@ -2079,7 +2080,7 @@ function App(){
           </div>
           {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
-      </div>
+      </div>}
 
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
@@ -2417,7 +2418,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
@@ -2570,7 +2571,7 @@ function App(){
 
           {/* Selection action strip */}
           {readSelVerses.size>0&&(
-            <div className="slide-down" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className="slide-down" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -2604,18 +2605,33 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
-              {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
+          {!readFullScreen&&<div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,display:'flex',flexDirection:'column',alignItems:'center'}}>
+            <button type="button" onClick={()=>setReadFullScreen(true)}
+              style={{background:'none',border:'none',color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',cursor:'pointer',padding:'4px 12px',opacity:0.6}}>
+              ✦ Full Screen Reading
             </button>
-            <span style={{position:'absolute',left:0,right:0,top:0,bottom:0,display:'flex',alignItems:'center',justifyContent:'center',gap:6,pointerEvents:'none'}}>
-              <span style={{fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
-              <span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.12em',opacity:0.55}}>· swipe</span>
-            </span>
-            <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
-              {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
-            </button>
-          </div>
+            <div className="bottom-nav-safe" style={{width:'100%',background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'relative',boxSizing:'border-box'}}>
+              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+                {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
+              </button>
+              <span style={{position:'absolute',left:0,right:0,top:0,bottom:0,display:'flex',alignItems:'center',justifyContent:'center',gap:6,pointerEvents:'none'}}>
+                <span style={{fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
+                <span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.12em',opacity:0.55}}>· swipe</span>
+              </span>
+              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+                {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
+              </button>
+            </div>
+          </div>}
+          {/* Fullscreen exit bar */}
+          {readFullScreen&&(
+            <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',padding:'10px 0 14px'}}>
+              <button type="button" onClick={()=>setReadFullScreen(false)}
+                style={{background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:'8px 20px',cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
+                ✦ Exit Full Screen Reading
+              </button>
+            </div>
+          )}
         </div>
       )}
 
