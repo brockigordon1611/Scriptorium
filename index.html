@@ -2568,7 +2568,7 @@ function App(){
 
           {/* Selection action strip */}
           {readSelVerses.size>0&&(
-            <div className="slide-down" style={{position:'fixed',bottom:34,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'10px 12px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className="slide-down" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -2602,15 +2602,15 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'6px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:42,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
               {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
             </button>
-            <span style={{position:'absolute',left:0,right:0,textAlign:'center',pointerEvents:'none'}}>
-              <span style={{display:'block',fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
-              <span className="show-mobile" style={{display:'block',fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.12em',opacity:0.55,marginTop:0}}>‹ swipe ›</span>
+            <span style={{position:'absolute',left:0,right:0,top:0,bottom:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+              <span style={{fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{readCh}/{readTotalCh}</span>
+              <span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gD,letterSpacing:'0.12em',opacity:0.55}}>‹ swipe ›</span>
             </span>
-            <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:42,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+            <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
               {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
             </button>
           </div>
