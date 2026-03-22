@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Scriptorium</title>
   <meta name="theme-color" content="#0e0d0b">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -342,7 +342,8 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   .show-mobile{display:flex!important;}
   /* Scripture text: bigger, edge-to-edge */
   /* line-height now controlled by readLineHeight state */
-  .read-area{padding-right:10px!important;padding-bottom:80px!important;}
+  .read-area{padding-bottom:80px!important;}
+  .bottom-nav-safe{padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
   /* Modal: full-screen sheet on mobile — drops from top */
@@ -1281,9 +1282,11 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen}){
     const scrollTop=scrollRef.current?.scrollTop||0;
     const atTop=scrollTop<=1;
     const dismissing=fromTop?dy<0:dy>0;
-    if(dismissing&&atTop){
+    // Only start drag-to-dismiss after 30px of intentional movement in dismiss direction while at scroll top
+    if(dismissing&&atTop&&Math.abs(dy)>30){
       dragging.current=true;
-      setDragY(fromTop?Math.min(0,dy):Math.max(0,dy));
+      const adjusted=fromTop?dy+30:dy-30;
+      setDragY(fromTop?Math.min(0,adjusted):Math.max(0,adjusted));
     }
   }
   function onSheetTouchEnd(e){
@@ -1293,7 +1296,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen}){
     const velocity=Math.abs(dy)/dt;
     startY.current=null;
     dragging.current=false;
-    if(Math.abs(dragY)>60||velocity>0.4){dismiss();}
+    if(Math.abs(dragY)>100||velocity>0.6){dismiss();}
     else{setDragY(0);}
   }
 
@@ -1461,7 +1464,6 @@ function App(){
   const swipeTouchY=useRef(null);
   const swipeTouchT=useRef(null);
   const swipeDir=useRef(null); // null|'h'|'v'
-  const[swipeOffset,setSwipeOffset]=useState(0);
   const readSearchJumpTo=useRef(null);
 
   // ── Parallel Verses state ──
@@ -2431,7 +2433,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%',touchAction:'pan-y',transform:`translateX(${swipeOffset}px)`,transition:swipeOffset===0?'transform .28s cubic-bezier(0.25,0.46,0.45,0.94)':'none'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 18px 64px`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
@@ -2443,10 +2445,9 @@ function App(){
               if(swipeTouchX.current===null)return;
               const dx=e.touches[0].clientX-swipeTouchX.current;
               const dy=e.touches[0].clientY-swipeTouchY.current;
-              if(!swipeDir.current&&(Math.abs(dx)>8||Math.abs(dy)>8)){
+              if(!swipeDir.current&&(Math.abs(dx)>12||Math.abs(dy)>12)){
                 swipeDir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';
               }
-              if(swipeDir.current==='h'){setSwipeOffset(dx);}
             }}
             onTouchEnd={e=>{
               if(swipeTouchX.current===null)return;
@@ -2456,9 +2457,8 @@ function App(){
               const velocity=Math.abs(dx)/dt;
               swipeTouchX.current=null;
               swipeDir.current=null;
-              setSwipeOffset(0);
               if(!wasH)return;
-              if(Math.abs(dx)<50&&velocity<0.3)return;
+              if(Math.abs(dx)<60&&velocity<0.35)return;
               if(dx<0)readNextCh();else readPrevCh();
             }}>
           {/* Chapter title */}
@@ -2613,7 +2613,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'12px 10px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'14px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500}}>
               {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
             </button>
@@ -2661,13 +2661,13 @@ function App(){
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
           {/* Version cards */}
-          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 16px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box',touchAction:'pan-y'}}
+          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 16px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
               const dx=e.touches[0].clientX-swipeTouchX.current;
               const dy=e.touches[0].clientY-swipeTouchY.current;
-              if(!swipeDir.current&&(Math.abs(dx)>8||Math.abs(dy)>8)){swipeDir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';}
+              if(!swipeDir.current&&(Math.abs(dx)>12||Math.abs(dy)>12)){swipeDir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';}
             }}
             onTouchEnd={e=>{
               if(swipeTouchX.current===null)return;
@@ -2677,7 +2677,7 @@ function App(){
               const velocity=Math.abs(dx)/dt;
               swipeTouchX.current=null;swipeDir.current=null;
               if(!wasH)return;
-              if(Math.abs(dx)<50&&velocity<0.3)return;
+              if(Math.abs(dx)<60&&velocity<0.35)return;
               if(dx<0)parallelNextVs();else parallelPrevVs();
             }}>
             {parallelLoading&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
@@ -2715,7 +2715,7 @@ function App(){
             ))}
           </div>
           {/* Bottom nav */}
-          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'12px 10px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'14px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'12px 22px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
