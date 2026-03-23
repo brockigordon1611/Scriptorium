@@ -396,7 +396,7 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 function normRef(raw){if(!raw)return raw;const m=raw.trim().match(/^([\d]*\s*[a-zA-Z]+\.?)\s+(\d+.*)/);if(!m)return raw.trim();let book=m[1].replace(/\./g,'').trim();const key=book.toLowerCase().replace(/\s+/g,'');if(ABBREVS[key])book=ABBREVS[key];else book=book.charAt(0).toUpperCase()+book.slice(1);return book+' '+m[2];}
 function parseRef(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(.+)$/);return m?{book:m[1].trim(),chapter:m[2],verse:m[3].trim()}:null;}
 function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(\d+)/);if(!m)return null;const b=BIBLE.find(x=>x.name.toLowerCase()===m[1].trim().toLowerCase());return b?{bookNum:b.n,chapter:parseInt(m[2]),verse:parseInt(m[3])}:null;}
-function hl(text,q,opts){if(!text)return'';const hasHtml=/<[a-z][^>]*>/i.test(text);if(hasHtml)return text;if(!q)return esc(text);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(text);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
+function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
 function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';let t=text.replace(/<\/red>(\s*(?:<i>[^<]*<\/i>\s*)*)<red>/g,'$1');return t.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
 function parseCSVtoRows(content){
@@ -1451,8 +1451,8 @@ function App(){
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
   const[readSearchLimit,setReadSearchLimit]=useState(50);
   const[readSearching,setReadSearching]=useState(false);
-  const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'any',caseSensitive:false,partial:false});
-  const SEARCH_DEFAULTS={scope:'all',mode:'any',caseSensitive:false,partial:false};
+  const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'all',caseSensitive:false,partial:false});
+  const SEARCH_DEFAULTS={scope:'all',mode:'all',caseSensitive:false,partial:false};
   const[recentSearches,setRecentSearches]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip_recent_searches')||'[]');}catch{return[];}});
   const[readSearchPopover,setReadSearchPopover]=useState(false);
   const[readMobileSheet,setReadMobileSheet]=useState(null); // 'nav'|'version'|'search'|'settings'
@@ -2071,7 +2071,7 @@ function App(){
                 <div style={{marginBottom:12}}>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Match Mode</div>
                   <div style={{display:'flex',gap:4}}>
-                    {[['any','Any Word'],['all','All Words'],['phrase','Phrase']].map(([v,l])=>(
+                    {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,mode:v}))}
                         style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                         {l}
@@ -2387,7 +2387,7 @@ function App(){
                   <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
                     Select Chapter
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:5}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
                     {Array.from({length:pickedBkData.v.length},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         setNavPickedCh(i+1);
@@ -2470,7 +2470,7 @@ function App(){
                 </div>
                 <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
-                  {[['any','Any Word'],['all','All Words'],['phrase','Phrase']].map(([v,l])=>(
+                  {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                     <button key={v} type="button" onClick={()=>{const o={...searchOpts,mode:v};setSearchOpts(o);}}
                       style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                       {l}
@@ -2609,11 +2609,11 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:readSearchRes?'98px':'50px',bottom:'calc(42px + env(safe-area-inset-bottom, 0px))',zIndex:200,
-                      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                    <div style={{position:'fixed',right:0,top:'calc(50% + 28px)',transform:'translateY(-50%)',zIndex:200,
+                      display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      overflowY:'auto',
+                      maxHeight:'calc(100vh - 140px - env(safe-area-inset-bottom, 0px))',overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)'}}>
                       {booksInRes.map(bn=>{
                         const nm=BIBLE.find(x=>x.n===bn)?.name||'?';
@@ -2630,7 +2630,7 @@ function App(){
                   );
                 })()}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
-                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{setReadBook(r.book_num);setReadCh(r.chapter);setReadSearchRes(null);}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{setReadBook(r.book_num);setReadCh(r.chapter);setReadSearchRes(null);setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},200);}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{b?.name} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.75}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
@@ -2732,8 +2732,9 @@ function App(){
           </>}
           {/* Floating fullscreen toggle — crossfades between enter/exit */}
           {(()=>{
-            const showEnter=!readFullScreen&&fsTransition!=='entering';
-            const showExit=readFullScreen||fsTransition==='entering';
+            const stripVisible=readSelVerses.size>0&&!stripClosing;
+            const showEnter=!readFullScreen&&fsTransition!=='entering'&&!stripVisible;
+            const showExit=(readFullScreen||fsTransition==='entering')&&!stripVisible;
             const btnBase={width:130,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:0,cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'};
             return(
               <div style={{position:'fixed',bottom:'calc(6px + env(safe-area-inset-bottom, 0px))',left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
