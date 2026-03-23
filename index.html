@@ -344,6 +344,8 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   /* line-height now controlled by readLineHeight state */
   .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
   .read-area::-webkit-scrollbar{display:none;}
+  .slide-down-sheet>div:first-child{scrollbar-width:none;-ms-overflow-style:none;}
+  .slide-down-sheet>div:first-child::-webkit-scrollbar{display:none;}
   .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
@@ -1262,7 +1264,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight}){
   const[dragY,setDragY]=React.useState(0);
   const[closing,setClosing]=React.useState(false);
   const startY=React.useRef(null);
@@ -1291,7 +1293,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen}){
         style={{position:'absolute',...(fromTop?{top:0}:{bottom:0}),left:0,right:0,background:T.bgCard,
           borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
-          maxHeight:fullScreen?'100vh':'82vh',height:fullScreen?'100vh':undefined,display:'flex',flexDirection:'column',overflow:'hidden',
+          maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
           boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
           transform:closing?closeTx:dragTx,
           transition:closing?'transform .25s ease-in':dragY===0?'transform .2s ease-out':'none'}}>
@@ -2289,28 +2291,50 @@ function App(){
             const setNavBk=isP?setParallelBk:setReadBook;
             const setNavCh=isP?setParallelCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
-            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.04em',padding:'11px 2px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
-            const bookBtn={...gridBtn,fontSize:11,letterSpacing:'0.02em',whiteSpace:'nowrap',padding:'7px 4px'};
+            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:14,letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
+            const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:10,letterSpacing:'0.02em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:0,height:24,display:'flex',alignItems:'center',justifyContent:'center'};
             const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
-            function romanName(name){return name.replace(/^Song of Solomon$/,'Song of Sol.').replace(/^1 /,'I ').replace(/^2 /,'II ').replace(/^3 /,'III ');}
+            function romanName(name){return name.replace(/^Song of Solomon$/,'Song of Sol.').replace(/^Lamentations$/,'Lament.').replace(/^1 Thessalonians$/,'I Thess.').replace(/^2 Thessalonians$/,'II Thess.').replace(/^1 /,'I ').replace(/^2 /,'II ').replace(/^3 /,'III ');}
             return(
-            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop fullScreen>
-              <div style={{marginTop:-36,overflowX:'hidden',maxWidth:'100%'}}>
-                {/* Breadcrumb header */}
-                <div style={{fontFamily:FS,fontSize:16,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:8,textTransform:'uppercase'}}>Navigate</div>
+            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop sheetHeight={navStep==='book'?'calc(100vh - 50px)':undefined} maxSheetHeight='calc(100vh - 50px)'>
+              <div style={{marginTop:-44,overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
+                {/* Header row — back button + title — consistent across all steps */}
+                <div style={{position:'relative',marginBottom:4,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                  {navStep==='book'?(
+                    <button type="button" onClick={()=>setReadMobileSheet(null)}
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                      ← Close
+                    </button>
+                  ):navStep==='chapter'?(
+                    <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                      ← Books
+                    </button>
+                  ):(
+                    <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                      ← Chapters
+                    </button>
+                  )}
+                  </div>
+                  <div style={{textAlign:'center',fontFamily:FS,fontSize:12,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
+                    {navStep==='book'?'Select Book':navStep==='chapter'?romanName(pickedBkData?.name||''):`${romanName(pickedBkData?.name||'')} ${navPickedCh}`}
+                  </div>
+                </div>
+                <div style={{height:1,background:T.accentLine,marginBottom:10}}/>
 
                 {/* Book grid */}
                 {navStep==='book'&&<div>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:3,textAlign:'center'}}>Old Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:3,marginBottom:4}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:16}}>Old Testament</div>
+                  <div style={{display:'grid',gridTemplateRows:'repeat(13,1fr)',gridTemplateColumns:'repeat(3,1fr)',gridAutoFlow:'column',gap:2,marginBottom:2}}>
                     {BIBLE.filter(b=>b.n<=39).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
                     ))}
                   </div>
-                  <div style={{height:1,background:T.accentLine,margin:'4px 0'}}/>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:3,textAlign:'center'}}>New Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:3}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:10}}>New Testament</div>
+                  <div style={{display:'grid',gridTemplateRows:'repeat(9,1fr)',gridTemplateColumns:'repeat(3,1fr)',gridAutoFlow:'column',gap:2}}>
                     {BIBLE.filter(b=>b.n>=40).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
@@ -2320,33 +2344,28 @@ function App(){
 
                 {/* Chapter grid */}
                 {navStep==='chapter'&&pickedBkData&&<div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8,textAlign:'center'}}>
-                    {pickedBkData.name} — Select Chapter
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
+                    Select Chapter
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:5}}>
                     {Array.from({length:pickedBkData.v.length},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         setNavPickedCh(i+1);
                         setNavBk(navPickedBk);setNavCh(i+1);
                         if(isP){setParallelVs(1);}
                         setNavStep('verse');
+                        setTimeout(()=>{const el=document.querySelector('.slide-down-sheet>div');if(el)el.scrollTop=0;},0);
                       }} style={gridBtn}>{i+1}</button>
                     ))}
-                  </div>
-                  <div style={{marginTop:12,textAlign:'center'}}>
-                    <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer'}}>
-                      ← Back to Books
-                    </button>
                   </div>
                 </div>}
 
                 {/* Verse grid */}
                 {navStep==='verse'&&pickedBkData&&navPickedCh&&<div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8,textAlign:'center'}}>
-                    {pickedBkData.name} {navPickedCh} — Select Verse
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
+                    Select Verse
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
                     {Array.from({length:pickedBkData.v[navPickedCh-1]||0},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
@@ -2355,17 +2374,13 @@ function App(){
                       }} style={gridBtn}>{i+1}</button>
                     ))}
                   </div>
-                  <div style={{display:'flex',gap:8,marginTop:12,justifyContent:'center'}}>
-                    <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer'}}>
-                      ← Chapters
-                    </button>
+                  <div style={{marginTop:16,textAlign:'center'}}>
                     <button type="button" onClick={()=>{
                       if(isP){setParallelVs(1);}
                       setReadMobileSheet(null);
                     }}
-                      style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer',fontWeight:600}}>
-                      Go to Ch {navPickedCh} →
+                      style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:10,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'10px 28px',cursor:'pointer',fontWeight:600}}>
+                      Go to Chapter {navPickedCh} →
                     </button>
                   </div>
                 </div>}
