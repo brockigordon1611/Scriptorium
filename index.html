@@ -1429,6 +1429,9 @@ function App(){
   const[recentSearches,setRecentSearches]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip_recent_searches')||'[]');}catch{return[];}});
   const[readSearchPopover,setReadSearchPopover]=useState(false);
   const[readMobileSheet,setReadMobileSheet]=useState(null); // 'nav'|'version'|'search'|'settings'
+  const[navStep,setNavStep]=useState('book'); // 'book'|'chapter'|'verse'
+  const[navPickedBk,setNavPickedBk]=useState(null);
+  const[navPickedCh,setNavPickedCh]=useState(null);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
   const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
@@ -1911,7 +1914,7 @@ function App(){
                 <button type="button" title="Select Version" onClick={!studyActive?()=>setReadMobileSheet('version'):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:9,fontWeight:600,padding:'0 8px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>setReadMobileSheet('nav'):undefined} style={{...nb(false),width:38,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}:undefined} style={{...nb(false),width:38,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
                 </button>
               </div>
@@ -2283,33 +2286,89 @@ function App(){
       {/* ── Global popup sheets (nav / version / search) ── */}
           {readMobileSheet==='nav'&&(()=>{
             const isP=tab==='parallel';
-            const navBk=isP?parallelBk:readBook;
             const setNavBk=isP?setParallelBk:setReadBook;
-            const navCh=isP?parallelCh:readCh;
             const setNavCh=isP?setParallelCh:setReadCh;
-            const navBkData=BIBLE.find(b=>b.n===navBk);
-            const navTotalCh=navBkData?.v?.length||1;
+            const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
+            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.04em',padding:'11px 2px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
+            const bookBtn={...gridBtn,fontSize:11,letterSpacing:'0.02em',whiteSpace:'nowrap',padding:'7px 4px'};
+            const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
+            function romanName(name){return name.replace(/^Song of Solomon$/,'Song of Sol.').replace(/^1 /,'I ').replace(/^2 /,'II ').replace(/^3 /,'III ');}
             return(
-            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
-              <div>
-                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Navigate</div>
-                <select className="s-btn" value={navBk} onChange={e=>{setNavBk(parseInt(e.target.value));setNavCh(1);if(isP)setParallelVs(1);}}
-                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bdA}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none',marginBottom:8}}>
-                  {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
-                </select>
-                <div style={{display:'flex',gap:8,alignItems:'stretch'}}>
-                  <select className="s-btn" value={navCh} onChange={e=>{setNavCh(parseInt(e.target.value));if(isP)setParallelVs(1);}}
-                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:16,padding:'10px 10px',outline:'none'}}>
-                    {Array.from({length:navTotalCh},(_,i)=><option key={i+1} value={i+1}>Ch {i+1}</option>)}
-                  </select>
-                  <select className="s-btn" value="" onChange={e=>{const v=parseInt(e.target.value);if(v){if(isP){setParallelVs(v);}else{const el=document.getElementById(`rv-${v}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});}}setReadMobileSheet(null);}}}
-                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FB,fontSize:16,padding:'10px 10px',outline:'none'}}>
-                    <option value="">Jump to verse</option>
-                    {Array.from({length:navBkData?.v?.[navCh-1]||0},(_,i)=><option key={i+1} value={i+1}>Verse {i+1}</option>)}
-                  </select>
-                  <button type="button" onClick={()=>setReadMobileSheet(null)}
-                    style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'10px 16px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Go →</button>
-                </div>
+            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop fullScreen>
+              <div style={{marginTop:-36,overflowX:'hidden',maxWidth:'100%'}}>
+                {/* Breadcrumb header */}
+                <div style={{fontFamily:FS,fontSize:16,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:8,textTransform:'uppercase'}}>Navigate</div>
+
+                {/* Book grid */}
+                {navStep==='book'&&<div>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:3,textAlign:'center'}}>Old Testament</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:3,marginBottom:4}}>
+                    {BIBLE.filter(b=>b.n<=39).map(b=>(
+                      <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
+                        style={bookBtn}>{romanName(b.name)}</button>
+                    ))}
+                  </div>
+                  <div style={{height:1,background:T.accentLine,margin:'4px 0'}}/>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:3,textAlign:'center'}}>New Testament</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:3}}>
+                    {BIBLE.filter(b=>b.n>=40).map(b=>(
+                      <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
+                        style={bookBtn}>{romanName(b.name)}</button>
+                    ))}
+                  </div>
+                </div>}
+
+                {/* Chapter grid */}
+                {navStep==='chapter'&&pickedBkData&&<div>
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8,textAlign:'center'}}>
+                    {pickedBkData.name} — Select Chapter
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
+                    {Array.from({length:pickedBkData.v.length},(_,i)=>(
+                      <button key={i+1} type="button" onClick={()=>{
+                        setNavPickedCh(i+1);
+                        setNavBk(navPickedBk);setNavCh(i+1);
+                        if(isP){setParallelVs(1);}
+                        setNavStep('verse');
+                      }} style={gridBtn}>{i+1}</button>
+                    ))}
+                  </div>
+                  <div style={{marginTop:12,textAlign:'center'}}>
+                    <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer'}}>
+                      ← Back to Books
+                    </button>
+                  </div>
+                </div>}
+
+                {/* Verse grid */}
+                {navStep==='verse'&&pickedBkData&&navPickedCh&&<div>
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8,textAlign:'center'}}>
+                    {pickedBkData.name} {navPickedCh} — Select Verse
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4}}>
+                    {Array.from({length:pickedBkData.v[navPickedCh-1]||0},(_,i)=>(
+                      <button key={i+1} type="button" onClick={()=>{
+                        if(isP){setParallelVs(i+1);}
+                        else{setTimeout(()=>{const el=document.getElementById(`rv-${i+1}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(i+1);return ns;});}},120);}
+                        setReadMobileSheet(null);
+                      }} style={gridBtn}>{i+1}</button>
+                    ))}
+                  </div>
+                  <div style={{display:'flex',gap:8,marginTop:12,justifyContent:'center'}}>
+                    <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer'}}>
+                      ← Chapters
+                    </button>
+                    <button type="button" onClick={()=>{
+                      if(isP){setParallelVs(1);}
+                      setReadMobileSheet(null);
+                    }}
+                      style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 20px',cursor:'pointer',fontWeight:600}}>
+                      Go to Ch {navPickedCh} →
+                    </button>
+                  </div>
+                </div>}
               </div>
             </MobileSheet>);
           })()}
@@ -2632,28 +2691,7 @@ function App(){
       {/* ═══ PARALLEL VERSES TAB ═══ */}
       {tab==='parallel'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-          {/* Mobile nav sheet */}
-          {parallelMobileSheet==='nav'&&(
-            <MobileSheet T={T} title={null} onClose={()=>setParallelMobileSheet(null)} fromTop>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Navigate</div>
-              <select className="s-btn" value={parallelBk} onChange={e=>{setParallelBk(parseInt(e.target.value));setParallelCh(1);setParallelVs(1);}}
-                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none',marginBottom:8}}>
-                {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
-              </select>
-              <div style={{display:'flex',gap:8,alignItems:'stretch'}}>
-                <select className="s-btn" value={parallelCh} onChange={e=>{setParallelCh(parseInt(e.target.value));setParallelVs(1);}}
-                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none'}}>
-                  {Array.from({length:parallelTotalCh},(_,i)=><option key={i+1} value={i+1}>Ch {i+1}</option>)}
-                </select>
-                <select className="s-btn" value={parallelVs} onChange={e=>setParallelVs(parseInt(e.target.value))}
-                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:9,color:T.body,fontFamily:FB,fontSize:18,padding:'11px 14px',outline:'none'}}>
-                  {Array.from({length:parallelTotalVs},(_,i)=><option key={i+1} value={i+1}>Vs {i+1}</option>)}
-                </select>
-                <button type="button" onClick={()=>setParallelMobileSheet(null)}
-                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:14,padding:'0 18px',cursor:'pointer',fontWeight:600}}>Go →</button>
-              </div>
-            </MobileSheet>
-          )}
+          {/* Mobile nav sheet — now uses global nav via header button */}
           {/* Verse reference header */}
           <div style={{textAlign:'center',padding:'18px 14px 2px',flexShrink:0}}>
             <div style={{fontFamily:FS,fontSize:17,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
