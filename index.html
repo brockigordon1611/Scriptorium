@@ -314,6 +314,16 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px) scaleY(0.96);}to{opacity:1;transform:translateY(0) scaleY(1);}}
 @keyframes slideUp{from{opacity:0;transform:translateY(100%);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideUpStrip{from{transform:translateY(100%);}to{transform:translateY(0);}}
+@keyframes slideDownStrip{from{transform:translateY(0);}to{transform:translateY(100%);}}
+@keyframes slideUpOut{from{transform:translateY(0);}to{transform:translateY(-100%);}}
+@keyframes slideDownOut{from{transform:translateY(0);}to{transform:translateY(100%);}}
+@keyframes slideDownIn{from{transform:translateY(-100%);}to{transform:translateY(0);}}
+@keyframes slideUpIn{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.fs-header-out{animation:slideUpOut .18s ease-in both;}
+.fs-header-in{animation:slideDownIn .18s ease-out both;}
+.fs-bar-out{animation:slideDownOut .18s ease-in both;}
+.fs-bar-in{animation:slideUpIn .18s ease-out both;}
 @keyframes slideDownSheet{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes modalIn{from{opacity:0;transform:scale(0.93) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
 @keyframes modalInTop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
@@ -325,7 +335,13 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 .fade-in{animation:fadeIn .3s ease-out both;}
 .slide-down{animation:slideDown .3s cubic-bezier(0.34,1.4,0.64,1) both;}
 .slide-up-sheet{animation:slideUp .3s cubic-bezier(0.32,0.72,0,1) both;}
+.slide-up-strip{animation:slideUpStrip .18s cubic-bezier(0.34,1.2,0.64,1) both;}
+.slide-down-strip{animation:slideDownStrip .15s ease-in both;}
 .slide-down-sheet{animation:slideDownSheet .3s cubic-bezier(0.32,0.72,0,1) both;}
+@keyframes slideDownSheetOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
+@keyframes slideUpSheetOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(100%);}}
+.slide-down-sheet-out{animation:slideDownSheetOut .25s ease-in both;}
+.slide-up-sheet-out{animation:slideUpSheetOut .25s ease-in both;}
 .modal-in{animation:modalIn .28s cubic-bezier(0.34,1.4,0.64,1) both;}
 .section-enter{animation:fadeUp .4s cubic-bezier(0.34,1.2,0.64,1) both;}
 .text-reveal{animation:textReveal .35s ease-out both;}
@@ -1264,12 +1280,13 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing}){
   const[dragY,setDragY]=React.useState(0);
-  const[closing,setClosing]=React.useState(false);
+  const[internalClosing,setInternalClosing]=React.useState(false);
+  const closing=isClosing||internalClosing;
   const startY=React.useRef(null);
 
-  function dismiss(){setClosing(true);setTimeout(onClose,260);}
+  function dismiss(){setInternalClosing(true);onClose();}
 
   function onTouchStart(e){startY.current=e.touches[0].clientY;}
   function onTouchMove(e){
@@ -1288,15 +1305,17 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
 
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)dismiss();}}
-      style={{position:'fixed',inset:0,zIndex:180,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)'}}>
-      <div className={closing?'':(fromTop?'slide-down-sheet':'slide-up-sheet')} onClick={e=>e.stopPropagation()}
+      style={{position:'fixed',inset:0,zIndex:180,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)',
+        opacity:closing?0:1,transition:closing?'opacity .25s ease-in':'none'}}>
+      <div className={closing?(fromTop?'slide-down-sheet-out':'slide-up-sheet-out'):(fromTop?'slide-down-sheet':'slide-up-sheet')} onClick={e=>e.stopPropagation()}
         style={{position:'absolute',...(fromTop?{top:0}:{bottom:0}),left:0,right:0,background:T.bgCard,
           borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
           maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
           boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
-          transform:closing?closeTx:dragTx,
-          transition:closing?'transform .25s ease-in':dragY===0?'transform .2s ease-out':'none'}}>
+          transform:(!closing&&dragY!==0)?dragTx:undefined,
+          transition:(!closing&&dragY===0)?'transform .2s ease-out, max-height .12s cubic-bezier(0.4,0,0.2,1), height .12s cubic-bezier(0.4,0,0.2,1)':'none'}}>
+
         {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
         {!fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
           style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
@@ -1411,6 +1430,10 @@ function App(){
   const[pulseId,setPulseId]=useState(null);
   const[secToggle,setSecToggle]=useState(null);
   const[mobileSheet,setMobileSheet]=useState(null);
+  const[mobileSheetClosing,setMobileSheetClosing]=useState(false);
+  function closeMobileSheet(){setMobileSheetClosing(true);setTimeout(()=>{setMobileSheet(null);setMobileSheetClosing(false);},260);}
+  const[readSheetClosing,setReadSheetClosing]=useState(false);
+  function closeReadSheet(){setReadSheetClosing(true);setTimeout(()=>{setReadMobileSheet(null);setReadSheetClosing(false);},260);}
 
   // ── Reading state (persistent in tab, not modal) ──
   const[readBook,setReadBook]=useState(1);
@@ -1418,6 +1441,8 @@ function App(){
   const[readVid,setReadVid]=useState(null); // set after data loads
   const[readVerses,setReadVerses]=useState([]);
   const[readSelVerses,setReadSelVerses]=useState(()=>new Set()); // multi-select
+  const[stripClosing,setStripClosing]=useState(false);
+  function dismissStrip(){setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripClosing(false);},160);}
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
@@ -1434,6 +1459,18 @@ function App(){
   const[navStep,setNavStep]=useState('book'); // 'book'|'chapter'|'verse'
   const[navPickedBk,setNavPickedBk]=useState(null);
   const[navPickedCh,setNavPickedCh]=useState(null);
+  const navContentRef=useRef(null);
+  const[navSheetH,setNavSheetH]=useState(null);
+  useEffect(()=>{
+    if(readMobileSheet!=='nav')return;
+    requestAnimationFrame(()=>{
+      if(navContentRef.current){
+        const h=navContentRef.current.scrollHeight+52+32; // content + top/bottom padding
+        const maxH=window.innerHeight-50;
+        setNavSheetH(Math.min(h,maxH));
+      }
+    });
+  },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
   const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
@@ -1442,6 +1479,9 @@ function App(){
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readFullScreen,setReadFullScreen]=useState(false);
+  const[fsTransition,setFsTransition]=useState(null); // 'entering'|'exiting'|null
+  function enterFullScreen(){setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);},180);}
+  function exitFullScreen(){setReadFullScreen(false);setFsTransition('exiting');setTimeout(()=>setFsTransition(null),180);}
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
@@ -1720,10 +1760,10 @@ function App(){
       });
       setReadSearchOccurrences(occ);
       setReadSearchRes(results);
-      setReadMobileSheet(null);
+      closeReadSheet();
     }catch(err){
       setReadSearchRes([]);
-      setReadMobileSheet(null);
+      closeReadSheet();
     }finally{
       setReadSearching(false);
     }
@@ -1732,7 +1772,7 @@ function App(){
     const v=[...readSelVerses].sort((a,b)=>a-b)[0];
     if(!user||!v)return;
     await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||`${readBk?.name} ${readCh}:${v}`});
-    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadSelVerses(new Set());setReadBmLabel('');},1800);
+    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');dismissStrip();},1800);
   }
 
   async function copySelectedVerses(){
@@ -1743,7 +1783,7 @@ function App(){
       // Fallback for older browsers
       const ta=document.createElement('textarea');ta.value=lines.join('\n');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     }
-    setReadCopyOk(true);setTimeout(()=>setReadCopyOk(false),1600);
+    setReadCopyOk(true);setTimeout(()=>{setReadCopyOk(false);dismissStrip();},1600);
   }
 
   // ── Entry CRUD ──
@@ -1888,7 +1928,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      {!(readFullScreen&&tab==='read')&&<div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      {!(readFullScreen&&tab==='read'&&!fsTransition)&&<div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -2089,13 +2129,13 @@ function App(){
 
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
-        <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+        <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
           <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Menu</div>
           {[
-            {icon:'✦',label:'Bookmarks',fn:()=>{setMobileSheet(null);setModal({type:'bookmarks'});}},
-            {icon:'↺',label:'Recent Passages',fn:()=>{setMobileSheet(null);setModal({type:'recents'});}},
+            {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
+            {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
             {icon:dark?'☀':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
-            {icon:'⋯',label:'Help & Reference',fn:()=>{setMobileSheet(null);setModal({type:'help'});}},
+            {icon:'⋯',label:'Help & Reference',fn:()=>{closeMobileSheet();setModal({type:'help'});}},
           ].map(item=>(
             <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
               style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
@@ -2112,16 +2152,16 @@ function App(){
 
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
-        <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
           <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
           {[
-            {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');setReadMobileSheet(null);}},
-            {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');setReadMobileSheet(null);}},
-            {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');setReadMobileSheet(null);}},
-            {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');setReadMobileSheet(null);}},
-            {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');setReadMobileSheet(null);}},
-            {icon:'▦',label:'Charts',sub:'Timelines and visual references',key:'charts',fn:()=>{setTab('charts');setReadMobileSheet(null);}},
-            {icon:'⋯',label:'Other Resources',sub:'Additional study materials',key:'other',fn:()=>{setTab('other');setReadMobileSheet(null);}},
+            {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');closeReadSheet();}},
+            {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
+            {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');closeReadSheet();}},
+            {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');closeReadSheet();}},
+            {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');closeReadSheet();}},
+            {icon:'▦',label:'Charts',sub:'Timelines and visual references',key:'charts',fn:()=>{setTab('charts');closeReadSheet();}},
+            {icon:'⋯',label:'Other Resources',sub:'Additional study materials',key:'other',fn:()=>{setTab('other');closeReadSheet();}},
           ].map(item=>(
             <button key={item.key} type="button" className="s-btn s-ghost" onClick={item.fn}
               style={{display:'flex',alignItems:'center',gap:14,textAlign:'left',width:'100%',background:tab===item.key?T.gF:'transparent',border:`1px solid ${tab===item.key?T.gD:T.bd}`,borderRadius:9,color:tab===item.key?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
@@ -2138,7 +2178,7 @@ function App(){
 
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
-        <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop maxSheetHeight='calc(100vh - 50px)'>
           <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:18,textTransform:'uppercase'}}>Settings</div>
           {/* Dark / Light */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
@@ -2262,15 +2302,15 @@ function App(){
             })()}
 
           </div>}
-          <button type="button" onClick={()=>{setReadMobileSheet(null);setModal({type:'versions'});}}
+          <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
           </button>
           <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
           {[
-            {icon:'✦',label:'Bookmarks',fn:()=>{setReadMobileSheet(null);setModal({type:'bookmarks'});}},
-            {icon:'↺',label:'Recent Passages',fn:()=>{setReadMobileSheet(null);setModal({type:'recents'});}},
-            {icon:'⋯',label:'Help & Reference',fn:()=>{setReadMobileSheet(null);setModal({type:'help'});}},
+            {icon:'✦',label:'Bookmarks',fn:()=>{closeReadSheet();setModal({type:'bookmarks'});}},
+            {icon:'↺',label:'Recent Passages',fn:()=>{closeReadSheet();setModal({type:'recents'});}},
+            {icon:'⋯',label:'Help & Reference',fn:()=>{closeReadSheet();setModal({type:'help'});}},
           ].map(item=>(
             <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
               style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
@@ -2296,13 +2336,13 @@ function App(){
             const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
             function romanName(name){return name.replace(/^Song of Solomon$/,'Song of Sol.').replace(/^Lamentations$/,'Lament.').replace(/^1 Thessalonians$/,'I Thess.').replace(/^2 Thessalonians$/,'II Thess.').replace(/^1 /,'I ').replace(/^2 /,'II ').replace(/^3 /,'III ');}
             return(
-            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop sheetHeight={navStep==='book'?'calc(100vh - 50px)':undefined} maxSheetHeight='calc(100vh - 50px)'>
-              <div style={{marginTop:-44,overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop sheetHeight={navSheetH?navSheetH+'px':undefined}>
+              <div ref={navContentRef} style={{marginTop:-44,overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
                 <div style={{position:'relative',marginBottom:4,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
-                    <button type="button" onClick={()=>setReadMobileSheet(null)}
+                    <button type="button" onClick={closeReadSheet}
                       style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
                       ← Close
                     </button>
@@ -2370,14 +2410,14 @@ function App(){
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
                         else{setTimeout(()=>{const el=document.getElementById(`rv-${i+1}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(i+1);return ns;});}},120);}
-                        setReadMobileSheet(null);
+                        closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
                     ))}
                   </div>
                   <div style={{marginTop:16,textAlign:'center'}}>
                     <button type="button" onClick={()=>{
                       if(isP){setParallelVs(1);}
-                      setReadMobileSheet(null);
+                      closeReadSheet();
                     }}
                       style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:10,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'10px 28px',cursor:'pointer',fontWeight:600}}>
                       Go to Chapter {navPickedCh} →
@@ -2388,10 +2428,10 @@ function App(){
             </MobileSheet>);
           })()}
           {readMobileSheet==='version'&&(
-            <MobileSheet T={T} title={null} onClose={()=>setReadMobileSheet(null)} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
               <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Select Version</div>
               {(data?.versions||[]).map(v=>(
-                <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);setReadMobileSheet(null);}}
+                <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);closeReadSheet();}}
                   style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:readVid===v.id?T.gF:'transparent',border:`1px solid ${readVid===v.id?T.gD:T.bd}`,borderRadius:9,color:readVid===v.id?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
                   <span>{v.label}</span>
                   <span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:readVid===v.id?T.gM:T.dim}}>{v.lang}</span>
@@ -2400,10 +2440,10 @@ function App(){
             </MobileSheet>
           )}
           {readMobileSheet==='search'&&(
-            <MobileSheet T={T} title={null} onClose={()=>{setReadMobileSheet(null);}} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
               <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search Verses</div>
               <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
-                <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadMobileSheet(null);}}
+                <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');closeReadSheet();}}
                   style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   ←
                 </button>
@@ -2492,7 +2532,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box',transition:fsTransition?'padding .18s ease-out':'none'}}
             onScroll={onSearchScroll}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
@@ -2569,11 +2609,11 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:readSearchRes?'calc(50vh + 20px)':`calc(50vh + ${Math.round((navH-14)/2)}px)`,transform:'translateY(-50%)',zIndex:200,
-                      display:'flex',flexDirection:'column',alignItems:'center',
+                    <div style={{position:'fixed',right:0,top:readSearchRes?'98px':'50px',bottom:'calc(42px + env(safe-area-inset-bottom, 0px))',zIndex:200,
+                      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      maxHeight:'80vh',overflowY:'auto',
+                      overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)'}}>
                       {booksInRes.map(bn=>{
                         const nm=BIBLE.find(x=>x.n===bn)?.name||'?';
@@ -2614,7 +2654,7 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <span key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen?undefined:()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
+                        onClick={readFullScreen?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
                         style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
@@ -2630,7 +2670,7 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <div key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen?undefined:()=>setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;})}
+                        onClick={readFullScreen?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
                         style={{padding:'2px 4px',cursor:'pointer',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
@@ -2645,7 +2685,7 @@ function App(){
 
           {/* Selection action strip */}
           {readSelVerses.size>0&&(
-            <div className="slide-down" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -2657,7 +2697,7 @@ function App(){
                       </span>
                       <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="Bookmark label…"
                         style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:8,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 12px',outline:'none'}}/>
-                      <button type="button" onClick={()=>setReadSelVerses(new Set())}
+                      <button type="button" onClick={dismissStrip}
                         style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18,flexShrink:0,padding:'4px 6px'}}>✕</button>
                     </div>
                     <div style={{display:'flex',gap:8}}>
@@ -2679,27 +2719,37 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          {!readFullScreen&&<>
-            <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          {(!readFullScreen||fsTransition==='entering')&&<>
+            <div className={`bottom-nav-safe${fsTransition==='entering'?' fs-bar-out':fsTransition==='exiting'?' fs-bar-in':''}`} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
-              <button type="button" onClick={()=>{setReadFullScreen(true);setReadSelVerses(new Set());}}
-                style={{width:130,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:0,cursor:'pointer',fontWeight:500}}>
-                ✦ Full Screen
-              </button>
+              <div style={{width:130,height:28}}/>
               <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
               </button>
             </div>
           </>}
-          {/* Floating exit fullscreen — only in fullscreen, matches bottom bar position */}
-          {readFullScreen&&<div style={{position:'fixed',bottom:'calc(6px + env(safe-area-inset-bottom, 0px))',left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
-            <button type="button" onClick={()=>setReadFullScreen(false)}
-              style={{pointerEvents:'auto',width:130,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:0,cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
-              ✦ Exit Full Screen
-            </button>
-          </div>}
+          {/* Floating fullscreen toggle — crossfades between enter/exit */}
+          {(()=>{
+            const showEnter=!readFullScreen&&fsTransition!=='entering';
+            const showExit=readFullScreen||fsTransition==='entering';
+            const btnBase={width:130,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:0,cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'};
+            return(
+              <div style={{position:'fixed',bottom:'calc(6px + env(safe-area-inset-bottom, 0px))',left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+                <div style={{position:'relative',width:130,height:28}}>
+                  <button type="button" onClick={()=>{enterFullScreen();setReadSelVerses(new Set());}}
+                    style={{...btnBase,position:'absolute',inset:0,pointerEvents:showEnter?'auto':'none',opacity:showEnter?1:0,transition:'opacity .18s ease'}}>
+                    ✦ Full Screen
+                  </button>
+                  <button type="button" onClick={exitFullScreen}
+                    style={{...btnBase,position:'absolute',inset:0,pointerEvents:showExit?'auto':'none',opacity:showExit?1:0,transition:'opacity .18s ease'}}>
+                    ✦ Exit Full Screen
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2831,13 +2881,13 @@ function App(){
 
           {/* Compare actions bottom sheet (mobile) */}
           {mobileSheet==='compare'&&(
-            <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
               <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
               {[
-                {icon:'＋',label:'Add Section',fn:()=>{setMobileSheet(null);openAddSec();}},
-                {icon:'⚙',label:'Manage Versions',fn:()=>{setMobileSheet(null);setModal({type:'versions'});}},
-                {icon:'◎',label:'Statistics',fn:()=>{setMobileSheet(null);setModal({type:'stats'});}},
-                {icon:'⬇',label:'Export JSON',fn:()=>{setMobileSheet(null);doExport();}},
+                {icon:'＋',label:'Add Section',fn:()=>{closeMobileSheet();openAddSec();}},
+                {icon:'⚙',label:'Manage Versions',fn:()=>{closeMobileSheet();setModal({type:'versions'});}},
+                {icon:'◎',label:'Statistics',fn:()=>{closeMobileSheet();setModal({type:'stats'});}},
+                {icon:'⬇',label:'Export JSON',fn:()=>{closeMobileSheet();doExport();}},
               ].map(item=>(
                 <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
                   style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'12px 14px',width:'100%',marginBottom:5}}>
@@ -2849,7 +2899,7 @@ function App(){
 
           {/* Compare search sheet (mobile) */}
           {mobileSheet==='compareSearch'&&(
-            <MobileSheet T={T} title={null} onClose={()=>setMobileSheet(null)} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
               <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search</div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
@@ -2857,7 +2907,7 @@ function App(){
                   style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 10px',outline:'none'}}/>
                 {q&&<button type="button" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,padding:'4px'}}>✕</button>}
               </div>
-              {q&&<button type="button" onClick={()=>setMobileSheet(null)}
+              {q&&<button type="button" onClick={closeMobileSheet}
                 style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,padding:'8px 18px',cursor:'pointer',width:'100%'}}>
                 View Results
               </button>}
