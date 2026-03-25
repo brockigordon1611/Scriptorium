@@ -1480,8 +1480,19 @@ function App(){
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readFullScreen,setReadFullScreen]=useState(false);
   const[fsTransition,setFsTransition]=useState(null); // 'entering'|'exiting'|null
-  function enterFullScreen(){setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);},180);}
-  function exitFullScreen(){setReadFullScreen(false);setFsTransition('exiting');setTimeout(()=>setFsTransition(null),180);}
+  function enterFullScreen(){if(readFullScreen||fsTransition)return;const hH=navRef.current?.offsetHeight||0;setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);requestAnimationFrame(()=>{if(readRef.current){readRef.current.scrollTop=Math.max(0,readRef.current.scrollTop-hH);lastScrollY.current=readRef.current.scrollTop;}});},180);}
+  function exitFullScreen(){if(!readFullScreen||fsTransition)return;const sBefore=readRef.current?.scrollTop||0;setReadFullScreen(false);setFsTransition('exiting');requestAnimationFrame(()=>{const hH=navRef.current?.offsetHeight||0;if(readRef.current){readRef.current.scrollTop=sBefore+hH;lastScrollY.current=readRef.current.scrollTop;}});setTimeout(()=>setFsTransition(null),180);}
+  const lastScrollY=useRef(0);
+  const scrollDelta=useRef(0);
+  const fsScrollThreshold=30;
+  function handleReadScroll(e){
+    const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
+    if(sy<=5){/* at top — always show bars */if(readFullScreen)exitFullScreen();scrollDelta.current=0;return;}
+    if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
+    scrollDelta.current+=dy;
+    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){enterFullScreen();scrollDelta.current=0;}
+    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){exitFullScreen();scrollDelta.current=0;}
+  }
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
@@ -1777,11 +1788,18 @@ function App(){
 
   async function copySelectedVerses(){
     const sorted=[...readSelVerses].sort((a,b)=>a-b);
-    const lines=sorted.map(v=>{const row=readVerses.find(r=>r.verse===v);return row?`${readBk?.name} ${readCh}:${v}\u2002\u2002${row.text.replace(/<[^>]*>/g,'')}`:null;}).filter(Boolean);
-    if(!lines.length)return;
-    try{await navigator.clipboard.writeText(lines.join('\n'));}catch{
-      // Fallback for older browsers
-      const ta=document.createElement('textarea');ta.value=lines.join('\n');ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    const verseLines=sorted.map(v=>{const row=readVerses.find(r=>r.verse===v);return row?{v,text:row.text.replace(/<[^>]*>/g,'')}:null;}).filter(Boolean);
+    if(!verseLines.length)return;
+    // Build range header: "Book Ch:V" or "Book Ch:V1-V2" or "Book Ch:V1-V2,V4,V6-V8"
+    const bookName=readBk?.name||'';
+    const ranges=[];let i=0;
+    while(i<sorted.length){let start=sorted[i],end=start;while(i+1<sorted.length&&sorted[i+1]===end+1){i++;end=sorted[i];}ranges.push(start===end?`${start}`:`${start}-${end}`);i++;}
+    const header=`${bookName} ${readCh}:${ranges.join(',')}`;
+    const sup=n=>[...String(n)].map(c=>'\u2070\u00B9\u00B2\u00B3\u2074\u2075\u2076\u2077\u2078\u2079'[c]).join('');
+    const body=verseLines.map(({v,text})=>`${sup(v)} ${text}`).join('\n');
+    const output=header+'\n'+body;
+    try{await navigator.clipboard.writeText(output);}catch{
+      const ta=document.createElement('textarea');ta.value=output;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     }
     setReadCopyOk(true);setTimeout(()=>{setReadCopyOk(false);dismissStrip();},1600);
   }
@@ -1928,7 +1946,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      {!(readFullScreen&&tab==='read'&&!fsTransition)&&<div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 10px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      {!(readFullScreen&&tab==='read'&&!fsTransition)&&<div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -1940,30 +1958,30 @@ function App(){
           {(()=>{
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
             const nb=(active)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,color:active?T.gT:T.dim});
-            const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:38,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
+            const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:44,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
             return(
-            <div style={{display:'flex',flex:1,gap:6,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
+            <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
+              {/* Settings pill */}
+              <div style={pill}>
+                <button type="button" title="Settings" onClick={()=>setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+              </div>
               {/* Tab pill: Read | Study */}
               <div style={{...pill,flex:1}}>
-                <button type="button" onClick={()=>{setReadFullScreen(false);setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:9.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{setReadFullScreen(false);setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:9.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 10px'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{setReadFullScreen(false);setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{setReadFullScreen(false);setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>setReadMobileSheet('search'):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:38,fontSize:17,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>setReadMobileSheet('search'):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:19,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>setReadMobileSheet('version'):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:9,fontWeight:600,padding:'0 8px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>setReadMobileSheet('version'):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:10,fontWeight:600,padding:'0 10px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}:undefined} style={{...nb(false),width:38,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
-                  <svg width="14" height="15" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
-                </button>
-              </div>
-              {/* Settings pill */}
-              <div style={pill}>
-                <button type="button" title="Settings" onClick={()=>setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:38,fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}:undefined} style={{...nb(false),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                  <svg width="16" height="17" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
                 </button>
               </div>
             </div>);
@@ -2130,7 +2148,15 @@ function App(){
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
         <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
-          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Menu</div>
+          <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+              <button type="button" onClick={closeMobileSheet}
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                ← Close
+              </button>
+            </div>
+            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
+          </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
             {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
@@ -2153,7 +2179,15 @@ function App(){
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
         <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
-          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
+          <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+              <button type="button" onClick={closeReadSheet}
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                ← Close
+              </button>
+            </div>
+            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
+          </div>
           {[
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
@@ -2179,7 +2213,15 @@ function App(){
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
         <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop maxSheetHeight='calc(100vh - 50px)'>
-          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:18,textTransform:'uppercase'}}>Settings</div>
+          <div style={{position:'relative',marginBottom:18,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+              <button type="button" onClick={closeReadSheet}
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                ← Close
+              </button>
+            </div>
+            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Settings</div>
+          </div>
           {/* Dark / Light */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
             <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
@@ -2332,9 +2374,15 @@ function App(){
             const setNavCh=isP?setParallelCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
             const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:14,letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
-            const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:10,letterSpacing:'0.02em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:0,height:24,display:'flex',alignItems:'center',justifyContent:'center'};
+            /* Dynamic book button height: fit all 22 rows (13 OT + 9 NT) without scrolling.
+               Overhead: sheet padding 52+32, marginTop -44, header 28, line 11, OT label 30, NT label 25,
+               grid gaps 12*2+8*2=40, paddingBottom 12, sheet border 2 ≈ 188px */
+            /* 5 columns: OT=8 rows, NT=6 rows, total 14 rows */
+            const bookBtnH=44.89;
+            const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:12,letterSpacing:'0.01em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:'0 2px',height:bookBtnH,display:'flex',alignItems:'center',justifyContent:'center'};
             const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
-            function romanName(name){return name.replace(/^Song of Solomon$/,'Song of Sol.').replace(/^Lamentations$/,'Lament.').replace(/^1 Thessalonians$/,'I Thess.').replace(/^2 Thessalonians$/,'II Thess.').replace(/^1 /,'I ').replace(/^2 /,'II ').replace(/^3 /,'III ');}
+            const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'I Sam.','2 Samuel':'II Sam.','1 Kings':'I Kgs.','2 Kings':'II Kgs.','1 Chronicles':'I Chr.','2 Chronicles':'II Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'I Cor.','2 Corinthians':'II Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'I Thes.','2 Thessalonians':'II Thes.','1 Timothy':'I Tim.','2 Timothy':'II Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'I Pet.','2 Peter':'II Pet.','1 John':'I Jn.','2 John':'II Jn.','3 John':'III Jn.','Jude':'Jude','Revelation':'Rev.'};
+            function romanName(name){return ABBR[name]||name;}
             return(
             <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop sheetHeight={navSheetH?navSheetH+'px':undefined}>
               <div ref={navContentRef} style={{marginTop:-44,overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
@@ -2367,14 +2415,14 @@ function App(){
                 {/* Book grid */}
                 {navStep==='book'&&<div>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:16}}>Old Testament</div>
-                  <div style={{display:'grid',gridTemplateRows:'repeat(13,1fr)',gridTemplateColumns:'repeat(3,1fr)',gridAutoFlow:'column',gap:2,marginBottom:2}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,marginBottom:5}}>
                     {BIBLE.filter(b=>b.n<=39).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
                     ))}
                   </div>
                   <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:10}}>New Testament</div>
-                  <div style={{display:'grid',gridTemplateRows:'repeat(9,1fr)',gridTemplateColumns:'repeat(3,1fr)',gridAutoFlow:'column',gap:2}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
                     {BIBLE.filter(b=>b.n>=40).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
@@ -2429,7 +2477,15 @@ function App(){
           })()}
           {readMobileSheet==='version'&&(
             <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Select Version</div>
+              <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                  <button type="button" onClick={closeReadSheet}
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                    ← Close
+                  </button>
+                </div>
+                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Version</div>
+              </div>
               {(data?.versions||[]).map(v=>(
                 <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);closeReadSheet();}}
                   style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:readVid===v.id?T.gF:'transparent',border:`1px solid ${readVid===v.id?T.gD:T.bd}`,borderRadius:9,color:readVid===v.id?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
@@ -2533,7 +2589,7 @@ function App(){
 
           {/* Verse content */}
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box',transition:fsTransition?'padding .18s ease-out':'none'}}
-            onScroll={onSearchScroll}
+            onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
@@ -2724,33 +2780,16 @@ function App(){
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
-              <div style={{width:130,height:28}}/>
+              <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
+                  {BIBLE.find(b=>b.n===readBook)?.name||''} {readCh}
+                </span>
+              </div>
               <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
               </button>
             </div>
           </>}
-          {/* Floating fullscreen toggle — crossfades between enter/exit */}
-          {(()=>{
-            const stripVisible=readSelVerses.size>0&&!stripClosing;
-            const showEnter=!readFullScreen&&fsTransition!=='entering'&&!stripVisible;
-            const showExit=(readFullScreen||fsTransition==='entering')&&!stripVisible;
-            const btnBase={width:130,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',backdropFilter:'blur(6px)',border:`1px solid ${dark?'rgba(200,168,78,0.15)':'rgba(200,168,78,0.25)'}`,borderRadius:20,color:T.gD,fontFamily:FS,fontSize:8,letterSpacing:'0.14em',textTransform:'uppercase',padding:0,cursor:'pointer',fontWeight:500,boxShadow:'0 2px 14px rgba(0,0,0,0.22)'};
-            return(
-              <div style={{position:'fixed',bottom:'calc(6px + env(safe-area-inset-bottom, 0px))',left:0,right:0,zIndex:200,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
-                <div style={{position:'relative',width:130,height:28}}>
-                  <button type="button" onClick={()=>{enterFullScreen();setReadSelVerses(new Set());}}
-                    style={{...btnBase,position:'absolute',inset:0,pointerEvents:showEnter?'auto':'none',opacity:showEnter?1:0,transition:'opacity .18s ease'}}>
-                    ✦ Full Screen
-                  </button>
-                  <button type="button" onClick={exitFullScreen}
-                    style={{...btnBase,position:'absolute',inset:0,pointerEvents:showExit?'auto':'none',opacity:showExit?1:0,transition:'opacity .18s ease'}}>
-                    ✦ Exit Full Screen
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       )}
 
@@ -2901,7 +2940,15 @@ function App(){
           {/* Compare search sheet (mobile) */}
           {mobileSheet==='compareSearch'&&(
             <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search</div>
+              <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                  <button type="button" onClick={closeMobileSheet}
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
+                    ← Close
+                  </button>
+                </div>
+                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
+              </div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
                   placeholder="Search passages, text, notes…"
