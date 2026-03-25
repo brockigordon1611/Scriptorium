@@ -1485,13 +1485,23 @@ function App(){
   const lastScrollY=useRef(0);
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
+  const isTouching=useRef(false);
+  const pendingFsChange=useRef(null); // 'enter'|'exit'|null
   function handleReadScroll(e){
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
-    if(sy<=5){/* at top — always show bars */if(readFullScreen)exitFullScreen();scrollDelta.current=0;return;}
+    if(sy<=5){
+      if(readFullScreen){if(isTouching.current){pendingFsChange.current='exit';}else{exitFullScreen();}}
+      scrollDelta.current=0;return;
+    }
     if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
     scrollDelta.current+=dy;
-    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){enterFullScreen();scrollDelta.current=0;}
-    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){exitFullScreen();scrollDelta.current=0;}
+    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){
+      if(isTouching.current){pendingFsChange.current='enter';}else{enterFullScreen();}
+      scrollDelta.current=0;
+    }else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){
+      if(isTouching.current){pendingFsChange.current='exit';}else{exitFullScreen();}
+      scrollDelta.current=0;
+    }
   }
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
@@ -2591,6 +2601,8 @@ function App(){
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box',transition:fsTransition?'padding .18s ease-out':'none'}}
             onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
+              isTouching.current=true;
+              pendingFsChange.current=null;
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
               swipeTouchT.current=Date.now();
@@ -2605,6 +2617,11 @@ function App(){
               }
             }}
             onTouchEnd={e=>{
+              isTouching.current=false;
+              const pending=pendingFsChange.current;
+              pendingFsChange.current=null;
+              if(pending==='enter')enterFullScreen();
+              else if(pending==='exit')exitFullScreen();
               if(swipeTouchX.current===null)return;
               const wasH=swipeDir.current==='h';
               const dx=e.changedTouches[0].clientX-swipeTouchX.current;
