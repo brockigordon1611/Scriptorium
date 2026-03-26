@@ -1280,7 +1280,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false}){
   const[dragY,setDragY]=React.useState(0);
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
@@ -1311,7 +1311,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
         style={{position:'absolute',...(fromTop?{top:topOffset}:{bottom:0}),left:0,right:0,background:T.bgCard,
           borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
-          maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
+          maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':fromTop?`calc(100vh - ${topOffset}px - 50px)`:'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
           boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
           transform:(!closing&&dragY!==0)?dragTx:undefined,
           transition:(!closing&&dragY===0)?'transform .2s ease-out, max-height .12s cubic-bezier(0.4,0,0.2,1), height .12s cubic-bezier(0.4,0,0.2,1)':'none'}}>
@@ -1322,7 +1322,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:'auto',flex:1,padding:fromTop?'20px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
+        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?'20px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -1466,7 +1466,7 @@ function App(){
     requestAnimationFrame(()=>{
       if(navContentRef.current){
         const h=navContentRef.current.scrollHeight+52+32; // content + top/bottom padding
-        const maxH=window.innerHeight-50;
+        const maxH=window.innerHeight-navH-50;
         setNavSheetH(Math.min(h,maxH));
       }
     });
@@ -2237,7 +2237,7 @@ function App(){
 
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px)`}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px - 50px)`}>
           <div style={{position:'relative',marginBottom:18,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
@@ -2426,7 +2426,7 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'I Sam.','2 Samuel':'II Sam.','1 Kings':'I Kgs.','2 Kings':'II Kgs.','1 Chronicles':'I Chr.','2 Chronicles':'II Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'I Cor.','2 Corinthians':'II Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'I Thes.','2 Thessalonians':'II Thes.','1 Timothy':'I Tim.','2 Timothy':'II Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'I Pet.','2 Peter':'II Pet.','1 John':'I Jn.','2 John':'II Jn.','3 John':'III Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} noScroll>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
                 <div style={{position:'relative',marginBottom:4,minHeight:38,display:'flex',alignItems:'center',justifyContent:'center'}}>
