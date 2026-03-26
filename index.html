@@ -1280,7 +1280,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0}){
   const[dragY,setDragY]=React.useState(0);
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
@@ -1308,7 +1308,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
       style={{position:'fixed',inset:0,zIndex:180,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)',
         opacity:closing?0:1,transition:closing?'opacity .25s ease-in':'none'}}>
       <div className={closing?(fromTop?'slide-down-sheet-out':'slide-up-sheet-out'):(fromTop?'slide-down-sheet':'slide-up-sheet')} onClick={e=>e.stopPropagation()}
-        style={{position:'absolute',...(fromTop?{top:0}:{bottom:0}),left:0,right:0,background:T.bgCard,
+        style={{position:'absolute',...(fromTop?{top:topOffset}:{bottom:0}),left:0,right:0,background:T.bgCard,
           borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
           maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
@@ -1322,7 +1322,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:'auto',flex:1,padding:fromTop?'52px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
+        <div style={{overflowY:'auto',flex:1,padding:fromTop?'20px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -1472,6 +1472,7 @@ function App(){
     });
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
+  const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
   const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
   const[readVerseNums,setReadVerseNums]=useState(()=>{try{return localStorage.getItem('scrip:verseNums')||'super';}catch{return 'super';}});
@@ -1507,6 +1508,7 @@ function App(){
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
   function handleReadScroll(e){
+    if(readSearchRes){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
     if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
@@ -2170,12 +2172,12 @@ function App(){
 
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
-        <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
+        <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop topOffset={navH}>
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeMobileSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                ← Close
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                ←
               </button>
             </div>
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
@@ -2201,12 +2203,12 @@ function App(){
 
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH}>
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                ← Close
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                ←
               </button>
             </div>
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
@@ -2235,12 +2237,12 @@ function App(){
 
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop maxSheetHeight='calc(100vh - 50px)'>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px)`}>
           <div style={{position:'relative',marginBottom:18,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                ← Close
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                ←
               </button>
             </div>
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Settings</div>
@@ -2367,6 +2369,23 @@ function App(){
             })()}
 
           </div>}
+          {/* ── Parallel Appearance ── */}
+          {tab==='parallel'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
+            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Parallel Appearance</div>
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Text Size</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{parallelFontSize}px</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+                <input type="range" min="10" max="32" value={parallelFontSize}
+                  onChange={e=>{const v=Number(e.target.value);setParallelFontSize(v);try{localStorage.setItem('scrip:parallelFontSize',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
+              </div>
+            </div>
+          </div>}
           <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
@@ -2407,25 +2426,25 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'I Sam.','2 Samuel':'II Sam.','1 Kings':'I Kgs.','2 Kings':'II Kgs.','1 Chronicles':'I Chr.','2 Chronicles':'II Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'I Cor.','2 Corinthians':'II Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'I Thes.','2 Thessalonians':'II Thes.','1 Timothy':'I Tim.','2 Timothy':'II Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'I Pet.','2 Peter':'II Pet.','1 John':'I Jn.','2 John':'II Jn.','3 John':'III Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop sheetHeight={navSheetH?navSheetH+'px':undefined}>
-              <div ref={navContentRef} style={{marginTop:-44,overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined}>
+              <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
-                <div style={{position:'relative',marginBottom:4,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'relative',marginBottom:4,minHeight:38,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
                     <button type="button" onClick={closeReadSheet}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                      ← Close
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      ←
                     </button>
                   ):navStep==='chapter'?(
                     <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                      ← Books
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      ←
                     </button>
                   ):(
                     <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                      ← Chapters
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      ←
                     </button>
                   )}
                   </div>
@@ -2499,12 +2518,12 @@ function App(){
             </MobileSheet>);
           })()}
           {readMobileSheet==='version'&&(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH}>
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeReadSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                    ← Close
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    ←
                   </button>
                 </div>
                 <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Version</div>
@@ -2519,13 +2538,17 @@ function App(){
             </MobileSheet>
           )}
           {readMobileSheet==='search'&&(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Search Verses</div>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH}>
+              <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                  <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');closeReadSheet();}}
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    ←
+                  </button>
+                </div>
+                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search Verses</div>
+              </div>
               <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
-                <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');closeReadSheet();}}
-                  style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  ←
-                </button>
                 <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
                   autoFocus
@@ -2592,8 +2615,8 @@ function App(){
 
           {/* Search results header bar — fixed overlay below nav */}
           {readSearchRes&&(
-            <div className="srch-bar-fixed" style={{position:'fixed',top:navH,left:0,right:0,zIndex:150,
-              display:'flex',alignItems:'center',gap:10,padding:'6px 18px',
+            <div className="srch-bar-fixed" style={{position:'fixed',top:navH,left:0,right:0,zIndex:210,
+              display:'flex',alignItems:'center',gap:10,padding:'14px 18px 6px',
               background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
               backdropFilter:'blur(6px)',boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
               <div style={{height:1,background:'linear-gradient(90deg,transparent,rgb(74,62,34),rgb(200,168,78),rgb(74,62,34),transparent)',position:'absolute',bottom:0,left:0,right:0,transform:'translateY(100%)'}}/>
@@ -2688,7 +2711,7 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:'calc(50% + 28px)',transform:'translateY(-50%)',zIndex:200,
+                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+2)}px)`,transform:'translateY(-50%)',zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
@@ -2711,7 +2734,7 @@ function App(){
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
                   <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{setReadBook(r.book_num);setReadCh(r.chapter);setReadSearchRes(null);setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},200);}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{b?.name} {r.chapter}:{r.verse}</div>
-                    <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.75}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
+                    <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
                 );});})()}
                 {readSearchLimit<readSearchRes.length&&(
@@ -2865,7 +2888,7 @@ function App(){
                   </div>
                   <div style={{padding:'13px 16px'}}>
                     {verseRow
-                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
+                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:parallelFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
                       :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
                   </div>
                 </div>
@@ -2942,7 +2965,7 @@ function App(){
 
           {/* Compare actions bottom sheet (mobile) */}
           {mobileSheet==='compare'&&(
-            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop topOffset={navH}>
               <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Study Tools</div>
               {[
                 {icon:'＋',label:'Add Section',fn:()=>{closeMobileSheet();openAddSec();}},
@@ -2960,12 +2983,12 @@ function App(){
 
           {/* Compare search sheet (mobile) */}
           {mobileSheet==='compareSearch'&&(
-            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop>
+            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop topOffset={navH}>
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeMobileSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'4px 10px',cursor:'pointer'}}>
-                    ← Close
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    ←
                   </button>
                 </div>
                 <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
