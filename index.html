@@ -324,6 +324,12 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 .fs-header-in{animation:slideDownIn .18s ease-out both;}
 .fs-bar-out{animation:slideDownOut .18s ease-in both;}
 .fs-bar-in{animation:slideUpIn .18s ease-out both;}
+.fs-entering .app-header{animation:slideUpOut .18s ease-in both;}
+.fs-entering .bottom-nav-safe{animation:slideDownOut .18s ease-in both;}
+.fs-active .app-header{transform:translateY(-100%);}
+.fs-active .bottom-nav-safe{transform:translateY(100%);}
+.fs-exiting .app-header{animation:slideDownIn .18s ease-out both;}
+.fs-exiting .bottom-nav-safe{animation:slideUpIn .18s ease-out both;}
 @keyframes slideDownSheet{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes modalIn{from{opacity:0;transform:scale(0.93) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
 @keyframes modalInTop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
@@ -1478,20 +1484,21 @@ function App(){
   const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||'left';}catch{return 'left';}});
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
-  const[readFullScreen,setReadFullScreen]=useState(false);
-  const[fsTransition,setFsTransition]=useState(null); // 'entering'|'exiting'|null
-  function enterFullScreen(){if(readFullScreen||fsTransition)return;setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);},180);}
-  function exitFullScreen(){if(!readFullScreen||fsTransition)return;setReadFullScreen(false);setFsTransition('exiting');setTimeout(()=>setFsTransition(null),180);}
+  const readFullScreen=useRef(false);
+  const fsTransitioning=useRef(false);
+  const appRootRef=useRef(null);
+  function enterFullScreen(){if(readFullScreen.current||fsTransitioning.current)return;readFullScreen.current=true;fsTransitioning.current=true;const r=appRootRef.current;if(r){r.classList.add('fs-entering');setTimeout(()=>{r.classList.remove('fs-entering');r.classList.add('fs-active');fsTransitioning.current=false;},180);}}
+  function exitFullScreen(){if(!readFullScreen.current||fsTransitioning.current)return;readFullScreen.current=false;fsTransitioning.current=true;const r=appRootRef.current;if(r){r.classList.remove('fs-active');r.classList.add('fs-exiting');setTimeout(()=>{r.classList.remove('fs-exiting');fsTransitioning.current=false;},180);}}
   const lastScrollY=useRef(0);
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
   function handleReadScroll(e){
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
-    if(sy<=5){if(readFullScreen)exitFullScreen();scrollDelta.current=0;return;}
+    if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
     scrollDelta.current+=dy;
-    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){enterFullScreen();scrollDelta.current=0;}
-    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){exitFullScreen();scrollDelta.current=0;}
+    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){enterFullScreen();scrollDelta.current=0;}
+    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
   }
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
@@ -1924,7 +1931,7 @@ function App(){
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
 
   return(
-    <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div ref={appRootRef} style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <style>{CSS}</style>
 
       {/* ═══ EMAIL VERIFIED WELCOME OVERLAY ═══ */}
@@ -1948,7 +1955,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,transform:(readFullScreen&&tab==='read'&&!fsTransition)?'translateY(-100%)':'none',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -1971,8 +1978,8 @@ function App(){
               </div>
               {/* Tab pill: Read | Study */}
               <div style={{...pill,flex:1}}>
-                <button type="button" onClick={()=>{setReadFullScreen(false);setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{setReadFullScreen(false);setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
@@ -2712,7 +2719,7 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <span key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
+                        onClick={readFullScreen.current?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
                         style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
@@ -2728,7 +2735,7 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <div key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
+                        onClick={readFullScreen.current?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
                         style={{padding:'2px 4px',cursor:'pointer',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
@@ -2743,7 +2750,7 @@ function App(){
 
           {/* Selection action strip */}
           {readSelVerses.size>0&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen.current?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -2777,8 +2784,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          {(!readFullScreen||fsTransition==='entering')&&<>
-            <div className={`bottom-nav-safe${fsTransition==='entering'?' fs-bar-out':fsTransition==='exiting'?' fs-bar-in':''}`} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
@@ -2791,7 +2797,6 @@ function App(){
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
               </button>
             </div>
-          </>}
         </div>
       )}
 
