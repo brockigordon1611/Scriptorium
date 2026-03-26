@@ -2567,7 +2567,7 @@ function App(){
 
       {/* ═══ READ TAB ═══ */}
       {tab==='read'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
 
           {/* Search results header bar — fixed overlay below nav */}
           {readSearchRes&&(
@@ -2590,7 +2590,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box',transition:fsTransition?'padding .18s ease-out':'none'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?navH+58:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
