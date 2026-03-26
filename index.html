@@ -374,13 +374,11 @@ input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-sha
   .modal-body{padding:16px!important;}
 }
 @media(max-width:640px){
-  .srch-bar-fixed{top:52px!important;}
 }
 @media(min-width:641px){
   .show-mobile{display:none!important;}
   .app-header{height:50px!important;padding:5px 10px 0!important;box-sizing:border-box!important;}
   .app-header-row{height:100%!important;}
-  .srch-bar-fixed{top:50px!important;}
 }
 @media print{.no-print{display:none!important;}body{background:#fff!important;color:#000!important;}.entry-card{border:1px solid #ccc!important;box-shadow:none!important;break-inside:avoid;margin-bottom:8px!important;}}
 `;
@@ -1280,7 +1278,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad}){
   const[dragY,setDragY]=React.useState(0);
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
@@ -1322,7 +1320,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?'20px 18px 32px':'6px 18px 32px'}} onScroll={onScroll}>
+        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -1441,8 +1439,19 @@ function App(){
   const[readVid,setReadVid]=useState(null); // set after data loads
   const[readVerses,setReadVerses]=useState([]);
   const[readSelVerses,setReadSelVerses]=useState(()=>new Set()); // multi-select
+  const[stripOpen,setStripOpen]=useState(false);
   const[stripClosing,setStripClosing]=useState(false);
-  function dismissStrip(){setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripClosing(false);},160);}
+  const longPressTimer=useRef(null);
+  const longPressFired=useRef(false);
+  const wasTouchEvent=useRef(false);
+  const readScrollToVerse=useRef(null);
+  function dismissStrip(){setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
+  function openStrip(v){if(readFullScreen.current)exitFullScreen();setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});setStripOpen(true);}
+  function verseTouchStart(v){longPressFired.current=false;wasTouchEvent.current=true;longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}
+  function verseTouchMove(){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}
+  function handleVerseToggle(v){const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
+  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current){handleVerseToggle(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
+  function verseClick(v,dbl=false){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();if(dbl){openStrip(v);}else{handleVerseToggle(v);}}
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
@@ -1465,7 +1474,7 @@ function App(){
     if(readMobileSheet!=='nav')return;
     requestAnimationFrame(()=>{
       if(navContentRef.current){
-        const h=navContentRef.current.scrollHeight+52+32; // content + top/bottom padding
+        const h=navContentRef.current.scrollHeight+8+32; // content + top/bottom padding
         const maxH=window.innerHeight-navH-50;
         setNavSheetH(Math.min(h,maxH));
       }
@@ -1634,7 +1643,11 @@ function App(){
     let cancelled=false;
     setReadSelVerses(new Set());setReadSearchRes(null);
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
-      if(!cancelled){setReadVerses(rows);readRef.current?.scrollTo({top:0,behavior:'instant'});}
+      if(!cancelled){
+        setReadVerses(rows);
+        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(tv);return ns;});},80);}
+        else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
+      }
       if(user&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).catch(()=>{});
     }).catch(()=>{
       if(!cancelled)setReadVerses([]);
@@ -1988,24 +2001,24 @@ function App(){
             <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
               {/* Settings pill */}
               <div style={pill}>
-                <button type="button" title="Settings" onClick={()=>setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <button type="button" title="Settings" onClick={()=>readMobileSheet==='settings'?closeReadSheet():setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
               {/* Tab pill: Read | Study */}
               <div style={{...pill,flex:1}}>
-                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>setReadMobileSheet('search'):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:19,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>(readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search')):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:19,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>setReadMobileSheet('version'):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:10,fontWeight:600,padding:'0 10px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:10,fontWeight:600,padding:'0 10px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}:undefined} style={{...nb(false),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(false),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="16" height="17" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
                 </button>
               </div>
@@ -2214,7 +2227,7 @@ function App(){
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
           </div>
           {[
-            {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setTab('parallel');closeReadSheet();}},
+            {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
             {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');closeReadSheet();}},
             {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');closeReadSheet();}},
@@ -2343,9 +2356,9 @@ function App(){
             {/* Live preview */}
             {(()=>{
               const pvVerses=[
-                {v:1,text:'Now faith <i>is</i> the substance of things hoped for, the evidence of things <i>not seen.</i>'},
-                {v:2,text:'But he answered and said, <red>It is written, Man shall not live by bread alone, but by every word that proceedeth out of the mouth of God.</red>'},
-                {v:3,text:'<red>For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.</red>'},
+                {v:1,text:'The LORD <i>is</i> my shepherd; I shall not want.'},
+                {v:2,text:'<red>I am the way, the truth, and the life.</red>'},
+                {v:3,text:'God <i>is</i> love.'},
               ];
               const vnSup=(v)=>readVerseNums==='super'?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>:null;
               const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
@@ -2420,13 +2433,13 @@ function App(){
                Overhead: sheet padding 52+32, marginTop -44, header 28, line 11, OT label 30, NT label 25,
                grid gaps 12*2+8*2=40, paddingBottom 12, sheet border 2 ≈ 188px */
             /* 5 columns: OT=8 rows, NT=6 rows, total 14 rows */
-            const bookBtnH=44.89;
+            const bookBtnH=38;
             const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:12,letterSpacing:'0.01em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:'0 2px',height:bookBtnH,display:'flex',alignItems:'center',justifyContent:'center'};
             const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
-            const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'I Sam.','2 Samuel':'II Sam.','1 Kings':'I Kgs.','2 Kings':'II Kgs.','1 Chronicles':'I Chr.','2 Chronicles':'II Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'I Cor.','2 Corinthians':'II Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'I Thes.','2 Thessalonians':'II Thes.','1 Timothy':'I Tim.','2 Timothy':'II Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'I Pet.','2 Peter':'II Pet.','1 John':'I Jn.','2 John':'II Jn.','3 John':'III Jn.','Jude':'Jude','Revelation':'Rev.'};
+            const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} noScroll>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} noScroll topPad={8}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
                 <div style={{position:'relative',marginBottom:4,minHeight:38,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -2456,15 +2469,15 @@ function App(){
 
                 {/* Book grid */}
                 {navStep==='book'&&<div>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:16}}>Old Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,marginBottom:5}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:4,textAlign:'center',marginTop:8}}>Old Testament</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4,marginBottom:4}}>
                     {BIBLE.filter(b=>b.n<=39).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
                     ))}
                   </div>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center',marginTop:10}}>New Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:4,textAlign:'center',marginTop:6}}>New Testament</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4}}>
                     {BIBLE.filter(b=>b.n>=40).map(b=>(
                       <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                         style={bookBtn}>{romanName(b.name)}</button>
@@ -2614,9 +2627,9 @@ function App(){
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
 
           {/* Search results header bar — fixed overlay below nav */}
-          {readSearchRes&&(
+          {readSearchRes&&tab==='read'&&!readMobileSheet&&(
             <div className="srch-bar-fixed" style={{position:'fixed',top:navH,left:0,right:0,zIndex:210,
-              display:'flex',alignItems:'center',gap:10,padding:'14px 18px 6px',
+              display:'flex',alignItems:'center',gap:10,padding:'14px 18px 14px',
               background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
               backdropFilter:'blur(6px)',boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
               <div style={{height:1,background:'linear-gradient(90deg,transparent,rgb(74,62,34),rgb(200,168,78),rgb(74,62,34),transparent)',position:'absolute',bottom:0,left:0,right:0,transform:'translateY(100%)'}}/>
@@ -2634,7 +2647,7 @@ function App(){
 
 
           {/* Verse content */}
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?navH+58:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?navH+72:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
@@ -2711,11 +2724,11 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+2)}px)`,transform:'translateY(-50%)',zIndex:200,
+                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+28)}px)`,transform:'translateY(-50%)',zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      maxHeight:'calc(100vh - 140px - env(safe-area-inset-bottom, 0px))',overflowY:'auto',
+                      maxHeight:`calc(100vh - ${navH+80}px - env(safe-area-inset-bottom, 0px))`,overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)'}}>
                       {booksInRes.map(bn=>{
                         const nm=BIBLE.find(x=>x.n===bn)?.name||'?';
@@ -2756,7 +2769,8 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <span key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen.current?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
+                        onTouchStart={()=>verseTouchStart(v)} onTouchMove={verseTouchMove} onTouchEnd={()=>verseTouchEnd(v)}
+                        onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
                         style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
@@ -2772,7 +2786,8 @@ function App(){
                     const sel=readSelVerses.has(v);
                     return(
                       <div key={v} id={`rv-${v}`} className="reading-verse"
-                        onClick={readFullScreen.current?undefined:()=>{if(readSelVerses.has(v)&&readSelVerses.size===1){dismissStrip();return;}setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});}}
+                        onTouchStart={()=>verseTouchStart(v)} onTouchMove={verseTouchMove} onTouchEnd={()=>verseTouchEnd(v)}
+                        onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
                         style={{padding:'2px 4px',cursor:'pointer',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
@@ -2786,7 +2801,7 @@ function App(){
           </div>
 
           {/* Selection action strip */}
-          {readSelVerses.size>0&&(
+          {stripOpen&&(
             <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen.current?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
