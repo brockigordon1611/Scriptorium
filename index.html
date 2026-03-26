@@ -324,12 +324,6 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 .fs-header-in{animation:slideDownIn .18s ease-out both;}
 .fs-bar-out{animation:slideDownOut .18s ease-in both;}
 .fs-bar-in{animation:slideUpIn .18s ease-out both;}
-.fs-entering .app-header{animation:slideUpOut .18s ease-in both;}
-.fs-entering .bottom-nav-safe{animation:slideDownOut .18s ease-in both;}
-.fs-active .app-header{transform:translateY(-100%);}
-.fs-active .bottom-nav-safe{transform:translateY(100%);}
-.fs-exiting .app-header{animation:slideDownIn .18s ease-out both;}
-.fs-exiting .bottom-nav-safe{animation:slideUpIn .18s ease-out both;}
 @keyframes slideDownSheet{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes modalIn{from{opacity:0;transform:scale(0.93) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
 @keyframes modalInTop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
@@ -1486,9 +1480,29 @@ function App(){
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
-  const appRootRef=useRef(null);
-  function enterFullScreen(){if(readFullScreen.current||fsTransitioning.current)return;readFullScreen.current=true;fsTransitioning.current=true;const r=appRootRef.current;if(r){r.classList.add('fs-entering');setTimeout(()=>{r.classList.remove('fs-entering');r.classList.add('fs-active');fsTransitioning.current=false;},180);}}
-  function exitFullScreen(){if(!readFullScreen.current||fsTransitioning.current)return;readFullScreen.current=false;fsTransitioning.current=true;const r=appRootRef.current;if(r){r.classList.remove('fs-active');r.classList.add('fs-exiting');setTimeout(()=>{r.classList.remove('fs-exiting');fsTransitioning.current=false;},180);}}
+  const bottomBarRef=useRef(null);
+  const headerAnimRef=useRef(null);
+  const bottomAnimRef=useRef(null);
+  function enterFullScreen(){
+    if(readFullScreen.current||fsTransitioning.current)return;
+    readFullScreen.current=true;fsTransitioning.current=true;
+    if(headerAnimRef.current){headerAnimRef.current.cancel();headerAnimRef.current=null;}
+    if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
+    const h=navRef.current,b=bottomBarRef.current;
+    if(h)headerAnimRef.current=h.animate([{transform:'translateY(0)'},{transform:'translateY(-100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
+    if(b)bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
+    setTimeout(()=>{fsTransitioning.current=false;},180);
+  }
+  function exitFullScreen(){
+    if(!readFullScreen.current||fsTransitioning.current)return;
+    readFullScreen.current=false;fsTransitioning.current=true;
+    if(headerAnimRef.current){headerAnimRef.current.cancel();headerAnimRef.current=null;}
+    if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
+    const h=navRef.current,b=bottomBarRef.current;
+    if(h){const a=h.animate([{transform:'translateY(-100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
+    if(b){const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
+    setTimeout(()=>{fsTransitioning.current=false;},180);
+  }
   const lastScrollY=useRef(0);
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
@@ -1931,7 +1945,7 @@ function App(){
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
 
   return(
-    <div ref={appRootRef} style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <style>{CSS}</style>
 
       {/* ═══ EMAIL VERIFIED WELCOME OVERLAY ═══ */}
@@ -1955,7 +1969,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none',willChange:'transform'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -2784,7 +2798,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',willChange:'transform'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
