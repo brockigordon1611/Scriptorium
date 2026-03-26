@@ -1480,28 +1480,18 @@ function App(){
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readFullScreen,setReadFullScreen]=useState(false);
   const[fsTransition,setFsTransition]=useState(null); // 'entering'|'exiting'|null
-  function enterFullScreen(){if(readFullScreen||fsTransition)return;const hH=navRef.current?.offsetHeight||0;setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);requestAnimationFrame(()=>{if(readRef.current){readRef.current.scrollTop=Math.max(0,readRef.current.scrollTop-hH);lastScrollY.current=readRef.current.scrollTop;}});},180);}
-  function exitFullScreen(){if(!readFullScreen||fsTransition)return;const sBefore=readRef.current?.scrollTop||0;setReadFullScreen(false);setFsTransition('exiting');requestAnimationFrame(()=>{const hH=navRef.current?.offsetHeight||0;if(readRef.current){readRef.current.scrollTop=sBefore+hH;lastScrollY.current=readRef.current.scrollTop;}});setTimeout(()=>setFsTransition(null),180);}
+  function enterFullScreen(){if(readFullScreen||fsTransition)return;setFsTransition('entering');setTimeout(()=>{setReadFullScreen(true);setFsTransition(null);},180);}
+  function exitFullScreen(){if(!readFullScreen||fsTransition)return;setReadFullScreen(false);setFsTransition('exiting');setTimeout(()=>setFsTransition(null),180);}
   const lastScrollY=useRef(0);
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
-  const isTouching=useRef(false);
-  const pendingFsChange=useRef(null); // 'enter'|'exit'|null
   function handleReadScroll(e){
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
-    if(sy<=5){
-      if(readFullScreen){if(isTouching.current){pendingFsChange.current='exit';}else{exitFullScreen();}}
-      scrollDelta.current=0;return;
-    }
+    if(sy<=5){if(readFullScreen)exitFullScreen();scrollDelta.current=0;return;}
     if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
     scrollDelta.current+=dy;
-    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){
-      if(isTouching.current){pendingFsChange.current='enter';}else{enterFullScreen();}
-      scrollDelta.current=0;
-    }else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){
-      if(isTouching.current){pendingFsChange.current='exit';}else{exitFullScreen();}
-      scrollDelta.current=0;
-    }
+    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen){enterFullScreen();scrollDelta.current=0;}
+    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen){exitFullScreen();scrollDelta.current=0;}
   }
   const[strongsMode,setStrongsMode]=useState(false);
   const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
@@ -1544,6 +1534,8 @@ function App(){
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
   },[]);
+  // Re-measure nav height after loading completes (navRef is null during loading screen)
+  useEffect(()=>{if(ready&&navRef.current)setNavH(navRef.current.offsetHeight);},[ready]);
   // ── Jump-To scroll: fires after readSearchLimit extends ──
   useEffect(()=>{
     if(!readSearchJumpTo.current)return;
@@ -1956,7 +1948,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      {!(readFullScreen&&tab==='read'&&!fsTransition)&&<div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',flexShrink:0,position:'relative',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      <div ref={navRef} className={`no-print app-header${fsTransition==='entering'&&tab==='read'?' fs-header-out':fsTransition==='exiting'&&tab==='read'?' fs-header-in':''}`} style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,transform:(readFullScreen&&tab==='read'&&!fsTransition)?'translateY(-100%)':'none',touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -2153,7 +2145,7 @@ function App(){
           </div>
           {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
-      </div>}
+      </div>
 
       {/* Mobile menu sheet */}
       {mobileSheet==='menu'&&(
@@ -2575,7 +2567,7 @@ function App(){
 
       {/* ═══ READ TAB ═══ */}
       {tab==='read'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
 
           {/* Search results header bar — fixed overlay below nav */}
           {readSearchRes&&(
@@ -2601,8 +2593,6 @@ function App(){
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?'58px':'8px'} 5px ${readFullScreen?'16px':'64px'}`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box',transition:fsTransition?'padding .18s ease-out':'none'}}
             onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
-              isTouching.current=true;
-              pendingFsChange.current=null;
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
               swipeTouchT.current=Date.now();
@@ -2617,11 +2607,6 @@ function App(){
               }
             }}
             onTouchEnd={e=>{
-              isTouching.current=false;
-              const pending=pendingFsChange.current;
-              pendingFsChange.current=null;
-              if(pending==='enter')enterFullScreen();
-              else if(pending==='exit')exitFullScreen();
               if(swipeTouchX.current===null)return;
               const wasH=swipeDir.current==='h';
               const dx=e.changedTouches[0].clientX-swipeTouchX.current;
@@ -2812,7 +2797,7 @@ function App(){
 
       {/* ═══ PARALLEL VERSES TAB ═══ */}
       {tab==='parallel'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           {/* Mobile nav sheet — now uses global nav via header button */}
           {/* Verse reference header */}
           <div style={{textAlign:'center',padding:'18px 14px 2px',flexShrink:0}}>
@@ -2896,7 +2881,7 @@ function App(){
 
       {/* ═══ COMPARE TAB ═══ */}
       {tab==='compare'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div className="hide-mobile"><Legend T={T} refLabel={data.versions.find(v=>v.isRef)?.label}/></div>
 
           {/* Sticky controls */}
@@ -3012,7 +2997,7 @@ function App(){
 
       {/* ═══ STRONG'S CONCORDANCE TAB ═══ */}
       {tab==='strongs'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
@@ -3023,7 +3008,7 @@ function App(){
 
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>Δ</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Biblical Dictionary</div>
@@ -3034,7 +3019,7 @@ function App(){
 
       {/* ═══ MAPS TAB ═══ */}
       {tab==='maps'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18}}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Maps</div>
@@ -3046,7 +3031,7 @@ function App(){
 
       {/* ═══ CHARTS TAB ═══ */}
       {tab==='charts'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>▦</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Charts</div>
@@ -3058,7 +3043,7 @@ function App(){
 
       {/* ═══ OTHER RESOURCES TAB ═══ */}
       {tab==='other'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
             <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>⋯</div>
             <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Other Resources</div>
