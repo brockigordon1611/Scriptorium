@@ -2458,7 +2458,7 @@ function App(){
                   )}
                   </div>
                   <div style={{textAlign:'center',fontFamily:FS,fontSize:12,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
-                    {navStep==='book'?'Select Book':navStep==='chapter'?romanName(pickedBkData?.name||''):`${romanName(pickedBkData?.name||'')} ${navPickedCh}`}
+                    {navStep==='book'?'Select Book':navStep==='chapter'?pickedBkData?.name||'':`${pickedBkData?.name||''} ${navPickedCh}`}
                   </div>
                 </div>
                 <div style={{height:1,background:T.accentLine,marginBottom:10}}/>
