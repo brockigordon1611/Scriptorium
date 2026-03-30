@@ -1550,7 +1550,7 @@ function App(){
     setDictDbLoading(true);setDictLive(null);setDictLiveLoading(false);
     dictTimerRef.current=setTimeout(async()=>{
       try{
-        const r=await sbRpc('search_webster_1828',{query_term:q});
+        const{data:r}=await sbRpc('search_webster_1828',{query_term:q});
         if(Array.isArray(r)&&r.length>0){setDictDbEntries(r);setDictDbLoading(false);return;}
         setDictDbEntries(null);setDictDbLoading(false);
         // No DB results — try external API fallback
