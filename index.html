@@ -282,206 +282,8 @@ const STATUS_VALUES=['reference','faithful','corrupt','diff','partial','missing'
 const STATUS_LABELS={reference:'Reference',faithful:'Faithful',corrupt:'Corrupt / Alexandrian',diff:'Differs',partial:'Partial',missing:'Absent'};
 const ISSUE_LABELS={manuscript:'Manuscript',word:'Word Choice',omission:'Omission',article:'Article',grammar:'Grammar',doctrine:'Doctrine',name:'Name/Title',other:'Other'};
 const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false}];
-const WEBSTER_1828={
-'abhor':'To hate extremely; to regard with horror; to detest exceedingly. To loathe.',
-'abide':'To dwell; to continue in a place. To remain steadfast; to wait for patiently.',
-'abound':'To be in great plenty; to have in abundance. To be very prevalent.',
-'abomination':'Extreme hatred; detestation. In scripture, that which is peculiarly offensive to God; idolatry; wickedness.',
-'accord':'Agreement; harmony of minds. With one accord means with united purpose and will.',
-'afflict':'To put pain upon; to distress; to cause persistent suffering of body or mind.',
-'affliction':'Distress of body or mind; calamity; adversity. In scripture, the trials permitted by God for spiritual good.',
-'alms':'Anything given gratuitously to relieve the poor; charity; a gift to relieve the needy.',
-'almighty':'Omnipotent; possessing unlimited power; able to do all things. A title of God denoting supreme power.',
-'amen':'A Hebrew word signifying firm, stable, truth. Used to express assent or affirmation; so let it be.',
-'angel':'A messenger. In scripture, a celestial being employed by God in human affairs; a ministering spirit.',
-'anoint':'To pour oil upon; to smear with oil or ointment. To consecrate by anointing; to set apart for sacred use.',
-'apostle':'A messenger; one sent on a mission. One of the twelve disciples of Jesus sent to preach the gospel.',
-'ark':'A chest; a large enclosed vessel or boat. The ark of the covenant, in which the tables of the law were kept.',
-'atonement':'Expiation; amends made for guilt or wrong-doing; satisfaction; reparation. The reconciliation of God and man through Christ.',
-'baptism':'A religious rite consisting in the application of water as a sign of purification and admission into the Christian church.',
-'behold':'To fix the eyes upon; to see with attention; to observe with care. Often used as an exclamation directing attention.',
-'believe':'To credit upon the authority of another; to be persuaded of the truth of. To trust in God and his Word.',
-'bless':'To wish happiness to; to invoke divine favor on. God blesses by making prosperous and happy.',
-'blessed':'Made happy; enjoying happiness; approved and prospered by God; enjoying the favor and presence of God.',
-'blessing':'A wish of happiness; benediction. Divine favor; spiritual good conferred by God upon his people.',
-'blaspheme':'To speak impiously of God; to utter reproachful or contemptuous language against the divine name.',
-'blood':'The fluid that circulates in the vascular system of animals. In scripture, the blood of Christ denotes his atoning sacrifice.',
-'bondage':'Slavery; captivity; imprisonment. In scripture, bondage to sin and the spiritual enslavement of the unregenerate.',
-'born':'Brought into life; having come into existence. In scripture, born again denotes spiritual regeneration.',
-'brethren':'Brothers; plural of brother. Fellow members of a church or religious body united in faith.',
-'burden':'Something oppressive or grievous; a load of care or sorrow. In scripture, a prophecy or divine oracle.',
-'captive':'A prisoner taken by an enemy. One who is held in bondage or subjection by another.',
-'charity':'Love; benevolence. The love of God and of mankind; good will; the greatest of Christian graces.',
-'church':'A house consecrated to Christian worship. The collective body of believers; an assembly under one government.',
-'commandment':'A command; an order given by authority. The precepts of the moral law, especially the ten commandments.',
-'compassion':'Suffering with another; a feeling of sorrow and pity excited by the distress or misfortunes of another.',
-'condemn':'To pronounce to be wrong; to sentence to punishment; to adjudge guilty of an offense.',
-'confess':'To acknowledge; to own or avow, as a crime or fault. To declare one\'s faith and belief openly.',
-'consecrate':'To set apart and dedicate to a sacred purpose; to make holy; to devote to God by solemn rites.',
-'contrite':'Broken in spirit by a sense of sin; deeply affected with grief and sorrow for sin; penitent.',
-'covenant':'A mutual agreement between two parties. In theology, the solemn agreement between God and man for salvation.',
-'covet':'To desire earnestly; to wish for with excessive eagerness; to desire what belongs to another.',
-'create':'To produce from nothing; to cause to exist by the sovereign power of God.',
-'creation':'The act of creating from nothing. The universe; the totality of all things made by God.',
-'creature':'Any being created by God, animate or inanimate. A created being as distinguished from the Creator.',
-'cross':'A gibbet; a stake with a transverse beam. The sufferings and death of Christ for the redemption of mankind.',
-'crucify':'To put to death by nailing the hands and feet to a cross; as Christ was crucified for our sins.',
-'damnation':'Condemnation; the act of condemning. In theology, the eternal punishment of the wicked in hell.',
-'darkness':'Absence of light; obscurity. In scripture, moral depravity, ignorance, and the kingdom of evil.',
-'deacon':'In the early church, an officer appointed to serve tables and distribute alms to the poor.',
-'death':'The cessation of life. In scripture, spiritual death is separation from God; eternal death is final condemnation.',
-'decalogue':'The ten commandments; the summary of the moral law given by God to Moses on Mount Sinai.',
-'desolation':'The state of being uninhabited; ruin and destruction. In scripture, devastation caused by God\'s judgment.',
-'devout':'Devoted to religion; pious; sincerely and reverently attentive to God and his commands.',
-'disciple':'A learner; a scholar. One who embraces and assists in spreading the doctrines of another; a follower of Christ.',
-'doctrine':'A principle laid down as authoritative truth. A religious tenet; a principle of faith taught in scripture.',
-'dominion':'Power; authority; rule; government. In scripture, the sovereign rule of God over all creation.',
-'earnest':'Serious; determined; ardent in spirit. In scripture, a pledge or first installment of something greater to come.',
-'elder':'Older in years or rank. In scripture, an ordained officer of the church appointed to govern and teach.',
-'elect':'Chosen; selected. In theology, those chosen by God from eternity for salvation through Christ.',
-'epistle':'A writing directed to a person or body; a letter. In scripture, the inspired letters of the apostles.',
-'eternal':'Without beginning or end of existence; everlasting; immutable. Pertaining to God who alone is eternal.',
-'evangelist':'One who preaches the gospel; a proclaimer of good news. The four writers of the gospels.',
-'evil':'Having bad qualities; contrary to good. Morally bad; wicked; sinful; causing harm and misery.',
-'exalt':'To raise high; to elevate in rank, power, or dignity. To magnify and praise God above all things.',
-'exhort':'To incite by words; to advise and urge earnestly; to warn, encourage, and stir up to duty.',
-'faith':'Belief; the assent of the mind to the truth of what is declared by God. Trust and reliance on Christ.',
-'fast':'To abstain from food; to omit nourishment for a time, especially for religious purposes and devotion.',
-'fear':'A painful emotion excited by expectation of evil. A holy and reverential awe and reverence of God.',
-'fellowship':'Companionship; association; partnership. In theology, communion with God and with other believers.',
-'fervent':'Very hot; ardent; intensely warm in piety and devotion; zealous and sincere in the service of God.',
-'flesh':'The soft parts of animal bodies. In scripture, human nature in its fallen state; carnal and unregenerate desires.',
-'flock':'A collection of sheep or goats together. In scripture, a congregation of believers under a shepherd or pastor.',
-'forbear':'To refrain from; to be patient; to cease from pressing or pursuing; to abstain from.',
-'forgive':'To pardon; to remit an offense; to overlook an injury; to grant remission of a debt or penalty.',
-'forgiveness':'The act of forgiving; pardon of an offender; remission of an offense or the penalty deserved.',
-'forsake':'To quit entirely; to desert; to leave utterly; to abandon; to renounce and turn from.',
-'fruitful':'Producing fruit abundantly. In scripture, productive of good works; spiritually productive and fruitful.',
-'garment':'Any article of clothing; a covering for the body. In scripture, a metaphor for righteousness.',
-'gentile':'One who is not a Jew; a pagan; one who does not worship the true God of Israel.',
-'glorify':'To make glorious; to honor; to celebrate with praise. To give glory and honor to God.',
-'glory':'Brightness; luster; splendor. In theology, the infinite perfection, majesty, and honor of God.',
-'godly':'Pious; reverencing God; conformed to the divine law; living in obedience and devotion to God.',
-'gospel':'Good news; glad tidings. The history and doctrines of Christ; the Christian revelation and plan of salvation.',
-'grace':'Kindness; favor. The free unmerited favor of God; divine assistance and influence given to man.',
-'gracious':'Favorable; kind; benevolent; full of grace; disposed to forgive offenses and freely bestow blessings.',
-'harvest':'The season of gathering crops. In scripture, the ingathering of souls and the final judgment of the age.',
-'heal':'To make whole; to restore to health and soundness. In scripture, spiritual restoration and wholeness.',
-'heart':'The hollow muscular organ circulating the blood. In scripture, the moral and spiritual center and seat of man.',
-'heathen':'Pagan; Gentile; not acknowledging the true God. The pagan nations who worship idols and false gods.',
-'heaven':'The region above the earth; the expanse. In theology, the abode of God, angels, and the redeemed.',
-'holiness':'The state of being holy; sanctity; purity of heart; freedom from sin. The essential nature of God.',
-'holy':'Hallowed; sacred; separated from sin and consecrated to God; perfectly pure in nature and character.',
-'hope':'A desire of some good, accompanied with expectation of obtaining it. Confidence in God\'s promises.',
-'humble':'Low in mind; modest; not proud or arrogant; having a lowly opinion of oneself before God and man.',
-'humility':'The quality of being humble; modesty; freedom from pride; lowliness of mind before God and man.',
-'idolatry':'The worship of idols or images. Excessive attachment to or veneration for any created thing over God.',
-'incarnation':'The act of taking on human flesh; the union of the divine and human natures in the person of Christ.',
-'iniquity':'Injustice; unrighteousness. A particular sin or transgression of the divine law; moral wickedness.',
-'intercession':'Mediation; interposing between parties. Prayer to God on behalf of others; pleading for another.',
-'israel':'The name given to Jacob after wrestling with God. The Hebrew nation descended from Jacob; God\'s chosen people.',
-'jealousy':'Suspicious fear. In scripture, God\'s jealousy is his zeal for his own honor and exclusive worship.',
-'jerusalem':'The chief city of ancient Israel; the holy city; the place of the temple and Christ\'s passion.',
-'judgment':'The act of judging; a sentence or decision rendered. In scripture, the final trial of all mankind by God.',
-'justify':'To prove to be just; to free from blame or accusation. In theology, to absolve from guilt and declare righteous.',
-'justification':'The act of justifying. In theology, God\'s act of pardoning and accepting the sinner through Christ\'s merit.',
-'kindness':'The quality of being kind; benevolence; tenderness; good will; affectionate regard toward others.',
-'kingdom':'The territory ruled by a king. In scripture, the reign of God; the dominion of Christ; the church triumphant.',
-'knowledge':'Learning; acquaintance with truth. In scripture, spiritual understanding of God, his will, and his ways.',
-'lamb':'The young of sheep. In scripture, Christ is the Lamb of God who takes away the sin of the world.',
-'law':'A rule of action prescribed by superior authority. The commands of God; the moral law of holy scripture.',
-'light':'That which illuminates; the medium of vision. In scripture, truth; God\'s presence; Christ the Light of the world.',
-'longsuffering':'Patient endurance of wrong or provocation; forbearance over a long time; long patience with offenders.',
-'lord':'A master; a ruler; a governor. Applied to God and Jesus Christ as supreme Ruler and Master of all.',
-'love':'Affection; kindness; benevolence. The benevolent love of God toward man; the first and greatest commandment.',
-'lust':'Carnal appetite; irregular or inordinate desire. In scripture, sinful desire of any kind contrary to God\'s law.',
-'manna':'The food miraculously supplied to the Israelites in the wilderness during their forty years of wandering.',
-'meek':'Mild of temper; gentle; soft; not easily provoked; submissive to the divine will and the needs of others.',
-'meekness':'The quality of being meek; mildness; gentleness; forbearance under injuries; submission to God.',
-'mercy':'Compassion shown to an offender or enemy; mildness. Divine forbearance and lovingkindness toward sinners.',
-'messiah':'The anointed; the title of Jesus Christ as the promised Deliverer, King, and Redeemer of Israel.',
-'minister':'One who serves. In the church, a pastor or clergyman appointed and set apart to serve a congregation.',
-'miracle':'A wonder; an effect above the power of nature, produced by divine power to confirm a divine mission.',
-'multiply':'To increase in number; to grow exceedingly; to add together repeatedly so as to increase greatly.',
-'mystery':'Something hidden or not fully known. In scripture, a divine truth formerly hidden but now revealed by God.',
-'obedience':'Compliance with a command; submission to authority. Conformity to the divine will and law of God.',
-'offering':'A sacrifice presented to God; a gift offered in worship; an oblation or contribution to God.',
-'overseer':'A superintendent; one who oversees and supervises. In the New Testament church, a bishop or pastor.',
-'parable':'A short allegorical story designed to illustrate a moral or spiritual truth by comparison.',
-'paradise':'The garden of Eden; a place of perfect happiness. Heaven; the abode of the blessed after death.',
-'pardon':'To forgive; to remit the penalty of an offense. Forgiveness and remission of sin by divine grace.',
-'passover':'The Hebrew festival commemorating God\'s sparing of Israel when he smote the firstborn of Egypt.',
-'patience':'Calm sufferance of pain or affliction; endurance without complaint; perseverance in faith and duty.',
-'patriarch':'The father and ruler of a family or tribe. The early fathers of the Hebrew nation before Moses.',
-'peace':'Quiet; rest; freedom from disturbance. In theology, reconciliation with God and spiritual tranquility.',
-'pentecost':'The Jewish feast held fifty days after Passover; the day the Holy Spirit descended on the apostles.',
-'penitent':'Suffering pain and sorrow for sins committed; contrite; truly repentant before God.',
-'praise':'Commendation for virtuous acts; worship expressed in word and song; giving honor and glory to God.',
-'prayer':'A petition to God; a solemn address to the Divine Being in supplication, adoration, and thanksgiving.',
-'preach':'To pronounce a public discourse on a religious subject; to proclaim the gospel of Jesus Christ.',
-'predestination':'God\'s act of foreordaining events and the eternal destiny of souls according to his sovereign will.',
-'priest':'One who officiates in sacred rites. In scripture, one who offers sacrifices and intercedes for the people.',
-'promise':'A declaration that gives the right to expect performance of the declared thing. God\'s covenant word.',
-'prophecy':'A foretelling; a prediction made by divine inspiration. The gift of declaring future events and God\'s will.',
-'prophet':'One inspired by God to foretell future events and declare the divine will to the people.',
-'prodigal':'Wasteful; lavishly extravagant. In scripture, illustrating the sinner who departs from God and returns.',
-'purify':'To make pure; to cleanse from moral defilement; to free from guilt and the pollution of sin.',
-'reconciliation':'Renewal of friendship after disagreement. In theology, the restoration of harmony between God and man.',
-'redeem':'To purchase back; to recover by paying a price; to ransom from sin and its eternal consequences.',
-'redemption':'Recovery by payment of a price. In theology, the rescue of mankind from sin by the death of Christ.',
-'remnant':'Residue; that which is left after the separation of a greater part. In scripture, the faithful who remain.',
-'repent':'To feel sorrow and contrition for past sin; to change the mind and purpose toward God and turn from evil.',
-'repentance':'Sorrow for past sin; contrition; a change of mind and heart proceeding from grief over sin and its consequences.',
-'resurrection':'The rising again from death. The rising of Christ; the future rising of all the dead for judgment.',
-'revelation':'The act of disclosing something previously unknown. In theology, the manifestation of God\'s will and truth.',
-'righteousness':'Conformity of life and conduct to the divine law; rectitude; holiness of heart and life before God.',
-'sabbath':'A day of rest. The seventh day appointed by divine law for rest from labor and for holy worship.',
-'sacrifice':'The offering of anything to God. The death of Christ as an atoning offering for the sins of mankind.',
-'saint':'A person holy and sanctified; one set apart to sacred uses; a believer in Christ sanctified by the Spirit.',
-'salvation':'Preservation from evil or destruction. In theology, deliverance from sin and its penalty through Christ.',
-'sanctification':'The act of sanctifying; the work of God\'s grace continually purifying the heart and life from sin.',
-'sanctify':'To make holy; to purify from sin; to set apart for sacred use; to consecrate entirely to God.',
-'satan':'The chief of the evil angels; the adversary of God and man; the devil; the great tempter and accuser.',
-'savior':'One who saves or delivers from danger or destruction. Jesus Christ, who saves mankind from sin and death.',
-'scripture':'The books of the Old and New Testaments; the Bible; the inspired and authoritative Word of God.',
-'seek':'To look for; to go in search of. In scripture, to pursue God with earnest desire for his presence and favor.',
-'sermon':'A public religious discourse delivered for the instruction of people in divine truth and moral duty.',
-'servant':'One who serves another; a minister. In scripture, a devoted follower and humble minister of God.',
-'shepherd':'One who tends and guards sheep. In scripture, Christ the Good Shepherd who lays down his life for his flock.',
-'sin':'Transgression of the divine law; any act of disobedience to God\'s command; moral wickedness and depravity.',
-'sojourn':'To dwell for a time in a place as a temporary resident; to reside without claiming permanent abode.',
-'soul':'The spiritual, rational, and immortal principle in man. In scripture, the inner life; the whole person.',
-'spirit':'The vital principle; an immaterial being. In theology, the Holy Spirit; the third person of the Trinity.',
-'steadfast':'Fixed in place or purpose; firmly established in faith; constant and unwavering before God.',
-'strife':'Contention; quarrel; discord; bitter conflict. In scripture, division and quarreling among brethren.',
-'supplication':'Humble and earnest prayer; fervent entreaty to God; urgent petition for divine mercy.',
-'sword':'A weapon for cutting and thrusting. In scripture, the Word of God; also the instrument of divine judgment.',
-'tabernacle':'A tent; a temporary habitation. The portable sanctuary of the Israelites in the wilderness.',
-'temptation':'The act of tempting to evil; enticement to sin. The state of being solicited to do wrong.',
-'testament':'A covenant; a will. The Old and New Testaments; the two great divisions of the holy scriptures.',
-'thanksgiving':'The act of giving thanks; grateful acknowledgment of divine favor; praise and gratitude offered to God.',
-'transgress':'To pass beyond established limits; to violate a law or command; to sin against the divine law.',
-'tribulation':'Severe affliction; great trouble and distress. In scripture, the trials and persecutions of God\'s people.',
-'trinity':'The union of three divine persons (Father, Son, and Holy Spirit) in one God; the Triune Being.',
-'truth':'Conformity to fact or reality; veracity. In scripture, the Word of God; Christ himself who is the Truth.',
-'unclean':'Not clean; foul or defiled. In scripture, ceremonially impure; spiritually defiled and morally corrupt.',
-'vanity':'Emptiness; futility. In scripture, all created things without God; the emptiness of worldly pursuits.',
-'vessel':'A container or utensil. In scripture, persons considered as instruments in the hands of God.',
-'vineyard':'An enclosure for cultivating grapevines. In scripture, the church and people of God.',
-'virgin':'A woman who has not known man. The Virgin Mary, the mother of Jesus, who was with child by the Holy Ghost.',
-'vision':'Supernatural appearance; a divine revelation; a communication from God through images seen in the mind.',
-'vow':'A solemn promise made to God; a sacred pledge to perform some act or observance for his glory.',
-'walk':'To advance on foot. In scripture, to conduct oneself; to live and behave in a manner pleasing to God.',
-'warfare':'Military service and fighting. In scripture, the spiritual conflict against sin, the flesh, and the devil.',
-'wickedness':'The quality of being wicked; evil in principle and practice; immorality and sinfulness.',
-'wilderness':'A tract of uninhabited or uncultivated land. In scripture, a place of trial and wandering for God\'s people.',
-'wisdom':'The right use of knowledge; sound judgment and discernment. In scripture, divine wisdom given by God.',
-'worship':'To adore with supreme respect; to honor with religious rites. The adoration and praise given to God alone.',
-'wrath':'Violent anger; fierce indignation. In scripture, the righteous anger and judgment of God against sin.',
-'yoke':'A frame placed on the necks of animals to couple them. In scripture, bondage, servitude, or discipline.',
-'zeal':'Passionate ardor and fervor for any cause. In scripture, fervent and earnest devotion to God and his glory.',
-};
-
+// Webster's 1828 dictionary: 107,793 entries in Supabase table webster_1828
+// Queried via RPC: search_webster_1828(query_term)
 
 // ══════════════════════════════════════════════════════════
 //  THEME
@@ -1712,8 +1514,10 @@ function App(){
 
   // ── Dictionary state ──
   const[dictSearchQ,setDictSearchQ]=useState('');
-  const[dictLive,setDictLive]=useState(null);
-  const[dictLoading,setDictLoading]=useState(false);
+  const[dictDbEntries,setDictDbEntries]=useState(null); // [{word,pos,definitions}]
+  const[dictDbLoading,setDictDbLoading]=useState(false);
+  const[dictLive,setDictLive]=useState(null); // external API fallback
+  const[dictLiveLoading,setDictLiveLoading]=useState(false);
   const dictTimerRef=useRef(null);
 
   // ── Bookmarks / Recents ──
@@ -1738,22 +1542,27 @@ function App(){
   },[]);
   // Re-measure nav height after loading completes (navRef is null during loading screen)
   useEffect(()=>{if(ready&&navRef.current)setNavH(navRef.current.offsetHeight);},[ready]);
-  // ── Dictionary live lookup ──
+  // ── Dictionary lookup (Supabase RPC + external API fallback) ──
   useEffect(()=>{
     if(dictTimerRef.current)clearTimeout(dictTimerRef.current);
     const q=dictSearchQ.trim().toLowerCase();
-    if(!q||q.length<2){setDictLive(null);setDictLoading(false);return;}
-    if(Object.keys(WEBSTER_1828).some(k=>k.includes(q))){setDictLive(null);setDictLoading(false);return;}
-    setDictLoading(true);
+    if(!q||q.length<2){setDictDbEntries(null);setDictDbLoading(false);setDictLive(null);setDictLiveLoading(false);return;}
+    setDictDbLoading(true);setDictLive(null);setDictLiveLoading(false);
     dictTimerRef.current=setTimeout(async()=>{
       try{
-        const r=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`);
-        if(!r.ok){setDictLive(null);setDictLoading(false);return;}
-        const d=await r.json();
-        setDictLive(Array.isArray(d)&&d.length?d:null);
-      }catch{setDictLive(null);}
-      setDictLoading(false);
-    },600);
+        const r=await sbRpc('search_webster_1828',{query_term:q});
+        if(Array.isArray(r)&&r.length>0){setDictDbEntries(r);setDictDbLoading(false);return;}
+        setDictDbEntries(null);setDictDbLoading(false);
+        // No DB results — try external API fallback
+        setDictLiveLoading(true);
+        try{
+          const lr=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`);
+          if(lr.ok){const d=await lr.json();setDictLive(Array.isArray(d)&&d.length?d:null);}
+          else setDictLive(null);
+        }catch{setDictLive(null);}
+        setDictLiveLoading(false);
+      }catch{setDictDbEntries(null);setDictDbLoading(false);}
+    },500);
   },[dictSearchQ]);
   // ── Jump-To scroll: fires after readSearchLimit extends ──
   useEffect(()=>{
@@ -3253,40 +3062,61 @@ function App(){
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(function(){
         const q=dictSearchQ.trim().toLowerCase();
-        const staticMatches=Object.entries(WEBSTER_1828).filter(([w])=>!q||w.toLowerCase().includes(q)).sort((a,b)=>a[0].localeCompare(b[0]));
-        const hasStatic=staticMatches.length>0;
-        const noStaticMatch=!!q&&!hasStatic;
-        const totalEntries=Object.keys(WEBSTER_1828).length;
-        const statusLabel=dictLoading?'LOOKING UP…':hasStatic?`WEBSTER'S 1828 · ${staticMatches.length} RESULT${staticMatches.length!==1?'S':''}`:noStaticMatch&&dictLive?`DEFINITION · ${dictLive.reduce((n,e)=>n+(e.meanings?.reduce((m,mg)=>m+(mg.definitions?.length||0),0)||0),0)} RESULT${dictLive.reduce((n,e)=>n+(e.meanings?.reduce((m,mg)=>m+(mg.definitions?.length||0),0)||0),0)!==1?'S':''}`:!q?`BROWSE · ${totalEntries} ENTRIES`:'NO RESULTS FOUND';
+        const isLoading=dictDbLoading||dictLiveLoading;
+        const hasDb=dictDbEntries&&dictDbEntries.length>0;
+        const hasLive=dictLive&&dictLive.length>0;
+        // Group DB results by word
+        const grouped=hasDb?dictDbEntries.reduce((acc,e)=>{
+          const w=e.word;if(!acc[w])acc[w]=[];acc[w].push(e);return acc;
+        },{}):null;
+        const groupedKeys=grouped?Object.keys(grouped).sort():[];
+        const statusLabel=isLoading?'LOOKING UP…':hasDb?`WEBSTER'S 1828 · ${groupedKeys.length} WORD${groupedKeys.length!==1?'S':''} · ${dictDbEntries.length} ENTR${dictDbEntries.length!==1?'IES':'Y'}`:hasLive?'EXTERNAL SOURCE':!q?'WEBSTER\'S 1828 · 107,793 ENTRIES':q.length<2?'TYPE AT LEAST 2 CHARACTERS':'NO RESULTS FOUND';
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-              <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);}} placeholder="Search any word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+              <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);setDictDbEntries(null);}} placeholder="Search Webster's 1828…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
               <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>{statusLabel}</div>
             </div>
-            {/* Static Webster's 1828 results */}
-            {hasStatic&&(
+            {/* DB results grouped by word then POS */}
+            {hasDb&&(
               <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
-                {staticMatches.map(([word,def])=>(
-                  <div key={word} style={{padding:'14px 18px',borderBottom:`1px solid ${T.bdS}`}} onMouseEnter={e=>e.currentTarget.style.background=T.bgSec} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
-                      <span style={{fontFamily:FB,fontSize:15,color:T.gT,fontWeight:500}}>{word}</span>
-                      <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
+                {groupedKeys.map(word=>{
+                  const entries=grouped[word];
+                  return(
+                    <div key={word} style={{borderBottom:`1px solid ${T.bdS}`}}>
+                      <div style={{padding:'12px 18px 6px',display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontFamily:FB,fontSize:16,color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
+                        <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
+                      </div>
+                      {entries.map((e,ei)=>(
+                        <div key={ei} style={{padding:'4px 18px 10px'}}>
+                          <div style={{fontFamily:FB,fontSize:11,color:T.dim,fontStyle:'italic',marginBottom:4}}>{e.pos}</div>
+                          {(e.definitions||[]).map((def,di)=>(
+                            <div key={di} style={{display:'flex',gap:6,marginBottom:4}}>
+                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{def}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
                     </div>
-                    <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{def}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             {/* Loading */}
-            {noStaticMatch&&dictLoading&&(
+            {isLoading&&!hasDb&&(
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:10}}>
                 <Spinner/><div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:T.dim,marginTop:4}}>LOOKING UP…</div>
               </div>
             )}
-            {/* Live API results */}
-            {noStaticMatch&&!dictLoading&&dictLive&&(
+            {/* External API fallback results */}
+            {!isLoading&&!hasDb&&hasLive&&(
               <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
+                <div style={{padding:'6px 18px 10px',display:'flex',alignItems:'center',gap:6}}>
+                  <span style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.1em',color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'2px 6px'}}>EXTERNAL SOURCE</span>
+                  <span style={{fontFamily:FB,fontSize:10,color:T.dim}}>Not found in Webster's 1828</span>
+                </div>
                 {dictLive.map((entry,ei)=>(
                   <div key={ei}>
                     {(entry.meanings||[]).map((m,mi)=>(
@@ -3297,9 +3127,11 @@ function App(){
                         </div>
                         {(m.definitions||[]).slice(0,4).map((d,di)=>(
                           <div key={di} style={{padding:'10px 18px',borderBottom:`1px solid ${T.bdS}`}}>
-                            <div style={{fontFamily:FS,fontSize:8.5,color:T.gM,letterSpacing:'0.08em',marginBottom:4}}>{di+1}.</div>
-                            <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{d.definition}</div>
-                            {d.example&&<div style={{fontFamily:FB,fontSize:11.5,color:T.dim,marginTop:5,fontStyle:'italic',paddingLeft:10,borderLeft:`2px solid ${T.gD}`}}>"{d.example}"</div>}
+                            <div style={{display:'flex',gap:6,marginBottom:2}}>
+                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{d.definition}</span>
+                            </div>
+                            {d.example&&<div style={{fontFamily:FB,fontSize:11.5,color:T.dim,marginTop:3,fontStyle:'italic',paddingLeft:22,borderLeft:`2px solid ${T.gD}`,marginLeft:14}}>"{d.example}"</div>}
                           </div>
                         ))}
                       </div>
@@ -3308,10 +3140,12 @@ function App(){
                 ))}
               </div>
             )}
-            {/* No results */}
-            {noStaticMatch&&!dictLoading&&!dictLive&&(
+            {/* Empty state / no results */}
+            {!isLoading&&!hasDb&&!hasLive&&(
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-                <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:290}}>No definition found for "{dictSearchQ}".</div>
+                <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:290}}>
+                  {!q?'Search for any English word in Webster\'s 1828 Dictionary.':q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
+                </div>
               </div>
             )}
           </div>
