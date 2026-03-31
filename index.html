@@ -1448,6 +1448,7 @@ function App(){
       }
     });
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
+  const[settingsAppOpen,setSettingsAppOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
@@ -2266,9 +2267,14 @@ function App(){
               {dark?'☀ Light':'☾ Dark'}
             </button>
           </div>
-          {/* ── Reading Appearance ── */}
-          {tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Reading Appearance</div>
+          {/* ── Appearance (universal accordion) ── */}
+          <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>Aa</span>
+            <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+          </button>
+          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
 
             {/* Text Size */}
             <div style={{marginBottom:14}}>
@@ -2340,7 +2346,7 @@ function App(){
             </div>
 
             {/* Toggles row */}
-            <div style={{display:'flex',gap:6,marginBottom:10}}>
+            <div style={{display:'flex',gap:6,marginBottom:14}}>
               <button type="button" onClick={()=>{const v=!readParaMode;setReadParaMode(v);try{localStorage.setItem('scrip:paraMode',JSON.stringify(v));}catch{}}}
                 style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readParaMode?T.gF:'transparent',border:`1px solid ${readParaMode?T.gD:T.bd}`,borderRadius:6,color:readParaMode?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                 <span>Paragraph Mode</span><span style={{fontSize:8,opacity:0.7}}>{readParaMode?'ON':'OFF'}</span>
@@ -2349,6 +2355,21 @@ function App(){
                 style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readRedLetter?'rgba(198,40,40,0.15)':'transparent',border:`1px solid ${readRedLetter?'#c62828':T.bd}`,borderRadius:6,color:readRedLetter?'#ef5350':T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                 <span>Red Letter</span><span style={{fontSize:8,opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
               </button>
+            </div>
+
+            {/* Parallel Text Size */}
+            <div style={{marginBottom:14,paddingTop:10,borderTop:`1px solid ${T.bd}`}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Parallel Text Size</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{parallelFontSize}px</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+                <input type="range" min="10" max="32" value={parallelFontSize}
+                  onChange={e=>{const v=Number(e.target.value);setParallelFontSize(v);try{localStorage.setItem('scrip:parallelFontSize',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
+              </div>
             </div>
 
             {/* Live preview */}
@@ -2380,23 +2401,7 @@ function App(){
             })()}
 
           </div>}
-          {/* ── Parallel Appearance ── */}
-          {tab==='parallel'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Parallel Appearance</div>
-            <div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Text Size</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{parallelFontSize}px</span>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-                <input type="range" min="10" max="32" value={parallelFontSize}
-                  onChange={e=>{const v=Number(e.target.value);setParallelFontSize(v);try{localStorage.setItem('scrip:parallelFontSize',v);}catch{}}}
-                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
-              </div>
-            </div>
-          </div>}
+          {!settingsAppOpen&&<div style={{marginBottom:14}}/>}
           <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
