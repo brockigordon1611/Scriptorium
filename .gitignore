@@ -1,0 +1,5 @@
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Version backups
+Backup of versions/

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Scriptorium",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["C:\\Users\\brock\\Desktop\\Scriptorium\\.claude\\serve.js"],
+      "port": 3000
+    }
+  ]
+}
