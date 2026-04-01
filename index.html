@@ -295,6 +295,7 @@ const BL={manuscript:{bg:'#f5d5d5',txt:'#8a0e0e',bd:'#c03030'},word:{bg:'#f8e8c0
 function stSt(s,T){switch(s){case'reference':return{bg:T.blue,txt:T.blueTxt};case'faithful':return{bg:T.green,txt:T.greenTxt};case'corrupt':return{bg:T.red,txt:T.redTxt};case'diff':return{bg:T.dif,txt:T.difTxt};case'partial':return{bg:T.ora,txt:T.oraTxt};case'missing':return{bg:T.pur,txt:T.purTxt};default:return{bg:T.bgCard,txt:T.dim};}}
 const FS="'Cinzel',Georgia,serif";
 const FB="'Cormorant Garamond','EB Garamond',Georgia,serif";
+const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
 
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Cinzel:wght@400;500;600;700&display=swap');
@@ -936,7 +937,7 @@ function VersionsModal({data,onSave,onClose,T,user}){
 // ══════════════════════════════════════════════════════════
 //  ENTRY CARD  (enhanced with reading-mode link)
 // ══════════════════════════════════════════════════════════
-function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead}){
+function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,readFontSize=19,readLineHeight=1.85,readFontFamily='serif'}){
   const[det,setDet]=useState(false);
   const hasDet=entry.notes||entry.greekHebrew||entry.sourceRefs;
   const prev=entry.notes?(entry.notes.length>120?entry.notes.slice(0,120)+'…':entry.notes):'';
@@ -965,20 +966,20 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead}
             return(<tr key={v.id} className="text-reveal" style={{background:st.bg,borderTop:vi>0?`1px solid ${T.bd}`:'none',animationDelay:`${vi*0.05}s`}}>
               <td style={{padding:'9px 16px',whiteSpace:'nowrap',fontFamily:FS,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase',color:st.txt,width:66,verticalAlign:'top',fontWeight:600}}>{v.label}</td>
               <td style={{padding:'9px 4px',fontFamily:FS,fontSize:9,color:T.dim,width:26,verticalAlign:'top',paddingTop:11,fontWeight:500}}>{v.lang}</td>
-              <td style={{padding:'9px 16px 9px 6px',fontFamily:FB,fontSize:16,lineHeight:1.7,color:st.txt,verticalAlign:'top'}} dangerouslySetInnerHTML={{__html:hl(vd.text,q)}}/>
+              <td style={{padding:'9px 16px 9px 6px',fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,color:st.txt,verticalAlign:'top'}} dangerouslySetInnerHTML={{__html:hl(vd.text,q)}}/>
             </tr>);
           })}
         </tbody>
       </table>
-      {!det&&prev&&<div className="text-reveal" style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:T.dim,padding:'8px 18px',borderTop:`1px solid ${T.bd}`}} dangerouslySetInnerHTML={{__html:hl(prev,q)}}/>}
+      {!det&&prev&&<div className="text-reveal" style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',fontSize:readFontSize,color:T.dim,padding:'8px 18px',borderTop:`1px solid ${T.bd}`}} dangerouslySetInnerHTML={{__html:hl(prev,q)}}/>}
       {hasDet&&(<>
         <div className="s-btn s-ghost" onClick={()=>setDet(!det)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 18px',fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:T.dim,borderTop:`1px solid ${T.bd}`,background:T.bgCH,userSelect:'none',fontWeight:500}}>
           <span style={{display:'inline-block',transition:'transform .2s',transform:det?'rotate(90deg)':'none',fontSize:8}}>▸</span> Details
         </div>
         {det&&(<div className="slide-down" style={{padding:'14px 20px',borderTop:`1px solid ${T.bd}`}}>
-          {entry.notes&&<><Lbl c="Notes / Analysis" T={T}/><div style={{fontFamily:FB,fontSize:15,color:T.mut,lineHeight:1.75,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.notes,q)}}/></>}
-          {entry.greekHebrew&&<><Lbl c="Greek / Hebrew" T={T}/><div style={{fontFamily:FB,fontSize:15,color:T.mut,lineHeight:1.75,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.greekHebrew,q)}}/></>}
-          {entry.sourceRefs&&<><Lbl c="Source References" T={T}/><div style={{fontFamily:FB,fontSize:15,color:T.mut,lineHeight:1.75}} dangerouslySetInnerHTML={{__html:hl(entry.sourceRefs,q)}}/></>}
+          {entry.notes&&<><Lbl c="Notes / Analysis" T={T}/><div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.notes,q)}}/></>}
+          {entry.greekHebrew&&<><Lbl c="Greek / Hebrew" T={T}/><div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.greekHebrew,q)}}/></>}
+          {entry.sourceRefs&&<><Lbl c="Source References" T={T}/><div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:hl(entry.sourceRefs,q)}}/></>}
         </div>)}
       </>)}
     </div>
@@ -988,7 +989,7 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead}
 // ══════════════════════════════════════════════════════════
 //  SECTION
 // ══════════════════════════════════════════════════════════
-function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,onDel,pulseId,secToggle,idx,onRead}){
+function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,onDel,pulseId,secToggle,idx,onRead,readFontSize=19,readLineHeight=1.85,readFontFamily='serif'}){
   const[col,setCol]=useState(false);const[sortBy,setSortBy]=useState('default');
   useEffect(()=>{if(secToggle)setCol(secToggle.action==='collapse');},[secToggle]);
   const delay=Math.min((idx||0)*0.08,0.4);
@@ -1016,9 +1017,9 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
         </div>
       </div>
       {!col&&(<div className="slide-down" style={{border:`1px solid ${T.bdA}`,borderTop:'none',borderRadius:'0 0 10px 10px',background:T.bg,padding:14}}>
-        {sec.description&&<div className="text-reveal" style={{fontFamily:FB,fontStyle:'italic',color:T.mut,fontSize:15,padding:'8px 14px 14px',borderBottom:`1px solid ${T.bd}`,marginBottom:14,lineHeight:1.75}}>{sec.description}</div>}
+        {sec.description&&<div className="text-reveal" style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',color:T.mut,fontSize:readFontSize,padding:'8px 14px 14px',borderBottom:`1px solid ${T.bd}`,marginBottom:14,lineHeight:readLineHeight}}>{sec.description}</div>}
         {entries.length===0&&<div style={{textAlign:'center',padding:'28px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No entries yet. Add one above.</div>}
-        {sorted.map((e,i)=><EntryCard key={e.id} entry={e} versions={versions} q={q} dark={dark} T={T} onEdit={onEdit} onDup={onDup} onDel={onDel} pulse={pulseId===e.id} idx={i} onRead={onRead}/>)}
+        {sorted.map((e,i)=><EntryCard key={e.id} entry={e} versions={versions} q={q} dark={dark} T={T} onEdit={onEdit} onDup={onDup} onDel={onDel} pulse={pulseId===e.id} idx={i} onRead={onRead} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>)}
       </div>)}
     </div>
   );
@@ -1448,6 +1449,7 @@ function App(){
       }
     });
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
+  const[settingsAppOpen,setSettingsAppOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
@@ -1494,7 +1496,7 @@ function App(){
     else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
   }
   const[strongsMode,setStrongsMode]=useState(false);
-  const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
+
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
   const navRef=useRef(null);
@@ -2266,9 +2268,14 @@ function App(){
               {dark?'☀ Light':'☾ Dark'}
             </button>
           </div>
-          {/* ── Reading Appearance ── */}
-          {tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Reading Appearance</div>
+          {/* ── Appearance (universal accordion) ── */}
+          <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>Aa</span>
+            <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+          </button>
+          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
 
             {/* Text Size */}
             <div style={{marginBottom:14}}>
@@ -2340,7 +2347,7 @@ function App(){
             </div>
 
             {/* Toggles row */}
-            <div style={{display:'flex',gap:6,marginBottom:10}}>
+            <div style={{display:'flex',gap:6,marginBottom:14}}>
               <button type="button" onClick={()=>{const v=!readParaMode;setReadParaMode(v);try{localStorage.setItem('scrip:paraMode',JSON.stringify(v));}catch{}}}
                 style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readParaMode?T.gF:'transparent',border:`1px solid ${readParaMode?T.gD:T.bd}`,borderRadius:6,color:readParaMode?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                 <span>Paragraph Mode</span><span style={{fontSize:8,opacity:0.7}}>{readParaMode?'ON':'OFF'}</span>
@@ -2350,6 +2357,7 @@ function App(){
                 <span>Red Letter</span><span style={{fontSize:8,opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
               </button>
             </div>
+
 
             {/* Live preview */}
             {(()=>{
@@ -2380,23 +2388,7 @@ function App(){
             })()}
 
           </div>}
-          {/* ── Parallel Appearance ── */}
-          {tab==='parallel'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'14px 14px 10px',marginBottom:14}}>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:12}}>Parallel Appearance</div>
-            <div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Text Size</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{parallelFontSize}px</span>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-                <input type="range" min="10" max="32" value={parallelFontSize}
-                  onChange={e=>{const v=Number(e.target.value);setParallelFontSize(v);try{localStorage.setItem('scrip:parallelFontSize',v);}catch{}}}
-                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
-              </div>
-            </div>
-          </div>}
+          {!settingsAppOpen&&<div style={{marginBottom:14}}/>}
           <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
@@ -2901,7 +2893,7 @@ function App(){
                   </div>
                   <div style={{padding:'13px 16px'}}>
                     {verseRow
-                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:parallelFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
+                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
                       :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
                   </div>
                 </div>
@@ -3026,17 +3018,17 @@ function App(){
                 <>
                   <div style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bd}`,fontWeight:600}}>{filtered.length} result{filtered.length!==1?'s':''}{q&&<span style={{color:T.dim,fontWeight:400}}> for "{q}"</span>}</div>
                   {filtered.length===0&&<div style={{textAlign:'center',padding:'48px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:16}}>No entries match.</div>}
-                  {filtered.map((e,i)=><EntryCard key={e.id} entry={e} versions={visibleVersions} q={q} dark={dark} T={T} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulse={pulseId===e.id} idx={i} onRead={jumpToFromCard}/>)}
+                  {filtered.map((e,i)=><EntryCard key={e.id} entry={e} versions={visibleVersions} q={q} dark={dark} T={T} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulse={pulseId===e.id} idx={i} onRead={jumpToFromCard} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>)}
                 </>
               ):(
                 data.sections.length===0
                   ?<div style={{textAlign:'center',padding:'64px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:16}}>No sections yet. Click + Section to add one.</div>
                   :data.sections.map((sec,si)=>(
-                    <Section key={sec.id} sec={sec} entries={data.entries.filter(e=>e.sectionId===sec.id)} versions={visibleVersions} q={q} dark={dark} T={T} onEditSec={openEditSec} onDelSec={openDelSec} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulseId={pulseId} secToggle={secToggle} idx={si} onRead={jumpToFromCard}/>
+                    <Section key={sec.id} sec={sec} entries={data.entries.filter(e=>e.sectionId===sec.id)} versions={visibleVersions} q={q} dark={dark} T={T} onEditSec={openEditSec} onDelSec={openDelSec} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulseId={pulseId} secToggle={secToggle} idx={si} onRead={jumpToFromCard} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>
                   ))
               )}
               {!hasFilter&&data.entries.filter(e=>!data.sections.find(s=>s.id===e.sectionId)).map((e,i)=>(
-                <EntryCard key={e.id} entry={e} versions={visibleVersions} q={q} dark={dark} T={T} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulse={pulseId===e.id} idx={i} onRead={jumpToFromCard}/>
+                <EntryCard key={e.id} entry={e} versions={visibleVersions} q={q} dark={dark} T={T} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulse={pulseId===e.id} idx={i} onRead={jumpToFromCard} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>
               ))}
             </div>
             <div className="no-print fade-in" style={{textAlign:'center',padding:'16px 24px 32px'}}>
@@ -3063,6 +3055,8 @@ function App(){
 
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(function(){
+        const posMap={'n':'noun','v':'verb','v.t':'verb transitive','v.i':'verb intransitive','adj':'adjective','adv':'adverb','prep':'preposition','conj':'conjunction','pron':'pronoun','interj':'interjection','art':'article','n.pl':'noun plural','p.p':'past participle','pret':'preterite','pp':'past participle','part':'participle','a':'adjective','n.':'noun','v.':'verb','adj.':'adjective','adv.':'adverb','prep.':'preposition','conj.':'conjunction','pron.':'pronoun','interj.':'interjection'};
+        function expandPos(raw){if(!raw)return raw;const trimmed=raw.trim().toLowerCase().replace(/\.+$/,'');return posMap[trimmed]||posMap[raw.trim().toLowerCase()]||raw;}
         const q=dictSearchQ.trim().toLowerCase();
         const isLoading=dictDbLoading||dictLiveLoading;
         const hasDb=dictDbEntries&&dictDbEntries.length>0;
@@ -3071,7 +3065,7 @@ function App(){
         const grouped=hasDb?dictDbEntries.reduce((acc,e)=>{
           const w=e.word;if(!acc[w])acc[w]=[];acc[w].push(e);return acc;
         },{}):null;
-        const groupedKeys=grouped?Object.keys(grouped).sort():[];
+        const groupedKeys=grouped?Object.keys(grouped).sort((a,b)=>{const al=a.toLowerCase(),bl=b.toLowerCase();const rankA=al===q?0:al.startsWith(q)?1:2;const rankB=bl===q?0:bl.startsWith(q)?1:2;if(rankA!==rankB)return rankA-rankB;return al.localeCompare(bl);}):[];
         const statusLabel=isLoading?'LOOKING UP…':hasDb?`WEBSTER'S 1828 · ${groupedKeys.length} WORD${groupedKeys.length!==1?'S':''} · ${dictDbEntries.length} ENTR${dictDbEntries.length!==1?'IES':'Y'}`:hasLive?'EXTERNAL SOURCE':!q?'WEBSTER\'S 1828 · 107,793 ENTRIES':q.length<2?'TYPE AT LEAST 2 CHARACTERS':'NO RESULTS FOUND';
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
@@ -3087,16 +3081,16 @@ function App(){
                   return(
                     <div key={word} style={{borderBottom:`1px solid ${T.bdS}`}}>
                       <div style={{padding:'12px 18px 6px',display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontFamily:FB,fontSize:16,color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
+                        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.05),color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
                         <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
                       </div>
                       {entries.map((e,ei)=>(
                         <div key={ei} style={{padding:'4px 18px 10px'}}>
-                          <div style={{fontFamily:FB,fontSize:11,color:T.dim,fontStyle:'italic',marginBottom:4}}>{e.pos}</div>
+                          <div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.65),color:T.dim,fontStyle:'italic',marginBottom:4}}>{expandPos(e.pos)}</div>
                           {(e.definitions||[]).map((def,di)=>(
                             <div key={di} style={{display:'flex',gap:6,marginBottom:4}}>
-                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
-                              <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{def}</span>
+                              <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.55),color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}}>{def}</span>
                             </div>
                           ))}
                         </div>
@@ -3124,16 +3118,16 @@ function App(){
                     {(entry.meanings||[]).map((m,mi)=>(
                       <div key={mi}>
                         <div style={{padding:'10px 18px 6px',background:T.bgSec,borderBottom:`1px solid ${T.bd}`,display:'flex',alignItems:'center',gap:8}}>
-                          <span style={{fontFamily:FB,fontSize:15,color:T.gT,fontWeight:500}}>{entry.word}</span>
-                          <span style={{fontFamily:FB,fontSize:12,color:T.dim,fontStyle:'italic'}}>{m.partOfSpeech}</span>
+                          <span style={{fontFamily:FB,fontSize:readFontSize,color:T.gT,fontWeight:500}}>{entry.word}</span>
+                          <span style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.7),color:T.dim,fontStyle:'italic'}}>{expandPos(m.partOfSpeech)}</span>
                         </div>
                         {(m.definitions||[]).slice(0,4).map((d,di)=>(
                           <div key={di} style={{padding:'10px 18px',borderBottom:`1px solid ${T.bdS}`}}>
                             <div style={{display:'flex',gap:6,marginBottom:2}}>
-                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
-                              <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>{d.definition}</span>
+                              <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.55),color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}}>{d.definition}</span>
                             </div>
-                            {d.example&&<div style={{fontFamily:FB,fontSize:11.5,color:T.dim,marginTop:3,fontStyle:'italic',paddingLeft:22,borderLeft:`2px solid ${T.gD}`,marginLeft:14}}>"{d.example}"</div>}
+                            {d.example&&<div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.7),color:T.dim,marginTop:3,fontStyle:'italic',paddingLeft:22,borderLeft:`2px solid ${T.gD}`,marginLeft:14}}>"{d.example}"</div>}
                           </div>
                         ))}
                       </div>
