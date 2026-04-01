@@ -2358,20 +2358,6 @@ function App(){
               </button>
             </div>
 
-            {/* Parallel Text Size */}
-            <div style={{marginBottom:14,paddingTop:10,borderTop:`1px solid ${T.bd}`}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Parallel Text Size</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{parallelFontSize}px</span>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
-                <input type="range" min="10" max="32" value={parallelFontSize}
-                  onChange={e=>{const v=Number(e.target.value);setParallelFontSize(v);try{localStorage.setItem('scrip:parallelFontSize',v);}catch{}}}
-                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
-              </div>
-            </div>
 
             {/* Live preview */}
             {(()=>{
@@ -2907,7 +2893,7 @@ function App(){
                   </div>
                   <div style={{padding:'13px 16px'}}>
                     {verseRow
-                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:parallelFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
+                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
                       :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
                   </div>
                 </div>
@@ -3069,6 +3055,8 @@ function App(){
 
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(function(){
+        const posMap={'n':'noun','v':'verb','v.t':'verb transitive','v.i':'verb intransitive','adj':'adjective','adv':'adverb','prep':'preposition','conj':'conjunction','pron':'pronoun','interj':'interjection','art':'article','n.pl':'noun plural','p.p':'past participle','pret':'preterite','pp':'past participle','part':'participle','a':'adjective','n.':'noun','v.':'verb','adj.':'adjective','adv.':'adverb','prep.':'preposition','conj.':'conjunction','pron.':'pronoun','interj.':'interjection'};
+        function expandPos(raw){if(!raw)return raw;const trimmed=raw.trim().toLowerCase().replace(/\.+$/,'');return posMap[trimmed]||posMap[raw.trim().toLowerCase()]||raw;}
         const q=dictSearchQ.trim().toLowerCase();
         const isLoading=dictDbLoading||dictLiveLoading;
         const hasDb=dictDbEntries&&dictDbEntries.length>0;
@@ -3077,7 +3065,7 @@ function App(){
         const grouped=hasDb?dictDbEntries.reduce((acc,e)=>{
           const w=e.word;if(!acc[w])acc[w]=[];acc[w].push(e);return acc;
         },{}):null;
-        const groupedKeys=grouped?Object.keys(grouped).sort():[];
+        const groupedKeys=grouped?Object.keys(grouped).sort((a,b)=>{const al=a.toLowerCase(),bl=b.toLowerCase();const rankA=al===q?0:al.startsWith(q)?1:2;const rankB=bl===q?0:bl.startsWith(q)?1:2;if(rankA!==rankB)return rankA-rankB;return al.localeCompare(bl);}):[];
         const statusLabel=isLoading?'LOOKING UP…':hasDb?`WEBSTER'S 1828 · ${groupedKeys.length} WORD${groupedKeys.length!==1?'S':''} · ${dictDbEntries.length} ENTR${dictDbEntries.length!==1?'IES':'Y'}`:hasLive?'EXTERNAL SOURCE':!q?'WEBSTER\'S 1828 · 107,793 ENTRIES':q.length<2?'TYPE AT LEAST 2 CHARACTERS':'NO RESULTS FOUND';
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
@@ -3093,15 +3081,15 @@ function App(){
                   return(
                     <div key={word} style={{borderBottom:`1px solid ${T.bdS}`}}>
                       <div style={{padding:'12px 18px 6px',display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontFamily:FB,fontSize:16,color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
+                        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.05),color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
                         <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
                       </div>
                       {entries.map((e,ei)=>(
                         <div key={ei} style={{padding:'4px 18px 10px'}}>
-                          <div style={{fontFamily:FB,fontSize:11,color:T.dim,fontStyle:'italic',marginBottom:4}}>{e.pos}</div>
+                          <div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.65),color:T.dim,fontStyle:'italic',marginBottom:4}}>{expandPos(e.pos)}</div>
                           {(e.definitions||[]).map((def,di)=>(
                             <div key={di} style={{display:'flex',gap:6,marginBottom:4}}>
-                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.55),color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
                               <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}}>{def}</span>
                             </div>
                           ))}
@@ -3130,16 +3118,16 @@ function App(){
                     {(entry.meanings||[]).map((m,mi)=>(
                       <div key={mi}>
                         <div style={{padding:'10px 18px 6px',background:T.bgSec,borderBottom:`1px solid ${T.bd}`,display:'flex',alignItems:'center',gap:8}}>
-                          <span style={{fontFamily:FB,fontSize:15,color:T.gT,fontWeight:500}}>{entry.word}</span>
-                          <span style={{fontFamily:FB,fontSize:12,color:T.dim,fontStyle:'italic'}}>{m.partOfSpeech}</span>
+                          <span style={{fontFamily:FB,fontSize:readFontSize,color:T.gT,fontWeight:500}}>{entry.word}</span>
+                          <span style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.7),color:T.dim,fontStyle:'italic'}}>{expandPos(m.partOfSpeech)}</span>
                         </div>
                         {(m.definitions||[]).slice(0,4).map((d,di)=>(
                           <div key={di} style={{padding:'10px 18px',borderBottom:`1px solid ${T.bdS}`}}>
                             <div style={{display:'flex',gap:6,marginBottom:2}}>
-                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+                              <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.55),color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
                               <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}}>{d.definition}</span>
                             </div>
-                            {d.example&&<div style={{fontFamily:FB,fontSize:11.5,color:T.dim,marginTop:3,fontStyle:'italic',paddingLeft:22,borderLeft:`2px solid ${T.gD}`,marginLeft:14}}>"{d.example}"</div>}
+                            {d.example&&<div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.7),color:T.dim,marginTop:3,fontStyle:'italic',paddingLeft:22,borderLeft:`2px solid ${T.gD}`,marginLeft:14}}>"{d.example}"</div>}
                           </div>
                         ))}
                       </div>
