@@ -293,6 +293,16 @@ const L={bg:'#f6f3ec',bg2:'#f0ece3',bgCard:'#faf8f4',bgCH:'#f0ece3',bgSec:'#ebe6
 const BD={manuscript:{bg:'#260808',txt:'#c86060',bd:'#4a1212'},word:{bg:'#221806',txt:'#b88828',bd:'#483008'},omission:{bg:'#180820',txt:'#9060b8',bd:'#341460'},article:{bg:'#081a1a',txt:'#48b8b8',bd:'#164040'},grammar:{bg:'#081220',txt:'#58a0c0',bd:'#163050'},doctrine:{bg:'#201008',txt:'#b86828',bd:'#482408'},name:{bg:'#1c1608',txt:'#b8a848',bd:'#403808'},other:{bg:'#161310',txt:'#786248',bd:'#342a1c'}};
 const BL={manuscript:{bg:'#f5d5d5',txt:'#8a0e0e',bd:'#c03030'},word:{bg:'#f8e8c0',txt:'#7a4a00',bd:'#b87820'},omission:{bg:'#ecd8f5',txt:'#521880',bd:'#8858b8'},article:{bg:'#cceeee',txt:'#0a5a5a',bd:'#287878'},grammar:{bg:'#cce4f0',txt:'#0a3858',bd:'#285878'},doctrine:{bg:'#f5dcc8',txt:'#702800',bd:'#b85818'},name:{bg:'#eeeac0',txt:'#524800',bd:'#888000'},other:{bg:'#e8e2d8',txt:'#524838',bd:'#908070'}};
 function stSt(s,T){switch(s){case'reference':return{bg:T.blue,txt:T.blueTxt};case'faithful':return{bg:T.green,txt:T.greenTxt};case'corrupt':return{bg:T.red,txt:T.redTxt};case'diff':return{bg:T.dif,txt:T.difTxt};case'partial':return{bg:T.ora,txt:T.oraTxt};case'missing':return{bg:T.pur,txt:T.purTxt};default:return{bg:T.bgCard,txt:T.dim};}}
+const ACCENTS={
+  gold:      {dark:{g:'#c8a84e',gT:'#e4cc78',gM:'#8a7a48',gD:'#4a3e22',gF:'#1e1a0e'},light:{g:'#8a6420',gT:'#4a3008',gM:'#7a6040',gD:'#c0a068',gF:'#f0e8d4'}},
+  slate:     {dark:{g:'#707070',gT:'#d0d0d0',gM:'#4e4e4e',gD:'#252525',gF:'#0e0e0e',body:'#e2e2e2',mut:'#a4a4a4',dim:'#5a5a5a'},light:{g:'#525252',gT:'#2a2a2a',gM:'#585858',gD:'#909090',gF:'#e8e8e8',body:'#161616',mut:'#3e3e3e',dim:'#606060'}},
+  terracotta:{dark:{g:'#80665e',gT:'#d4a898',gM:'#594842',gD:'#2f231f',gF:'#110c0b',body:'#e1dddb',mut:'#a29a96',dim:'#59524f'},light:{g:'#54372f',gT:'#2a1b13',gM:'#4f3c34',gD:'#8e766e',gF:'#ece7e4',body:'#1c1614',mut:'#3e3430',dim:'#605650'}},
+  steel:     {dark:{g:'#535f67',gT:'#a8bac8',gM:'#3c444a',gD:'#1c2024',gF:'#0a0c0e',body:'#dde0e3',mut:'#9fa4a9',dim:'#565c61'},light:{g:'#2a343e',gT:'#151c22',gM:'#37414c',gD:'#76818d',gF:'#e1e6eb',body:'#121618',mut:'#303840',dim:'#4c5460'}},
+  sage:      {dark:{g:'#5f6c54',gT:'#aac09a',gM:'#414b39',gD:'#1f241c',gF:'#0b0d0a',body:'#dbded9',mut:'#989f95',dim:'#51554f'},light:{g:'#35402b',gT:'#1b2216',gM:'#3f4c35',gD:'#6c7d60',gF:'#dfe6da',body:'#121a10',mut:'#303c2c',dim:'#485440'}},
+  heather:   {dark:{g:'#6f6878',gT:'#c0b8d0',gM:'#4d4853',gD:'#25222b',gF:'#0f0e12',body:'#dddbda',mut:'#9e9ca4',dim:'#57555c'},light:{g:'#443b53',gT:'#241f2f',gM:'#4e4457',gD:'#837b93',gF:'#ebe8ef',body:'#141218',mut:'#363040',dim:'#544e60'}},
+  rose:      {dark:{g:'#7e6a72',gT:'#d0aab4',gM:'#56474d',gD:'#292023',gF:'#0e0a0c',body:'#e0dcdc',mut:'#a2979a',dim:'#564f51'},light:{g:'#4e2f3b',gT:'#28171f',gM:'#4f3942',gD:'#8b737b',gF:'#ede6e9',body:'#1c1416',mut:'#3c2c30',dim:'#5c4c50'}},
+  sienna:    {dark:{g:'#726256',gT:'#c8aa90',gM:'#4e423a',gD:'#27211d',gF:'#0e0c0a',body:'#dddad7',mut:'#9f9995',dim:'#55514e'},light:{g:'#402f25',gT:'#201710',gM:'#463a32',gD:'#83736b',gF:'#ece8e3',body:'#1a1612',mut:'#3c342c',dim:'#5c5248'}},
+};
 const FS="'Cinzel',Georgia,serif";
 const FB="'Cormorant Garamond','EB Garamond',Georgia,serif";
 const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
@@ -300,18 +310,18 @@ const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mon
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Cinzel:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:#3a3020;border-radius:10px;}
-mark.sch{background:rgba(200,168,78,0.22);color:inherit;border-radius:2px;padding:0 2px;}
+::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--ac-scrollbar,#3a3020);border-radius:10px;}
+mark.sch{background:var(--ac-mark,rgba(200,168,78,0.22));color:inherit;border-radius:2px;padding:0 2px;}
 .hov-card{transition:border-color .3s,box-shadow .3s,transform .3s;}
-.hov-card:hover{border-color:#38332a!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}
+.hov-card:hover{border-color:var(--ac-bd,#38332a)!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}
 .s-btn{transition:all .2s;cursor:pointer;}
-.s-ghost:hover{background:rgba(200,168,78,0.09)!important;border-color:rgba(200,168,78,0.3)!important;}
-.s-tbtn:hover{border-color:rgba(200,168,78,0.5)!important;background:rgba(200,168,78,0.06)!important;}
+.s-ghost:hover{background:var(--ac-ghost-bg,rgba(200,168,78,0.09))!important;border-color:var(--ac-ghost-bd,rgba(200,168,78,0.3))!important;}
+.s-tbtn:hover{border-color:var(--ac-tbtn-bd,rgba(200,168,78,0.5))!important;background:var(--ac-tbtn-bg,rgba(200,168,78,0.06))!important;}
 .s-danger:hover{border-color:#aa2828!important;color:#e05555!important;background:rgba(180,30,30,0.12)!important;}
-button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
+button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outline-offset:1px;}
 .pulse{animation:pulse-glow .6s ease-in-out 3;}
 @keyframes spin{to{transform:rotate(360deg);}}
-@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(200,168,78,0);}50%{box-shadow:0 0 0 6px rgba(200,168,78,0.25);}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 var(--ac-pulse0,rgba(200,168,78,0));}50%{box-shadow:0 0 0 6px var(--ac-pulse50,rgba(200,168,78,0.25));}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-10px) scaleY(0.96);}to{opacity:1;transform:translateY(0) scaleY(1);}}
@@ -348,11 +358,11 @@ button:focus-visible{outline:2px solid rgba(200,168,78,0.4);outline-offset:1px;}
 .section-enter{animation:fadeUp .4s cubic-bezier(0.34,1.2,0.64,1) both;}
 .text-reveal{animation:textReveal .35s ease-out both;}
 .stagger-1{animation-delay:.05s;}.stagger-2{animation-delay:.1s;}.stagger-3{animation-delay:.15s;}.stagger-4{animation-delay:.2s;}.stagger-5{animation-delay:.25s;}
-.gold-shimmer{background:linear-gradient(90deg,transparent,rgba(200,168,78,0.12),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
+.gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
-.spinner{width:18px;height:18px;border:2px solid rgba(200,168,78,0.2);border-top-color:#c8a84e;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
-.reading-verse:hover{background:rgba(200,168,78,0.05);border-radius:4px;}
-input:focus,select:focus,textarea:focus{border-color:#c8a84e44!important;box-shadow:0 0 0 2px rgba(200,168,78,0.08);}
+.spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
+.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}
+input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile overrides (≤640px) ── */
 @media(max-width:640px){
   .hide-mobile{display:none!important;}
@@ -1386,6 +1396,7 @@ function App(){
 
   // ── UI ──
   const[dark,setDark]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:dark')|| 'true');}catch{return true;}});
+  const[accent,setAccent]=useState(()=>{try{return localStorage.getItem('scrip:accent')||'gold';}catch{return 'gold';}});
   const[tab,setTab]=useState('read'); // 'read'|'study'|'parallel'|'compare'|'strongs'|'dictionary'
   const[q,setQ]=useState('');
   const[filters,setFilters]=useState({issueTypes:[],statuses:[],vA:'',vB:''});
@@ -1401,8 +1412,8 @@ function App(){
   function closeReadSheet(){setReadSheetClosing(true);setTimeout(()=>{setReadMobileSheet(null);setReadSheetClosing(false);},260);}
 
   // ── Reading state (persistent in tab, not modal) ──
-  const[readBook,setReadBook]=useState(1);
-  const[readCh,setReadCh]=useState(1);
+  const[readBook,setReadBook]=useState(()=>{try{return Number(localStorage.getItem('scrip:readBook'))||1;}catch{return 1;}});
+  const[readCh,setReadCh]=useState(()=>{try{return Number(localStorage.getItem('scrip:readCh'))||1;}catch{return 1;}});
   const[readVid,setReadVid]=useState(null); // set after data loads
   const[readVerses,setReadVerses]=useState([]);
   const[readSelVerses,setReadSelVerses]=useState(()=>new Set()); // multi-select
@@ -1450,14 +1461,15 @@ function App(){
     });
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
   const[settingsAppOpen,setSettingsAppOpen]=useState(false);
-  const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||19;}catch{return 19;}});
+  const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
-  const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.85;}catch{return 1.85;}});
+  const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.2;}catch{return 1.2;}});
   const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
   const[readVerseNums,setReadVerseNums]=useState(()=>{try{return localStorage.getItem('scrip:verseNums')||'super';}catch{return 'super';}});
   const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||'left';}catch{return 'left';}});
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
+  const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const bottomBarRef=useRef(null);
@@ -1492,7 +1504,7 @@ function App(){
     if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
     scrollDelta.current+=dy;
-    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){enterFullScreen();scrollDelta.current=0;}
+    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){if(readAutoFullscreen)enterFullScreen();scrollDelta.current=0;}
     else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
   }
   const[strongsMode,setStrongsMode]=useState(false);
@@ -1529,11 +1541,24 @@ function App(){
   const[recents,setRecents]=useState([]);
 
   const undoTRef=useRef(null);const undoPRef=useRef(null);
-  const T=dark?D:L;
+  const _acc=(ACCENTS[accent]||ACCENTS.gold)[dark?'dark':'light'];
+  const T={...(dark?D:L),..._acc,accentLine:`linear-gradient(90deg,transparent,${_acc.gD},${_acc.g},${_acc.gD},transparent)`};
+
+  // ── CSS variable accent injection ──
+  useEffect(()=>{
+    function hexToRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`${r},${g},${b}`;}
+    const rgb=hexToRgb(T.g||'#c8a84e');
+    const rgbD=hexToRgb(T.gD||'#4a3e22');
+    const r=document.getElementById('accent-vars')||Object.assign(document.createElement('style'),{id:'accent-vars'});
+    r.textContent=`:root{--ac-scrollbar:${T.gD};--ac-mark:rgba(${rgb},0.22);--ac-bd:${T.gD};--ac-ghost-bg:rgba(${rgb},0.09);--ac-ghost-bd:rgba(${rgb},0.3);--ac-tbtn-bd:rgba(${rgb},0.5);--ac-tbtn-bg:rgba(${rgb},0.06);--ac-focus:rgba(${rgb},0.4);--ac-pulse0:rgba(${rgb},0);--ac-pulse50:rgba(${rgb},0.25);--ac-shimmer:rgba(${rgb},0.12);--ac-spin-ring:rgba(${rgb},0.2);--ac-spin-top:${T.g};--ac-verse-hover:rgba(${rgb},0.05);--ac-input-bd:rgba(${rgb},0.27);--ac-input-sh:rgba(${rgb},0.08);}`;
+    if(!r.parentNode)document.head.appendChild(r);
+  },[T.g,T.gD]);
 
   // ── Persist prefs ──
   useEffect(()=>{localStorage.setItem('scrip:dark',JSON.stringify(dark));},[dark]);
+  useEffect(()=>{try{localStorage.setItem('scrip:accent',accent);}catch{}},[accent]);
   useEffect(()=>{localStorage.setItem('scrip:hidden',JSON.stringify(hiddenVers));},[hiddenVers]);
+  useEffect(()=>{try{localStorage.setItem('scrip:readBook',readBook);localStorage.setItem('scrip:readCh',readCh);}catch{}},[readBook,readCh]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
   useEffect(()=>{
@@ -2012,14 +2037,35 @@ function App(){
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>(readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search')):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:19,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>(readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search')):undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(false),background:studyActive?'transparent':T.gF,borderColor:studyActive?'transparent':T.gD,color:studyActive?'transparent':T.gT,fontSize:10,fontWeight:600,padding:'0 10px',whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
-                  {readVerLabel||'—'}
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(false),width:44,background:studyActive?'transparent':T.gF,border:`1px solid ${studyActive?'transparent':T.gD}`,color:studyActive?T.dim:T.gT,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                  <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                    {/* left page */}
+                    <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
+                    {/* right page */}
+                    <path d="M11.5 4.5 Q15 2.5 19 2.5 Q20 2.5 20 3.5 L20 13.5 Q20 14.5 19 14.5 Q15 14.5 11.5 15 Z" strokeWidth="1.2" fill="none"/>
+                    {/* spine arch */}
+                    <path d="M10.5 4.5 Q11 3 11.5 4.5" strokeWidth="1.2" fill="none"/>
+                    {/* text lines left */}
+                    <line x1="3.8" y1="6.2" x2="9.5" y2="6.2" strokeWidth="1.1"/>
+                    <line x1="3.8" y1="7.9" x2="9.5" y2="7.9" strokeWidth="1.1"/>
+                    <line x1="3.8" y1="9.6" x2="9.5" y2="9.6" strokeWidth="1.1"/>
+                    <line x1="3.8" y1="11.3" x2="9.5" y2="11.3" strokeWidth="1.1"/>
+                    <line x1="3.8" y1="13" x2="9.5" y2="13" strokeWidth="1.1"/>
+                    {/* text lines right */}
+                    <line x1="12.5" y1="6.2" x2="18.2" y2="6.2" strokeWidth="1.1"/>
+                    <line x1="12.5" y1="7.9" x2="18.2" y2="7.9" strokeWidth="1.1"/>
+                    <line x1="12.5" y1="9.6" x2="18.2" y2="9.6" strokeWidth="1.1"/>
+                    <line x1="12.5" y1="11.3" x2="18.2" y2="11.3" strokeWidth="1.1"/>
+                    <line x1="12.5" y1="13" x2="18.2" y2="13" strokeWidth="1.1"/>
+                    {/* bookmark */}
+                    <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
+                  </svg>
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(false),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
-                  <svg width="16" height="17" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="13" height="15" rx="2" fill={T.gF} stroke={T.gD} strokeWidth="0.8"/><rect x="0.5" y="0.5" width="2.5" height="15" rx="1.5" fill={T.gD}/><line x1="7" y1="4" x2="7" y2="12" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/><line x1="4.5" y1="7.5" x2="9.5" y2="7.5" stroke={T.gM} strokeWidth="1.2" strokeLinecap="round"/></svg>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(false),color:studyActive?'transparent':T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                  {readVerLabel||'—'}
                 </button>
               </div>
             </div>);
@@ -2189,7 +2235,7 @@ function App(){
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeMobileSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 ←
               </button>
             </div>
@@ -2220,7 +2266,7 @@ function App(){
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 ←
               </button>
             </div>
@@ -2254,20 +2300,31 @@ function App(){
           <div style={{position:'relative',marginBottom:18,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 ←
               </button>
             </div>
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Settings</div>
           </div>
-          {/* Dark / Light */}
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,padding:'12px 14px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9}}>
-            <span style={{fontFamily:FB,fontSize:16,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
-            <button type="button" onClick={()=>setDark(d=>!d)}
-              style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 14px',cursor:'pointer',fontWeight:600}}>
-              {dark?'☀ Light':'☾ Dark'}
-            </button>
-          </div>
+          {/* Top toggles */}
+          {(()=>{
+            function Toggle({label,on,onToggle}){
+              return(
+                <div onClick={onToggle} style={{display:'flex',alignItems:'center',justifyContent:'space-between',flex:1,cursor:'pointer',padding:'12px 14px',background:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,borderRadius:9,userSelect:'none',WebkitUserSelect:'none',transition:'border-color .15s'}}>
+                  <span style={{fontFamily:FB,fontSize:14,color:on?T.mut:T.dim}}>{label}</span>
+                  <div style={{position:'relative',width:42,height:24,borderRadius:12,background:on?T.g:'transparent',border:`1px solid ${on?T.gD:T.bd}`,transition:'background .2s',flexShrink:0}}>
+                    <div style={{position:'absolute',top:2,left:on?18:2,width:18,height:18,borderRadius:'50%',background:on?T.bgCard:T.dim,transition:'left .2s,background .2s'}}/>
+                  </div>
+                </div>
+              );
+            }
+            return(
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <Toggle label="Dark Mode" on={dark} onToggle={()=>setDark(d=>!d)}/>
+                <Toggle label="Auto Fullscreen" on={readAutoFullscreen} onToggle={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}}/>
+              </div>
+            );
+          })()}
           {/* ── Appearance (universal accordion) ── */}
           <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
@@ -2276,6 +2333,17 @@ function App(){
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
           {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
+
+            {/* Accent Color */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:8}}>Accent Color</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {Object.entries(ACCENTS).map(([key,pal])=>(
+                  <button key={key} title={key[0].toUpperCase()+key.slice(1)} type="button" onClick={()=>setAccent(key)}
+                    style={{width:28,height:28,borderRadius:'50%',background:pal.dark.g,border:`2px solid ${accent===key?T.gT:T.bd}`,cursor:'pointer',boxShadow:accent===key?`0 0 0 2px ${T.g}`:'none',transition:'box-shadow .15s,border-color .15s',flexShrink:0}}/>
+                ))}
+              </div>
+            </div>
 
             {/* Text Size */}
             <div style={{marginBottom:14}}>
@@ -2418,7 +2486,7 @@ function App(){
             const setNavBk=isP?setParallelBk:setReadBook;
             const setNavCh=isP?setParallelCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
-            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:14,letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
+            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:17,letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
             /* Dynamic book button height: fit all 22 rows (13 OT + 9 NT) without scrolling.
                Overhead: sheet padding 52+32, marginTop -44, header 28, line 11, OT label 30, NT label 25,
                grid gaps 12*2+8*2=40, paddingBottom 12, sheet border 2 ≈ 188px */
@@ -2429,51 +2497,52 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} topPad={8}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
-                <div style={{position:'relative',marginBottom:4,minHeight:38,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
                     <button type="button" onClick={closeReadSheet}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   ):navStep==='chapter'?(
                     <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   ):(
                     <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   )}
                   </div>
-                  <div style={{textAlign:'center',fontFamily:FS,fontSize:12,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
+                  <div style={{textAlign:'center',fontFamily:FS,fontSize:20,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
                     {navStep==='book'?'Select Book':navStep==='chapter'?pickedBkData?.name||'':`${pickedBkData?.name||''} ${navPickedCh}`}
                   </div>
                 </div>
                 <div style={{height:1,background:T.accentLine,marginBottom:10}}/>
 
-                {/* Book grid */}
-                {navStep==='book'&&<div>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:4,textAlign:'center',marginTop:8}}>Old Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4,marginBottom:4}}>
-                    {BIBLE.filter(b=>b.n<=39).map(b=>(
-                      <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
-                        style={bookBtn}>{romanName(b.name)}</button>
+                {/* Book grid — two independent scrollable columns */}
+                {navStep==='book'&&(
+                  <div style={{display:'flex',gap:8,height:`calc(100dvh - ${navH}px - 178px)`,overflow:'hidden'}}>
+                    {[{label:'Old Testament',filter:b=>b.n<=39},{label:'New Testament',filter:b=>b.n>=40}].map(({label,filter})=>(
+                      <div key={label} style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
+                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.28em',color:T.gM,textTransform:'uppercase',fontWeight:600,textAlign:'center',marginBottom:6,flexShrink:0,width:'100%',wordSpacing:'0.4em'}}>{label}</div>
+                        <div style={{overflowY:'auto',flex:1,display:'flex',flexDirection:'column',gap:4}}>
+                          {BIBLE.filter(filter).map(b=>(
+                            <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
+                              style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
+                              {b.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:4,textAlign:'center',marginTop:6}}>New Testament</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4}}>
-                    {BIBLE.filter(b=>b.n>=40).map(b=>(
-                      <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
-                        style={bookBtn}>{romanName(b.name)}</button>
-                    ))}
-                  </div>
-                </div>}
+                )}
 
                 {/* Chapter grid */}
                 {navStep==='chapter'&&pickedBkData&&<div>
@@ -2525,7 +2594,7 @@ function App(){
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeReadSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     ←
                   </button>
                 </div>
@@ -2545,7 +2614,7 @@ function App(){
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');closeReadSheet();}}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     ←
                   </button>
                 </div>
@@ -2761,7 +2830,7 @@ function App(){
                       <span key={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
                         onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
-                        style={{cursor:'pointer',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
+                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
@@ -2778,7 +2847,7 @@ function App(){
                       <div key={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
                         onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
-                        style={{padding:'2px 4px',cursor:'pointer',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
+                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
@@ -2827,15 +2896,15 @@ function App(){
 
           {/* Bottom nav */}
           <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',willChange:'transform'}}>
-              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
               </button>
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
-                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
+                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.gT,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
                   {BIBLE.find(b=>b.n===readBook)?.name||''} {readCh}
                 </span>
               </div>
-              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
               </button>
             </div>
@@ -2992,7 +3061,7 @@ function App(){
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeMobileSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'9px 11px',cursor:'pointer',fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     ←
                   </button>
                 </div>
