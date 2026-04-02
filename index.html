@@ -500,6 +500,11 @@ async function dbSearchStrongs(query){
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
   return Array.isArray(data)?data:[];
 }
+async function dbGetStrongsVerses(strongsNum){
+  const token=getToken();
+  const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
+  return Array.isArray(data)?data:[];
+}
 async function dbGetVerse(versionId,bookNum,chapter,verse){
   const token=getToken();
   const t=await sbFrom('bible_verses',token);
@@ -1572,8 +1577,9 @@ function App(){
   }
   const[strongsMode,setStrongsMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:strongsMode'))||false;}catch{return false;}});
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
-  const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...}}
+  const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsLoading,setStrongsLoading]=useState(false);
+  const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
   // Strong's tab search state (must be at component level for hooks)
   const[strongsSearchQ,setStrongsSearchQ]=useState('');
   const[strongsSearchRes,setStrongsSearchRes]=useState(null);
@@ -1776,9 +1782,16 @@ function App(){
 
   // ── Strong's word tap handler ──
   async function handleStrongsWordTap(strongsNum,wordText){
-    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null});
-    const entry=await dbGetStrongsEntry(strongsNum);
-    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry}:prev);
+    setStrongsExpandedWords(new Set());
+    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true});
+    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
+    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+  }
+  async function loadStrongsEntry(strongsNum){
+    setStrongsExpandedWords(new Set());
+    setStrongsPopup(prev=>prev?{...prev,strongs_number:strongsNum,entry:null,verses:null,versesLoading:true}:null);
+    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
+    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
   }
 
   // ── Load parallel chapters ──
@@ -2971,33 +2984,79 @@ function App(){
           </div>
 
           {/* Strong's popup */}
-          {strongsPopup&&(
-            <div onClick={()=>setStrongsPopup(null)} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
-              <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 24px rgba(0,0,0,0.3)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                  <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{strongsPopup.strongs_number}</span>
-                  <button onClick={()=>setStrongsPopup(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
-                </div>
-                {strongsPopup.entry?(
-                  <div>
-                    <div style={{fontSize:28,color:T.body,marginBottom:4,fontFamily:'serif'}}>{strongsPopup.entry.original_word}</div>
-                    <div style={{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}}>{strongsPopup.entry.transliteration}{strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:''}</div>
-                    <div style={{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:12,fontStyle:'italic'}}>{strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'}</div>
-                    <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.5,marginBottom:12}}>{strongsPopup.entry.short_def}</div>
-                    {strongsPopup.entry.full_def&&<div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4,marginBottom:12}}>{strongsPopup.entry.full_def}</div>}
-                    {strongsPopup.entry.kjv_usage&&(
-                      <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
-                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
-                        <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4}}>{strongsPopup.entry.kjv_usage}</div>
-                      </div>
-                    )}
-                  </div>
+          {strongsPopup&&(()=>{
+            // Parse derivation text for H/G number links
+            function renderDerivation(text){
+              if(!text)return null;
+              const parts=[];let last=0;
+              const re=/([HG]\d+)/g;let m;
+              while((m=re.exec(text))!==null){
+                if(m.index>last)parts.push(text.slice(last,m.index));
+                const num=m[1];
+                parts.push(React.createElement('span',{key:m.index,onClick:e=>{e.stopPropagation();loadStrongsEntry(num);},style:{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}},num));
+                last=m.index+num.length;
+              }
+              if(last<text.length)parts.push(text.slice(last));
+              return parts;
+            }
+            // Group verses by word_text, deduplicate verse refs
+            const verses=strongsPopup.verses||[];
+            const totalCount=verses.length;
+            const groups={};
+            for(const r of verses){
+              const key=(r.word_text||'').toLowerCase();
+              if(!groups[key])groups[key]={word:r.word_text,refs:new Set()};
+              groups[key].refs.add(`${r.book_num}|${r.chapter}|${r.verse}`);
+            }
+            const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
+
+            return React.createElement('div',{onClick:()=>setStrongsPopup(null),style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 24px rgba(0,0,0,0.3)'}},
+                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+                  React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                    React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
+                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`${totalCount}`)
+                  ),
+                  React.createElement('button',{onClick:()=>setStrongsPopup(null),style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}},'✕')
+                ),
+                strongsPopup.entry?(
+                  React.createElement('div',null,
+                    React.createElement('div',{style:{fontSize:28,color:T.body,marginBottom:4,fontFamily:'serif'}},strongsPopup.entry.original_word),
+                    React.createElement('div',{style:{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}},strongsPopup.entry.transliteration+(strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:'')),
+                    React.createElement('div',{style:{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:12,fontStyle:'italic'}},strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'),
+                    React.createElement('div',{style:{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.5,marginBottom:12}},strongsPopup.entry.short_def),
+                    strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
+                    groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}},
+                      React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}},'KJV USAGE'),
+                      groupList.map(([key,{word,refs}])=>{
+                        const isExpanded=strongsExpandedWords.has(key);
+                        const refArr=[...refs].map(r=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
+                        const bookName=bn=>BIBLE[bn-1]?.name||'';
+                        return React.createElement('div',{key,style:{marginBottom:8}},
+                          React.createElement('div',{onClick:()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
+                            style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}},
+                            React.createElement('span',{style:{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600}},word),
+                            React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim}},`(${refs.size})`),
+                            React.createElement('span',{style:{fontFamily:FB,fontSize:11,color:T.dim,marginLeft:'auto'}},isExpanded?'▴':'▾')
+                          ),
+                          isExpanded&&React.createElement('div',{style:{paddingLeft:8,paddingBottom:4}},
+                            refArr.map(({bn,ch,vs})=>
+                              React.createElement('span',{key:`${bn}-${ch}-${vs}`,onClick:()=>{setStrongsPopup(null);setReadBook(bn);setReadCh(ch);setTab('read');},
+                                style:{display:'inline-block',fontFamily:FB,fontSize:12,color:T.gT,cursor:'pointer',marginRight:10,marginBottom:4,textDecoration:'underline dotted'}},
+                                `${bookName(bn)} ${ch}:${vs}`)
+                            )
+                          )
+                        );
+                      })
+                    ),
+                    groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}},'Loading verses…')
+                  )
                 ):(
-                  <div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading...</div>
-                )}
-              </div>
-            </div>
-          )}
+                  React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
+                )
+              )
+            );
+          })()}
 
           {/* Selection action strip */}
           {stripOpen&&(
