@@ -1580,6 +1580,7 @@ function App(){
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsLoading,setStrongsLoading]=useState(false);
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
+  const[strongsInfoVisible,setStrongsInfoVisible]=useState(false);
   // Strong's tab search state (must be at component level for hooks)
   const[strongsSearchQ,setStrongsSearchQ]=useState('');
   const[strongsSearchRes,setStrongsSearchRes]=useState(null);
@@ -1783,15 +1784,29 @@ function App(){
   // ── Strong's word tap handler ──
   async function handleStrongsWordTap(strongsNum,wordText){
     setStrongsExpandedWords(new Set());
-    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true});
+    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true,history:[]});
     const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
   }
   async function loadStrongsEntry(strongsNum){
     setStrongsExpandedWords(new Set());
-    setStrongsPopup(prev=>prev?{...prev,strongs_number:strongsNum,entry:null,verses:null,versesLoading:true}:null);
+    // Push current entry onto history stack before navigating
+    setStrongsPopup(prev=>{
+      if(!prev)return null;
+      const histEntry={strongs_number:prev.strongs_number,entry:prev.entry,verses:prev.verses};
+      return{...prev,strongs_number:strongsNum,entry:null,verses:null,versesLoading:true,history:[...(prev.history||[]),histEntry]};
+    });
     const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+  }
+  function goBackStrongs(){
+    setStrongsExpandedWords(new Set());
+    setStrongsPopup(prev=>{
+      if(!prev||!prev.history||prev.history.length===0)return prev;
+      const history=[...prev.history];
+      const last=history.pop();
+      return{...prev,...last,history,versesLoading:false};
+    });
   }
 
   // ── Load parallel chapters ──
@@ -2411,34 +2426,47 @@ function App(){
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
         <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px - 50px)`}>
-          <div style={{position:'relative',marginBottom:18,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
-              <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                ←
-              </button>
-            </div>
-            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Settings</div>
-          </div>
-          {/* Top toggles */}
-          {(()=>{
-            function Toggle({label,on,onToggle}){
-              return(
-                <div onClick={onToggle} style={{display:'flex',alignItems:'center',justifyContent:'space-between',flex:1,cursor:'pointer',padding:'12px 14px',background:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,borderRadius:9,userSelect:'none',WebkitUserSelect:'none',transition:'border-color .15s'}}>
-                  <span style={{fontFamily:FB,fontSize:14,color:on?T.mut:T.dim}}>{label}</span>
-                  <div style={{position:'relative',width:42,height:24,borderRadius:12,background:on?T.g:'transparent',border:`1px solid ${on?T.gD:T.bd}`,transition:'background .2s',flexShrink:0}}>
-                    <div style={{position:'absolute',top:2,left:on?18:2,width:18,height:18,borderRadius:'50%',background:on?T.bgCard:T.dim,transition:'left .2s,background .2s'}}/>
-                  </div>
-                </div>
-              );
-            }
-            return(
-              <div style={{display:'flex',gap:8,marginBottom:14}}>
-                <Toggle label="Dark Mode" on={dark} onToggle={()=>setDark(d=>!d)}/>
-                <Toggle label="Auto Fullscreen" on={readAutoFullscreen} onToggle={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}}/>
+          {/* Header row: back + absolutely centered title + dark mode pill */}
+          <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+            <button type="button" onClick={closeReadSheet}
+              style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,zIndex:1}}>
+              ←
+            </button>
+            <div style={{position:'absolute',left:0,right:0,textAlign:'center',fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',pointerEvents:'none'}}>Settings</div>
+            {/* Dark mode pill — compact */}
+            <div onClick={()=>setDark(d=>!d)} style={{position:'relative',width:72,height:32,borderRadius:16,background:dark?T.bgCard:'#e8e4d8',boxShadow:dark?`0 0 0 1.5px ${T.gD},0 3px 10px rgba(0,0,0,0.5)`:'0 0 0 1.5px #c8c0a0,0 3px 10px rgba(0,0,0,0.12)',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',flexShrink:0,transition:'background .3s,box-shadow .3s',overflow:'hidden'}}>
+              <div style={{position:'absolute',top:0,bottom:0,left:dark?8:'auto',right:dark?'auto':8,display:'flex',alignItems:'center',justifyContent:'center',width:32,pointerEvents:'none'}}>
+                <span style={{fontFamily:FS,fontSize:7,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:dark?T.gT:'#8a8070',lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
               </div>
-            );
-          })()}
+              <div style={{position:'absolute',top:3,left:dark?'calc(100% - 29px)':3,width:26,height:26,borderRadius:'50%',background:dark?T.bgSec:'#ffffff',boxShadow:dark?`0 2px 6px rgba(0,0,0,0.5),0 0 0 1px ${T.gD}`:'0 2px 6px rgba(0,0,0,0.18)',display:'flex',alignItems:'center',justifyContent:'center',transition:'left .25s cubic-bezier(.4,0,.2,1),background .3s',fontSize:13}}>
+                <span style={{color:dark?T.gT:'#a09070'}}>{dark?'☾':'☀'}</span>
+              </div>
+            </div>
+          </div>
+          {/* Read-tab toggles: Strong's + Auto Fullscreen — compact row */}
+          {tab==='read'&&<div style={{display:'flex',gap:8,marginBottom:14}}>
+            {/* Strong's card */}
+            <div onClick={()=>setStrongsMode(v=>!v)} style={{flex:1,padding:'9px 10px',background:strongsMode?T.gF:T.bgSec,border:`1.5px solid ${strongsMode?T.gD:T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:strongsMode?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:strongsMode?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Hebrew & Greek</div>
+              </div>
+              <span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0}}>ⓘ</span>
+            </div>
+            {/* Auto Fullscreen card */}
+            <div onClick={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}} style={{flex:1,padding:'9px 10px',background:readAutoFullscreen?T.gF:T.bgSec,border:`1.5px solid ${readAutoFullscreen?T.gD:T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:readAutoFullscreen?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>⛶</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Auto on scroll</div>
+              </div>
+            </div>
+          </div>}
+          {strongsInfoVisible&&tab==='read'&&<div style={{marginTop:-8,marginBottom:14,padding:'10px 14px',background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:9,display:'flex',gap:8,alignItems:'flex-start'}}>
+            <span style={{color:T.gT,flexShrink:0}}>ⓘ</span>
+            <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.5}}>Underlines every word with its original Hebrew or Greek number. Tap any word to see its definition and every verse where it appears. KJV only.</span>
+          </div>}
           {/* ── Appearance (universal accordion) ── */}
           <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
@@ -2573,7 +2601,7 @@ function App(){
           {!settingsAppOpen&&<div style={{marginBottom:14}}/>}
           <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
-            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⚙</span>Manage Bible Versions
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Manage Bible Versions
           </button>
           <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
           {[
@@ -3014,6 +3042,7 @@ function App(){
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 24px rgba(0,0,0,0.3)'}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
+                    (strongsPopup.history||[]).length>0&&React.createElement('button',{onClick:e=>{e.stopPropagation();goBackStrongs();},style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontSize:16,padding:'0 4px 0 0',fontFamily:FB,fontWeight:600}},'‹ Back'),
                     React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
                     totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`×${totalCount}`)
                   ),
