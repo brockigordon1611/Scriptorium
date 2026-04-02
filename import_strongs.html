@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html><head><title>Strong's Data Import</title>
+<style>
+body{font-family:monospace;background:#111;color:#ccc;padding:20px;max-width:900px;margin:0 auto}
+button{background:#333;color:#eee;border:1px solid #555;padding:10px 20px;cursor:pointer;font-size:16px;margin:5px}
+button:hover{background:#444}
+button:disabled{opacity:0.4;cursor:not-allowed}
+#log{white-space:pre-wrap;background:#0a0a0a;padding:15px;border:1px solid #333;height:500px;overflow-y:auto;margin-top:10px;font-size:13px}
+.ok{color:#6c6}
+.err{color:#f66}
+.info{color:#6bf}
+.warn{color:#fb5}
+h1{color:#e4cc78}
+input{background:#222;color:#eee;border:1px solid #555;padding:8px 12px;font-family:monospace;font-size:13px;width:100%;box-sizing:border-box}
+label{display:block;margin:10px 0 4px;color:#999;font-size:13px}
+</style>
+</head><body>
+<h1>Strong's Concordance Data Import</h1>
+<p>Imports lexicon data from openscriptures/strongs and word mappings from kaiserlik/kjv into Supabase.</p>
+
+<label>Supabase Service Role Key (required for insert — find in Supabase Dashboard → Settings → API):</label>
+<input id="serviceKey" type="password" placeholder="eyJhbGciOiJI..." />
+
+<div style="margin-top:15px">
+<button onclick="importLexicon()">1. Import Lexicon (~14K entries)</button>
+<button onclick="importMappings(0)">2. Import Word Mappings (~800K rows)</button>
+<button onclick="importMappings(10)">2b. Resume from 1 Kings (book 11)</button>
+<button onclick="checkCounts()">Check Row Counts</button>
+<button onclick="document.getElementById('log').innerHTML=''">Clear Log</button>
+</div>
+<div id="log"></div>
+
+<script>
+const SUPABASE_URL='https://garuwsjczcptykehgjdx.supabase.co';
+const ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcnV3c2pjemNwdHlrZWhnamR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxNjMzNTMsImV4cCI6MjA1NzczOTM1M30.aGwFsElF6MfpSMiSfsoSq2mPkjIciCHyvTjDH2qcsvw';
+const logEl=document.getElementById('log');
+
+function getKey(){
+  const k=document.getElementById('serviceKey').value.trim();
+  if(!k){log('ERROR: Enter the Supabase service role key first','err');return null;}
+  return k;
+}
+
+function log(msg,cls=''){logEl.innerHTML+=`<span class="${cls}">${msg}</span>\n`;logEl.scrollTop=logEl.scrollHeight;}
+
+async function sbInsert(table,rows,key){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify(rows)
+  });
+  if(!r.ok){const t=await r.text();throw new Error(`${r.status}: ${t}`);}
+  return r;
+}
+
+async function importLexicon(){
+  const key=getKey();if(!key)return;
+  log('=== LEXICON IMPORT ===','info');
+  try{
+    // Hebrew
+    log('Fetching Hebrew lexicon from openscriptures/strongs...');
+    const hRes=await fetch('https://raw.githubusercontent.com/openscriptures/strongs/master/hebrew/strongs-hebrew-dictionary.js');
+    const hText=await hRes.text();
+    // Use Function() to eval the JS file safely and extract the object
+    const hFunc=new Function('var module={exports:{}};var exports=module.exports;\n'+hText+'\nreturn strongsHebrewDictionary;');
+    const hData=hFunc();
+    const hKeys=Object.keys(hData);
+    log(`  Parsed ${hKeys.length} Hebrew entries`,'ok');
+
+    // Greek
+    log('Fetching Greek lexicon from openscriptures/strongs...');
+    const gRes=await fetch('https://raw.githubusercontent.com/openscriptures/strongs/master/greek/strongs-greek-dictionary.js');
+    const gText=await gRes.text();
+    const gFunc=new Function('var module={exports:{}};var exports=module.exports;\n'+gText+'\nreturn strongsGreekDictionary;');
+    const gData=gFunc();
+    const gKeys=Object.keys(gData);
+    log(`  Parsed ${gKeys.length} Greek entries`,'ok');
+
+    // Build rows
+    const rows=[];
+    for(const[num,e] of Object.entries(hData)){
+      rows.push({
+        strongs_number:num,
+        language:'hebrew',
+        original_word:e.lemma||'',
+        transliteration:e.xlit||'',
+        pronunciation:e.pron||null,
+        short_def:e.strongs_def||'',
+        full_def:e.derivation||null,
+        kjv_usage:e.kjv_def||null
+      });
+    }
+    for(const[num,e] of Object.entries(gData)){
+      rows.push({
+        strongs_number:num,
+        language:'greek',
+        original_word:e.lemma||'',
+        transliteration:e.translit||'',
+        pronunciation:null,
+        short_def:e.strongs_def||'',
+        full_def:e.derivation||null,
+        kjv_usage:e.kjv_def||null
+      });
+    }
+
+    log(`Inserting ${rows.length} total entries in batches of 500...`);
+    const BATCH=500;
+    for(let i=0;i<rows.length;i+=BATCH){
+      const batch=rows.slice(i,i+BATCH);
+      await sbInsert('strongs_lexicon',batch,key);
+      log(`  Inserted ${Math.min(i+BATCH,rows.length)}/${rows.length}`,'ok');
+    }
+    log(`LEXICON IMPORT COMPLETE: ${rows.length} entries`,'ok');
+  }catch(err){
+    log(`ERROR: ${err.message}`,'err');
+  }
+}
+
+const BOOKS=['Gen','Exo','Lev','Num','Deu','Jos','Jdg','Rth','1Sa','2Sa','1Ki','2Ki','1Ch','2Ch','Ezr','Neh','Est','Job','Psa','Pro','Ecc','Sng','Isa','Jer','Lam','Eze','Dan','Hos','Joe','Amo','Oba','Jon','Mic','Nah','Hab','Zep','Hag','Zec','Mal','Mat','Mar','Luk','Jhn','Act','Rom','1Co','2Co','Gal','Eph','Phl','Col','1Th','2Th','1Ti','2Ti','Tit','Phm','Heb','Jas','1Pe','2Pe','1Jo','2Jo','3Jo','Jde','Rev'];
+const BOOK_NAMES=['Genesis','Exodus','Leviticus','Numbers','Deuteronomy','Joshua','Judges','Ruth','1 Samuel','2 Samuel','1 Kings','2 Kings','1 Chronicles','2 Chronicles','Ezra','Nehemiah','Esther','Job','Psalms','Proverbs','Ecclesiastes','Song of Songs','Isaiah','Jeremiah','Lamentations','Ezekiel','Daniel','Hosea','Joel','Amos','Obadiah','Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi','Matthew','Mark','Luke','John','Acts','Romans','1 Corinthians','2 Corinthians','Galatians','Ephesians','Philippians','Colossians','1 Thessalonians','2 Thessalonians','1 Timothy','2 Timothy','Titus','Philemon','Hebrews','James','1 Peter','2 Peter','1 John','2 John','3 John','Jude','Revelation'];
+
+function parseVerse(text){
+  // Parse "The vision[H2377] of Obadiah[H5662]" into [{word_pos, word_text, strongs_num}]
+  const cleaned=text.replace(/<[^>]+>/g,''); // strip HTML tags
+  const results=[];
+  // Split on whitespace to get tokens like "vision[H2377]" or "The"
+  const tokens=cleaned.trim().split(/\s+/);
+  let wordPos=0;
+
+  for(const token of tokens){
+    if(!token)continue;
+    // Extract all Strong's tags from this token
+    const tags=[];
+    let m;
+    const tagRe=/\[(H\d+|G\d+)\]/g;
+    while((m=tagRe.exec(token))!==null) tags.push(m[1]);
+
+    // Get the word text by stripping tags and outer punctuation
+    const wordText=token.replace(/\[(?:H|G)\d+\]/g,'').replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+
+    if(tags.length>0 && wordText){
+      for(const tag of tags){
+        results.push({word_pos:wordPos,word_text:wordText,strongs_num:tag});
+      }
+    }
+    // Count position for every real word (even untagged ones)
+    if(wordText) wordPos++;
+  }
+  return results;
+}
+
+async function importMappings(startBook=0){
+  const key=getKey();if(!key)return;
+  log('=== WORD MAPPING IMPORT ===','info');
+  let totalRows=0;
+  let pendingRows=[];
+  const BATCH=1000;
+
+  async function flushBatch(){
+    if(pendingRows.length===0)return;
+    const batch=[...pendingRows];
+    pendingRows=[];
+    await sbInsert('strongs_mapping',batch,key);
+    totalRows+=batch.length;
+  }
+
+  try{
+    for(let bi=startBook;bi<BOOKS.length;bi++){
+      const abbr=BOOKS[bi];
+      const bookNum=bi+1;
+      log(`Fetching ${abbr} (book ${bookNum}/66)...`,'info');
+
+      const res=await fetch(`https://raw.githubusercontent.com/kaiserlik/kjv/main/${abbr}.json`);
+      if(!res.ok){log(`  SKIP ${abbr}: ${res.status}`,'err');continue;}
+      let data;
+      let useRegex=false;
+      let rawText='';
+      try{data=await res.json();}catch(e){
+        log(`  JSON parse error for ${abbr}, using regex fallback...`,'warn');
+        const res2=await fetch(`https://raw.githubusercontent.com/kaiserlik/kjv/main/${abbr}.json`);
+        rawText=await res2.text();
+        useRegex=true;
+      }
+
+      // Top-level key is either the abbreviation or the full book name
+      const fullName=BOOK_NAMES[bi];
+      let bookMappings=0;
+
+      if(useRegex){
+        // Regex fallback: extract verse refs and English text directly
+        const verseRe=new RegExp(`"${abbr}\\|(\\d+)\\|(\\d+)"\\s*:\\s*\\{[^}]*"en"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'g');
+        let vm;
+        while((vm=verseRe.exec(rawText))!==null){
+          const ch=parseInt(vm[1]),vs=parseInt(vm[2]),enText=vm[3].replace(/\\"/g,'"');
+          const mappings=parseVerse(enText);
+          for(const m of mappings){
+            pendingRows.push({book_num:bookNum,chapter:ch,verse:vs,word_pos:m.word_pos,word_text:m.word_text,strongs_num:m.strongs_num});
+          }
+          bookMappings+=mappings.length;
+          if(pendingRows.length>=BATCH){await flushBatch();if(totalRows%10000<BATCH)log(`  ... ${totalRows} rows inserted so far`);}
+        }
+        log(`  ${abbr}: ${bookMappings} word mappings (regex)`,'ok');
+        continue;
+      }
+
+      const bookData=data[abbr]||data[fullName];
+      if(!bookData){log(`  No data for ${abbr} (keys: ${Object.keys(data).join(', ')})`,'err');continue;}
+      // Sort chapters numerically
+      const chEntries=Object.entries(bookData).sort((a,b)=>{
+        return parseInt(a[0].split('|')[1])-parseInt(b[0].split('|')[1]);
+      });
+      for(const[chKey,chData] of chEntries){
+        const ch=parseInt(chKey.split('|')[1]);
+        // Sort verses numerically
+        const vEntries=Object.entries(chData).sort((a,b)=>{
+          return parseInt(a[0].split('|')[2])-parseInt(b[0].split('|')[2]);
+        });
+        for(const[vKey,vData] of vEntries){
+          const vs=parseInt(vKey.split('|')[2]);
+          const enText=vData.en;
+          if(!enText)continue;
+
+          const mappings=parseVerse(enText);
+          for(const m of mappings){
+            pendingRows.push({
+              book_num:bookNum,
+              chapter:ch,
+              verse:vs,
+              word_pos:m.word_pos,
+              word_text:m.word_text,
+              strongs_num:m.strongs_num
+            });
+          }
+          bookMappings+=mappings.length;
+
+          if(pendingRows.length>=BATCH){
+            await flushBatch();
+            if(totalRows%10000<BATCH)log(`  ... ${totalRows} rows inserted so far`);
+          }
+        }
+      }
+      log(`  ${abbr}: ${bookMappings} word mappings`,'ok');
+    }
+
+    // Flush remaining
+    await flushBatch();
+    log(`MAPPING IMPORT COMPLETE: ${totalRows} total rows`,'ok');
+  }catch(err){
+    log(`ERROR at ${totalRows} rows: ${err.message}`,'err');
+  }
+}
+
+async function checkCounts(){
+  log('=== ROW COUNTS ===','info');
+  try{
+    const key=document.getElementById('serviceKey').value.trim()||ANON_KEY;
+    const r1=await fetch(`${SUPABASE_URL}/rest/v1/strongs_lexicon?select=strongs_number&limit=0`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'count=exact'}
+    });
+    const c1=r1.headers.get('content-range');
+    log(`strongs_lexicon: ${c1}`,'ok');
+
+    const r2=await fetch(`${SUPABASE_URL}/rest/v1/strongs_mapping?select=id&limit=0`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'count=exact'}
+    });
+    const c2=r2.headers.get('content-range');
+    log(`strongs_mapping: ${c2}`,'ok');
+  }catch(err){
+    log(`ERROR: ${err.message}`,'err');
+  }
+}
+</script>
+</body></html>

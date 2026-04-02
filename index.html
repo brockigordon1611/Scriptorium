@@ -409,6 +409,54 @@ function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(
 function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
 function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';let t=text.replace(/<\/red>(\s*(?:<i>[^<]*<\/i>\s*)*)<red>/g,'$1');return t.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
+function buildStrongsVerse(text,mappings,onTap,T,dark){
+  // Build set of red-letter word positions by walking raw text with <red> tags
+  const redSet=new Set();
+  let inRed=false,rIdx=0;
+  const rawTokens=text.split(/(\s+|<red>|<\/red>|<[^>]+>)/);
+  for(const tok of rawTokens){
+    if(tok==='<red>'){inRed=true;}
+    else if(tok==='</red>'){inRed=false;}
+    else if(/^</.test(tok)||/^\s*$/.test(tok)){/* skip tags and whitespace */}
+    else{const wt=tok.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');if(wt){if(inRed)redSet.add(rIdx);rIdx++;}}
+  }
+  const redColor=dark?'#ef5350':'#c62828';
+
+  // mappings: [{word_pos, word_text, strongs_num}] for this verse
+  const cleanText=text.replace(/<red>|<\/red>/g,'').replace(/<[^>]+>/g,'');
+  if(!mappings||!mappings.length)return React.createElement('span',null,cleanText);
+  const words=cleanText.split(/(\s+)/);
+  // Build a lookup: word_pos -> [{strongs_num, word_text}]
+  const posMap={};
+  for(const m of mappings){
+    if(!posMap[m.word_pos])posMap[m.word_pos]=[];
+    posMap[m.word_pos].push(m);
+  }
+  const elems=[];
+  let wordIdx=0;
+  for(let i=0;i<words.length;i++){
+    const w=words[i];
+    if(/^\s+$/.test(w)){elems.push(w);continue;}
+    // Strip outer punctuation to get real word (matches import parseVerse logic)
+    const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    if(!wordText){elems.push(w);continue;} // punctuation-only token, don't increment
+    const isRed=redSet.has(wordIdx);
+    const mapped=posMap[wordIdx];
+    if(mapped&&mapped.length>0){
+      const sNums=mapped.map(m=>m.strongs_num);
+      elems.push(React.createElement('span',{
+        key:i,
+        onClick:e=>{e.stopPropagation();onTap(sNums[0],w);},
+        style:{borderBottom:`1.5px dotted ${isRed?redColor:T.gM}`,cursor:'pointer',paddingBottom:1,color:isRed?redColor:undefined}
+      },w));
+    }else{
+      elems.push(isRed?React.createElement('span',{key:i,style:{color:redColor}},w):w);
+    }
+    wordIdx++;
+  }
+  return React.createElement('span',null,...elems);
+}
+
 function parseCSVtoRows(content){
   const rows=[];const lines=content.split(/\r?\n/);
   let start=0;
@@ -436,6 +484,21 @@ async function dbGetChapter(versionId,bookNum,chapter){
   const r=await fetch(url,{headers:hdrs});
   const d=await r.json();
   return Array.isArray(d)?d:[];
+}
+async function dbGetStrongsForChapter(bookNum,chapter){
+  const token=getToken();
+  const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
+  return Array.isArray(data)?data:[];
+}
+async function dbGetStrongsEntry(strongsNumber){
+  const token=getToken();
+  const {data}=await sbRpc('get_strongs_entry',{p_strongs_number:strongsNumber},token);
+  return data?.[0]||null;
+}
+async function dbSearchStrongs(query){
+  const token=getToken();
+  const {data}=await sbRpc('search_strongs',{p_query:query},token);
+  return Array.isArray(data)?data:[];
 }
 async function dbGetVerse(versionId,bookNum,chapter,verse){
   const token=getToken();
@@ -1507,7 +1570,16 @@ function App(){
     if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){if(readAutoFullscreen)enterFullScreen();scrollDelta.current=0;}
     else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
   }
-  const[strongsMode,setStrongsMode]=useState(false);
+  const[strongsMode,setStrongsMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:strongsMode'))||false;}catch{return false;}});
+  const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
+  const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...}}
+  const[strongsLoading,setStrongsLoading]=useState(false);
+  // Strong's tab search state (must be at component level for hooks)
+  const[strongsSearchQ,setStrongsSearchQ]=useState('');
+  const[strongsSearchRes,setStrongsSearchRes]=useState(null);
+  const[strongsSearchLoading,setStrongsSearchLoading]=useState(false);
+  const[strongsTabEntry,setStrongsTabEntry]=useState(null);
+  const strongsSearchTimer=useRef(null);
 
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
@@ -1679,6 +1751,35 @@ function App(){
     });
     return()=>{cancelled=true;};
   },[readVid,readBook,readCh,ready]);
+
+  // ── Persist Strong's mode ──
+  useEffect(()=>{localStorage.setItem('scrip:strongsMode',JSON.stringify(strongsMode));},[strongsMode]);
+
+  // ── Load Strong's data for current chapter ──
+  useEffect(()=>{
+    if(!strongsMode||!ready||readVid!=='kjv'){setStrongsData(d=>Object.keys(d).length?{}:d);return;}
+    let cancelled=false;
+    setStrongsLoading(true);
+    dbGetStrongsForChapter(readBook,readCh).then(rows=>{
+      if(cancelled)return;
+      // Group by verse
+      const byVerse={};
+      for(const r of rows){
+        if(!byVerse[r.verse])byVerse[r.verse]=[];
+        byVerse[r.verse].push(r);
+      }
+      setStrongsData(byVerse);
+      setStrongsLoading(false);
+    }).catch(()=>{if(!cancelled){setStrongsData({});setStrongsLoading(false);}});
+    return()=>{cancelled=true;};
+  },[strongsMode,readBook,readCh,ready,readVid]);
+
+  // ── Strong's word tap handler ──
+  async function handleStrongsWordTap(strongsNum,wordText){
+    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null});
+    const entry=await dbGetStrongsEntry(strongsNum);
+    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry}:prev);
+  }
 
   // ── Load parallel chapters ──
   useEffect(()=>{
@@ -2821,6 +2922,12 @@ function App(){
                 No verses found.<br/><span style={{fontSize:13,display:'block',marginTop:8}}>Upload a CSV via the Compare tab &gt; Versions.</span>
               </div>
             )}
+            {strongsMode&&readVid!=='kjv'&&!readSearchRes&&(
+              <div style={{margin:'8px 8px 0',padding:'8px 14px',borderRadius:7,border:`1px solid ${T.gD}`,background:T.gF,display:'flex',alignItems:'center',gap:8}}>
+                <span style={{color:T.gT,fontSize:14,flexShrink:0}}>ℍ</span>
+                <span style={{fontFamily:FB,fontSize:13,color:T.gM,lineHeight:1.4}}>Strong's mode is only available for KJV.</span>
+              </div>
+            )}
             {!readSearchRes&&readVerses.length>0&&(
               readParaMode?(
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
@@ -2833,7 +2940,9 @@ function App(){
                         style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark):<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>}
+                        </span>
                         {' '}
                       </span>
                     );
@@ -2850,7 +2959,9 @@ function App(){
                         style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}} dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark):<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>}
+                        </span>
                       </div>
                     );
                   })}
@@ -2858,6 +2969,35 @@ function App(){
               )
             )}
           </div>
+
+          {/* Strong's popup */}
+          {strongsPopup&&(
+            <div onClick={()=>setStrongsPopup(null)} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
+              <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 24px rgba(0,0,0,0.3)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{strongsPopup.strongs_number}</span>
+                  <button onClick={()=>setStrongsPopup(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                </div>
+                {strongsPopup.entry?(
+                  <div>
+                    <div style={{fontSize:28,color:T.body,marginBottom:4,fontFamily:'serif'}}>{strongsPopup.entry.original_word}</div>
+                    <div style={{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}}>{strongsPopup.entry.transliteration}{strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:''}</div>
+                    <div style={{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:12,fontStyle:'italic'}}>{strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'}</div>
+                    <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.5,marginBottom:12}}>{strongsPopup.entry.short_def}</div>
+                    {strongsPopup.entry.full_def&&<div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4,marginBottom:12}}>{strongsPopup.entry.full_def}</div>}
+                    {strongsPopup.entry.kjv_usage&&(
+                      <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
+                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
+                        <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4}}>{strongsPopup.entry.kjv_usage}</div>
+                      </div>
+                    )}
+                  </div>
+                ):(
+                  <div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading...</div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Selection action strip */}
           {stripOpen&&(
@@ -3114,11 +3254,81 @@ function App(){
       {/* ═══ STRONG'S CONCORDANCE TAB ═══ */}
       {tab==='strongs'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
-            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
-            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Hebrew & Greek word study tools are coming soon.</div>
+          <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+            <input value={strongsSearchQ} onChange={e=>{
+              const val=e.target.value;setStrongsSearchQ(val);setStrongsTabEntry(null);
+              if(strongsSearchTimer.current)clearTimeout(strongsSearchTimer.current);
+              strongsSearchTimer.current=setTimeout(()=>{
+                const q=val.trim();
+                if(q.length<2){setStrongsSearchRes(null);return;}
+                setStrongsSearchLoading(true);
+                dbSearchStrongs(q).then(r=>{setStrongsSearchRes(r);setStrongsSearchLoading(false);}).catch(()=>{setStrongsSearchRes([]);setStrongsSearchLoading(false);});
+              },350);
+            }} placeholder="Search by Strong's number (H430) or English word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
+              {strongsSearchLoading?'SEARCHING…':strongsSearchRes?`${strongsSearchRes.length} RESULT${strongsSearchRes.length!==1?'S':''}`:strongsSearchQ.length>0&&strongsSearchQ.length<2?'TYPE AT LEAST 2 CHARACTERS':"STRONG'S CONCORDANCE · 14,197 ENTRIES"}
+            </div>
           </div>
+
+          {/* Entry detail view */}
+          {strongsTabEntry&&strongsTabEntry.entry&&(
+            <div style={{padding:'16px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0,overflow:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{strongsTabEntry.strongs_number}</span>
+                <button onClick={()=>setStrongsTabEntry(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:16}}>✕</button>
+              </div>
+              <div style={{fontSize:28,color:T.body,marginBottom:4,fontFamily:'serif'}}>{strongsTabEntry.entry.original_word}</div>
+              <div style={{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}}>{strongsTabEntry.entry.transliteration}{strongsTabEntry.entry.pronunciation?` (${strongsTabEntry.entry.pronunciation})`:''}</div>
+              <div style={{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:10,fontStyle:'italic'}}>{strongsTabEntry.entry.language==='hebrew'?'Hebrew':'Greek'}</div>
+              <div style={{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.5,marginBottom:10}}>{strongsTabEntry.entry.short_def}</div>
+              {strongsTabEntry.entry.full_def&&<div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4,marginBottom:10}}>{strongsTabEntry.entry.full_def}</div>}
+              {strongsTabEntry.entry.kjv_usage&&(
+                <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:8,marginTop:4}}>
+                  <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
+                  <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4}}>{strongsTabEntry.entry.kjv_usage}</div>
+                </div>
+              )}
+            </div>
+          )}
+          {strongsTabEntry&&!strongsTabEntry.entry&&(
+            <div style={{padding:20,textAlign:'center',color:T.dim,fontFamily:FB}}>Loading...</div>
+          )}
+
+          {/* Search results list */}
+          {strongsSearchRes&&strongsSearchRes.length>0&&!strongsTabEntry&&(
+            <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
+              {strongsSearchRes.map(r=>(
+                <div key={r.strongs_number} onClick={()=>{
+                  setStrongsTabEntry({strongs_number:r.strongs_number,entry:null});
+                  dbGetStrongsEntry(r.strongs_number).then(entry=>{
+                    setStrongsTabEntry(prev=>prev&&prev.strongs_number===r.strongs_number?{strongs_number:r.strongs_number,entry}:prev);
+                  });
+                }}
+                  style={{padding:'10px 18px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`,transition:'background .1s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.gF}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2}}>
+                    <span style={{fontFamily:FS,fontSize:12,color:T.gT,fontWeight:600,letterSpacing:'0.06em'}}>{r.strongs_number}</span>
+                    <span style={{fontFamily:'serif',fontSize:16,color:T.body}}>{r.original_word}</span>
+                    <span style={{fontFamily:FB,fontSize:13,color:T.mut,fontStyle:'italic'}}>{r.transliteration}</span>
+                  </div>
+                  <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.short_def}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {strongsSearchRes&&strongsSearchRes.length===0&&(
+            <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:32}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.dim,textAlign:'center'}}>No results found for "{strongsSearchQ}"</div>
+            </div>
+          )}
+          {!strongsSearchRes&&!strongsTabEntry&&(
+            <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
+              <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
+              <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
+              <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
+            </div>
+          )}
         </div>
       )}
 

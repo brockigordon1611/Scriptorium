@@ -1,5 +1,5 @@
 $port = 3000
-$file = "C:\Users\brock\Desktop\Scriptorium\Scriptorium-v6.html"
+$file = "C:\Users\brock\Desktop\Scriptorium\index.html"
 $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
