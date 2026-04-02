@@ -372,6 +372,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   /* line-height now controlled by readLineHeight state */
   .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
   .read-area::-webkit-scrollbar{display:none;}
+  .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:rgba(180,160,100,0.5);pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;}
+  .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
   .slide-down-sheet>div:first-child{scrollbar-width:none;-ms-overflow-style:none;}
   .slide-down-sheet>div:first-child::-webkit-scrollbar{display:none;}
   .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
@@ -1566,14 +1568,45 @@ function App(){
   const lastScrollY=useRef(0);
   const scrollDelta=useRef(0);
   const fsScrollThreshold=30;
+  const scrollbarThumbRef=useRef(null);
+  const scrollbarHideTimer=useRef(null);
+  const scrollRafPending=useRef(false);
+  const scrollPendingState=useRef(null);
   function handleReadScroll(e){
     if(readSearchRes){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
-    if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
-    if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
-    scrollDelta.current+=dy;
-    if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){if(readAutoFullscreen)enterFullScreen();scrollDelta.current=0;}
-    else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
+    // Fullscreen logic runs immediately (no RAF needed — it doesn't touch layout)
+    if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;}
+    else{
+      if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
+      scrollDelta.current+=dy;
+      if(scrollDelta.current>fsScrollThreshold&&!readFullScreen.current){if(readAutoFullscreen)enterFullScreen();scrollDelta.current=0;}
+      else if(scrollDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();scrollDelta.current=0;}
+    }
+    // Scrollbar DOM updates — throttled to once per animation frame
+    if(!scrollbarThumbRef.current)return;
+    scrollPendingState.current={el,sy};
+    if(scrollRafPending.current)return;
+    scrollRafPending.current=true;
+    requestAnimationFrame(()=>{
+      scrollRafPending.current=false;
+      const{el,sy}=scrollPendingState.current||{};
+      if(!el||!scrollbarThumbRef.current)return;
+      const totalH=el.scrollHeight;const viewH=el.clientHeight;
+      if(totalH>viewH){
+        const trackTop=navH;
+        const trackBottom=window.innerHeight-(bottomBarRef.current?.offsetHeight||40);
+        const trackH=trackBottom-trackTop;
+        const thumbH=Math.max(32,trackH*(viewH/totalH));
+        const maxTravel=trackH-thumbH;
+        const top=trackTop+sy/(totalH-viewH)*maxTravel;
+        scrollbarThumbRef.current.style.top=top+'px';
+        scrollbarThumbRef.current.style.height=thumbH+'px';
+        scrollbarThumbRef.current.classList.add('visible');
+        clearTimeout(scrollbarHideTimer.current);
+        scrollbarHideTimer.current=setTimeout(()=>{scrollbarThumbRef.current&&scrollbarThumbRef.current.classList.remove('visible');},900);
+      }
+    });
   }
   const[strongsMode,setStrongsMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:strongsMode'))||false;}catch{return false;}});
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
@@ -1590,6 +1623,8 @@ function App(){
 
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
+  const scrollHandlerRef=useRef(null);
+  const loadMorePendingRef=useRef(false);
   const navRef=useRef(null);
   const [navH,setNavH]=useState(0);
   const swipeTouchX=useRef(null);
@@ -1781,6 +1816,15 @@ function App(){
     return()=>{cancelled=true;};
   },[strongsMode,readBook,readCh,ready,readVid]);
 
+  // ── Native passive scroll listener (avoids non-passive React onScroll blocking compositor) ──
+  useEffect(()=>{
+    const el=readRef.current;
+    if(!el)return;
+    function handler(){scrollHandlerRef.current&&scrollHandlerRef.current(el);}
+    el.addEventListener('scroll',handler,{passive:true});
+    return()=>el.removeEventListener('scroll',handler);
+  },[]); // attach once on mount; handler always reads scrollHandlerRef.current
+
   // ── Strong's word tap handler ──
   const strongsCache=useRef({});
   async function fetchStrongsData(strongsNum){
@@ -1876,11 +1920,18 @@ function App(){
   }
 
   // ── Search infinite scroll ──
-  function onSearchScroll(e){
-    const el=e.currentTarget;
-    if(readSearchRes&&readSearchLimit<readSearchRes.length&&el.scrollHeight-el.scrollTop-el.clientHeight<500)
-      setReadSearchLimit(n=>n+50);
+  function onSearchScroll(el){
+    if(readSearchRes&&readSearchLimit<readSearchRes.length&&el.scrollHeight-el.scrollTop-el.clientHeight<500&&!loadMorePendingRef.current){
+      loadMorePendingRef.current=true;
+      setReadSearchLimit(n=>{loadMorePendingRef.current=false;return n+50;});
+    }
   }
+
+  // ── Keep scroll handler ref fresh every render ──
+  scrollHandlerRef.current=(el)=>{
+    onSearchScroll(el);
+    if(tab==='read')handleReadScroll({target:el});
+  };
 
   // ── Reading helpers ──
   const readBk=BIBLE.find(b=>b.n===readBook);const readTotalCh=readBk?.v?.length||1;
@@ -2866,9 +2917,10 @@ function App(){
           )}
 
 
+          {/* Custom overlay scrollbar thumb */}
+          <div ref={scrollbarThumbRef} className="read-scrollbar"/>
           {/* Verse content */}
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?navH+72:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
-            onScroll={e=>{onSearchScroll(e);if(tab==='read')handleReadScroll(e);}}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
@@ -3069,11 +3121,11 @@ function App(){
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
-                    React.createElement('div',{style:{fontSize:28,color:T.body,marginBottom:4,fontFamily:'serif'}},strongsPopup.entry.original_word),
+                    React.createElement('div',{style:{fontSize:Math.max(24,Math.round(readFontSize*0.9)),color:T.body,marginBottom:4,fontFamily:'serif'}},strongsPopup.entry.original_word),
                     React.createElement('div',{style:{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}},strongsPopup.entry.transliteration+(strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:'')),
                     React.createElement('div',{style:{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:12,fontStyle:'italic'}},strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'),
-                    React.createElement('div',{style:{fontFamily:FB,fontSize:16,color:T.body,lineHeight:1.5,marginBottom:12}},strongsPopup.entry.short_def),
-                    strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.4,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
+                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}},strongsPopup.entry.short_def),
+                    strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
                     groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}},
                       React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}},'KJV USAGE'),
                       groupList.map(([key,{word,refs}])=>{
