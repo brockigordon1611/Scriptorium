@@ -1782,22 +1782,38 @@ function App(){
   },[strongsMode,readBook,readCh,ready,readVid]);
 
   // ── Strong's word tap handler ──
+  const strongsCache=useRef({});
+  async function fetchStrongsData(strongsNum){
+    if(strongsCache.current[strongsNum])return strongsCache.current[strongsNum];
+    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
+    strongsCache.current[strongsNum]={entry,verses};
+    return{entry,verses};
+  }
   async function handleStrongsWordTap(strongsNum,wordText){
     setStrongsExpandedWords(new Set());
+    const cached=strongsCache.current[strongsNum];
+    if(cached){
+      setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:cached.entry,verses:cached.verses,versesLoading:false,history:[]});
+      return;
+    }
     setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true,history:[]});
-    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
+    const{entry,verses}=await fetchStrongsData(strongsNum);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
   }
   async function loadStrongsEntry(strongsNum){
     setStrongsExpandedWords(new Set());
-    // Push current entry onto history stack before navigating
+    const cached=strongsCache.current[strongsNum];
     setStrongsPopup(prev=>{
       if(!prev)return null;
       const histEntry={strongs_number:prev.strongs_number,entry:prev.entry,verses:prev.verses};
-      return{...prev,strongs_number:strongsNum,entry:null,verses:null,versesLoading:true,history:[...(prev.history||[]),histEntry]};
+      const next={...prev,strongs_number:strongsNum,history:[...(prev.history||[]),histEntry]};
+      if(cached)return{...next,entry:cached.entry,verses:cached.verses,versesLoading:false};
+      return{...next,entry:null,verses:null,versesLoading:true};
     });
-    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
-    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+    if(!cached){
+      const{entry,verses}=await fetchStrongsData(strongsNum);
+      setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+    }
   }
   function goBackStrongs(){
     setStrongsExpandedWords(new Set());
@@ -2439,7 +2455,10 @@ function App(){
                 <span style={{fontFamily:FS,fontSize:7,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:dark?T.gT:'#8a8070',lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
               </div>
               <div style={{position:'absolute',top:3,left:dark?'calc(100% - 29px)':3,width:26,height:26,borderRadius:'50%',background:dark?T.bgSec:'#ffffff',boxShadow:dark?`0 2px 6px rgba(0,0,0,0.5),0 0 0 1px ${T.gD}`:'0 2px 6px rgba(0,0,0,0.18)',display:'flex',alignItems:'center',justifyContent:'center',transition:'left .25s cubic-bezier(.4,0,.2,1),background .3s',fontSize:13}}>
-                <span style={{color:dark?T.gT:'#a09070'}}>{dark?'☾':'☀'}</span>
+                {dark
+                  ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:T.gT}}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                  : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:'#a09070'}}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                }
               </div>
             </div>
           </div>
@@ -3038,8 +3057,8 @@ function App(){
             }
             const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
 
-            return React.createElement('div',{onClick:()=>setStrongsPopup(null),style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 24px rgba(0,0,0,0.3)'}},
+            return React.createElement('div',{onClick:()=>setStrongsPopup(null),style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 32px rgba(0,0,0,0.4)',animation:'slideUp .28s cubic-bezier(0.32,0.72,0,1) both'}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement('button',{onClick:e=>{e.stopPropagation();goBackStrongs();},style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontSize:16,padding:'0 4px 0 0',fontFamily:FB,fontWeight:600}},'‹ Back'),
