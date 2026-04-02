@@ -45,6 +45,9 @@
     window.addEventListener('unhandledrejection', function(e) {
       e.preventDefault();
     });
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function(){});
+    }
   </script>
   <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useRef, useMemo } = React;
@@ -189,6 +192,83 @@ const Auth = {
   },
   onAuthChange(fn) { authListeners.push(fn); return () => { const i=authListeners.indexOf(fn); if(i>=0) authListeners.splice(i,1); }; }
 };
+
+
+// ══════════════════════════════════════════════════════════
+//  LOCAL-FIRST: IndexedDB Bible text cache
+// ══════════════════════════════════════════════════════════
+const IDB_NAME='scriptorium';
+const IDB_VER=1;
+let _idbInst=null;
+
+function idbOpen(){
+  if(_idbInst)return Promise.resolve(_idbInst);
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('verses')){
+        const vs=db.createObjectStore('verses',{keyPath:'pk'});
+        vs.createIndex('by_chapter',['version_id','book_num','chapter'],{unique:false});
+      }
+      if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'key'});
+    };
+    req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
+    req.onerror=e=>reject(e.target.error);
+  });
+}
+function _idbReq(r){return new Promise((res,rej)=>{r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});}
+
+async function idbGetChapterLocal(versionId,bookNum,chapter){
+  const db=await idbOpen();
+  const rows=await _idbReq(db.transaction('verses','readonly').objectStore('verses').index('by_chapter').getAll([versionId,bookNum,chapter]));
+  return rows.sort((a,b)=>a.verse-b.verse);
+}
+async function idbPutVerses(versionId,rows){
+  const db=await idbOpen();
+  const tx=db.transaction('verses','readwrite');
+  const st=tx.objectStore('verses');
+  for(const r of rows)st.put({pk:`${versionId}|${r.book_num}|${r.chapter}|${r.verse}`,version_id:versionId,book_num:r.book_num,chapter:r.chapter,verse:r.verse,text:r.text});
+  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+async function idbGetMeta(key){try{const db=await idbOpen();const r=await _idbReq(db.transaction('meta','readonly').objectStore('meta').get(key));return r?.value;}catch{return undefined;}}
+async function idbPutMeta(key,value){const db=await idbOpen();const tx=db.transaction('meta','readwrite');tx.objectStore('meta').put({key,value});return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});}
+async function idbIsDownloaded(versionId){return(await idbGetMeta(`dl:${versionId}`))===true;}
+
+async function idbDeleteVersionLocal(versionId){
+  const db=await idbOpen();
+  const tx=db.transaction('verses','readwrite');
+  const idx=tx.objectStore('verses').index('by_chapter');
+  const range=IDBKeyRange.bound([versionId,0,0],[versionId,999,9999]);
+  await new Promise((res,rej)=>{
+    const req=idx.openCursor(range);
+    req.onsuccess=e=>{const c=e.target.result;if(c){c.delete();c.continue();}};
+    tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
+  });
+  await idbPutMeta(`dl:${versionId}`,false);
+}
+
+async function downloadVersionLocally(versionId,onProgress,signal){
+  const BATCH=1000;let offset=0;let total=31102;
+  onProgress&&onProgress(0,total);
+  while(true){
+    if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+    const token=getToken();
+    const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':`${offset}-${offset+BATCH-1}`,'Prefer':'count=exact'};
+    const url=`${SUPA_URL}/rest/v1/bible_verses?select=book_num,chapter,verse,text&version_id=eq.${encodeURIComponent(versionId)}&order=book_num.asc,chapter.asc,verse.asc`;
+    const r=await fetch(url,{headers:hdrs,signal});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    const cr=r.headers.get('Content-Range');
+    if(cr){const m=cr.match(/\/(\d+)/);if(m)total=parseInt(m[1]);}
+    const rows=await r.json();
+    if(!Array.isArray(rows)||rows.length===0)break;
+    await idbPutVerses(versionId,rows);
+    offset+=rows.length;
+    onProgress&&onProgress(offset,total);
+    if(rows.length<BATCH)break;
+  }
+  await idbPutMeta(`dl:${versionId}`,true);
+}
 
 
 // ══════════════════════════════════════════════════════════
@@ -477,10 +557,17 @@ function parseCSVtoRows(content){
 //  SUPABASE DB OPERATIONS
 // ══════════════════════════════════════════════════════════
 async function dbGetChapter(versionId,bookNum,chapter){
+  // Local-first: read from IndexedDB if this version has been downloaded
+  try{
+    if(await idbIsDownloaded(versionId)){
+      const local=await idbGetChapterLocal(versionId,bookNum,chapter);
+      if(local.length>0)return local;
+    }
+  }catch(e){}
+  // Network fallback
   const token=getToken();
   const {data}=await sbRpc('get_chapter_verses',{p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);
   if(Array.isArray(data)&&data.length>0)return data;
-  // fallback: direct query with explicit high limit and Range header
   const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':'0-199'};
   const url=`${SUPA_URL}/rest/v1/bible_verses?select=verse%2Ctext&version_id=eq.${encodeURIComponent(versionId)}&book_num=eq.${bookNum}&chapter=eq.${chapter}&order=verse.asc&limit=200`;
   const r=await fetch(url,{headers:hdrs});
@@ -923,7 +1010,7 @@ function RecentsPanel({T,recents,onOpen,onClose,versions}){
 // ══════════════════════════════════════════════════════════
 //  VERSIONS MODAL  (manage + upload — unified)
 // ══════════════════════════════════════════════════════════
-function VersionsModal({data,onSave,onClose,T,user}){
+function VersionsModal({data,onSave,onClose,T,user,dlStates={},onDownload,onDeleteLocal}){
   const[vers,setVers]=useState(clone(data.versions));
   const[ulabel,setUlabel]=useState('');const[ulang,setUlang]=useState('EN');
   const[file,setFile]=useState(null);const[progress,setProgress]=useState('');
@@ -965,15 +1052,44 @@ function VersionsModal({data,onSave,onClose,T,user}){
     <Modal title="Bible Versions" onClose={onClose} wide T={T} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
       {/* Current versions */}
       {vers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:15,color:T.dim}}>No versions added yet.</div>}
-      {vers.map((v,i)=>(
-        <div key={v.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
+      {vers.map((v,i)=>{
+        const dl=dlStates[v.id]||{};
+        const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
+        return(
+          <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
+                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
+              </div>
+              {/* Offline download controls (built-in versions only) */}
+              {isBuiltin&&onDownload&&(
+                dl.downloading?(
+                  <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
+                    {dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}
+                  </span>
+                ):dl.downloaded?(
+                  <button onClick={()=>onDeleteLocal(v.id)} title="Remove offline copy" style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                    ✓ Offline
+                  </button>
+                ):(
+                  <button onClick={()=>onDownload(v.id)} title="Download for offline use" style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                    ↓ Offline
+                  </button>
+                )
+              )}
+              <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
+            </div>
+            {/* Progress bar */}
+            {isBuiltin&&dl.downloading&&dl.total>0&&(
+              <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${Math.round((dl.progress/dl.total)*100)}%`,background:T.gT,borderRadius:1,transition:'width .2s'}}/>
+              </div>
+            )}
+            {dl.err&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:4}}>{dl.err}</div>}
           </div>
-          <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
-        </div>
-      ))}
+        );
+      })}
       {/* Add built-in versions */}
       {builtinAvail.length>0&&(
         <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
@@ -1620,6 +1736,40 @@ function App(){
   const[strongsSearchLoading,setStrongsSearchLoading]=useState(false);
   const[strongsTabEntry,setStrongsTabEntry]=useState(null);
   const strongsSearchTimer=useRef(null);
+
+  // ── Local download state per version {downloaded,downloading,progress,total,err} ──
+  const[dlStates,setDlStates]=useState({});
+  const dlAbort=useRef({});
+
+  useEffect(()=>{
+    // Check which PUBLIC_VERSIONS are already in IndexedDB
+    (async()=>{
+      const checks=await Promise.all(PUBLIC_VERSIONS.map(async pv=>({id:pv.id,downloaded:await idbIsDownloaded(pv.id).catch(()=>false)})));
+      const map={};for(const c of checks)map[c.id]={downloaded:c.downloaded};
+      setDlStates(map);
+    })();
+  },[]);
+
+  function setDlState(vid,patch){setDlStates(prev=>({...prev,[vid]:{...(prev[vid]||{}), ...patch}}));}
+
+  async function startDownload(vid){
+    if(dlAbort.current[vid])dlAbort.current[vid].abort();
+    const ctrl=new AbortController();
+    dlAbort.current[vid]=ctrl;
+    setDlState(vid,{downloading:true,downloaded:false,progress:0,total:31102,err:null});
+    try{
+      await downloadVersionLocally(vid,(done,total)=>setDlState(vid,{downloading:true,progress:done,total}),ctrl.signal);
+      setDlState(vid,{downloaded:true,downloading:false,progress:0,total:0});
+    }catch(e){
+      if(e.name!=='AbortError')setDlState(vid,{downloading:false,err:e.message||'Download failed'});
+      else setDlState(vid,{downloading:false});
+    }finally{delete dlAbort.current[vid];}
+  }
+
+  async function deleteDownload(vid){
+    await idbDeleteVersionLocal(vid).catch(()=>{});
+    setDlState(vid,{downloaded:false,downloading:false});
+  }
 
   const[readSettingsOpen,setReadSettingsOpen]=useState(false);
   const readRef=useRef(null);
@@ -3635,7 +3785,7 @@ function App(){
           cancelLabel={modal.delType==='section'&&data.entries.some(e=>e.sectionId===modal.delId)?'OK':'Cancel'}
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
-      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} user={user}/>}
+      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} user={user} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload}/>}
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} versions={data.versions}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={()=>setModal(null)} versions={data.versions}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
