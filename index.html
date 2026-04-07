@@ -3482,25 +3482,28 @@ function App(){
                 ):(
                   React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
                 )
-              ),
-            ),
-            strongsVersePreview&&React.createElement('div',{onClick:()=>setStrongsVersePreview(null),style:{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.5)',animation:'fadeIn .18s ease both'}},
-                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
-                  React.createElement('button',{onClick:()=>setStrongsVersePreview(null),style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontFamily:FB,fontSize:20,fontWeight:600,padding:'0 8px 0 0',lineHeight:1}},'‹'),
-                  React.createElement('span',{style:{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}},strongsVersePreview.label),
-                  React.createElement('button',{onClick:()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');},style:{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'4px 10px',fontWeight:600}},'Go')
-                ),
-                strongsVersePreview.loading
-                  ?React.createElement('div',{style:{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}},'Loading…')
-                  :React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}},
-                    React.createElement('sup',{style:{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}},strongsVersePreview.vs),
-                    strongsVersePreview.text
-                  )
               )
-            )
             );
           })()}
+
+          {strongsVersePreview&&(
+            <div onClick={()=>setStrongsVersePreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
+              <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                  <button onClick={()=>setStrongsVersePreview(null)} style={{background:'none',border:'none',color:T.gT,cursor:'pointer',fontFamily:FB,fontSize:22,fontWeight:600,padding:'0 8px 0 0',lineHeight:1}}>‹</button>
+                  <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
+                  <button onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'4px 10px',fontWeight:600}}>Go</button>
+                </div>
+                {strongsVersePreview.loading
+                  ?<div style={{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}}>Loading…</div>
+                  :<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                    <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}}>{strongsVersePreview.vs}</sup>
+                    <span dangerouslySetInnerHTML={{__html:processRedLetter(strongsVersePreview.text,readRedLetter,dark)}}/>
+                  </div>
+                }
+              </div>
+            </div>
+          )}
 
           {/* Selection action strip */}
           {stripOpen&&(
