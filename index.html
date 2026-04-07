@@ -580,18 +580,21 @@ function normRef(raw){if(!raw)return raw;const m=raw.trim().match(/^([\d]*\s*[a-
 function parseRef(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(.+)$/);return m?{book:m[1].trim(),chapter:m[2],verse:m[3].trim()}:null;}
 function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(\d+)/);if(!m)return null;const b=BIBLE.find(x=>x.name.toLowerCase()===m[1].trim().toLowerCase());return b?{bookNum:b.n,chapter:parseInt(m[2]),verse:parseInt(m[3])}:null;}
 function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
-function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';let t=text.replace(/<\/red>(\s*(?:<i>[^<]*<\/i>\s*)*)<red>/g,'$1');return t.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
+function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';return text.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
-function buildStrongsVerse(text,mappings,onTap,T,dark){
-  // Build set of red-letter word positions by walking raw text with <red> tags
+function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
+  // Build set of red-letter word positions and italic word positions by walking raw text
   const redSet=new Set();
-  let inRed=false,rIdx=0;
-  const rawTokens=text.split(/(\s+|<red>|<\/red>|<[^>]+>)/);
+  const italicSet=new Set();
+  let inRed=false,inItalic=false,rIdx=0;
+  const rawTokens=text.split(/(\s+|<red>|<\/red>|<i>|<\/i>|<[^>]+>)/);
   for(const tok of rawTokens){
     if(tok==='<red>'){inRed=true;}
     else if(tok==='</red>'){inRed=false;}
-    else if(/^</.test(tok)||/^\s*$/.test(tok)){/* skip tags and whitespace */}
-    else{const wt=tok.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');if(wt){if(inRed)redSet.add(rIdx);rIdx++;}}
+    else if(tok==='<i>'){inItalic=true;}
+    else if(tok==='</i>'){inItalic=false;}
+    else if(/^</.test(tok)||/^\s*$/.test(tok)){/* skip other tags and whitespace */}
+    else{const wt=tok.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');if(wt){if(inRed)redSet.add(rIdx);if(inItalic)italicSet.add(rIdx);rIdx++;}}
   }
   const redColor=dark?'#ef5350':'#c62828';
 
@@ -613,17 +616,22 @@ function buildStrongsVerse(text,mappings,onTap,T,dark){
     // Strip outer punctuation to get real word (matches import parseVerse logic)
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
     if(!wordText){elems.push(w);continue;} // punctuation-only token, don't increment
-    const isRed=redSet.has(wordIdx);
+    const isRed=redLetter&&redSet.has(wordIdx);
+    const isItalic=italicSet.has(wordIdx);
+    // Italic supplied word sandwiched between red-letter words → muted red
+    const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
+    const effectiveColor=isRed||isContextRed?redColor:undefined;
     const mapped=posMap[wordIdx];
+    const wordStyle={...(effectiveColor?{color:effectiveColor}:{}),...(isItalic?{fontStyle:'italic'}:{})};
     if(mapped&&mapped.length>0){
       const sNums=mapped.map(m=>m.strongs_num);
       elems.push(React.createElement('span',{
         key:i,
-        onClick:e=>{e.stopPropagation();onTap(sNums[0],w);},
-        style:{borderBottom:`1.5px dotted ${isRed?redColor:T.gM}`,cursor:'pointer',paddingBottom:1,color:isRed?redColor:undefined}
+        onDoubleClick:e=>{e.stopPropagation();onTap(sNums[0],w);},
+        style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,...wordStyle}
       },w));
     }else{
-      elems.push(isRed?React.createElement('span',{key:i,style:{color:redColor}},w):w);
+      elems.push((effectiveColor||isItalic)?React.createElement('span',{key:i,style:wordStyle},w):w);
     }
     wordIdx++;
   }
@@ -1822,6 +1830,7 @@ function App(){
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsLoading,setStrongsLoading]=useState(false);
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
+  const[strongsVersePreview,setStrongsVersePreview]=useState(null); // {bn,ch,vs,label,text,loading}
   const[strongsInfoVisible,setStrongsInfoVisible]=useState(false);
   // Strong's tab search state (must be at component level for hooks)
   const[strongsSearchQ,setStrongsSearchQ]=useState('');
@@ -2086,7 +2095,7 @@ function App(){
     function handler(){scrollHandlerRef.current&&scrollHandlerRef.current(el);}
     el.addEventListener('scroll',handler,{passive:true});
     return()=>el.removeEventListener('scroll',handler);
-  },[]); // attach once on mount; handler always reads scrollHandlerRef.current
+  },[ready,tab]); // re-attach when ready or tab changes; handler ref stays fresh every render
 
   // ── Strong's word tap handler ──
   const strongsCache=useRef({});
@@ -2109,6 +2118,7 @@ function App(){
   }
   async function loadStrongsEntry(strongsNum){
     setStrongsExpandedWords(new Set());
+    setStrongsVersePreview(null);
     const cached=strongsCache.current[strongsNum];
     setStrongsPopup(prev=>{
       if(!prev)return null;
@@ -2124,12 +2134,25 @@ function App(){
   }
   function goBackStrongs(){
     setStrongsExpandedWords(new Set());
+    setStrongsVersePreview(null);
     setStrongsPopup(prev=>{
       if(!prev||!prev.history||prev.history.length===0)return prev;
       const history=[...prev.history];
       const last=history.pop();
       return{...prev,...last,history,versesLoading:false};
     });
+  }
+  async function openStrongsVersePreview(bn,ch,vs){
+    const bk=BIBLE[bn-1]?.name||'';
+    const label=`${bk} ${ch}:${vs}`;
+    setStrongsVersePreview({bn,ch,vs,label,text:null,loading:true});
+    try{
+      const rows=await dbGetChapter(readVid,bn,ch);
+      const row=rows.find(r=>r.verse===vs);
+      setStrongsVersePreview(p=>p&&p.bn===bn&&p.ch===ch&&p.vs===vs?{...p,text:row?row.text:'(verse not found)',loading:false}:p);
+    }catch{
+      setStrongsVersePreview(p=>p&&p.bn===bn&&p.ch===ch&&p.vs===vs?{...p,text:'(could not load)',loading:false}:p);
+    }
   }
 
   // ── Load parallel chapters ──
@@ -3358,7 +3381,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark):<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
                         {' '}
                       </span>
@@ -3377,7 +3400,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark):<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
                       </div>
                     );
@@ -3414,7 +3437,7 @@ function App(){
             }
             const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
 
-            return React.createElement('div',{onClick:()=>setStrongsPopup(null),style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
+            return React.createElement('div',{onClick:()=>{setStrongsPopup(null);setStrongsVersePreview(null);},style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 32px rgba(0,0,0,0.4)',animation:'slideUp .28s cubic-bezier(0.32,0.72,0,1) both'}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
@@ -3422,13 +3445,13 @@ function App(){
                     React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
                     totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`×${totalCount}`)
                   ),
-                  React.createElement('button',{onClick:()=>setStrongsPopup(null),style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}},'✕')
+                  React.createElement('button',{onClick:()=>{setStrongsPopup(null);setStrongsVersePreview(null);},style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}},'✕')
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
-                    React.createElement('div',{style:{fontSize:Math.max(24,Math.round(readFontSize*0.9)),color:T.body,marginBottom:4,fontFamily:'serif'}},strongsPopup.entry.original_word),
-                    React.createElement('div',{style:{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:2}},strongsPopup.entry.transliteration+(strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:'')),
-                    React.createElement('div',{style:{fontFamily:FB,fontSize:14,color:T.dim,marginBottom:12,fontStyle:'italic'}},strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'),
+                    React.createElement('div',{style:{fontSize:Math.max(24,Math.round(readFontSize*1.1)),color:T.body,marginBottom:4,fontFamily:fontFamilyMap[readFontFamily]}},strongsPopup.entry.original_word),
+                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,marginBottom:2}},strongsPopup.entry.transliteration+(strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:'')),
+                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,marginBottom:12,fontStyle:'italic'}},strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'),
                     React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}},strongsPopup.entry.short_def),
                     strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
                     groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}},
@@ -3440,14 +3463,14 @@ function App(){
                         return React.createElement('div',{key,style:{marginBottom:8}},
                           React.createElement('div',{onClick:()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                             style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}},
-                            React.createElement('span',{style:{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600}},word),
-                            React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim}},`(×${refs.size})`),
-                            React.createElement('span',{style:{fontFamily:FB,fontSize:11,color:T.dim,marginLeft:'auto'}},isExpanded?'▴':'▾')
+                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,fontWeight:600}},word),
+                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim}},`(×${refs.size})`),
+                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.76),color:T.dim,marginLeft:'auto'}},isExpanded?'▴':'▾')
                           ),
                           isExpanded&&React.createElement('div',{style:{paddingLeft:8,paddingBottom:4}},
                             refArr.map(({bn,ch,vs})=>
-                              React.createElement('span',{key:`${bn}-${ch}-${vs}`,onClick:()=>{setStrongsPopup(null);setReadBook(bn);setReadCh(ch);setTab('read');},
-                                style:{display:'inline-block',fontFamily:FB,fontSize:12,color:T.gT,cursor:'pointer',marginRight:10,marginBottom:4,textDecoration:'underline dotted'}},
+                              React.createElement('span',{key:`${bn}-${ch}-${vs}`,onClick:e=>{e.stopPropagation();openStrongsVersePreview(bn,ch,vs);},
+                                style:{display:'inline-block',fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.gT,cursor:'pointer',marginRight:10,marginBottom:4,textDecoration:'underline dotted'}},
                                 `${bookName(bn)} ${ch}:${vs}`)
                             )
                           )
@@ -3459,7 +3482,23 @@ function App(){
                 ):(
                   React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
                 )
+              ),
+            ),
+            strongsVersePreview&&React.createElement('div',{onClick:()=>setStrongsVersePreview(null),style:{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.5)',animation:'fadeIn .18s ease both'}},
+                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}},
+                  React.createElement('button',{onClick:()=>setStrongsVersePreview(null),style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontFamily:FB,fontSize:20,fontWeight:600,padding:'0 8px 0 0',lineHeight:1}},'‹'),
+                  React.createElement('span',{style:{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}},strongsVersePreview.label),
+                  React.createElement('button',{onClick:()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');},style:{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'4px 10px',fontWeight:600}},'Go')
+                ),
+                strongsVersePreview.loading
+                  ?React.createElement('div',{style:{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}},'Loading…')
+                  :React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}},
+                    React.createElement('sup',{style:{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}},strongsVersePreview.vs),
+                    strongsVersePreview.text
+                  )
               )
+            )
             );
           })()}
 
@@ -3582,17 +3621,17 @@ function App(){
           </div>
           {/* Bottom nav */}
           <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
+            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
             <button type="button" className="show-mobile" onClick={()=>setParallelMobileSheet('nav')}
-              style={{background:'none',border:'none',color:T.gD,fontFamily:FS,fontSize:11,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
+              style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
               {parallelVs} / {parallelTotalVs}
             </button>
-            <span className="hide-mobile" style={{fontFamily:FS,fontSize:11,color:T.gD,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
+            <span className="hide-mobile" style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
               {parallelVs} / {parallelTotalVs}
             </span>
-            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
+            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
               Next ›
             </button>
           </div>
