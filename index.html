@@ -885,7 +885,7 @@ function RecoveryPanel({T,onDone}){
     setBusy(false);
   }
   return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:T.bg,padding:24}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100dvh',background:T.bg,padding:24}}>
       <style>{CSS}</style>
       <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
         <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:T.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
@@ -893,7 +893,7 @@ function RecoveryPanel({T,onDone}){
       </div>
       <div className="modal-in fade-up stagger-1" style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:T.accentLine}}/>
-        <div style={{padding:'28px 32px'}}>
+        <div style={{padding:'23px 32px 19px'}}>
           <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:6,textAlign:'center'}}>Set New Password</div>
           <div style={{fontFamily:FB,fontSize:13,color:T.mut,textAlign:'center',marginBottom:22,lineHeight:1.6}}>Choose a new password for your account.</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:T.green,border:`1px solid ${T.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:T.greenTxt,lineHeight:1.6}}>{msg}</div>}
@@ -983,7 +983,7 @@ function AuthPanel({onAuth}){
       {/* Login card */}
       <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:D.accentLine}}/>
-        <div style={{padding:'28px 32px'}}>
+        <div style={{padding:'23px 32px 19px'}}>
           <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:12,textAlign:'center'}}>Sign In</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
           {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
