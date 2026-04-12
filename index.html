@@ -1857,6 +1857,7 @@ function App(){
   const loadMorePendingRef=useRef(false);
   const navRef=useRef(null);
   const [navH,setNavH]=useState(0);
+  const [bottomBarH,setBottomBarH]=useState(0);
   const swipeTouchX=useRef(null);
   const swipeTouchY=useRef(null);
   const swipeTouchT=useRef(null);
@@ -1915,6 +1916,15 @@ function App(){
   },[]);
   // Re-measure nav height after loading completes (navRef is null during loading screen)
   useEffect(()=>{if(ready&&navRef.current)setNavH(navRef.current.offsetHeight);},[ready]);
+  // Measure bottom bar height
+  useEffect(()=>{
+    const measure=()=>{if(bottomBarRef.current)setBottomBarH(bottomBarRef.current.offsetHeight);};
+    measure();
+    const ro=new ResizeObserver(measure);
+    if(bottomBarRef.current)ro.observe(bottomBarRef.current);
+    window.addEventListener('resize',measure);
+    return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
+  },[ready]);
   // ── Dictionary lookup (local IndexedDB → Supabase RPC → external API) ──
   useEffect(()=>{
     if(dictTimerRef.current)clearTimeout(dictTimerRef.current);
@@ -3495,7 +3505,8 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen.current?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:readFullScreen.current?0:bottomBarH,left:0,right:0,zIndex:160,background:'rgba(14,13,11,0.72)',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',padding:'10px 12px',display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{height:1,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
