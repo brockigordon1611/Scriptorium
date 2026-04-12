@@ -2317,9 +2317,14 @@ function App(){
     }
   }
   async function doReadBookmark(){
-    const v=[...readSelVerses].sort((a,b)=>a-b)[0];
+    const sorted=[...readSelVerses].sort((a,b)=>a-b);
+    const v=sorted[0];
     if(!user||!v)return;
-    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||`${readBk?.name} ${readCh}:${v}`});
+    // Build range string e.g. "5-9" or "3, 5-7"
+    const ranges=[];let i=0;
+    while(i<sorted.length){let s=sorted[i],e=s;while(i+1<sorted.length&&sorted[i+1]===e+1){i++;e=sorted[i];}ranges.push(s===e?`${s}`:`${s}-${e}`);i++;}
+    const rangeRef=`${readBk?.name} ${readCh}:${ranges.join(', ')}`;
+    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||rangeRef});
     setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');dismissStrip();},1800);
   }
 
