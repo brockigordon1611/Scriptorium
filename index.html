@@ -4,13 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Scriptorium</title>
-  <link rel="manifest" href="./manifest.json">
-    <link rel="icon" href="favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-      <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-      <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon.png">
-      <link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon.png">
   <meta name="theme-color" content="#0e0d0b">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Scriptorium">
@@ -459,7 +452,7 @@ const ISSUE_TYPES=['manuscript','word','omission','article','grammar','doctrine'
 const STATUS_VALUES=['reference','faithful','corrupt','diff','partial','missing'];
 const STATUS_LABELS={reference:'Reference',faithful:'Faithful',corrupt:'Corrupt / Alexandrian',diff:'Differs',partial:'Partial',missing:'Absent'};
 const ISSUE_LABELS={manuscript:'Manuscript',word:'Word Choice',omission:'Omission',article:'Article',grammar:'Grammar',doctrine:'Doctrine',name:'Name/Title',other:'Other'};
-const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false}];
+const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false},{id:'p1602',label:'1602P',lang:'ES',isRef:false},{id:'rv1960',label:'RVR60',lang:'ES',isRef:false}];
 // Webster's 1828 dictionary: 107,793 entries in Supabase table webster_1828
 // Queried via RPC: search_webster_1828(query_term)
 
@@ -631,10 +624,12 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     const mapped=posMap[wordIdx];
     const wordStyle={...(effectiveColor?{color:effectiveColor}:{}),...(isItalic?{fontStyle:'italic'}:{})};
     if(mapped&&mapped.length>0){
-      const sNums=mapped.map(m=>m.strongs_num);
+      const wordLower=wordText.toLowerCase();
+      const bestMatch=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wordLower);
+      const sNum=bestMatch?bestMatch.strongs_num:mapped[0].strongs_num;
       elems.push(React.createElement('span',{
         key:i,
-        onDoubleClick:e=>{e.stopPropagation();onTap(sNums[0],w);},
+        onDoubleClick:e=>{e.stopPropagation();onTap(sNum,w);},
         style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,...wordStyle}
       },w));
     }else{
@@ -643,20 +638,6 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     wordIdx++;
   }
   return React.createElement('span',null,...elems);
-}
-
-function parseCSVtoRows(content){
-  const rows=[];const lines=content.split(/\r?\n/);
-  let start=0;
-  if(lines[0]){const fc=lines[0].split(',')[0].replace(/"/g,'').trim().toLowerCase();if(fc==='book'||fc==='libro'||isNaN(parseInt(fc)))start=1;}
-  for(let i=start;i<lines.length;i++){
-    const line=lines[i].trim();if(!line)continue;
-    const cols=[];let cur='',inQ=false;
-    for(let j=0;j<line.length;j++){const c=line[j];if(c==='"'){if(inQ&&line[j+1]==='"'){cur+='"';j++;}else inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur);cur='';}else cur+=c;}
-    cols.push(cur);
-    if(cols.length>=4){const bn=parseInt(cols[0]);if(!isNaN(bn)&&bn>=1&&bn<=66){const ch=parseInt(cols[1]);const vs=parseInt(cols[2]);const text=cols[3].replace(/^"|"$/g,'').replace(/""/g,'"').trim();if(ch&&vs&&text)rows.push({book_num:bn,chapter:ch,verse:vs,text});}}
-  }
-  return rows;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -892,15 +873,15 @@ function RecoveryPanel({T,onDone}){
     setBusy(false);
   }
   return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100dvh',background:T.bg,padding:24}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:T.bg,padding:24}}>
       <style>{CSS}</style>
-      <div className="fade-up" style={{textAlign:'center',marginBottom:15}}>
+      <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
         <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:T.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
         <div style={{fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
       <div className="modal-in fade-up stagger-1" style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:T.accentLine}}/>
-        <div style={{padding:'23px 32px 19px'}}>
+        <div style={{padding:'28px 32px'}}>
           <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:6,textAlign:'center'}}>Set New Password</div>
           <div style={{fontFamily:FB,fontSize:13,color:T.mut,textAlign:'center',marginBottom:22,lineHeight:1.6}}>Choose a new password for your account.</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:T.green,border:`1px solid ${T.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:T.greenTxt,lineHeight:1.6}}>{msg}</div>}
@@ -933,6 +914,7 @@ function AuthPanel({onAuth}){
   const[err,setErr]=useState('');const[msg,setMsg]=useState('');const[busy,setBusy]=useState(false);
   const[showSignup,setShowSignup]=useState(false);
   const[showForgot,setShowForgot]=useState(false);
+  const[showGuestWarning,setShowGuestWarning]=useState(false);
   const[forgotEmail,setForgotEmail]=useState('');
   const[forgotMsg,setForgotMsg]=useState('');const[forgotErr,setForgotErr]=useState('');const[forgotBusy,setForgotBusy]=useState(false);
   // Signup modal state
@@ -980,18 +962,19 @@ function AuthPanel({onAuth}){
   }
 
   return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100dvh',background:D.bg,padding:0}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg,padding:24}}>
       <style>{CSS}</style>
-      <div className="fade-up" style={{textAlign:'center',marginBottom:15}}>
-        <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:1}}>Scriptorium</div>
+      <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
+        <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{PUBLIC_VERSIONS.map(v=>v.label).join(' / ')}</div>
+        <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
         <div style={{fontFamily:FB,fontStyle:'italic',color:D.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
 
       {/* Login card */}
       <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:D.accentLine}}/>
-        <div style={{padding:'23px 32px 19px'}}>
-          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:12,textAlign:'center'}}>Sign In</div>
+        <div style={{padding:'28px 32px'}}>
+          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:22,textAlign:'center'}}>Sign In</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
           {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
           <div style={{marginBottom:14}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
@@ -1008,15 +991,40 @@ function AuthPanel({onAuth}){
             <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Forgot password?</button>
             <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
           </div>
+          {/* Continue without account */}
+          <div style={{marginTop:18,textAlign:'center'}}>
+            <button type="button" onClick={()=>setShowGuestWarning(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0,opacity:0.7}}>Continue without an account</button>
+          </div>
         </div>
       </div>
+
+      {/* Guest warning modal */}
+      {showGuestWarning&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:24}} onClick={e=>e.target===e.currentTarget&&setShowGuestWarning(false)}>
+          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
+            <div style={{height:3,background:D.accentLine}}/>
+            <div style={{padding:'28px 32px'}}>
+              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:16,textAlign:'center'}}>Guest Mode</div>
+              <div style={{fontFamily:FB,fontSize:14,color:D.mut,lineHeight:1.7,marginBottom:16}}>You can browse and read without an account, but:</div>
+              <ul style={{fontFamily:FB,fontSize:13,color:D.dim,lineHeight:1.9,margin:'0 0 20px 18px',padding:0}}>
+                <li>No data saved between sessions</li>
+                <li>No study entries or bookmarks</li>
+                <li>No sync across devices</li>
+                <li>No personal Bible versions</li>
+              </ul>
+              <button type="button" onClick={()=>{setShowGuestWarning(false);onAuth({id:'guest',email:'',guest:true});}} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:'pointer',marginBottom:10}}>Continue as Guest</button>
+              <button type="button" onClick={()=>setShowGuestWarning(false)} style={{width:'100%',background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 0',cursor:'pointer'}}>Back to Sign In</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Signup modal */}
       {showSignup&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:24}} onClick={e=>e.target===e.currentTarget&&closeSignup()}>
           <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
             <div style={{height:3,background:D.accentLine}}/>
-            <div style={{padding:'23px 32px 19px'}}>
+            <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
                 <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
                 <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
@@ -1117,43 +1125,13 @@ function RecentsPanel({T,recents,onOpen,onClose,versions}){
 // ══════════════════════════════════════════════════════════
 //  VERSIONS MODAL  (manage + upload — unified)
 // ══════════════════════════════════════════════════════════
-function VersionsModal({data,onSave,onClose,T,user,dlStates={},onDownload,onDeleteLocal}){
+function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLocal}){
   const[vers,setVers]=useState(clone(data.versions));
-  const[ulabel,setUlabel]=useState('');const[ulang,setUlang]=useState('EN');
-  const[file,setFile]=useState(null);const[progress,setProgress]=useState('');
-  const[err,setErr]=useState('');const[done,setDone]=useState(false);
-  const fileRef=useRef(null);
   const builtinAvail=PUBLIC_VERSIONS.filter(pv=>!vers.find(v=>v.id===pv.id));
 
   function remove(id){setVers(v=>v.filter(x=>x.id!==id));}
   function addBuiltin(pv){setVers(v=>[...v,{id:pv.id,label:pv.label,lang:pv.lang,isRef:false}]);}
   function doSave(){let v=[...vers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};onSave(v);}
-
-  async function doUpload(){
-    if(!ulabel||!file){setErr('Enter a version name and choose a CSV file.');return;}
-    const id=ulabel.toLowerCase().replace(/[^a-z0-9]/g,'_');
-    setErr('');setProgress('Reading CSV…');
-    const content=await file.text();
-    const rows=parseCSVtoRows(content);
-    if(rows.length<100){setErr(`Only ${rows.length} verses found. Expected 4 columns: Book (1–66), Chapter, Verse, Text.`);setProgress('');return;}
-    setProgress('Registering…');
-    const token=getToken();
-    const delT=await sbFrom('bible_versions',token);await delT.delete({id,owner_id:user.id});
-    const vT=await sbFrom('bible_versions',token);
-    const vr=await vT.insert({id,label:ulabel,lang:ulang,is_public:false,owner_id:user.id,verse_count:rows.length});
-    if(vr.error){setErr('Failed: '+JSON.stringify(vr.error));setProgress('');return;}
-    const BATCH=500;const verseRows=rows.map(r=>({version_id:id,...r}));
-    for(let i=0;i<verseRows.length;i+=BATCH){
-      setProgress(`Uploading ${Math.min(i+BATCH,verseRows.length)} / ${verseRows.length} verses…`);
-      const bT=await sbFrom('bible_verses',token);
-      const br=await bT.upsert(verseRows.slice(i,i+BATCH));
-      if(br.error?.code){setErr('Upload error: '+JSON.stringify(br.error));setProgress('');return;}
-    }
-    setProgress('');setDone(true);
-    setVers(v=>[...v,{id,label:ulabel,lang:ulang,isRef:false}]);
-    setUlabel('');setUlang('EN');setFile(null);
-    setTimeout(()=>setDone(false),3000);
-  }
 
   return(
     <Modal title="Bible Versions" onClose={onClose} wide T={T} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
@@ -1208,30 +1186,11 @@ function VersionsModal({data,onSave,onClose,T,user,dlStates={},onDownload,onDele
           </div>
         </div>
       )}
-      {/* Upload custom version */}
-      {user&&(
-        <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-          <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:4}}>UPLOAD YOUR OWN VERSION</div>
-          <div style={{fontFamily:FB,fontSize:13,color:T.dim,marginBottom:12,lineHeight:1.5}}>CSV format: Book (1–66), Chapter, Verse, Text. Only upload versions you have the right to use.</div>
-          {done?(
-            <div style={{padding:'12px 0',color:T.greenTxt,fontFamily:FB,fontSize:15}}>✓ Uploaded and added to your list!</div>
-          ):(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              <div style={{display:'flex',gap:8}}>
-                <div style={{flex:1}}><div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.1em',marginBottom:5}}>VERSION NAME</div><input value={ulabel} onChange={e=>setUlabel(e.target.value)} placeholder="e.g. NKJV" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:15,padding:'7px 10px',outline:'none',boxSizing:'border-box'}}/></div>
-                <div style={{width:64}}><div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.1em',marginBottom:5}}>LANG</div><input value={ulang} onChange={e=>setUlang(e.target.value.toUpperCase().slice(0,5))} placeholder="EN" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:15,padding:'7px 10px',outline:'none',boxSizing:'border-box'}}/></div>
-              </div>
-              <input ref={fileRef} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={e=>{if(e.target.files?.[0])setFile(e.target.files[0]);}}/>
-              <button onClick={()=>fileRef.current?.click()} style={{background:T.bgSec,border:`1px solid ${file?T.gD:T.bd}`,borderRadius:7,color:file?T.gT:T.mut,fontFamily:FB,fontSize:14,padding:'10px 14px',cursor:'pointer',textAlign:'left'}}>
-                {file?`📄 ${file.name} (${Math.round(file.size/1024)} KB)`:'⬆ Choose CSV File…'}
-              </button>
-              {err&&<div style={{padding:'9px 12px',background:T.red,border:`1px solid ${T.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:13,color:T.redTxt}}>{err}</div>}
-              {progress&&<div style={{padding:'9px 12px',background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:6,fontFamily:FB,fontSize:13,color:T.mut,display:'flex',alignItems:'center',gap:8}}><Spinner/>{progress}</div>}
-              <PBtn ch={progress?'Uploading…':'⬆ Upload'} onClick={doUpload} T={T} sm disabled={!ulabel||!file||!!progress}/>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Request a new version */}
+      <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
+        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
+        <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
+      </div>
     </Modal>
   );
 }
@@ -2012,6 +1971,16 @@ function App(){
   // ── Load project on auth ──
   useEffect(()=>{
     if(!user)return;
+    if(user.guest){
+      const pd={versions:PUBLIC_VERSIONS,sections:[],entries:[]};
+      setProjectId('guest-local');
+      setData(pd);
+      setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||PUBLIC_VERSIONS[0]?.id||'kjv');
+      setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));
+      setBookmarks([]);setRecents([]);
+      setLoadMsg('');setReady(true);
+      return;
+    }
     (async()=>{
       setReady(false);setLoadMsg('Loading project…');
       const proj=await dbLoadOrCreateProject(user.id);
@@ -2065,7 +2034,7 @@ function App(){
         if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(tv);return ns;});},80);}
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
       }
-      if(user&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).catch(()=>{});
+      if(user&&!user.guest&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).catch(()=>{});
     }).catch(()=>{
       if(!cancelled)setReadVerses([]);
     });
@@ -2404,7 +2373,14 @@ function App(){
     setModal(null);setSaveStatus('saved');
   }
 
-  async function handleAddBookmark(params){if(!user)return;const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);}
+  async function handleAddBookmark(params){
+    if(!user)return;
+    if(user.guest){
+      const bm={id:'g-'+Date.now(),user_id:'guest',...params};
+      setBookmarks(b=>[bm,...b]);return;
+    }
+    const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
+  }
   async function handleDelBookmark(id){await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
   function togVer(vid){setHiddenVers(h=>h.includes(vid)?h.filter(x=>x!==vid):[...h,vid]);}
   function doExport(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`scriptorium-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
@@ -2836,7 +2812,7 @@ function App(){
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
-          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
+          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14,maxHeight:'calc(100dvh - 110px)',overflowY:'auto'}}>
 
             {/* Accent Color */}
             <div style={{marginBottom:14}}>
@@ -3365,7 +3341,7 @@ function App(){
             )}
             {!readSearchRes&&readVerses.length===0&&(
               <div style={{textAlign:'center',padding:'48px 0',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:15}}>
-                No verses found.<br/><span style={{fontSize:13,display:'block',marginTop:8}}>Upload a CSV via the Compare tab &gt; Versions.</span>
+                No verses found. Download a version for offline use via the Compare tab &gt; Versions.
               </div>
             )}
             {strongsMode&&readVid!=='kjv'&&!readSearchRes&&(
@@ -3988,7 +3964,7 @@ function App(){
           cancelLabel={modal.delType==='section'&&data.entries.some(e=>e.sectionId===modal.delId)?'OK':'Cancel'}
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
-      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} user={user} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload}/>}
+      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload}/>}
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} versions={data.versions}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={()=>setModal(null)} versions={data.versions}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
@@ -4002,8 +3978,8 @@ function App(){
             Add study entries (passage + per-version text + issue labels). Use filters and search to navigate. The 📖 icon on any card jumps to that chapter in the Read tab.<br/><br/>
             <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:6,marginTop:14,fontWeight:600}}>Auto-fill</div>
             In the entry editor, pick Book/Chapter/Verse then click <strong style={{color:T.gT}}>⚡ Auto-fill</strong> to pull verse text from the database for all versions simultaneously.<br/><br/>
-            <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:6,marginTop:14,fontWeight:600}}>Uploading Versions</div>
-            Compare &gt; Versions &gt; Upload CSV. Format: 4 columns — Book (1–66), Chapter, Verse, Text. Header row optional.<br/><br/>
+            <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:6,marginTop:14,fontWeight:600}}>Requesting Versions</div>
+            To request a new Bible version or translation, contact the app creator via the Versions dialog.<br/><br/>
             <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:6,marginTop:14,fontWeight:600}}>Shortcuts</div>
             <code style={{fontFamily:'monospace',background:T.bgSec,padding:'2px 6px',borderRadius:3,fontSize:13}}>Ctrl/⌘+Z</code> Undo delete &nbsp;&middot;&nbsp; <code style={{fontFamily:'monospace',background:T.bgSec,padding:'2px 6px',borderRadius:3,fontSize:13}}>Esc</code> Close modal
           </div>
