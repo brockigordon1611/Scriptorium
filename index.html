@@ -3103,7 +3103,16 @@ function App(){
 
                 {/* Verse grid */}
                 {navStep==='verse'&&pickedBkData&&navPickedCh&&<div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
+                  <div style={{marginBottom:14,textAlign:'center'}}>
+                    <button type="button" onClick={()=>{
+                      if(isP){setParallelVs(1);}
+                      closeReadSheet();
+                    }}
+                      style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:10,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'10px 28px',cursor:'pointer',fontWeight:600}}>
+                      Go to Chapter {navPickedCh} →
+                    </button>
+                  </div>
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,textAlign:'center'}}>
                     Select Verse
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
@@ -3114,15 +3123,6 @@ function App(){
                         closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
                     ))}
-                  </div>
-                  <div style={{marginTop:16,textAlign:'center'}}>
-                    <button type="button" onClick={()=>{
-                      if(isP){setParallelVs(1);}
-                      closeReadSheet();
-                    }}
-                      style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:10,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'10px 28px',cursor:'pointer',fontWeight:600}}>
-                      Go to Chapter {navPickedCh} →
-                    </button>
                   </div>
                 </div>}
               </div>
