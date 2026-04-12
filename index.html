@@ -1688,8 +1688,8 @@ function App(){
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
   function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
   function handleVerseToggle(v){const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
-  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){handleVerseToggle(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
-  function verseClick(v,dbl=false){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();if(dbl){openStrip(v);}else{handleVerseToggle(v);}}
+  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){openStrip(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
+  function verseClick(v){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();openStrip(v);}
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
@@ -3374,7 +3374,7 @@ function App(){
                     return(
                       <span key={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
+                        onClick={()=>verseClick(v)}
                         style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
@@ -3393,7 +3393,7 @@ function App(){
                     return(
                       <div key={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
+                        onClick={()=>verseClick(v)}
                         style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
