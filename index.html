@@ -1688,8 +1688,8 @@ function App(){
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
   function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
   function handleVerseToggle(v){const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
-  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){openStrip(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
-  function verseClick(v){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();openStrip(v);}
+  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){if(readSelVerses.has(v)){handleVerseToggle(v);}else{openStrip(v);}}setTimeout(()=>{wasTouchEvent.current=false;},300);}
+  function verseClick(v){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();if(readSelVerses.has(v)){handleVerseToggle(v);}else{openStrip(v);}}
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
