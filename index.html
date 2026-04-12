@@ -3504,7 +3504,7 @@ function App(){
           )}
 
           {/* Selection action strip */}
-          {stripOpen&&(
+          {stripOpen&&tab==='read'&&(
             <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?0:bottomBarH,left:0,right:0,zIndex:160,background:'rgba(14,13,11,0.72)',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',padding:'10px 12px',display:'flex',flexDirection:'column',gap:8,transition:'bottom .18s ease'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
