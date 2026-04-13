@@ -250,14 +250,42 @@ async function idbGetStrongsEntryLocal(num){
 }
 async function idbSearchStrongsLocal(query){
   const db=await idbOpen();
-  const all=await _idbReq(db.transaction('strongs_lex','readonly').objectStore('strongs_lex').getAll());
   const q=query.toLowerCase();
-  // Match by strongs_number prefix OR word/def contains query
-  return all.filter(e=>
-    e.strongs_number.toLowerCase().startsWith(q)||
-    (e.word_lower&&e.word_lower.includes(q))||
-    (e.short_def&&e.short_def.toLowerCase().includes(q))
-  ).slice(0,40);
+  const qUp=query.toUpperCase();
+  const seen=new Set();
+  const results=[];
+  function addEntry(v){if(!seen.has(v.strongs_number)){seen.add(v.strongs_number);results.push(v);}}
+  // 1. word_lower prefix via index cursor (fast — transliteration searches)
+  await new Promise((res,rej)=>{
+    const range=IDBKeyRange.bound(q,q+'\uffff');
+    const req=db.transaction('strongs_lex','readonly').objectStore('strongs_lex').index('word_lower').openCursor(range);
+    req.onsuccess=e=>{const c=e.target.result;if(c&&results.length<40){addEntry(c.value);c.continue();}else res();};
+    req.onerror=e=>rej(e.target.error);
+  });
+  // 2. strongs_number prefix via PK cursor (fast — H123 / G456 lookups)
+  if(results.length<40){
+    await new Promise((res,rej)=>{
+      const range=IDBKeyRange.bound(qUp,qUp+'\uffff');
+      const req=db.transaction('strongs_lex','readonly').objectStore('strongs_lex').openCursor(range);
+      req.onsuccess=e=>{const c=e.target.result;if(c&&results.length<40){addEntry(c.value);c.continue();}else res();};
+      req.onerror=e=>rej(e.target.error);
+    });
+  }
+  // 3. short_def contains (streaming cursor — only runs when steps 1+2 returned few results)
+  if(results.length<20){
+    await new Promise((res,rej)=>{
+      const req=db.transaction('strongs_lex','readonly').objectStore('strongs_lex').openCursor();
+      req.onsuccess=e=>{
+        const c=e.target.result;
+        if(c&&results.length<40){
+          if(c.value.short_def&&c.value.short_def.toLowerCase().includes(q))addEntry(c.value);
+          c.continue();
+        }else res();
+      };
+      req.onerror=e=>rej(e.target.error);
+    });
+  }
+  return results;
 }
 async function idbPutStrongsEntries(rows){
   const db=await idbOpen();
@@ -313,15 +341,17 @@ async function idbIsDownloaded(id){return(await idbGetMeta(`dl:${id}`))===true;}
 // ── Bible version delete ──────────────────────────────────
 async function idbDeleteVersionLocal(versionId){
   const db=await idbOpen();
+  // Mark as not-downloaded first so a partial delete can't leave a stale true flag
+  await idbPutMeta(`dl:${versionId}`,false);
   const tx=db.transaction('verses','readwrite');
-  const idx=tx.objectStore('verses').index('by_chapter');
-  const range=IDBKeyRange.bound([versionId,0,0],[versionId,999,9999]);
+  const st=tx.objectStore('verses');
+  // Use PK range directly — faster than going through the by_chapter index
+  const range=IDBKeyRange.bound(`${versionId}|`,`${versionId}|\uffff`);
   await new Promise((res,rej)=>{
-    const req=idx.openCursor(range);
+    const req=st.openCursor(range);
     req.onsuccess=e=>{const c=e.target.result;if(c){c.delete();c.continue();}};
     tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
   });
-  await idbPutMeta(`dl:${versionId}`,false);
 }
 
 // ── Generic batch downloader ──────────────────────────────
@@ -353,10 +383,12 @@ async function downloadVersionLocally(versionId,onProgress,signal){
   await _batchDownload({table:'bible_verses',select:'book_num,chapter,verse,text',filter:`version_id=eq.${encodeURIComponent(versionId)}`,order:'book_num.asc,chapter.asc,verse.asc',putFn:rows=>idbPutVerses(versionId,rows),dlKey:versionId,total:31102,onProgress,signal});
 }
 async function downloadStrongsLocally(onProgress,signal){
+  await idbPutMeta('dl:strongs',false);
   await idbClearStrongs();
   await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:14197,onProgress,signal});
 }
 async function downloadWebsterLocally(onProgress,signal){
+  await idbPutMeta('dl:webster',false);
   await idbClearWebster();
   await _batchDownload({table:'webster_1828',select:'word,pos,definitions',order:'word.asc',putFn:idbPutWebsterEntries,dlKey:'webster',total:107793,onProgress,signal});
 }
@@ -3439,8 +3471,10 @@ function App(){
             }
             const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
 
-            return React.createElement('div',{onClick:()=>{setStrongsPopup(null);setStrongsVersePreview(null);},style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'auto',padding:'20px 20px 32px',boxShadow:'0 -4px 32px rgba(0,0,0,0.4)',animation:'slideUp .28s cubic-bezier(0.32,0.72,0,1) both'}},
+            return React.createElement('div',{onClick:()=>{setStrongsPopup(null);setStrongsVersePreview(null);},style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -4px 32px rgba(0,0,0,0.4)',animation:'slideUp .28s cubic-bezier(0.32,0.72,0,1) both'}},
+              React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
+              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement('button',{onClick:e=>{e.stopPropagation();goBackStrongs();},style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontSize:16,padding:'0 4px 0 0',fontFamily:FB,fontWeight:600}},'‹ Back'),
@@ -3485,7 +3519,8 @@ function App(){
                   React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
                 )
               )
-            );
+            )
+          );
           })()}
 
           {strongsVersePreview&&(
@@ -3509,34 +3544,29 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&!readSearchRes&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?0:bottomBarH,left:0,right:0,zIndex:160,background:dark?'rgba(14,13,11,0.55)':'rgba(242,236,218,0.62)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',padding:'10px 12px',display:'flex',flexDirection:'column',gap:8,transition:'bottom .18s ease'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?0:bottomBarH,left:0,right:0,zIndex:160,background:dark?'rgba(14,13,11,0.28)':'rgba(242,236,218,0.32)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'5px 8px',display:'flex',alignItems:'center',gap:5,transition:'bottom .18s ease'}}>
               {readBmOk
-                ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
+                ?<span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
-                  ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Copied to clipboard</span>
+                  ?<span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.1em',fontWeight:600,flexShrink:0}}>
-                        {(s=>{const a=[...s].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return r.join(', ');})(readSelVerses)}
-                      </span>
-                      <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="Bookmark label…"
-                        style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:8,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 12px',outline:'none'}}/>
-                      <button type="button" onClick={dismissStrip}
-                        style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18,flexShrink:0,padding:'4px 6px'}}>✕</button>
-                    </div>
-                    <div style={{display:'flex',gap:8}}>
-                      <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
-                        title="Copy selected verse(s) to clipboard"
-                        style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'10px 0',fontWeight:600,textAlign:'center'}}>
-                        ⧉ Copy
+                    <span style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.08em',fontWeight:600,flexShrink:0}}>
+                      {(s=>{const a=[...s].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return r.join(', ');})(readSelVerses)}
+                    </span>
+                    <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
+                      style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'3px 7px',outline:'none'}}/>
+                    <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
+                      style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
+                      ⧉ Copy
+                    </button>
+                    {user
+                      ?<button type="button" onClick={doReadBookmark}
+                        style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0,cursor:'pointer'}}>
+                        ✦ Bookmark
                       </button>
-                      {user
-                        ?<button type="button" onClick={doReadBookmark}
-                          style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'10px 0',fontWeight:600,textAlign:'center',cursor:'pointer'}}>
-                          ✦ Bookmark
-                        </button>
-                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,textAlign:'center',padding:'10px 0'}}>Sign in to bookmark</span>}
-                    </div>
+                      :<span style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:12,flexShrink:0}}>Sign in to bookmark</span>}
+                    <button type="button" onClick={dismissStrip}
+                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:15,flexShrink:0,padding:'2px 3px'}}>✕</button>
                   </>
               }
             </div>
