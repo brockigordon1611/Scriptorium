@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html><head><title>Strong's Mapping Import v2</title>
+<style>
+body{font-family:monospace;background:#111;color:#ccc;padding:20px;max-width:900px;margin:0 auto}
+button{background:#333;color:#eee;border:1px solid #555;padding:10px 20px;cursor:pointer;font-size:16px;margin:5px}
+button:hover{background:#444}
+button:disabled{opacity:0.4;cursor:not-allowed}
+#log{white-space:pre-wrap;background:#0a0a0a;padding:15px;border:1px solid #333;height:500px;overflow-y:auto;margin-top:10px;font-size:13px}
+.ok{color:#6c6}.err{color:#f66}.info{color:#6bf}.warn{color:#fb5}
+h1{color:#e4cc78}
+input{background:#222;color:#eee;border:1px solid #555;padding:8px 12px;font-family:monospace;font-size:13px;width:100%;box-sizing:border-box}
+label{display:block;margin:10px 0 4px;color:#999;font-size:13px}
+progress{width:100%;margin-top:8px;height:12px;accent-color:#c8a84e}
+</style>
+</head><body>
+<h1>Strong's Mapping Import v2</h1>
+<p>Uses the kennethreitz/kjvstudy.org interlinear dataset (~12MB gzipped) for near-complete coverage (~400K rows vs the current ~326K incomplete import). Clears and replaces existing strongs_mapping data.</p>
+<p style="color:#fb5">Requires modern browser (Chrome 80+ / Safari 16.4+) for gzip decompression. Keep this tab open until complete.</p>
+
+<label>Supabase Service Role Key:</label>
+<input id="serviceKey" type="password" placeholder="eyJhbGciOiJI..." />
+
+<div style="margin-top:15px">
+  <button id="btnImport" onclick="runImport()">Import (~400K rows)</button>
+  <button onclick="checkCounts()">Check Row Counts</button>
+  <button onclick="document.getElementById('log').innerHTML=''">Clear Log</button>
+</div>
+<progress id="prog" value="0" max="1" style="display:none"></progress>
+<div id="log"></div>
+
+<script>
+const SUPABASE_URL='https://garuwsjczcptykehgjdx.supabase.co';
+const ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcnV3c2pjemNwdHlrZWhnamR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIxNjMzNTMsImV4cCI6MjA1NzczOTM1M30.aGwFsElF6MfpSMiSfsoSq2mPkjIciCHyvTjDH2qcsvw';
+const logEl=document.getElementById('log');
+const progEl=document.getElementById('prog');
+
+function getKey(){
+  const k=document.getElementById('serviceKey').value.trim();
+  if(!k){log('ERROR: Enter the Supabase service role key first','err');return null;}
+  return k;
+}
+function log(msg,cls=''){logEl.innerHTML+=`<span class="${cls}">${msg}</span>\n`;logEl.scrollTop=logEl.scrollHeight;}
+function setProgress(v,max){progEl.style.display='block';progEl.value=v;progEl.max=max||1;}
+
+async function sbPost(table,rows,key){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'return=minimal'},
+    body:JSON.stringify(rows)
+  });
+  if(!r.ok){const t=await r.text();throw new Error(`POST ${r.status}: ${t.slice(0,400)}`);}
+}
+
+const BOOK_MAP={
+  'Genesis':1,'Exodus':2,'Leviticus':3,'Numbers':4,'Deuteronomy':5,
+  'Joshua':6,'Judges':7,'Ruth':8,'1 Samuel':9,'2 Samuel':10,
+  '1 Kings':11,'2 Kings':12,'1 Chronicles':13,'2 Chronicles':14,
+  'Ezra':15,'Nehemiah':16,'Esther':17,'Job':18,'Psalms':19,'Psalm':19,
+  'Proverbs':20,'Ecclesiastes':21,"Song of Solomon":22,"Song of Songs":22,"Solomon's Song":22,
+  'Isaiah':23,'Jeremiah':24,'Lamentations':25,'Ezekiel':26,'Daniel':27,
+  'Hosea':28,'Joel':29,'Amos':30,'Obadiah':31,'Jonah':32,'Micah':33,
+  'Nahum':34,'Habakkuk':35,'Zephaniah':36,'Haggai':37,'Zechariah':38,'Malachi':39,
+  'Matthew':40,'Mark':41,'Luke':42,'John':43,'Acts':44,'Romans':45,
+  '1 Corinthians':46,'2 Corinthians':47,'Galatians':48,'Ephesians':49,
+  'Philippians':50,'Colossians':51,'1 Thessalonians':52,'2 Thessalonians':53,
+  '1 Timothy':54,'2 Timothy':55,'Titus':56,'Philemon':57,'Hebrews':58,
+  'James':59,'1 Peter':60,'2 Peter':61,'1 John':62,'2 John':63,
+  '3 John':64,'Jude':65,'Revelation':66
+};
+
+function stripPunct(w){
+  return w.replace(/^[\s.,;:!?'"()\-\u2013\u2014\u2018\u2019\u201c\u201d]+|[\s.,;:!?'"()\-\u2013\u2014\u2018\u2019\u201c\u201d]+$/g,'');
+}
+
+// Split KJV text into word array (same logic as buildStrongsVerse in main app)
+function kjvWords(text){
+  const clean=text.replace(/<[^>]+>/g,'');
+  const words=[];
+  for(const t of clean.trim().split(/\s+/)){
+    const w=stripPunct(t);
+    if(w)words.push({text:w,lower:w.toLowerCase()});
+  }
+  return words;
+}
+
+// Match an interlinear English gloss to positions in the KJV word array.
+// Uses greedy forward search; falls back to whole-verse search for word-order differences.
+function matchGloss(glossStr,kjvWordArr,usedSet){
+  if(!glossStr||!glossStr.trim())return[];
+  const glossWords=glossStr.trim().split(/\s+/)
+    .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0);
+  if(!glossWords.length)return[];
+  const results=[];
+  let searchFrom=0;
+  for(const gw of glossWords){
+    let found=-1;
+    // Forward search from current position
+    for(let i=searchFrom;i<kjvWordArr.length;i++){
+      if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
+    }
+    // Fallback: search entire verse (handles Hebrew/Greek vs English word-order differences)
+    if(found===-1){
+      for(let i=0;i<kjvWordArr.length;i++){
+        if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
+      }
+    }
+    if(found!==-1){
+      usedSet.add(found);
+      results.push({word_pos:found,word_text:kjvWordArr[found].text});
+      searchFrom=found+1;
+    }
+  }
+  return results;
+}
+
+async function runImport(){
+  const key=getKey();if(!key)return;
+  document.getElementById('btnImport').disabled=true;
+  log('=== STRONG\'S MAPPING IMPORT v2 ===','info');
+
+  // ── Step 1: Fetch & decompress interlinear ──────────────────
+  log('Fetching interlinear.json.gz (~12MB gzipped, ~50MB uncompressed)...');
+  let interlinear;
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/kennethreitz/kjvstudy.org/main/kjvstudy_org/data/interlinear.json.gz');
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    log('  Download complete, decompressing...');
+    const ds=new DecompressionStream('gzip');
+    const decompressed=res.body.pipeThrough(ds);
+    const reader=decompressed.getReader();
+    const chunks=[];
+    while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}
+    const buf=await new Blob(chunks).arrayBuffer();
+    log('  Parsing JSON...');
+    interlinear=JSON.parse(new TextDecoder().decode(buf));
+    log(`  Parsed ${Object.keys(interlinear).length} verse entries`,'ok');
+  }catch(err){
+    log(`ERROR fetching interlinear: ${err.message}`,'err');
+    if(err.message.includes('DecompressionStream'))log('  Your browser may not support DecompressionStream. Use Chrome 80+ or Safari 16.4+.','warn');
+    document.getElementById('btnImport').disabled=false;return;
+  }
+
+  // ── Step 2: Fetch valid Strong's numbers from lexicon ───────
+  log('Fetching valid Strong\'s numbers from lexicon (to avoid FK violations)...');
+  const validStrongs=new Set();
+  try{
+    let off=0;
+    while(true){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/strongs_lexicon?select=strongs_number&limit=1000&offset=${off}`,{
+        headers:{'apikey':key,'Authorization':`Bearer ${key}`}
+      });
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows.length)break;
+      for(const row of rows)validStrongs.add(row.strongs_number);
+      off+=rows.length;
+      if(rows.length<1000)break;
+    }
+    log(`  ${validStrongs.size} valid Strong\'s numbers loaded`,'ok');
+  }catch(err){log(`ERROR: ${err.message}`,'err');document.getElementById('btnImport').disabled=false;return;}
+
+  // ── Step 3: Fetch KJV verse texts ───────────────────────────
+  log('Fetching KJV verse texts from Supabase...');
+  const kjvTexts={};
+  try{
+    let off=0;
+    while(true){
+      const r=await fetch(
+        `${SUPABASE_URL}/rest/v1/bible_verses?select=book_num,chapter,verse,text&version_id=eq.kjv&order=book_num.asc,chapter.asc,verse.asc&limit=1000&offset=${off}`,
+        {headers:{'apikey':key,'Authorization':`Bearer ${key}`}}
+      );
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const rows=await r.json();
+      if(!Array.isArray(rows)||!rows.length)break;
+      for(const row of rows)kjvTexts[`${row.book_num}|${row.chapter}|${row.verse}`]=row.text;
+      off+=rows.length;
+      if(rows.length<1000)break;
+    }
+    log(`  ${Object.keys(kjvTexts).length} KJV verses loaded`,'ok');
+  }catch(err){log(`ERROR: ${err.message}`,'err');document.getElementById('btnImport').disabled=false;return;}
+
+  // ── Step 4: Clear existing strongs_mapping ──────────────────
+  log('Clearing existing strongs_mapping table...');
+  try{
+    // Delete by book chunks to avoid a single massive delete timing out
+    for(let bn=1;bn<=66;bn++){
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/strongs_mapping?book_num=eq.${bn}`,{
+        method:'DELETE',
+        headers:{'apikey':key,'Authorization':`Bearer ${key}`}
+      });
+      if(!r.ok){const t=await r.text();throw new Error(`book ${bn}: ${r.status} ${t.slice(0,200)}`);}
+    }
+    log('  Cleared','ok');
+  }catch(err){log(`ERROR clearing: ${err.message}`,'err');document.getElementById('btnImport').disabled=false;return;}
+
+  // ── Step 5: Process verses and insert ───────────────────────
+  log('Matching glosses to KJV word positions and inserting...');
+  const verseKeys=Object.keys(interlinear);
+  const totalVerseKeys=verseKeys.length;
+  let totalRows=0,processedVerses=0,skippedVerses=0,fkSkipped=0;
+  const pending=[];
+  const BATCH=2000;
+
+  async function flush(){
+    if(!pending.length)return;
+    const batch=pending.splice(0,pending.length);
+    await sbPost('strongs_mapping',batch,key);
+    totalRows+=batch.length;
+  }
+
+  for(let vi=0;vi<verseKeys.length;vi++){
+    const verseKey=verseKeys[vi];
+
+    // Parse "Book Name:chapter:verse" — book name may have spaces but not colons
+    const lastColon=verseKey.lastIndexOf(':');
+    const secondColon=verseKey.lastIndexOf(':',lastColon-1);
+    if(secondColon<0)continue;
+    const bookName=verseKey.slice(0,secondColon);
+    const chapter=parseInt(verseKey.slice(secondColon+1,lastColon));
+    const verse=parseInt(verseKey.slice(lastColon+1));
+    const bookNum=BOOK_MAP[bookName];
+    if(!bookNum||isNaN(chapter)||isNaN(verse))continue;
+
+    const kjvText=kjvTexts[`${bookNum}|${chapter}|${verse}`];
+    if(!kjvText){skippedVerses++;continue;}
+
+    const kjvWordArr=kjvWords(kjvText);
+    if(!kjvWordArr.length)continue;
+    const usedSet=new Set();
+
+    for(const entry of (interlinear[verseKey]||[])){
+      if(!entry||!entry.strongs||!entry.english)continue;
+      const sNum=String(entry.strongs).trim();
+      if(!validStrongs.has(sNum)){fkSkipped++;continue;}
+      const matched=matchGloss(entry.english,kjvWordArr,usedSet);
+      for(const m of matched){
+        pending.push({book_num:bookNum,chapter,verse,word_pos:m.word_pos,word_text:m.word_text,strongs_num:sNum});
+      }
+    }
+
+    processedVerses++;
+    if(pending.length>=BATCH){
+      await flush();
+    }
+    if(vi%2000===0){
+      setProgress(vi,totalVerseKeys);
+      log(`  ${processedVerses} verses processed, ${totalRows} rows inserted...`);
+      // Yield to browser to keep UI responsive
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+
+  try{
+    await flush();
+    setProgress(totalVerseKeys,totalVerseKeys);
+    log('','');
+    log(`IMPORT COMPLETE`,'ok');
+    log(`  ${processedVerses} verses processed`,'ok');
+    log(`  ${totalRows} word mappings inserted`,'ok');
+    if(skippedVerses)log(`  ${skippedVerses} verses skipped (no KJV text found)`,'warn');
+    if(fkSkipped)log(`  ${fkSkipped} entries skipped (strongs number not in lexicon)`,'warn');
+  }catch(err){
+    log(`ERROR on final flush at ${totalRows} rows: ${err.message}`,'err');
+  }
+  document.getElementById('btnImport').disabled=false;
+}
+
+async function checkCounts(){
+  log('=== ROW COUNTS ===','info');
+  try{
+    const key=document.getElementById('serviceKey').value.trim()||ANON_KEY;
+    const r1=await fetch(`${SUPABASE_URL}/rest/v1/strongs_mapping?select=id&limit=0`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'count=exact'}
+    });
+    log(`strongs_mapping: ${r1.headers.get('content-range')}`,'ok');
+    const r2=await fetch(`${SUPABASE_URL}/rest/v1/strongs_lexicon?select=strongs_number&limit=0`,{
+      headers:{'apikey':key,'Authorization':`Bearer ${key}`,'Prefer':'count=exact'}
+    });
+    log(`strongs_lexicon: ${r2.headers.get('content-range')}`,'ok');
+  }catch(err){log(`ERROR: ${err.message}`,'err');}
+}
+</script>
+</body></html>
