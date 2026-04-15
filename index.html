@@ -402,73 +402,75 @@ async function downloadWebsterLocally(onProgress,signal){
 //  CONSTANTS
 // ══════════════════════════════════════════════════════════
 const BIBLE = [
-  {n:1,name:'Genesis',v:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26]},
-  {n:2,name:'Exodus',v:[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38]},
-  {n:3,name:'Leviticus',v:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34]},
-  {n:4,name:'Numbers',v:[54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13]},
-  {n:5,name:'Deuteronomy',v:[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12]},
-  {n:6,name:'Joshua',v:[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33]},
-  {n:7,name:'Judges',v:[36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25]},
-  {n:8,name:'Ruth',v:[22,23,18,22]},
-  {n:9,name:'1 Samuel',v:[28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,44,25,12,25,11,31,13]},
-  {n:10,name:'2 Samuel',v:[27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25]},
-  {n:11,name:'1 Kings',v:[53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53]},
-  {n:12,name:'2 Kings',v:[18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30]},
-  {n:13,name:'1 Chronicles',v:[54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30]},
-  {n:14,name:'2 Chronicles',v:[17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23]},
-  {n:15,name:'Ezra',v:[11,70,13,24,17,22,28,36,15,44]},
-  {n:16,name:'Nehemiah',v:[11,20,32,23,19,19,73,18,38,39,36,47,31]},
-  {n:17,name:'Esther',v:[22,23,15,17,14,14,10,17,32,3]},
-  {n:18,name:'Job',v:[22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17]},
-  {n:19,name:'Psalms',v:[6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,8,8,3,18,3,3,21,26,9,8,24,13,10,10,7,12,15,21,10,20,14,9,6]},
-  {n:20,name:'Proverbs',v:[33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,27,33,31]},
-  {n:21,name:'Ecclesiastes',v:[18,26,22,16,20,12,29,17,18,20,10,14]},
-  {n:22,name:'Song of Solomon',v:[17,17,11,16,16,13,13,14]},
-  {n:23,name:'Isaiah',v:[31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24]},
-  {n:24,name:'Jeremiah',v:[19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34]},
-  {n:25,name:'Lamentations',v:[22,22,66,22,22]},
-  {n:26,name:'Ezekiel',v:[28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35]},
-  {n:27,name:'Daniel',v:[21,49,30,37,31,28,28,27,27,21,45,13]},
-  {n:28,name:'Hosea',v:[11,23,5,19,15,11,16,14,17,15,12,14,16,9]},
-  {n:29,name:'Joel',v:[20,32,21]},
-  {n:30,name:'Amos',v:[15,16,15,13,27,14,17,14,15]},
-  {n:31,name:'Obadiah',v:[21]},
-  {n:32,name:'Jonah',v:[17,10,10,11]},
-  {n:33,name:'Micah',v:[16,13,12,13,15,16,20]},
-  {n:34,name:'Nahum',v:[15,13,19]},
-  {n:35,name:'Habakkuk',v:[17,20,19]},
-  {n:36,name:'Zephaniah',v:[18,15,20]},
-  {n:37,name:'Haggai',v:[15,23]},
-  {n:38,name:'Zechariah',v:[21,13,10,14,11,15,14,23,17,12,17,14,9,21]},
-  {n:39,name:'Malachi',v:[14,17,18,6]},
-  {n:40,name:'Matthew',v:[25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20]},
-  {n:41,name:'Mark',v:[45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20]},
-  {n:42,name:'Luke',v:[80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53]},
-  {n:43,name:'John',v:[51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25]},
-  {n:44,name:'Acts',v:[26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,40,38,40,30,35,27,27,32,44,31]},
-  {n:45,name:'Romans',v:[32,29,31,25,21,23,25,39,33,21,36,21,14,23,33,27]},
-  {n:46,name:'1 Corinthians',v:[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24]},
-  {n:47,name:'2 Corinthians',v:[24,17,18,18,21,18,16,24,15,18,33,21,14]},
-  {n:48,name:'Galatians',v:[24,21,29,31,26,18]},
-  {n:49,name:'Ephesians',v:[23,22,21,28,20,12]},
-  {n:50,name:'Philippians',v:[30,30,21,23]},
-  {n:51,name:'Colossians',v:[29,23,25,18]},
-  {n:52,name:'1 Thessalonians',v:[10,20,13,18,28]},
-  {n:53,name:'2 Thessalonians',v:[12,17,18]},
-  {n:54,name:'1 Timothy',v:[20,15,16,16,25,21]},
-  {n:55,name:'2 Timothy',v:[18,26,17,22]},
-  {n:56,name:'Titus',v:[16,15,15]},
-  {n:57,name:'Philemon',v:[25]},
-  {n:58,name:'Hebrews',v:[14,18,19,16,14,20,28,13,28,39,40,29,25]},
-  {n:59,name:'James',v:[27,26,18,17,20]},
-  {n:60,name:'1 Peter',v:[25,25,22,19,14]},
-  {n:61,name:'2 Peter',v:[21,22,18]},
-  {n:62,name:'1 John',v:[10,29,24,21,21]},
-  {n:63,name:'2 John',v:[13]},
-  {n:64,name:'3 John',v:[14]},
-  {n:65,name:'Jude',v:[25]},
-  {n:66,name:'Revelation',v:[20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21]},
+  {n:1,name:'Genesis',nameES:'Génesis',v:[31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26]},
+  {n:2,name:'Exodus',nameES:'Éxodo',v:[22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38]},
+  {n:3,name:'Leviticus',nameES:'Levítico',v:[17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34]},
+  {n:4,name:'Numbers',nameES:'Números',v:[54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13]},
+  {n:5,name:'Deuteronomy',nameES:'Deuteronomio',v:[46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12]},
+  {n:6,name:'Joshua',nameES:'Josué',v:[18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33]},
+  {n:7,name:'Judges',nameES:'Jueces',v:[36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25]},
+  {n:8,name:'Ruth',nameES:'Rut',v:[22,23,18,22]},
+  {n:9,name:'1 Samuel',nameES:'1 Samuel',v:[28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,44,25,12,25,11,31,13]},
+  {n:10,name:'2 Samuel',nameES:'2 Samuel',v:[27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25]},
+  {n:11,name:'1 Kings',nameES:'1 Reyes',v:[53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53]},
+  {n:12,name:'2 Kings',nameES:'2 Reyes',v:[18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30]},
+  {n:13,name:'1 Chronicles',nameES:'1 Crónicas',v:[54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30]},
+  {n:14,name:'2 Chronicles',nameES:'2 Crónicas',v:[17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23]},
+  {n:15,name:'Ezra',nameES:'Esdras',v:[11,70,13,24,17,22,28,36,15,44]},
+  {n:16,name:'Nehemiah',nameES:'Nehemías',v:[11,20,32,23,19,19,73,18,38,39,36,47,31]},
+  {n:17,name:'Esther',nameES:'Ester',v:[22,23,15,17,14,14,10,17,32,3]},
+  {n:18,name:'Job',nameES:'Job',v:[22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17]},
+  {n:19,name:'Psalms',nameES:'Salmos',v:[6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,8,8,3,18,3,3,21,26,9,8,24,13,10,10,7,12,15,21,10,20,14,9,6]},
+  {n:20,name:'Proverbs',nameES:'Proverbios',v:[33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,27,33,31]},
+  {n:21,name:'Ecclesiastes',nameES:'Eclesiastés',v:[18,26,22,16,20,12,29,17,18,20,10,14]},
+  {n:22,name:'Song of Solomon',nameES:'Cantares',v:[17,17,11,16,16,13,13,14]},
+  {n:23,name:'Isaiah',nameES:'Isaías',v:[31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24]},
+  {n:24,name:'Jeremiah',nameES:'Jeremías',v:[19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34]},
+  {n:25,name:'Lamentations',nameES:'Lamentaciones',v:[22,22,66,22,22]},
+  {n:26,name:'Ezekiel',nameES:'Ezequiel',v:[28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35]},
+  {n:27,name:'Daniel',nameES:'Daniel',v:[21,49,30,37,31,28,28,27,27,21,45,13]},
+  {n:28,name:'Hosea',nameES:'Oseas',v:[11,23,5,19,15,11,16,14,17,15,12,14,16,9]},
+  {n:29,name:'Joel',nameES:'Joel',v:[20,32,21]},
+  {n:30,name:'Amos',nameES:'Amós',v:[15,16,15,13,27,14,17,14,15]},
+  {n:31,name:'Obadiah',nameES:'Abdías',v:[21]},
+  {n:32,name:'Jonah',nameES:'Jonás',v:[17,10,10,11]},
+  {n:33,name:'Micah',nameES:'Miqueas',v:[16,13,12,13,15,16,20]},
+  {n:34,name:'Nahum',nameES:'Nahúm',v:[15,13,19]},
+  {n:35,name:'Habakkuk',nameES:'Habacuc',v:[17,20,19]},
+  {n:36,name:'Zephaniah',nameES:'Sofonías',v:[18,15,20]},
+  {n:37,name:'Haggai',nameES:'Hageo',v:[15,23]},
+  {n:38,name:'Zechariah',nameES:'Zacarías',v:[21,13,10,14,11,15,14,23,17,12,17,14,9,21]},
+  {n:39,name:'Malachi',nameES:'Malaquías',v:[14,17,18,6]},
+  {n:40,name:'Matthew',nameES:'Mateo',v:[25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20]},
+  {n:41,name:'Mark',nameES:'Marcos',v:[45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20]},
+  {n:42,name:'Luke',nameES:'Lucas',v:[80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53]},
+  {n:43,name:'John',nameES:'Juan',v:[51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25]},
+  {n:44,name:'Acts',nameES:'Hechos',v:[26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,40,38,40,30,35,27,27,32,44,31]},
+  {n:45,name:'Romans',nameES:'Romanos',v:[32,29,31,25,21,23,25,39,33,21,36,21,14,23,33,27]},
+  {n:46,name:'1 Corinthians',nameES:'1 Corintios',v:[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24]},
+  {n:47,name:'2 Corinthians',nameES:'2 Corintios',v:[24,17,18,18,21,18,16,24,15,18,33,21,14]},
+  {n:48,name:'Galatians',nameES:'Gálatas',v:[24,21,29,31,26,18]},
+  {n:49,name:'Ephesians',nameES:'Efesios',v:[23,22,21,28,20,12]},
+  {n:50,name:'Philippians',nameES:'Filipenses',v:[30,30,21,23]},
+  {n:51,name:'Colossians',nameES:'Colosenses',v:[29,23,25,18]},
+  {n:52,name:'1 Thessalonians',nameES:'1 Tesalonicenses',v:[10,20,13,18,28]},
+  {n:53,name:'2 Thessalonians',nameES:'2 Tesalonicenses',v:[12,17,18]},
+  {n:54,name:'1 Timothy',nameES:'1 Timoteo',v:[20,15,16,16,25,21]},
+  {n:55,name:'2 Timothy',nameES:'2 Timoteo',v:[18,26,17,22]},
+  {n:56,name:'Titus',nameES:'Tito',v:[16,15,15]},
+  {n:57,name:'Philemon',nameES:'Filemón',v:[25]},
+  {n:58,name:'Hebrews',nameES:'Hebreos',v:[14,18,19,16,14,20,28,13,28,39,40,29,25]},
+  {n:59,name:'James',nameES:'Santiago',v:[27,26,18,17,20]},
+  {n:60,name:'1 Peter',nameES:'1 Pedro',v:[25,25,22,19,14]},
+  {n:61,name:'2 Peter',nameES:'2 Pedro',v:[21,22,18]},
+  {n:62,name:'1 John',nameES:'1 Juan',v:[10,29,24,21,21]},
+  {n:63,name:'2 John',nameES:'2 Juan',v:[13]},
+  {n:64,name:'3 John',nameES:'3 Juan',v:[14]},
+  {n:65,name:'Jude',nameES:'Judas',v:[25]},
+  {n:66,name:'Revelation',nameES:'Apocalipsis',v:[20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21]},
 ];
+function bookName(b,lang){if(!b)return'';if(lang==='ES'&&b.nameES)return b.nameES;return b.name;}
+function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN';}
 // ── Words of Jesus (Red Letter) — compact ranges per book:chapter ──
 // Format: {bookNum:{chapter:"v1-v2,v3,v4-v5",...}}
 const WOJ_RAW={
@@ -2359,7 +2361,7 @@ function App(){
     // Build range string e.g. "5-9" or "3, 5-7"
     const ranges=[];let i=0;
     while(i<sorted.length){let s=sorted[i],e=s;while(i+1<sorted.length&&sorted[i+1]===e+1){i++;e=sorted[i];}ranges.push(s===e?`${s}`:`${s}-${e}`);i++;}
-    const rangeRef=`${readBk?.name} ${readCh}:${ranges.join(', ')}`;
+    const rangeRef=`${bookName(readBk,versionLang(readVid))} ${readCh}:${ranges.join(', ')}`;
     await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||rangeRef});
     setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');dismissStrip();},1800);
   }
@@ -2369,10 +2371,10 @@ function App(){
     const verseLines=sorted.map(v=>{const row=readVerses.find(r=>r.verse===v);return row?{v,text:row.text.replace(/<[^>]*>/g,'')}:null;}).filter(Boolean);
     if(!verseLines.length)return;
     // Build range header: "Book Ch:V" or "Book Ch:V1-V2" or "Book Ch:V1-V2,V4,V6-V8"
-    const bookName=readBk?.name||'';
+    const bkDisplayName=bookName(readBk,versionLang(readVid))||'';
     const ranges=[];let i=0;
     while(i<sorted.length){let start=sorted[i],end=start;while(i+1<sorted.length&&sorted[i+1]===end+1){i++;end=sorted[i];}ranges.push(start===end?`${start}`:`${start}-${end}`);i++;}
-    const header=`${bookName} ${readCh}:${ranges.join(',')}`;
+    const header=`${bkDisplayName} ${readCh}:${ranges.join(',')}`;
     const sup=n=>[...String(n)].map(c=>'\u2070\u00B9\u00B2\u00B3\u2074\u2075\u2076\u2077\u2078\u2079'[c]).join('');
     const body=verseLines.map(({v,text})=>`${sup(v)} ${text}`).join('\n');
     const output=header+'\n'+body;
@@ -2601,7 +2603,7 @@ function App(){
             {/* Book */}
             <select className="s-btn" value={readBook} onChange={e=>{setReadBook(parseInt(e.target.value));setReadCh(1);}}
               style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:11,padding:'0 4px',outline:'none',maxWidth:110}}>
-              {BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}
+              {BIBLE.map(b=><option key={b.n} value={b.n}>{bookName(b,versionLang(readVid))}</option>)}
             </select>
             {/* Chapter */}
             <select className="s-btn" value={readCh} onChange={e=>setReadCh(parseInt(e.target.value))}
@@ -3100,7 +3102,7 @@ function App(){
                   )}
                   </div>
                   <div style={{textAlign:'center',fontFamily:FS,fontSize:20,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
-                    {navStep==='book'?'Select Book':navStep==='chapter'?pickedBkData?.name||'':`${pickedBkData?.name||''} ${navPickedCh}`}
+                    {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
                   {navStep==='verse'&&(
                     <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
@@ -3123,7 +3125,7 @@ function App(){
                           {BIBLE.filter(filter).map(b=>(
                             <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                               style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
-                              {b.name}
+                              {bookName(b,versionLang(readVid))}
                             </button>
                           ))}
                         </div>
@@ -3317,7 +3319,7 @@ function App(){
           {!readSearchRes&&(
             <div style={{textAlign:'center',padding:'10px 12px 2px'}}>
               <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
-              <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{readBk?.name} {readCh}</div>
+              <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
               <div style={{height:1,background:T.accentLine,marginTop:8}}/>
             </div>
           )}
@@ -3369,7 +3371,7 @@ function App(){
                       maxHeight:`calc(100vh - ${navH+80}px - env(safe-area-inset-bottom, 0px))`,overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)'}}>
                       {booksInRes.map(bn=>{
-                        const nm=BIBLE.find(x=>x.n===bn)?.name||'?';
+                        const nm=bookName(BIBLE.find(x=>x.n===bn),versionLang(readVid))||'?';
                         return(
                           <button key={bn} type="button" onClick={()=>jumpToBook(bn)}
                             style={{background:'none',border:'none',color:T.gM,fontFamily:FS,fontSize:7.5,
@@ -3579,15 +3581,15 @@ function App(){
           {/* Bottom nav */}
           <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'3px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',willChange:'transform'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
-                {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?BIBLE.find(b=>b.n===readBook-1)?.name:''}
+                {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
                 <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.gT,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
-                  {BIBLE.find(b=>b.n===readBook)?.name||''} {readCh}
+                  {bookName(BIBLE.find(b=>b.n===readBook),versionLang(readVid))||''} {readCh}
                 </span>
               </div>
               <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:28,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
-                {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?BIBLE.find(b=>b.n===readBook+1)?.name:''} {'\u203a'}
+                {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
             </div>
         </div>
