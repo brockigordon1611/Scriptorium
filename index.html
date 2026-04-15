@@ -1729,6 +1729,7 @@ function App(){
   const verseTouchScrolled=useRef(false);
   const readScrollToVerse=useRef(null);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
+  const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
   function dismissStrip(){setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
   function openStrip(v){if(readFullScreen.current)exitFullScreen();setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});setStripOpen(true);}
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
@@ -2090,6 +2091,12 @@ function App(){
   useEffect(()=>{
     if(!readVid||!ready)return;
     let cancelled=false;
+    // If only the version changed (same book+chapter), preserve any highlighted verses
+    const prev=prevReadStateRef.current;
+    if(prev.vid&&prev.vid!==readVid&&prev.book===readBook&&prev.ch===readCh&&readSelVerses.size>0){
+      readPendingSelVerses.current=new Set(readSelVerses);
+    }
+    prevReadStateRef.current={vid:readVid,book:readBook,ch:readCh};
     setReadSelVerses(new Set());setReadSearchRes(null);
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
       if(!cancelled){
