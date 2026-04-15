@@ -83,57 +83,45 @@ function kjvWords(text){
   return words;
 }
 
-// Words to skip when looking for the primary content word in a gloss.
-// These are articles, prepositions, and conjunctions that are part of the
-// English rendering of a single Hebrew/Greek word but aren't the core meaning.
-// e.g., H7225 gloss "In the beginning" → primary word = "beginning"
+// Words ALWAYS skipped — these are never the semantic content of a Hebrew/Greek word:
+// - Articles (a, an, the): purely English grammar
+// - Dropped subject pronouns: Hebrew/Greek often encodes person in the verb;
+//   English adds "he", "she", "it", "they", "we", "I" with no separate source word
+// Prepositions like "without", "in", "from", "unto" are intentionally NOT skipped —
+// they are part of the semantic unit (e.g. "without form" = H8414 as a phrase).
 const GLOSS_SKIP=new Set([
-  // Articles
   'a','an','the',
-  // Prepositions (common sources of wrong tagging, e.g. "without form" → "form")
-  'in','of','to','for','with','from','by','at','on',
-  'into','upon','over','under','before','after','through','out','up','down',
-  'without','within','among','between','against','toward','towards','about',
-  'around','near','beside','beyond','beneath','above','off','throughout',
-  'unto','out of','because of',
-  // Conjunctions & particles
-  'and','or','but','so','nor','yet','also','even','now','then','as',
-  // Negations — safe to skip since fallback returns them when they're the only word
-  'not','no',
-  // Copula & auxiliaries
-  'be','is','was','were','are','have','has','had',
-  'will','shall','would','should','may','might','do','did','does',
-  // Subject pronouns added by English that have no separate Hebrew/Greek word
-  'i','he','she','it','we','they',
-  // Object/possessive pronouns
-  'its','his','her','their','my','your','our',
-  'him','them','us','me','thy','thee','ye',
+  'i','he','she','it','we','they','ye',
 ]);
 
-// Extract the primary content word from a gloss string.
-// Returns the first non-stop-word, or the last word if all are stop words.
-function primaryWord(glossStr){
-  if(!glossStr||!glossStr.trim())return null;
-  const words=glossStr.trim().split(/\s+/)
-    .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0);
-  if(!words.length)return null;
-  for(const w of words){if(!GLOSS_SKIP.has(w))return w;}
-  return words[words.length-1]; // fallback: last word (e.g. gloss is just "the")
-}
-
-// Match a gloss to exactly ONE position in the KJV word array — the primary content word.
-// This mirrors e-Sword's behavior: one Hebrew/Greek word → one underlined KJV word.
+// Match a gloss to all semantically meaningful word positions in the KJV verse.
+// Tags the full translated phrase (e.g. "without form" → both words tagged as H8414)
+// while dropping pure grammar filler (articles, dropped subject pronouns).
+// Uses greedy forward search with whole-verse fallback for source-language word-order differences.
 function matchGloss(glossStr,kjvWordArr,usedSet){
-  const pw=primaryWord(glossStr);
-  if(!pw)return[];
-  // Search whole verse (word order may differ from source language)
-  for(let i=0;i<kjvWordArr.length;i++){
-    if(!usedSet.has(i)&&kjvWordArr[i].lower===pw){
-      usedSet.add(i);
-      return[{word_pos:i,word_text:kjvWordArr[i].text}];
+  if(!glossStr||!glossStr.trim())return[];
+  const glossWords=glossStr.trim().split(/\s+/)
+    .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0&&!GLOSS_SKIP.has(w));
+  if(!glossWords.length)return[];
+  const results=[];
+  let searchFrom=0;
+  for(const gw of glossWords){
+    let found=-1;
+    for(let i=searchFrom;i<kjvWordArr.length;i++){
+      if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
+    }
+    if(found===-1){
+      for(let i=0;i<kjvWordArr.length;i++){
+        if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
+      }
+    }
+    if(found!==-1){
+      usedSet.add(found);
+      results.push({word_pos:found,word_text:kjvWordArr[found].text});
+      searchFrom=found+1;
     }
   }
-  return[];
+  return results;
 }
 
 async function runImport(){
