@@ -2307,7 +2307,18 @@ function App(){
       }
     }catch{}
     if(verses.size>0){
-      readPendingSelVerses.current=verses;
+      // If already on this book/chapter/version, the chapter effect won't re-fire — apply immediately
+      if(bm.version_id===readVid&&bm.book_num===readBook&&bm.chapter===readCh){
+        setTimeout(()=>{
+          const firstV=Math.min(...verses);
+          const el=document.getElementById(`rv-${firstV}`);
+          if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+          setReadSelVerses(verses);
+          setStripOpen(true);
+        },80);
+      }else{
+        readPendingSelVerses.current=verses;
+      }
     }
   }
   function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(r.version_id);setTab('read');}
