@@ -88,12 +88,26 @@ function kjvWords(text){
 // English rendering of a single Hebrew/Greek word but aren't the core meaning.
 // e.g., H7225 gloss "In the beginning" → primary word = "beginning"
 const GLOSS_SKIP=new Set([
-  'a','an','the','in','of','and','to','for','with','from','by','at','on',
+  // Articles
+  'a','an','the',
+  // Prepositions (common sources of wrong tagging, e.g. "without form" → "form")
+  'in','of','to','for','with','from','by','at','on',
   'into','upon','over','under','before','after','through','out','up','down',
-  'so','also','even','but','or','yet','now','then','as','be','is','was',
-  'were','are','have','has','had','will','shall','would','should','may',
-  'might','do','did','does','its','his','her','their','my','your','our',
-  'him','them','us','me','thy','thee','ye'
+  'without','within','among','between','against','toward','towards','about',
+  'around','near','beside','beyond','beneath','above','off','throughout',
+  'unto','out of','because of',
+  // Conjunctions & particles
+  'and','or','but','so','nor','yet','also','even','now','then','as',
+  // Negations — safe to skip since fallback returns them when they're the only word
+  'not','no',
+  // Copula & auxiliaries
+  'be','is','was','were','are','have','has','had',
+  'will','shall','would','should','may','might','do','did','does',
+  // Subject pronouns added by English that have no separate Hebrew/Greek word
+  'i','he','she','it','we','they',
+  // Object/possessive pronouns
+  'its','his','her','their','my','your','our',
+  'him','them','us','me','thy','thee','ye',
 ]);
 
 // Extract the primary content word from a gloss string.
