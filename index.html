@@ -2105,6 +2105,8 @@ function App(){
     }
     prevReadStateRef.current={vid:readVid,book:readBook,ch:readCh};
     setReadSelVerses(new Set());setReadSearchRes(null);
+    // Close strip immediately so it doesn't flash empty while new chapter loads
+    if(!readPendingSelVerses.current)setStripOpen(false);
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
       if(!cancelled){
         setReadVerses(rows);
