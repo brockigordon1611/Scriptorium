@@ -1162,7 +1162,7 @@ function RecentsPanel({T,recents,onOpen,onClose,versions}){
           <div key={r.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
             <div style={{flex:1}}>
               <span style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bk?.name} {r.chapter}</span>
-              <span style={{fontFamily:FB,fontSize:13,color:T.dim,marginLeft:10}}>{ver?.label||r.version_id.toUpperCase()}</span>
+              <span style={{fontFamily:FB,fontSize:13,color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
             </div>
             <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>{fmtDate(r.visited_at)}</div>
             <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
