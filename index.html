@@ -1141,7 +1141,7 @@ function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions,user}){
           <div key={bm.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
             <div style={{flex:1}}>
               <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em',marginBottom:3}}>{bm.label||ref}</div>
-              <div style={{fontFamily:FB,fontSize:13,color:T.dim}}>{ref} {'\u00B7'} <span style={{color:T.gM}}>{ver?.label||bm.version_id.toUpperCase()}</span></div>
+              <div style={{fontFamily:FB,fontSize:13,color:T.dim}}>{ref} {'\u00B7'} <span style={{color:T.gM}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span></div>
             </div>
             <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
             {user&&<IBtn T={T} ch="✕" danger onClick={()=>onDelete(bm.id)} title="Delete bookmark"/>}
