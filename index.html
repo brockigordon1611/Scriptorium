@@ -1123,10 +1123,17 @@ function AuthPanel({onAuth}){
 // ══════════════════════════════════════════════════════════
 //  BOOKMARKS & RECENTS PANELS
 // ══════════════════════════════════════════════════════════
-function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions}){
+function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions,user}){
   return(
     <Modal title="✦ Bookmarks" onClose={onClose} T={T} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
-      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No bookmarks yet. In Reading Mode, tap any verse to bookmark it.</div>}
+      {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
+        <span style={{fontSize:16,flexShrink:0}}>⚠</span>
+        <div>
+          <div style={{fontFamily:FS,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:T.gT,marginBottom:4}}>SIGN IN REQUIRED</div>
+          <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>Bookmarks are saved to your account. Sign in to save and view bookmarks.</div>
+        </div>
+      </div>}
+      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>{user?'No bookmarks yet. In Reading Mode, tap any verse to bookmark it.':'No bookmarks. Sign in to save passages.'}</div>}
       {bookmarks.map(bm=>{
         const bk=BIBLE.find(b=>b.n===bm.book_num);const ver=versions.find(v=>v.id===bm.version_id);
         const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
@@ -1137,7 +1144,7 @@ function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions}){
               <div style={{fontFamily:FB,fontSize:13,color:T.dim}}>{ref} {'\u00B7'} <span style={{color:T.gM}}>{ver?.label||bm.version_id.toUpperCase()}</span></div>
             </div>
             <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
-            <IBtn T={T} ch="✕" danger onClick={()=>onDelete(bm.id)} title="Delete bookmark"/>
+            {user&&<IBtn T={T} ch="✕" danger onClick={()=>onDelete(bm.id)} title="Delete bookmark"/>}
           </div>
         );
       })}
@@ -2467,7 +2474,7 @@ function App(){
     }
     const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
   }
-  async function handleDelBookmark(id){await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
+  async function handleDelBookmark(id){if(!user)return;await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
   function togVer(vid){setHiddenVers(h=>h.includes(vid)?h.filter(x=>x!==vid):[...h,vid]);}
   function doExport(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`scriptorium-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 
@@ -4047,7 +4054,7 @@ function App(){
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload}/>}
-      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} versions={data.versions}/>}
+      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} versions={data.versions} user={user}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={()=>setModal(null)} versions={data.versions}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
