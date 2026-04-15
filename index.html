@@ -787,7 +787,7 @@ async function dbLoadProject(projectId){
       const bk=BIBLE.find(b=>b.n===e.book_num);
       return{...e,sectionId:e.section_id||null,reference:bk&&e.chapter&&e.verse_start?`${bk.name} ${e.chapter}:${e.verse_start}`:'',versions:evMap[e.id]||{}};
     }),
-    versions:[...pvData,...extraVers].map(v=>({id:v.version_id,label:v.label,lang:v.lang,isRef:v.is_ref})),
+    versions:(()=>{const seen=new Set();return[...pvData,...extraVers].filter(v=>{if(seen.has(v.version_id))return false;seen.add(v.version_id);return true;}).map(v=>({id:v.version_id,label:v.label,lang:v.lang,isRef:v.is_ref}));})(),
   };
 }
 async function dbSaveEntry(entry,projectId){
@@ -2056,6 +2056,13 @@ function App(){
         setLoadMsg('Setting up versions…');
         await dbSaveVersions(proj.id,PUBLIC_VERSIONS);
         pd.versions=PUBLIC_VERSIONS;
+      } else {
+        // Silently repair duplicates in project_versions (can occur from race conditions on first load)
+        const pvRaw=await sbFrom('project_versions',getToken()).then(t=>t.select('version_id',{project_id:proj.id}));
+        const pvRows=pvRaw.data||[];
+        if(pvRows.length>pd.versions.length){
+          await dbSaveVersions(proj.id,pd.versions);
+        }
       }
       // Seed default sections + sample entries for brand-new users
       if(pd.sections.length===0&&pd.entries.length===0){
