@@ -14,7 +14,7 @@ progress{width:100%;margin-top:8px;height:12px;accent-color:#c8a84e}
 </style>
 </head><body>
 <h1>Strong's Mapping Import v2</h1>
-<p>Uses the kennethreitz/kjvstudy.org interlinear dataset (~12MB gzipped) for near-complete coverage (~400K rows vs the current ~326K incomplete import). Clears and replaces existing strongs_mapping data.</p>
+<p>Uses the kennethreitz/kjvstudy.org interlinear dataset (~12MB gzipped). Maps each Hebrew/Greek word to its single primary content word in the KJV (skipping leading articles/prepositions in multi-word glosses, e.g. "In the beginning" → "beginning"). Clears and replaces existing strongs_mapping data.</p>
 <p style="color:#fb5">Requires modern browser (Chrome 80+ / Safari 16.4+) for gzip decompression. Keep this tab open until complete.</p>
 
 <label>Supabase Service Role Key:</label>
@@ -83,34 +83,43 @@ function kjvWords(text){
   return words;
 }
 
-// Match an interlinear English gloss to positions in the KJV word array.
-// Uses greedy forward search; falls back to whole-verse search for word-order differences.
-function matchGloss(glossStr,kjvWordArr,usedSet){
-  if(!glossStr||!glossStr.trim())return[];
-  const glossWords=glossStr.trim().split(/\s+/)
+// Words to skip when looking for the primary content word in a gloss.
+// These are articles, prepositions, and conjunctions that are part of the
+// English rendering of a single Hebrew/Greek word but aren't the core meaning.
+// e.g., H7225 gloss "In the beginning" → primary word = "beginning"
+const GLOSS_SKIP=new Set([
+  'a','an','the','in','of','and','to','for','with','from','by','at','on',
+  'into','upon','over','under','before','after','through','out','up','down',
+  'so','also','even','but','or','yet','now','then','as','be','is','was',
+  'were','are','have','has','had','will','shall','would','should','may',
+  'might','do','did','does','its','his','her','their','my','your','our',
+  'him','them','us','me','thy','thee','ye'
+]);
+
+// Extract the primary content word from a gloss string.
+// Returns the first non-stop-word, or the last word if all are stop words.
+function primaryWord(glossStr){
+  if(!glossStr||!glossStr.trim())return null;
+  const words=glossStr.trim().split(/\s+/)
     .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0);
-  if(!glossWords.length)return[];
-  const results=[];
-  let searchFrom=0;
-  for(const gw of glossWords){
-    let found=-1;
-    // Forward search from current position
-    for(let i=searchFrom;i<kjvWordArr.length;i++){
-      if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
-    }
-    // Fallback: search entire verse (handles Hebrew/Greek vs English word-order differences)
-    if(found===-1){
-      for(let i=0;i<kjvWordArr.length;i++){
-        if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
-      }
-    }
-    if(found!==-1){
-      usedSet.add(found);
-      results.push({word_pos:found,word_text:kjvWordArr[found].text});
-      searchFrom=found+1;
+  if(!words.length)return null;
+  for(const w of words){if(!GLOSS_SKIP.has(w))return w;}
+  return words[words.length-1]; // fallback: last word (e.g. gloss is just "the")
+}
+
+// Match a gloss to exactly ONE position in the KJV word array — the primary content word.
+// This mirrors e-Sword's behavior: one Hebrew/Greek word → one underlined KJV word.
+function matchGloss(glossStr,kjvWordArr,usedSet){
+  const pw=primaryWord(glossStr);
+  if(!pw)return[];
+  // Search whole verse (word order may differ from source language)
+  for(let i=0;i<kjvWordArr.length;i++){
+    if(!usedSet.has(i)&&kjvWordArr[i].lower===pw){
+      usedSet.add(i);
+      return[{word_pos:i,word_text:kjvWordArr[i].text}];
     }
   }
-  return results;
+  return[];
 }
 
 async function runImport(){
