@@ -1721,6 +1721,7 @@ function App(){
   const verseTouchStartY=useRef(0);
   const verseTouchScrolled=useRef(false);
   const readScrollToVerse=useRef(null);
+  const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   function dismissStrip(){setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
   function openStrip(v){if(readFullScreen.current)exitFullScreen();setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});setStripOpen(true);}
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
@@ -2088,6 +2089,7 @@ function App(){
         setReadVerses(rows);
         if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(tv);return ns;});},80);}
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
+        if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
       if(user&&!user.guest&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).catch(()=>{});
     }).catch(()=>{
@@ -2269,7 +2271,31 @@ function App(){
     if(parallelBk<66){setParallelBk(b=>b+1);setParallelCh(1);setParallelVs(1);}
   }
   function jumpToFromCard(parsed){setReadBook(parsed.bookNum);setReadCh(parsed.chapter);setTab('read');}
-  function openFromBookmark(bm){setModal(null);setReadBook(bm.book_num);setReadCh(bm.chapter);setReadVid(bm.version_id);setTab('read');}
+  function openFromBookmark(bm){
+    setModal(null);
+    setReadBook(bm.book_num);
+    setReadCh(bm.chapter);
+    setReadVid(bm.version_id);
+    setTab('read');
+    // Parse verse selection from label (e.g. "Genesis 1:3-5, 7") or fall back to single verse field
+    const verses=new Set();
+    try{
+      // Try to extract range string after "BookName Ch:" from label
+      const labelMatch=(bm.label||'').match(/:(.+)$/);
+      const rangeStr=labelMatch?labelMatch[1]:(bm.verse?String(bm.verse):'');
+      if(rangeStr){
+        for(const part of rangeStr.split(',')){
+          const p=part.trim();
+          const rangeM=p.match(/^(\d+)-(\d+)$/);
+          if(rangeM){for(let v=parseInt(rangeM[1]);v<=parseInt(rangeM[2]);v++)verses.add(v);}
+          else if(/^\d+$/.test(p))verses.add(parseInt(p));
+        }
+      }
+    }catch{}
+    if(verses.size>0){
+      readPendingSelVerses.current=verses;
+    }
+  }
   function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(r.version_id);setTab('read');}
 
   async function doReadSearch(overrideQ,overrideOpts){
