@@ -3560,7 +3560,6 @@ function App(){
             }
             // Group verses by word_text, deduplicate verse refs
             const verses=strongsPopup.verses||[];
-            const totalCount=verses.length;
             const groups={};
             for(const r of verses){
               const key=(r.word_text||'').toLowerCase();
@@ -3568,6 +3567,8 @@ function App(){
               groups[key].refs.add(`${r.book_num}|${r.chapter}|${r.verse}`);
             }
             const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
+            // Count unique verses (not rows) to match Strong's concordance counting
+            const totalCount=new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
             return React.createElement('div',{onClick:()=>{setStrongsPopup(null);setStrongsVersePreview(null);},style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.35)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .18s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:480,maxHeight:'72vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -4px 32px rgba(0,0,0,0.4)',animation:'slideUp .28s cubic-bezier(0.32,0.72,0,1) both'}},
@@ -3911,7 +3912,6 @@ function App(){
             const te=strongsTabEntry;
             const e=te.entry;
             const verses=te.verses||[];
-            const totalCount=verses.length;
             const groups={};
             for(const r of verses){
               const key=(r.word_text||'').toLowerCase();
@@ -3919,6 +3919,7 @@ function App(){
               groups[key].refs.add(`${r.book_num}|${r.chapter}|${r.verse}`);
             }
             const groupList=Object.entries(groups).sort((a,b)=>b[1].refs.size-a[1].refs.size);
+            const totalCount=new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
             function renderDerivation(text){
               if(!text)return null;
               const parts=[];let last=0;
