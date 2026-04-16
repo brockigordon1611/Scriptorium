@@ -90,8 +90,15 @@ function kjvWords(text){
 // Prepositions like "without", "in", "from", "unto" are intentionally NOT skipped —
 // they are part of the semantic unit (e.g. "without form" = H8414 as a phrase).
 const GLOSS_SKIP=new Set([
+  // Articles
   'a','an','the',
+  // Subject pronouns dropped in Hebrew/Greek (encoded in the verb)
   'i','he','she','it','we','they','ye',
+  // Copula verbs — often implicit in Hebrew; when part of a multi-word gloss like
+  // "were the first" they belong to the other word, not to H1961.
+  // When a gloss is ONLY a copula (e.g. "were" for H1961), the fallback
+  // in primaryWord() still returns it so H1961 gets tagged correctly.
+  'be','is','are','was','were','been','being',
 ]);
 
 // Match a gloss to a contiguous span of KJV words so the whole phrase underlines as one unit.
