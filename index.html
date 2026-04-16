@@ -624,7 +624,7 @@ function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){con
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
-  // Build set of red-letter word positions and italic word positions by walking raw text
+  // Build red/italic word position sets
   const redSet=new Set();
   const italicSet=new Set();
   let inRed=false,inItalic=false,rIdx=0;
@@ -634,52 +634,84 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     else if(tok==='</red>'){inRed=false;}
     else if(tok==='<i>'){inItalic=true;}
     else if(tok==='</i>'){inItalic=false;}
-    else if(/^</.test(tok)||/^\s*$/.test(tok)){/* skip other tags and whitespace */}
+    else if(/^</.test(tok)||/^\s*$/.test(tok)){}
     else{const wt=tok.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');if(wt){if(inRed)redSet.add(rIdx);if(inItalic)italicSet.add(rIdx);rIdx++;}}
   }
   const redColor=dark?'#ef5350':'#c62828';
 
-  // mappings: [{word_pos, word_text, strongs_num}] for this verse
   const cleanText=text.replace(/<red>|<\/red>/g,'').replace(/<[^>]+>/g,'');
   if(!mappings||!mappings.length)return React.createElement('span',null,cleanText);
   const words=cleanText.split(/(\s+)/);
-  // Build a lookup: word_pos -> [{strongs_num, word_text}]
+
+  // Build posMap: word_pos → [{strongs_num, word_text}]
   const posMap={};
   for(const m of mappings){
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
-  const elems=[];
+
+  // Annotate each token
+  const items=[];
   let wordIdx=0;
   for(let i=0;i<words.length;i++){
     const w=words[i];
-    if(/^\s+$/.test(w)){elems.push(w);continue;}
-    // Strip outer punctuation to get real word (matches import parseVerse logic)
+    if(/^\s+$/.test(w)){items.push({kind:'space',text:w});continue;}
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
-    if(!wordText){elems.push(w);continue;} // punctuation-only token, don't increment
+    if(!wordText){items.push({kind:'punct',text:w});continue;} // punct-only: no wordIdx increment
+    const mapped=posMap[wordIdx];
+    let sNum=null;
+    if(mapped&&mapped.length>0){
+      const wl=wordText.toLowerCase();
+      const best=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wl);
+      sNum=best?best.strongs_num:mapped[0].strongs_num;
+    }
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
-    // Italic supplied word sandwiched between red-letter words → muted red
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
-    const effectiveColor=isRed||isContextRed?redColor:undefined;
-    const mapped=posMap[wordIdx];
-    const wordStyle={...(effectiveColor?{color:effectiveColor}:{}),...(isItalic?{fontStyle:'italic'}:{})};
-    if(mapped&&mapped.length>0){
-      const wordLower=wordText.toLowerCase();
-      const bestMatch=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wordLower);
-      const sNum=bestMatch?bestMatch.strongs_num:mapped[0].strongs_num;
-      elems.push(React.createElement('span',{
-        key:i,
-        onDoubleClick:e=>{e.stopPropagation();onTap(sNum,w);},
-        onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,w);},500);},
-        onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
-        onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
-        style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...wordStyle}
-      },w));
-    }else{
-      elems.push((effectiveColor||isItalic)?React.createElement('span',{key:i,style:wordStyle},w):w);
-    }
+    items.push({kind:'word',text:w,wordIdx,sNum,isRed:isRed||isContextRed,isItalic});
     wordIdx++;
+  }
+
+  // Group consecutive same-sNum words with bridging spaces into single phrase spans
+  // so the dotted underline is unbroken across the whole phrase.
+  const elems=[];
+  let i=0;
+  while(i<items.length){
+    const item=items[i];
+    if(item.kind==='space'||item.kind==='punct'){elems.push(item.text);i++;continue;}
+    if(!item.sNum){
+      const ws={...(item.isRed?{color:redColor}:{}),...(item.isItalic?{fontStyle:'italic'}:{})};
+      elems.push((item.isRed||item.isItalic)?React.createElement('span',{key:i,style:ws},item.text):item.text);
+      i++;continue;
+    }
+    // Collect all items in this phrase group
+    const sNum=item.sNum;
+    let j=i;
+    while(j<items.length){
+      const cur=items[j];
+      if(cur.kind==='word'){
+        if(cur.sNum===sNum){j++;}else break;
+      }else if(cur.kind==='space'||cur.kind==='punct'){
+        // Bridge this gap only if the next word continues the same phrase
+        let nk=j+1;
+        while(nk<items.length&&items[nk].kind!=='word')nk++;
+        if(nk<items.length&&items[nk].sNum===sNum){j++;}else break;
+      }else break;
+    }
+    const group=items.slice(i,j);
+    const fw=group.find(x=>x.kind==='word');
+    const ec=fw?.isRed?redColor:undefined;
+    const ws={...(ec?{color:ec}:{}),...(fw?.isItalic?{fontStyle:'italic'}:{})};
+    const groupText=group.map(x=>x.text).join('');
+    elems.push(React.createElement('span',{
+      key:i,
+      onDoubleClick:e=>{e.stopPropagation();onTap(sNum,fw.text);},
+      onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,fw.text);},500);},
+      onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
+      onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
+      style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
+    },groupText));
+    i=j;
   }
   return React.createElement('span',null,...elems);
 }
