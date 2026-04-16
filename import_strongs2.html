@@ -109,8 +109,13 @@ const GLOSS_SKIP=new Set([
 // Uses greedy forward search with whole-verse fallback for word-order differences.
 function matchGloss(glossStr,kjvWordArr,usedSet){
   if(!glossStr||!glossStr.trim())return[];
-  const glossWords=glossStr.trim().split(/\s+/)
-    .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0&&!GLOSS_SKIP.has(w));
+  const allWords=glossStr.trim().split(/\s+/)
+    .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0);
+  // Filter out skip words to find semantic anchors.
+  // BUT if ALL words are in GLOSS_SKIP (e.g. gloss is just "was" for H1961),
+  // fall back to using the unfiltered list — the whole gloss IS the meaning.
+  let glossWords=allWords.filter(w=>!GLOSS_SKIP.has(w));
+  if(!glossWords.length)glossWords=allWords;
   if(!glossWords.length)return[];
 
   // Find anchor positions for semantic words
