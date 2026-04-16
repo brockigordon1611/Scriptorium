@@ -228,6 +228,7 @@ async function runImport(){
   const verseKeys=Object.keys(interlinear);
   const totalVerseKeys=verseKeys.length;
   let totalRows=0,processedVerses=0,skippedVerses=0,fkSkipped=0;
+  const fkSkippedNums=new Set();
   const pending=[];
   const BATCH=2000;
 
@@ -261,7 +262,7 @@ async function runImport(){
     for(const entry of (interlinear[verseKey]||[])){
       if(!entry||!entry.strongs||!entry.english)continue;
       const sNum=String(entry.strongs).trim();
-      if(!validStrongs.has(sNum)){fkSkipped++;continue;}
+      if(!validStrongs.has(sNum)){fkSkipped++;fkSkippedNums.add(sNum);continue;}
       const matched=matchGloss(entry.english,kjvWordArr,usedSet);
       for(const m of matched){
         pending.push({book_num:bookNum,chapter,verse,word_pos:m.word_pos,word_text:m.word_text,strongs_num:sNum});
@@ -288,7 +289,7 @@ async function runImport(){
     log(`  ${processedVerses} verses processed`,'ok');
     log(`  ${totalRows} word mappings inserted`,'ok');
     if(skippedVerses)log(`  ${skippedVerses} verses skipped (no KJV text found)`,'warn');
-    if(fkSkipped)log(`  ${fkSkipped} entries skipped (strongs number not in lexicon)`,'warn');
+    if(fkSkipped)log(`  ${fkSkipped} entries skipped (strongs number not in lexicon): ${[...fkSkippedNums].join(', ')}`,'warn');
   }catch(err){
     log(`ERROR on final flush at ${totalRows} rows: ${err.message}`,'err');
   }
