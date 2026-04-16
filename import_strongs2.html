@@ -94,16 +94,20 @@ const GLOSS_SKIP=new Set([
   'i','he','she','it','we','they','ye',
 ]);
 
-// Match a gloss to all semantically meaningful word positions in the KJV verse.
-// Tags the full translated phrase (e.g. "without form" → both words tagged as H8414)
-// while dropping pure grammar filler (articles, dropped subject pronouns).
-// Uses greedy forward search with whole-verse fallback for source-language word-order differences.
+// Match a gloss to a contiguous span of KJV words so the whole phrase underlines as one unit.
+// Strategy:
+//   1. Find anchor positions for each non-article, non-dropped-pronoun gloss word.
+//   2. Fill in every position between the first and last anchor (including skipped articles
+//      like "the") so the underline is unbroken — e.g. "In the beginning" → pos 0,1,2 all H7225.
+// Uses greedy forward search with whole-verse fallback for word-order differences.
 function matchGloss(glossStr,kjvWordArr,usedSet){
   if(!glossStr||!glossStr.trim())return[];
   const glossWords=glossStr.trim().split(/\s+/)
     .map(w=>stripPunct(w).toLowerCase()).filter(w=>w.length>0&&!GLOSS_SKIP.has(w));
   if(!glossWords.length)return[];
-  const results=[];
+
+  // Find anchor positions for semantic words
+  const anchors=[];
   let searchFrom=0;
   for(const gw of glossWords){
     let found=-1;
@@ -115,10 +119,18 @@ function matchGloss(glossStr,kjvWordArr,usedSet){
         if(!usedSet.has(i)&&kjvWordArr[i].lower===gw){found=i;break;}
       }
     }
-    if(found!==-1){
-      usedSet.add(found);
-      results.push({word_pos:found,word_text:kjvWordArr[found].text});
-      searchFrom=found+1;
+    if(found!==-1){anchors.push(found);searchFrom=found+1;}
+  }
+  if(!anchors.length)return[];
+
+  // Fill every position in [min, max] span to make a contiguous underline
+  const minPos=Math.min(...anchors);
+  const maxPos=Math.max(...anchors);
+  const results=[];
+  for(let i=minPos;i<=maxPos;i++){
+    if(!usedSet.has(i)){
+      usedSet.add(i);
+      results.push({word_pos:i,word_text:kjvWordArr[i].text});
     }
   }
   return results;
