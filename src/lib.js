@@ -461,34 +461,122 @@ export function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
-  const elems=[];
-  let wordIdx=0;
-  for(let i=0;i<words.length;i++){
-    const w=words[i];
-    if(/^\s+$/.test(w)){elems.push(w);continue;}
-    const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
-    if(!wordText){elems.push(w);continue;}
+  // Algorithm:
+  //   * anchor   - word has a mapping; renders underlined (and italic too if italic flag set)
+  //   * italic-standalone - italic word with NO mapping; renders italic, breaks any group
+  //   * filler   - word has no mapping and is not italic; forward-extends to the NEXT anchor
+  // Consecutive anchors sharing the same Strong's number merge into one continuous
+  // underlined phrase (e.g. "Let there be" when pos 3,4,5 all carry H1961).
+  // Fillers forward-extend to the next anchor (e.g. "the heaven" when "the" is unmapped).
+  // Italic anchors render with both italic text and underline, e.g. italic "it was"
+  // tagged H1961 becomes one phrase of two italic underlined words.
+  // Italic-standalone (italic, no mapping) terminates any in-progress group and
+  // orphans any pending fillers as plain text.
+  const classify=(wordIdx)=>{
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
-    const effectiveColor=isRed||isContextRed?redColor:undefined;
+    const effectiveColor=(isRed||isContextRed)?redColor:undefined;
     const mapped=posMap[wordIdx];
-    const wordStyle={...(effectiveColor?{color:effectiveColor}:{}),...(isItalic?{fontStyle:'italic'}:{})};
+    return{isItalic,effectiveColor,mapped};
+  };
+  const renderPlainWord=(key,w,ec)=>ec?React.createElement('span',{key,style:{color:ec}},w):w;
+  const renderItalicWord=(key,w,ec)=>React.createElement('span',{key,style:{fontStyle:'italic',...(ec?{color:ec}:{})}},w);
+
+  const elems=[];
+  let openGroup=null;        // {sNum, anchorW, anchorI, children[]}
+  let tentativeGroupWs=[];   // ws tokens held between openGroup's last anchor and the next real token
+  let pending=[];            // filler tokens (and their internal ws) waiting for next anchor
+  let hasFillerWord=false;
+  const closeOpenGroup=()=>{
+    if(!openGroup)return;
+    const g=openGroup;
+    elems.push(React.createElement('span',{
+      key:'g'+g.anchorI,
+      onDoubleClick:e=>{e.stopPropagation();onTap(g.sNum,g.anchorW);},
+      style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1}
+    },...g.children));
+    openGroup=null;
+  };
+  const flushTentativeWs=()=>{
+    for(const ws of tentativeGroupWs)elems.push(ws);
+    tentativeGroupWs=[];
+  };
+  const flushPendingAsPlain=()=>{
+    for(const t of pending){
+      if(t.kind==='ws')elems.push(t.w);
+      else elems.push(renderPlainWord(t.i,t.w,t.effectiveColor));
+    }
+    pending=[];hasFillerWord=false;
+  };
+
+  let wordIdx=0;
+  for(let i=0;i<words.length;i++){
+    const w=words[i];
+    if(/^\s+$/.test(w)){
+      if(hasFillerWord)pending.push({kind:'ws',i,w});
+      else if(openGroup)tentativeGroupWs.push(w);
+      else elems.push(w);
+      continue;
+    }
+    const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    if(!wordText){
+      if(hasFillerWord)pending.push({kind:'ws',i,w});
+      else if(openGroup)tentativeGroupWs.push(w);
+      else elems.push(w);
+      continue;
+    }
+    const {isItalic,effectiveColor,mapped}=classify(wordIdx);
     if(mapped&&mapped.length>0){
-      // Prefer the mapping whose word_text matches the actual displayed word
+      // Anchor (may be italic). Italic-anchor inner word renders italic-styled; the
+      // outer group span still carries the dotted underline so the phrase visibly
+      // groups italic + non-italic words under one H-number (e.g. italic "it was"
+      // under H1961).
       const wordLower=wordText.toLowerCase();
       const bestMatch=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wordLower);
       const sNum=bestMatch?bestMatch.strongs_num:mapped[0].strongs_num;
-      elems.push(React.createElement('span',{
-        key:i,
-        onDoubleClick:e=>{e.stopPropagation();onTap(sNum,w);},
-        style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,...wordStyle}
-      },w));
-    }else{
-      elems.push((effectiveColor||isItalic)?React.createElement('span',{key:i,style:wordStyle},w):w);
+      const renderAnchor=isItalic?renderItalicWord:renderPlainWord;
+      if(openGroup&&openGroup.sNum===sNum&&pending.length===0){
+        // Merge consecutive same-Strong's: absorb tentative ws + this anchor into current group
+        for(const ws of tentativeGroupWs)openGroup.children.push(ws);
+        tentativeGroupWs=[];
+        openGroup.children.push(renderAnchor(i,w,effectiveColor));
+        openGroup.anchorW=w;
+        openGroup.anchorI=i;
+      }else{
+        // Different sNum OR pending fillers present → close current group, start new
+        closeOpenGroup();
+        flushTentativeWs();
+        const newChildren=[];
+        for(const t of pending){
+          if(t.kind==='ws')newChildren.push(t.w);
+          else newChildren.push(renderPlainWord(t.i,t.w,t.effectiveColor));
+        }
+        pending=[];hasFillerWord=false;
+        newChildren.push(renderAnchor(i,w,effectiveColor));
+        openGroup={sNum,anchorW:w,anchorI:i,children:newChildren};
+      }
+      wordIdx++;continue;
     }
+    if(isItalic){
+      // Italic without a mapping: render standalone italic, break any group.
+      closeOpenGroup();
+      flushTentativeWs();
+      flushPendingAsPlain();
+      elems.push(renderItalicWord(i,w,effectiveColor));
+      wordIdx++;continue;
+    }
+    // Filler word: close current group (fillers forward-extend to NEXT anchor, not current),
+    // then buffer into pending.
+    closeOpenGroup();
+    flushTentativeWs();
+    pending.push({kind:'word',i,w,effectiveColor});
+    hasFillerWord=true;
     wordIdx++;
   }
+  closeOpenGroup();
+  flushTentativeWs();
+  flushPendingAsPlain();
   return React.createElement('span',null,...elems);
 }
 
