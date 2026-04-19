@@ -134,6 +134,11 @@ export const Auth = {
   onAuthChange(fn) { authListeners.push(fn); return () => { const i=authListeners.indexOf(fn); if(i>=0) authListeners.splice(i,1); }; }
 };
 
+// Always returns a fresh, non-expired token. Falls back to getToken() if Auth fails.
+export async function getFreshToken(){
+  try{const s=await Auth.getSession();return s?.access_token||null;}catch{return getToken();}
+}
+
 
 // ══════════════════════════════════════════════════════════
 //  LOCAL-FIRST: IndexedDB Bible text cache
@@ -271,7 +276,7 @@ export async function _batchDownload({table,select,filter,order,putFn,dlKey,tota
   onProgress&&onProgress(0,total);
   while(true){
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-    const token=getToken();
+    const token=await getFreshToken();
     const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':`${offset}-${offset+BATCH-1}`,'Prefer':'count=exact'};
     let url=`${SUPA_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
     if(filter)url+=`&${filter}`;
@@ -606,7 +611,7 @@ export async function dbGetChapter(versionId,bookNum,chapter){
     }
   }catch(e){}
   // Network fallback
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_chapter_verses',{p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);
   if(Array.isArray(data)&&data.length>0)return data;
   const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':'0-199'};
@@ -616,29 +621,29 @@ export async function dbGetChapter(versionId,bookNum,chapter){
   return Array.isArray(d)?d:[];
 }
 export async function dbGetStrongsForChapter(bookNum,chapter){
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
   return Array.isArray(data)?data:[];
 }
 export async function dbGetStrongsEntry(strongsNumber){
   try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return local;}}catch{}
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_strongs_entry',{p_strongs_number:strongsNumber},token);
   return data?.[0]||null;
 }
 export async function dbSearchStrongs(query){
   try{if(await idbIsDownloaded('strongs')){return await idbSearchStrongsLocal(query);}}catch{}
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
   return Array.isArray(data)?data:[];
 }
 export async function dbGetStrongsVerses(strongsNum){
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
   return Array.isArray(data)?data:[];
 }
 export async function dbGetVerse(versionId,bookNum,chapter,verse){
-  const token=getToken();
+  const token=await getFreshToken();
   const t=await sbFrom('bible_verses',token);
   const r=await t.select('verse,text',{version_id:versionId,book_num:bookNum,chapter,verse},{limit:1});
   return r.data?.[0]||null;
@@ -652,7 +657,7 @@ export async function dbAutoFill(bookNum,chapter,verse,versionIds){
   return results;
 }
 export async function dbLoadOrCreateProject(userId){
-  const token=getToken();
+  const token=await getFreshToken();
   const t=await sbFrom('projects',token);
   const r=await t.select('*',{user_id:userId},{order:'created_at.asc',limit:1});
   if(r.data?.length)return r.data[0];
@@ -660,23 +665,22 @@ export async function dbLoadOrCreateProject(userId){
   return ins.data?.[0]||null;
 }
 export async function dbLoadProject(projectId){
-  const token=getToken();
+  const token=await getFreshToken();
   const [secR,entR,pvR]=await Promise.all([
     sbFrom('sections',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc'})),
     sbFrom('entries',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc,created_at.asc'})),
     sbFrom('project_versions',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc'})),
   ]);
   const entries=entR.data||[];
-  // Load all entry_versions for this project's entries
+  // Load all entry_versions for this project's entries, filtered by entry ID
   let evMap={};
   if(entries.length){
+    const idList=entries.map(e=>e.id).join(',');
     const evAll=await fetch(
-      `${SUPA_URL}/rest/v1/entry_versions?select=*`,
-      {headers:sbHeaders(token)}
-    ).then(r=>r.json());
-    const entryIds=new Set(entries.map(e=>e.id));
+      `${SUPA_URL}/rest/v1/entry_versions?select=*&entry_id=in.(${idList})`,
+      {headers:{...sbHeaders(token),'Range-Unit':'items','Range':'0-9999'}}
+    ).then(r=>r.json()).catch(()=>[]);
     for(const ev of (Array.isArray(evAll)?evAll:[])){
-      if(!entryIds.has(ev.entry_id))continue;
       if(!evMap[ev.entry_id])evMap[ev.entry_id]={};
       evMap[ev.entry_id][ev.version_id]={text:ev.text,status:ev.status};
     }
@@ -701,35 +705,45 @@ export async function dbLoadProject(projectId){
   };
 }
 export async function dbSaveEntry(entry,projectId){
-  const token=getToken();
+  const token=await getFreshToken();
   const parsed=parseRefDD(entry.reference);
   const row={project_id:projectId,section_id:entry.sectionId||null,book_num:parsed?.bookNum||null,chapter:parsed?.chapter||null,verse_start:parsed?.verse||null,verse_end:parsed?.verse||null,issue_label:entry.issueLabel||null,issue_type:entry.issueType||null,notes:entry.notes||null,greek_hebrew:entry.greekHebrew||null,source_refs:entry.sourceRefs||null,position:entry.position||0};
   const t=await sbFrom('entries',token);
   let id=entry.id;
   if(entry._isNew){const r=await t.insert(row);id=r.data?.[0]?.id;if(!id)throw new Error('Insert failed:'+JSON.stringify(r.error));}
   else{await t.update(row,{id:entry.id});}
-  // Replace entry_versions
+  // Replace entry_versions: delete then insert; throw on insert failure so the
+  // caller knows the data didn't persist (delete has already run, but the entry
+  // itself is intact — versions will reload empty on next project load).
   const evT=await sbFrom('entry_versions',token);
   await evT.delete({entry_id:id});
   const evRows=Object.entries(entry.versions||{}).map(([vid,vd])=>({entry_id:id,version_id:vid,text:vd.text||'',status:vd.status||'faithful'}));
-  if(evRows.length){const evT2=await sbFrom('entry_versions',token);await evT2.insert(evRows);}
+  if(evRows.length){
+    const evT2=await sbFrom('entry_versions',token);
+    const evRes=await evT2.insert(evRows);
+    if(evRes.error)throw new Error('Failed to save verse versions: '+JSON.stringify(evRes.error));
+  }
   return id;
 }
-export async function dbDeleteEntry(id){const token=getToken();const t=await sbFrom('entries',token);await t.delete({id});}
+export async function dbDeleteEntry(id){const token=await getFreshToken();const t=await sbFrom('entries',token);await t.delete({id});}
 export async function dbSaveSection(sec,projectId){
-  const token=getToken();const t=await sbFrom('sections',token);
+  const token=await getFreshToken();const t=await sbFrom('sections',token);
   if(sec._isNew||!sec.id){const r=await t.insert({project_id:projectId,title:sec.title,description:sec.description||null,position:sec.position||0});return r.data?.[0]?.id;}
   else{await t.update({title:sec.title,description:sec.description||null},{id:sec.id});return sec.id;}
 }
-export async function dbDeleteSection(id){const token=getToken();const t=await sbFrom('sections',token);await t.delete({id});}
+export async function dbDeleteSection(id){const token=await getFreshToken();const t=await sbFrom('sections',token);await t.delete({id});}
 export async function dbSaveVersions(projectId,versions){
-  const token=getToken();const t=await sbFrom('project_versions',token);
+  const token=await getFreshToken();const t=await sbFrom('project_versions',token);
   await t.delete({project_id:projectId});
-  if(versions.length){const t2=await sbFrom('project_versions',token);await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));}
+  if(versions.length){
+    const t2=await sbFrom('project_versions',token);
+    const res=await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));
+    if(res.error)throw new Error('Failed to save versions: '+JSON.stringify(res.error));
+  }
 }
-export async function dbLoadBookmarks(userId){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
-export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
-export async function dbDeleteBookmark(id){const token=getToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
-export async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
-export async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
+export async function dbLoadBookmarks(userId){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
+export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
+export async function dbDeleteBookmark(id){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
+export async function dbLoadRecents(userId){const token=await getFreshToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
+export async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=await getFreshToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
 
