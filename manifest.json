@@ -2,7 +2,7 @@
   "name": "Scriptorium",
   "short_name": "Scriptorium",
   "description": "Bible App",
-  "start_url": "/Scriptorium",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#0e0d0b",
   "theme_color": "#0e0d0b",
