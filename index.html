@@ -3990,10 +3990,6 @@ function App(){
                     </span>
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
-                    <button type="button" className="s-btn s-ghost" onClick={()=>{loadChapterAudio().then(()=>handlePlayPause());}}
-                      style={{display:'flex',alignItems:'center',gap:5,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Play
-                    </button>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
                       style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 10px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box'}}>
                       ⧉ Copy
