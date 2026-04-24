@@ -3845,7 +3845,7 @@ function App(){
               readParaMode?(
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
-                    const sel=readSelVerses.has(v);
+                    const sel=!audioPlaying&&readSelVerses.has(v);
                     const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
@@ -3865,7 +3865,7 @@ function App(){
               ):(
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
-                    const sel=readSelVerses.has(v);
+                    const sel=!audioPlaying&&readSelVerses.has(v);
                     const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
