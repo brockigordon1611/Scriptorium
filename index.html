@@ -621,6 +621,31 @@ function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(
 function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
 function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';return text.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
+// ── Audio Bible helpers ──
+const USFM_CODES=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
+const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rv1960:'S1SPNVBN1DA',rvg:null,p1602:null};
+const FCBH_BASE='https://4.dbt.io/api';
+async function fcbhCall(path,params={}){
+  const key=localStorage.getItem('scrip:audio:fcbhKey')||'';
+  if(!key)throw new Error('FCBH API key not configured');
+  const u=new URL(FCBH_BASE+path);
+  u.searchParams.set('v','4');
+  u.searchParams.set('key',key);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('FCBH '+(r.status||'error'));
+  return r.json();
+}
+async function fcbhGetChapterUrl(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/bibles/filesets/${filesetId}/${bookUsfm}/${chapter}`);
+  return d.data?.[0];
+}
+async function fcbhGetTimestamps(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/timestamps/${filesetId}/${bookUsfm}/${chapter}`);
+  if(!d.data)return null;
+  return Object.fromEntries((d.data||[]).map(r=>[r.verse_start,r.timestamp]));
+}
+
 // Module-level long-press state for Strong's word taps (only one word pressed at a time)
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
@@ -1808,6 +1833,17 @@ function App(){
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
+  // ── Audio playback state ──
+  const[audioSource,setAudioSource]=useState(()=>{try{return localStorage.getItem('scrip:audio:source')||'auto';}catch{return 'auto';}});
+  const[audioPlaying,setAudioPlaying]=useState(false);
+  const[audioLoaded,setAudioLoaded]=useState(false);
+  const[audioLoading,setAudioLoading]=useState(false);
+  const[audioError,setAudioError]=useState(null);
+  const[currentVerse,setCurrentVerse]=useState(null);
+  const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
+  const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
+  const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
+  const[audioVoice,setAudioVoice]=useState(()=>{try{return localStorage.getItem('scrip:audio:voice')||'';}catch{return '';}});
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const[fsActive,setFsActive]=useState(false);
@@ -1944,6 +1980,9 @@ function App(){
   const swipeTouchT=useRef(null);
   const swipeDir=useRef(null); // null|'h'|'v'
   const readSearchJumpTo=useRef(null);
+  const audioElRef=useRef(null);
+  const audioTimestampsRef=useRef(null);
+  const audioUtterRef=useRef([]);
 
   // ── Parallel Verses state ──
   const[parallelVids,setParallelVids]=useState([]);
@@ -1980,11 +2019,157 @@ function App(){
     if(!r.parentNode)document.head.appendChild(r);
   },[T.g,T.gD]);
 
+  // ── Audio playback functions ──
+  const scrollToVerse=(v)=>{
+    if(!readRef.current)return;
+    const el=readRef.current.querySelector(`[data-verse="${v}"]`);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  };
+  const stopAudio=()=>{
+    setAudioLoaded(false);setCurrentVerse(null);
+    speechSynthesis.cancel();
+    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
+    setAudioPlaying(false);
+  };
+  const loadChapterAudio=async()=>{
+    if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
+    setAudioError(null);setAudioLoading(true);
+    const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+    try{
+      if(src==='fcbh'){
+        const fs=DEFAULT_FILESETS[readVid];
+        if(!fs)throw new Error('FCBH not available for this version');
+        const usfm=USFM_CODES[readBook-1];
+        const [meta,ts]=await Promise.all([
+          fcbhGetChapterUrl(fs,usfm,readCh),
+          fcbhGetTimestamps(fs,usfm,readCh).catch(()=>null),
+        ]);
+        if(!meta||!meta.path)throw new Error('Could not load chapter audio');
+        audioElRef.current.src=meta.path;
+        audioTimestampsRef.current=ts;
+      }else if(src==='speech'){
+        const voices=speechSynthesis.getVoices();
+        const lang=['rvg','p1602','rv1960'].includes(readVid)?'es':'en';
+        const voice=voices.find(v=>v.name===audioVoice)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+        audioUtterRef.current=[];
+        speechSynthesis.cancel();
+        readVerses.forEach(({verse,text})=>{
+          const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+          u.voice=voice;u.rate=audioRate;
+          u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onend=()=>{if(verse===readVerses[readVerses.length-1].verse&&audioAutoAdvance)handleNextChapter();};
+          speechSynthesis.speak(u);
+          audioUtterRef.current.push(u);
+        });
+      }else throw new Error('No audio source available');
+      setAudioLoaded(true);
+    }catch(e){
+      setAudioError(e.message);
+      setAudioLoaded(false);
+    }finally{setAudioLoading(false);}
+  };
+  const handleNextChapter=()=>{
+    const current=BIBLE.find(b=>b.n===readBook);
+    if(!current||readCh>=current.v.length){return;}
+    setReadCh(readCh+1);
+  };
+  const handlePlayPause=async()=>{
+    if(!audioLoaded){
+      await loadChapterAudio();
+      if(!audioLoaded)return;
+    }
+    if(audioPlaying){
+      audioElRef.current?.pause();
+      speechSynthesis.pause();
+      setAudioPlaying(false);
+    }else{
+      if(src==='fcbh'||src==='auto'){
+        audioElRef.current?.play();
+      }else{
+        speechSynthesis.resume();
+      }
+      setAudioPlaying(true);
+    }
+  };
+
   // ── Persist prefs ──
   useEffect(()=>{localStorage.setItem('scrip:dark',JSON.stringify(dark));},[dark]);
   useEffect(()=>{try{localStorage.setItem('scrip:accent',accent);}catch{}},[accent]);
   useEffect(()=>{localStorage.setItem('scrip:hidden',JSON.stringify(hiddenVers));},[hiddenVers]);
   useEffect(()=>{try{localStorage.setItem('scrip:readBook',readBook);localStorage.setItem('scrip:readCh',readCh);}catch{}},[readBook,readCh]);
+  // ── Persist audio prefs ──
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:source',audioSource);}catch{}},[audioSource]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:rate',audioRate);}catch{}},[audioRate]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(audioAutoScroll));}catch{}},[audioAutoScroll]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(audioAutoAdvance));}catch{}},[audioAutoAdvance]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:voice',audioVoice);}catch{}},[audioVoice]);
+  // ── Stop audio on chapter/version change ──
+  useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Wire up audio element events ──
+  useEffect(()=>{
+    const el=audioElRef.current;
+    if(!el)return;
+    const onPlay=()=>setAudioPlaying(true);
+    const onPause=()=>setAudioPlaying(false);
+    const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapter();};
+    const onTimeUpdate=()=>{
+      if(!audioTimestampsRef.current)return;
+      const t=el.currentTime;
+      const verses=Object.entries(audioTimestampsRef.current);
+      for(let i=0;i<verses.length;i++){
+        const [v,ts]=verses[i];
+        const nextTs=i<verses.length-1?verses[i+1][1]:Infinity;
+        if(t>=ts&&t<nextTs){if(currentVerse!==Number(v)){setCurrentVerse(Number(v));if(audioAutoScroll)scrollToVerse(Number(v));}break;}
+      }
+    };
+    el.addEventListener('play',onPlay);
+    el.addEventListener('pause',onPause);
+    el.addEventListener('ended',onEnded);
+    el.addEventListener('timeupdate',onTimeUpdate);
+    return()=>{
+      el.removeEventListener('play',onPlay);
+      el.removeEventListener('pause',onPause);
+      el.removeEventListener('ended',onEnded);
+      el.removeEventListener('timeupdate',onTimeUpdate);
+    };
+  },[audioAutoScroll,audioAutoAdvance,currentVerse]);
+  // ── Sync rate with audio element ──
+  useEffect(()=>{if(audioElRef.current)audioElRef.current.playbackRate=audioRate;},[audioRate]);
+  // ── Sync rate with speech synthesis ──
+  useEffect(()=>{
+    audioUtterRef.current.forEach(u=>{u.rate=audioRate;});
+  },[audioRate]);
+  // ── Sync voice with speech synthesis ──
+  useEffect(()=>{
+    audioUtterRef.current.forEach(u=>{
+      const voices=speechSynthesis.getVoices();
+      u.voice=voices.find(v=>v.name===audioVoice)||voices[0]||null;
+    });
+  },[audioVoice]);
+  // ── Sync speech playback rate on utterance creation ──
+  useEffect(()=>{
+    const onVoicesChanged=()=>{};
+    speechSynthesis.addEventListener('voiceschanged',onVoicesChanged);
+    return()=>speechSynthesis.removeEventListener('voiceschanged',onVoicesChanged);
+  },[]);
+  // ── Sync audio element currentTime when clicking a verse ──
+  useEffect(()=>{
+    if(audioTimestampsRef.current&&currentVerse!==null){
+      const ts=audioTimestampsRef.current[currentVerse];
+      if(ts!==undefined&&audioElRef.current){
+        // Only seek if the click came from user, not from timeupdate
+        // This is managed in verse click handler below
+      }
+    }
+  },[]);
+  // ── Sync speech synthesis pause/resume with audio player ──
+  useEffect(()=>{
+    if(audioPlaying){
+      if(audioSource==='speech'){
+        // Speech is managed by loadChapterAudio and play/pause handlers
+      }
+    }
+  },[audioPlaying,audioSource]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
   useEffect(()=>{
