@@ -647,7 +647,11 @@ async function fcbhGetChapterUrl(filesetId,bookUsfm,chapter){
 async function fcbhGetTimestamps(filesetId,bookUsfm,chapter){
   const d=await fcbhCall(`/timestamps/${filesetId}/${bookUsfm}/${chapter}`);
   if(!d.data)return null;
-  return Object.fromEntries((d.data||[]).map(r=>[r.verse_start,r.timestamp]));
+  return Object.fromEntries((d.data||[]).map(r=>{
+    let ts=r.timestamp;
+    if(typeof ts==='string'){const parts=ts.split(':');ts=parts.length===3?parseInt(parts[0])*3600+parseInt(parts[1])*60+parseInt(parts[2]):parseInt(parts[0])*60+parseInt(parts[1]);}
+    return[r.verse_start,ts];
+  }));
 }
 
 // Module-level long-press state for Strong's word taps (only one word pressed at a time)
