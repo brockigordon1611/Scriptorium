@@ -2092,15 +2092,12 @@ function App(){
         readVerses.forEach(({verse,text})=>{
           const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
           u.voice=voice;u.rate=audioRate;
-          u.onstart=()=>{setCurrentVerse(verse);setAudioPlaying(true);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
           u.onend=()=>{if(verse===lastVerse){setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
-          speechSynthesis.speak(u);
           audioUtterRef.current.push(u);
         });
-        setAudioPlaying(true);
       }else throw new Error('No audio source available');
       setAudioLoaded(true);
-      if(src==='fcbh'){audioElRef.current.play().catch(()=>{});}
     }catch(e){
       setAudioError(e.message);
       setAudioLoaded(false);
@@ -2123,10 +2120,10 @@ function App(){
       setAudioPlaying(false);
     }else{
       const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
-      if(src==='fcbh'||src==='auto'){
-        audioElRef.current?.play();
+      if(src==='speech'){
+        audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
       }else{
-        speechSynthesis.resume();
+        audioElRef.current?.play();
       }
       setAudioPlaying(true);
     }
@@ -3728,7 +3725,7 @@ function App(){
                 {audioSource!=='off'&&(
                   <div style={{position:'absolute',right:0,display:'flex',alignItems:'center',gap:4}}>
                     <button type="button" disabled={audioLoading}
-                      onClick={()=>{if(audioPlaying){stopAudio();}else if(audioLoaded){handlePlayPause();}else{loadChapterAudio();}}}
+                      onClick={()=>{if(audioLoaded){handlePlayPause();}else{loadChapterAudio();}}}
                       style={{display:'flex',alignItems:'center',justifyContent:'center',width:38,height:38,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:'50%',color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',transition:'all .15s',flexShrink:0}}>
                       {audioLoading
                         ?<Spinner/>
