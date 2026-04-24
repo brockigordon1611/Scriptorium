@@ -602,7 +602,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   .show-mobile{display:none!important;}
   .app-header{height:50px!important;padding:5px 10px 0!important;box-sizing:border-box!important;}
   .app-header-row{height:100%!important;}
-  .read-scrollbar{display:none!important;}
+  .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:rgba(180,160,100,0.5);pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;visibility:hidden;}
 }
 @media print{.no-print{display:none!important;}body{background:#fff!important;color:#000!important;}.entry-card{border:1px solid #ccc!important;box-shadow:none!important;break-inside:avoid;margin-bottom:8px!important;}}
 `;
