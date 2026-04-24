@@ -3717,20 +3717,31 @@ function App(){
             }}>
           {/* Chapter title */}
           {!readSearchRes&&(
-            <div style={{textAlign:'center',padding:'10px 12px 2px'}}>
-              <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
-              <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
+            <div style={{padding:'10px 12px 2px'}}>
+              <div style={{textAlign:'center',fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
+              <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
+                {audioSource!=='off'&&(
+                  <div style={{position:'absolute',right:0,display:'flex',alignItems:'center',gap:4}}>
+                    <button type="button" disabled={audioLoading}
+                      onClick={()=>audioLoaded?handlePlayPause():loadChapterAudio().then(()=>{if(audioSource!=='speech')handlePlayPause();})}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:'50%',color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',transition:'all .15s',flexShrink:0}}>
+                      {audioLoading
+                        ?<Spinner/>
+                        :audioPlaying
+                          ?<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                          :<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                      }
+                    </button>
+                    {(audioLoaded||audioPlaying)&&<button type="button" onClick={stopAudio}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22,background:'none',border:'none',color:T.dim,cursor:'pointer',padding:0,flexShrink:0}}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>}
+                    {audioError&&<span style={{fontFamily:FB,fontSize:10,color:'#ef5350',maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{audioError}</span>}
+                  </div>
+                )}
+              </div>
               <div style={{height:1,background:T.accentLine,marginTop:8}}/>
-              {audioSource!=='off'&&<div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:8,marginTop:8}}>
-                <button type="button" disabled={audioLoading}
-                  onClick={()=>audioLoaded?handlePlayPause():loadChapterAudio().then(()=>{if(audioSource!=='speech')handlePlayPause();})}
-                  style={{display:'flex',alignItems:'center',gap:6,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:20,color:audioPlaying?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'5px 14px',cursor:audioLoading?'wait':'pointer',transition:'all .15s',fontWeight:600}}>
-                  {audioLoading?<Spinner/>:audioPlaying?'⏸ Pause':'▶ Listen'}
-                </button>
-                {(audioLoaded||audioPlaying)&&<button type="button" onClick={stopAudio}
-                  style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,padding:'2px 4px'}}>✕</button>}
-                {audioError&&<span style={{fontFamily:FB,fontSize:11,color:'#ef5350'}}>{audioError}</span>}
-              </div>}
             </div>
           )}
             {readSearchRes&&(
@@ -3980,8 +3991,8 @@ function App(){
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
                     <button type="button" className="s-btn s-ghost" onClick={()=>{loadChapterAudio().then(()=>handlePlayPause());}}
-                      style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
-                      ▶ Play
+                      style={{display:'flex',alignItems:'center',gap:5,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg> Play
                     </button>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
                       style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 10px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box'}}>
