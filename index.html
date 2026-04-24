@@ -3687,6 +3687,16 @@ function App(){
               <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
               <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
               <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+              {audioSource!=='off'&&<div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:8,marginTop:8}}>
+                <button type="button" disabled={audioLoading}
+                  onClick={()=>audioLoaded?handlePlayPause():loadChapterAudio().then(()=>{if(audioSource!=='speech')handlePlayPause();})}
+                  style={{display:'flex',alignItems:'center',gap:6,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:20,color:audioPlaying?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'5px 14px',cursor:audioLoading?'wait':'pointer',transition:'all .15s',fontWeight:600}}>
+                  {audioLoading?<Spinner/>:audioPlaying?'⏸ Pause':'▶ Listen'}
+                </button>
+                {(audioLoaded||audioPlaying)&&<button type="button" onClick={stopAudio}
+                  style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,padding:'2px 4px'}}>✕</button>}
+                {audioError&&<span style={{fontFamily:FB,fontSize:11,color:'#ef5350'}}>{audioError}</span>}
+              </div>}
             </div>
           )}
             {readSearchRes&&(
@@ -3929,6 +3939,10 @@ function App(){
                     </span>
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'3px 7px',outline:'none'}}/>
+                    <button type="button" className="s-btn s-ghost" onClick={()=>{loadChapterAudio().then(()=>handlePlayPause());}}
+                      style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
+                      ▶ Play
+                    </button>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
                       style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
                       ⧉ Copy
