@@ -134,6 +134,11 @@ export const Auth = {
   onAuthChange(fn) { authListeners.push(fn); return () => { const i=authListeners.indexOf(fn); if(i>=0) authListeners.splice(i,1); }; }
 };
 
+// Always returns a fresh, non-expired token. Falls back to getToken() if Auth fails.
+export async function getFreshToken(){
+  try{const s=await Auth.getSession();return s?.access_token||null;}catch{return getToken();}
+}
+
 
 // ══════════════════════════════════════════════════════════
 //  LOCAL-FIRST: IndexedDB Bible text cache
@@ -271,7 +276,7 @@ export async function _batchDownload({table,select,filter,order,putFn,dlKey,tota
   onProgress&&onProgress(0,total);
   while(true){
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-    const token=getToken();
+    const token=await getFreshToken();
     const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':`${offset}-${offset+BATCH-1}`,'Prefer':'count=exact'};
     let url=`${SUPA_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
     if(filter)url+=`&${filter}`;
@@ -461,34 +466,101 @@ export function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
-  const elems=[];
-  let wordIdx=0;
-  for(let i=0;i<words.length;i++){
-    const w=words[i];
-    if(/^\s+$/.test(w)){elems.push(w);continue;}
-    const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
-    if(!wordText){elems.push(w);continue;}
+  // H853 (אֵת) is the Hebrew direct-object marker — untranslatable in English.
+  // SWORD KJV2003 attaches it to the nearest English word (e.g. "and" in "and the earth",
+  // or as a second entry on "created" in Gen 1:1). Showing H853 on "and" is wrong;
+  // filtering it lets that word fall through as a plain filler instead.
+  const FILTER_STRONGS=new Set(['H853']);
+
+  // classify: return italic flag, effective red-letter color, and filtered mapping list.
+  // Words whose ONLY mapping is H853 return mapped=null and are treated as fillers.
+  const classify=(wordIdx)=>{
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
-    const effectiveColor=isRed||isContextRed?redColor:undefined;
-    const mapped=posMap[wordIdx];
-    const wordStyle={...(effectiveColor?{color:effectiveColor}:{}),...(isItalic?{fontStyle:'italic'}:{})};
+    const effectiveColor=(isRed||isContextRed)?redColor:undefined;
+    const raw=posMap[wordIdx];
+    const mapped=raw?raw.filter(m=>!FILTER_STRONGS.has(m.strongs_num)):null;
+    return{isItalic,effectiveColor,mapped:mapped&&mapped.length?mapped:null};
+  };
+  const renderPlainWord=(key,w,ec)=>ec?React.createElement('span',{key,style:{color:ec}},w):w;
+  const renderItalicWord=(key,w,ec)=>React.createElement('span',{key,style:{fontStyle:'italic',...(ec?{color:ec}:{})}},w);
+
+  // Algorithm:
+  //   * anchor   — mapped word (after H853 filter); consecutive same-sNum anchors merge
+  //                into one continuous underlined phrase.
+  //   * italic-standalone — italic word with no mapping; renders italic-only, breaks group.
+  //   * filler   — unmapped non-italic word; renders plain immediately (NO forward-extension).
+  //
+  // Removing forward-extension means untagged words (Hebrew prefix particles, pronouns
+  // embedded in verb forms, etc.) are plainly visible rather than silently pulled into
+  // the adjacent anchor's group, which previously caused double-tap to fire the wrong
+  // Strong's number on those words.
+  const elems=[];
+  let openGroup=null;       // {sNum, anchorW, anchorI, children[]}
+  let tentativeGroupWs=[];  // whitespace held between consecutive same-sNum anchors
+  const closeOpenGroup=()=>{
+    if(!openGroup)return;
+    elems.push(React.createElement('span',{
+      key:'g'+openGroup.anchorI,
+      onDoubleClick:e=>{e.stopPropagation();onTap(openGroup.sNum,openGroup.anchorW);},
+      style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1}
+    },...openGroup.children));
+    openGroup=null;
+  };
+  const flushTentativeGroupWs=()=>{
+    for(const ws of tentativeGroupWs)elems.push(ws);
+    tentativeGroupWs=[];
+  };
+
+  let wordIdx=0;
+  for(let i=0;i<words.length;i++){
+    const w=words[i];
+    // Whitespace token: hold inside current group if one is open, else pass through.
+    if(/^\s+$/.test(w)){
+      if(openGroup)tentativeGroupWs.push(w);
+      else elems.push(w);
+      continue;
+    }
+    const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    // Punctuation-only token: treat same as whitespace for grouping purposes.
+    if(!wordText){
+      if(openGroup)tentativeGroupWs.push(w);
+      else elems.push(w);
+      continue;
+    }
+    const{isItalic,effectiveColor,mapped}=classify(wordIdx);
     if(mapped&&mapped.length>0){
-      // Prefer the mapping whose word_text matches the actual displayed word
+      // Anchor word. Pick the best-matching Strong's number (prefer exact word_text match).
       const wordLower=wordText.toLowerCase();
       const bestMatch=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wordLower);
       const sNum=bestMatch?bestMatch.strongs_num:mapped[0].strongs_num;
-      elems.push(React.createElement('span',{
-        key:i,
-        onDoubleClick:e=>{e.stopPropagation();onTap(sNum,w);},
-        style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,...wordStyle}
-      },w));
-    }else{
-      elems.push((effectiveColor||isItalic)?React.createElement('span',{key:i,style:wordStyle},w):w);
+      const renderAnchor=isItalic?renderItalicWord:renderPlainWord;
+      if(openGroup&&openGroup.sNum===sNum){
+        // Same Strong's number as open group — absorb tentative ws and merge.
+        for(const ws of tentativeGroupWs)openGroup.children.push(ws);
+        tentativeGroupWs=[];
+        openGroup.children.push(renderAnchor(i,w,effectiveColor));
+        openGroup.anchorW=w;openGroup.anchorI=i;
+      }else{
+        // Different number — close current group, start a new one.
+        closeOpenGroup();flushTentativeGroupWs();
+        openGroup={sNum,anchorW:w,anchorI:i,children:[renderAnchor(i,w,effectiveColor)]};
+      }
+      wordIdx++;continue;
     }
+    if(isItalic){
+      // Italic-standalone: close group, render italic, no underline.
+      closeOpenGroup();flushTentativeGroupWs();
+      elems.push(renderItalicWord(i,w,effectiveColor));
+      wordIdx++;continue;
+    }
+    // Filler (unmapped non-italic, or H853-only): render plain immediately.
+    closeOpenGroup();flushTentativeGroupWs();
+    elems.push(renderPlainWord(i,w,effectiveColor));
     wordIdx++;
   }
+  closeOpenGroup();flushTentativeGroupWs();
   return React.createElement('span',null,...elems);
 }
 
@@ -518,7 +590,7 @@ export async function dbGetChapter(versionId,bookNum,chapter){
     }
   }catch(e){}
   // Network fallback
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_chapter_verses',{p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);
   if(Array.isArray(data)&&data.length>0)return data;
   const hdrs={...sbHeaders(token),'Range-Unit':'items','Range':'0-199'};
@@ -528,29 +600,37 @@ export async function dbGetChapter(versionId,bookNum,chapter){
   return Array.isArray(d)?d:[];
 }
 export async function dbGetStrongsForChapter(bookNum,chapter){
-  const token=getToken();
+  const token=await getFreshToken();
+  // The DB function now uses RETURNS json + json_agg — returns a single JSON blob,
+  // completely bypassing PostgREST's 1000-row server cap (which Range headers cannot override).
   const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
-  return Array.isArray(data)?data:[];
+  // RETURNS json: PostgREST delivers the value directly; parse it safely.
+  if(Array.isArray(data))return data;
+  if(Array.isArray(data?.[0]))return data[0];  // safety: wrapped case
+  return[];
 }
 export async function dbGetStrongsEntry(strongsNumber){
   try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return local;}}catch{}
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('get_strongs_entry',{p_strongs_number:strongsNumber},token);
   return data?.[0]||null;
 }
 export async function dbSearchStrongs(query){
   try{if(await idbIsDownloaded('strongs')){return await idbSearchStrongsLocal(query);}}catch{}
-  const token=getToken();
+  const token=await getFreshToken();
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
   return Array.isArray(data)?data:[];
 }
 export async function dbGetStrongsVerses(strongsNum){
-  const token=getToken();
+  const token=await getFreshToken();
+  // Same json_agg pattern — no row limit. H3068 (LORD) has ~6800 occurrences.
   const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
-  return Array.isArray(data)?data:[];
+  if(Array.isArray(data))return data;
+  if(Array.isArray(data?.[0]))return data[0];
+  return[];
 }
 export async function dbGetVerse(versionId,bookNum,chapter,verse){
-  const token=getToken();
+  const token=await getFreshToken();
   const t=await sbFrom('bible_verses',token);
   const r=await t.select('verse,text',{version_id:versionId,book_num:bookNum,chapter,verse},{limit:1});
   return r.data?.[0]||null;
@@ -564,7 +644,7 @@ export async function dbAutoFill(bookNum,chapter,verse,versionIds){
   return results;
 }
 export async function dbLoadOrCreateProject(userId){
-  const token=getToken();
+  const token=await getFreshToken();
   const t=await sbFrom('projects',token);
   const r=await t.select('*',{user_id:userId},{order:'created_at.asc',limit:1});
   if(r.data?.length)return r.data[0];
@@ -572,23 +652,22 @@ export async function dbLoadOrCreateProject(userId){
   return ins.data?.[0]||null;
 }
 export async function dbLoadProject(projectId){
-  const token=getToken();
+  const token=await getFreshToken();
   const [secR,entR,pvR]=await Promise.all([
     sbFrom('sections',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc'})),
     sbFrom('entries',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc,created_at.asc'})),
     sbFrom('project_versions',token).then(t=>t.select('*',{project_id:projectId},{order:'position.asc'})),
   ]);
   const entries=entR.data||[];
-  // Load all entry_versions for this project's entries
+  // Load all entry_versions for this project's entries, filtered by entry ID
   let evMap={};
   if(entries.length){
+    const idList=entries.map(e=>e.id).join(',');
     const evAll=await fetch(
-      `${SUPA_URL}/rest/v1/entry_versions?select=*`,
-      {headers:sbHeaders(token)}
-    ).then(r=>r.json());
-    const entryIds=new Set(entries.map(e=>e.id));
+      `${SUPA_URL}/rest/v1/entry_versions?select=*&entry_id=in.(${idList})`,
+      {headers:{...sbHeaders(token),'Range-Unit':'items','Range':'0-9999'}}
+    ).then(r=>r.json()).catch(()=>[]);
     for(const ev of (Array.isArray(evAll)?evAll:[])){
-      if(!entryIds.has(ev.entry_id))continue;
       if(!evMap[ev.entry_id])evMap[ev.entry_id]={};
       evMap[ev.entry_id][ev.version_id]={text:ev.text,status:ev.status};
     }
@@ -613,35 +692,45 @@ export async function dbLoadProject(projectId){
   };
 }
 export async function dbSaveEntry(entry,projectId){
-  const token=getToken();
+  const token=await getFreshToken();
   const parsed=parseRefDD(entry.reference);
   const row={project_id:projectId,section_id:entry.sectionId||null,book_num:parsed?.bookNum||null,chapter:parsed?.chapter||null,verse_start:parsed?.verse||null,verse_end:parsed?.verse||null,issue_label:entry.issueLabel||null,issue_type:entry.issueType||null,notes:entry.notes||null,greek_hebrew:entry.greekHebrew||null,source_refs:entry.sourceRefs||null,position:entry.position||0};
   const t=await sbFrom('entries',token);
   let id=entry.id;
   if(entry._isNew){const r=await t.insert(row);id=r.data?.[0]?.id;if(!id)throw new Error('Insert failed:'+JSON.stringify(r.error));}
   else{await t.update(row,{id:entry.id});}
-  // Replace entry_versions
+  // Replace entry_versions: delete then insert; throw on insert failure so the
+  // caller knows the data didn't persist (delete has already run, but the entry
+  // itself is intact — versions will reload empty on next project load).
   const evT=await sbFrom('entry_versions',token);
   await evT.delete({entry_id:id});
   const evRows=Object.entries(entry.versions||{}).map(([vid,vd])=>({entry_id:id,version_id:vid,text:vd.text||'',status:vd.status||'faithful'}));
-  if(evRows.length){const evT2=await sbFrom('entry_versions',token);await evT2.insert(evRows);}
+  if(evRows.length){
+    const evT2=await sbFrom('entry_versions',token);
+    const evRes=await evT2.insert(evRows);
+    if(evRes.error)throw new Error('Failed to save verse versions: '+JSON.stringify(evRes.error));
+  }
   return id;
 }
-export async function dbDeleteEntry(id){const token=getToken();const t=await sbFrom('entries',token);await t.delete({id});}
+export async function dbDeleteEntry(id){const token=await getFreshToken();const t=await sbFrom('entries',token);await t.delete({id});}
 export async function dbSaveSection(sec,projectId){
-  const token=getToken();const t=await sbFrom('sections',token);
+  const token=await getFreshToken();const t=await sbFrom('sections',token);
   if(sec._isNew||!sec.id){const r=await t.insert({project_id:projectId,title:sec.title,description:sec.description||null,position:sec.position||0});return r.data?.[0]?.id;}
   else{await t.update({title:sec.title,description:sec.description||null},{id:sec.id});return sec.id;}
 }
-export async function dbDeleteSection(id){const token=getToken();const t=await sbFrom('sections',token);await t.delete({id});}
+export async function dbDeleteSection(id){const token=await getFreshToken();const t=await sbFrom('sections',token);await t.delete({id});}
 export async function dbSaveVersions(projectId,versions){
-  const token=getToken();const t=await sbFrom('project_versions',token);
+  const token=await getFreshToken();const t=await sbFrom('project_versions',token);
   await t.delete({project_id:projectId});
-  if(versions.length){const t2=await sbFrom('project_versions',token);await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));}
+  if(versions.length){
+    const t2=await sbFrom('project_versions',token);
+    const res=await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));
+    if(res.error)throw new Error('Failed to save versions: '+JSON.stringify(res.error));
+  }
 }
-export async function dbLoadBookmarks(userId){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
-export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
-export async function dbDeleteBookmark(id){const token=getToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
-export async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
-export async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
+export async function dbLoadBookmarks(userId){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
+export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
+export async function dbDeleteBookmark(id){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
+export async function dbLoadRecents(userId){const token=await getFreshToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
+export async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=await getFreshToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
 

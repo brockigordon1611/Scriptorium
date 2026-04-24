@@ -1281,9 +1281,12 @@ function App(){
       setReadVid(pd.versions.find(v=>v.isRef)?.id||pd.versions[0]?.id||'kjv');
       setParallelVids(pd.versions.map(v=>v.id));
       setLoadMsg('');setReady(true);
-      dbLoadBookmarks(user.id).then(setBookmarks);
-      dbLoadRecents(user.id).then(setRecents);
-    })();
+      dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
+      dbLoadRecents(user.id).then(setRecents).catch(()=>{});
+    })().catch(err=>{
+      console.error('Project load failed:',err);
+      setLoadMsg('Failed to load — check your connection and refresh the page.');
+    });
   },[user]);
 
   // ── Load reading chapter ──
@@ -1385,7 +1388,7 @@ function App(){
     const label=`${bk} ${ch}:${vs}`;
     setStrongsVersePreview({bn,ch,vs,label,text:null,loading:true});
     try{
-      const rows=await dbGetChapter(readVid,bn,ch);
+      const rows=await dbGetChapter('kjv',bn,ch);
       const row=rows.find(r=>r.verse===vs);
       setStrongsVersePreview(p=>p&&p.bn===bn&&p.ch===ch&&p.vs===vs?{...p,text:row?row.text:'(verse not found)',loading:false}:p);
     }catch{
@@ -1599,8 +1602,13 @@ function App(){
       const savedId=await dbSaveEntry(updated,projectId);
       const final={...updated,id:savedId||updated.id,_isNew:undefined,_isEdit:undefined};
       setData(d=>{const i=d.entries.findIndex(e=>e.id===updated.id||e.id===final.id);const entries=i>=0?d.entries.map((e,ix)=>ix===i?final:e):[...d.entries,final];return{...d,entries};});
-    }catch(err){console.error('saveEntry:',err);}
-    setModal(null);setSaveStatus('saved');
+      setModal(null);setSaveStatus('saved');
+    }catch(err){
+      console.error('saveEntry:',err);
+      setSaveStatus('error');
+      setTimeout(()=>setSaveStatus('saved'),5000);
+      // Keep modal open so user can retry
+    }
   }
 
   // ── Section CRUD ──
@@ -1614,8 +1622,12 @@ function App(){
       const savedId=await dbSaveSection(sec,projectId);
       const final={...sec,id:savedId,_isNew:undefined};
       setData(d=>{const i=d.sections.findIndex(s=>s.id===sec.id||s.id===savedId);const sections=i>=0?d.sections.map((s,ix)=>ix===i?final:s):[...d.sections,final];return{...d,sections};});
-    }catch(err){console.error('saveSec:',err);}
-    setModal(null);setSaveStatus('saved');
+      setModal(null);setSaveStatus('saved');
+    }catch(err){
+      console.error('saveSec:',err);
+      setSaveStatus('error');
+      setTimeout(()=>setSaveStatus('saved'),5000);
+    }
   }
 
   async function confirmDel(){
@@ -1625,15 +1637,26 @@ function App(){
     try{
       if(delType==='entry'){label=data.entries.find(x=>x.id===delId)?.reference||'Entry';await dbDeleteEntry(delId);setData(d=>({...d,entries:d.entries.filter(x=>x.id!==delId)}));}
       else if(delType==='section'){label=data.sections.find(x=>x.id===delId)?.title||'Section';await dbDeleteSection(delId);setData(d=>({...d,sections:d.sections.filter(x=>x.id!==delId)}));}
-    }catch(err){console.error('delete:',err);}
+    }catch(err){
+      console.error('delete:',err);
+      setSaveStatus('error');
+      setTimeout(()=>setSaveStatus('saved'),5000);
+      setModal(null);return;
+    }
     setModal(null);setSaveStatus('saved');showUndo(label,snap);
   }
 
   async function saveVersions(vers){
     setSaveStatus('saving');
-    try{await dbSaveVersions(projectId,vers);setData(d=>({...d,versions:vers}));}
-    catch(err){console.error('saveVersions:',err);}
-    setModal(null);setSaveStatus('saved');
+    try{
+      await dbSaveVersions(projectId,vers);
+      setData(d=>({...d,versions:vers}));
+      setModal(null);setSaveStatus('saved');
+    }catch(err){
+      console.error('saveVersions:',err);
+      setSaveStatus('error');
+      setTimeout(()=>setSaveStatus('saved'),5000);
+    }
   }
 
   async function handleAddBookmark(params){
@@ -1943,6 +1966,7 @@ function App(){
           {/* Desktop: full button row */}
           <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:6}}>
             {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:500,color:T.gM}}>● Saving…</span>}
+            {saveStatus==='error'&&<span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:500,color:T.redTxt}}>✕ Save failed — check connection</span>}
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2}}>
               <GhostBtn T={T} ch="✦ Bookmarks" onClick={()=>setModal({type:'bookmarks'})}/>
               <GhostBtn T={T} ch="↺ Recents" onClick={()=>setModal({type:'recents'})}/>
@@ -1954,6 +1978,7 @@ function App(){
             </div>
           </div>
           {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
+          {saveStatus==='error'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.redTxt,whiteSpace:'nowrap',flexShrink:0}}>✕ Save failed</span>}
         </div>
       </div>
 
@@ -2699,8 +2724,12 @@ function App(){
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,marginBottom:12,fontStyle:'italic'}}>{strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}}>{strongsPopup.entry.short_def}</div>
                     {strongsPopup.entry.full_def&&<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
+                    {strongsPopup.entry.kjv_usage&&<div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4,marginBottom:4}}>
+                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:6}}>KJV USAGE</div>
+                      <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:1.5}}>{strongsPopup.entry.kjv_usage}</div>
+                    </div>}
                     {groupList.length>0&&<div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
-                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}}>KJV USAGE</div>
+                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}}>OCCURRENCES IN KJV</div>
                       {groupList.map(([key,{word,refs}])=>{
                         const isExpanded=strongsExpandedWords.has(key);
                         const refArr=[...refs].map(r=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
