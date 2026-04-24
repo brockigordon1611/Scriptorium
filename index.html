@@ -3563,6 +3563,9 @@ function App(){
           )}
 
 
+          {/* Audio element for FCBH streaming */}
+          <audio ref={audioElRef} style={{display:'none'}}/>
+
           {/* Custom overlay scrollbar thumb */}
           <div ref={scrollbarThumbRef} className="read-scrollbar"/>
           {/* Verse content */}
@@ -3691,14 +3694,15 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
+                    const isAudio=currentVerse===v;
                     return(
-                      <span key={v} id={`rv-${v}`} className="reading-verse"
+                      <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)}
-                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
+                        onClick={()=>{if(isAudio&&audioTimestampsRef.current?.[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[v];}verseClick(v);}}
+                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'rgba(200,168,78,0.5)':'transparent'}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
                         {' '}
@@ -3710,11 +3714,12 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
+                    const isAudio=currentVerse===v;
                     return(
-                      <div key={v} id={`rv-${v}`} className="reading-verse"
+                      <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)}
-                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
+                        onClick={()=>{if(isAudio&&audioTimestampsRef.current?.[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[v];}verseClick(v);}}
+                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',boxShadow:(isAudio?`0 0 0 1.5px rgba(200,168,78,0.4)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none')+', 0 1px 6px rgba(200,168,78,0.08)',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
