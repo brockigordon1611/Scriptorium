@@ -2088,19 +2088,23 @@ function App(){
         const voice=voices.find(v=>v.name===audioVoice)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
         audioUtterRef.current=[];
         speechSynthesis.cancel();
+        const lastVerse=readVerses[readVerses.length-1]?.verse;
         readVerses.forEach(({verse,text})=>{
           const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
           u.voice=voice;u.rate=audioRate;
-          u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
-          u.onend=()=>{if(verse===readVerses[readVerses.length-1].verse&&audioAutoAdvance)handleNextChapter();};
+          u.onstart=()=>{setCurrentVerse(verse);setAudioPlaying(true);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onend=()=>{if(verse===lastVerse){setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
           speechSynthesis.speak(u);
           audioUtterRef.current.push(u);
         });
+        setAudioPlaying(true);
       }else throw new Error('No audio source available');
       setAudioLoaded(true);
+      if(src==='fcbh'){audioElRef.current.play().catch(()=>{});}
     }catch(e){
       setAudioError(e.message);
       setAudioLoaded(false);
+      setAudioPlaying(false);
     }finally{setAudioLoading(false);}
   };
   const handleNextChapter=()=>{
@@ -3724,19 +3728,15 @@ function App(){
                 {audioSource!=='off'&&(
                   <div style={{position:'absolute',right:0,display:'flex',alignItems:'center',gap:4}}>
                     <button type="button" disabled={audioLoading}
-                      onClick={()=>audioLoaded?handlePlayPause():loadChapterAudio().then(()=>{if(audioSource!=='speech')handlePlayPause();})}
-                      style={{display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:'50%',color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',transition:'all .15s',flexShrink:0}}>
+                      onClick={()=>{if(audioPlaying){stopAudio();}else if(audioLoaded){handlePlayPause();}else{loadChapterAudio();}}}
+                      style={{display:'flex',alignItems:'center',justifyContent:'center',width:38,height:38,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:'50%',color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',transition:'all .15s',flexShrink:0}}>
                       {audioLoading
                         ?<Spinner/>
                         :audioPlaying
-                          ?<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                          :<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                          ?<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                          :<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
                       }
                     </button>
-                    {(audioLoaded||audioPlaying)&&<button type="button" onClick={stopAudio}
-                      style={{display:'flex',alignItems:'center',justifyContent:'center',width:22,height:22,background:'none',border:'none',color:T.dim,cursor:'pointer',padding:0,flexShrink:0}}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>}
                     {audioError&&<span style={{fontFamily:FB,fontSize:10,color:'#ef5350',maxWidth:80,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{audioError}</span>}
                   </div>
                 )}
@@ -3859,7 +3859,7 @@ function App(){
                       <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
                         onClick={()=>{if(isAudio&&audioTimestampsRef.current?.[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[v];}verseClick(v);}}
-                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',boxShadow:(isAudio?`0 0 0 1.5px rgba(200,168,78,0.4)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none')+', 0 1px 6px rgba(200,168,78,0.08)',marginBottom:1,transition:'all .2s'}}>
+                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',boxShadow:isAudio?`0 0 0 1.5px rgba(200,168,78,0.4)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
