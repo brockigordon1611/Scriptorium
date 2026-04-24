@@ -2127,9 +2127,10 @@ function App(){
       speechSynthesis.pause();
       setAudioPlaying(false);
     }else{
-      const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+      const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
+      const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
       if(src==='speech'){
-        audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+        speechSynthesis.resume();
       }else{
         audioElRef.current?.play();
       }
@@ -3839,7 +3840,7 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
-                    const isAudio=currentVerse===v;
+                    const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
@@ -3859,7 +3860,7 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
-                    const isAudio=currentVerse===v;
+                    const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
