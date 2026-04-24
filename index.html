@@ -3940,8 +3940,8 @@ function App(){
             // Use total_count from RPC (accurate even with 1000-row Supabase limit)
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'flex-start',justifyContent:'center',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,maxHeight:'60vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginTop:navH+20,marginBottom:bottomBarH,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'center',justifyContent:'center',paddingTop:Math.max(navH+80,window.innerHeight*0.15),paddingBottom:bottomBarH+120,animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,maxHeight:'60vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:0,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
@@ -4017,7 +4017,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&!readSearchRes&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?'calc(160px + env(safe-area-inset-bottom, 0px))':Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',padding:'6px 10px',display:'flex',alignItems:'center',gap:8,height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',flexWrap:'wrap',justifyContent:'center'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?bottomBarH+108:Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',padding:'6px 10px',display:'flex',alignItems:'center',gap:8,height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',flexWrap:'wrap',justifyContent:'center'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
