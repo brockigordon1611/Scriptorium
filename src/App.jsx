@@ -2724,8 +2724,12 @@ function App(){
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,marginBottom:12,fontStyle:'italic'}}>{strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}}>{strongsPopup.entry.short_def}</div>
                     {strongsPopup.entry.full_def&&<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
+                    {strongsPopup.entry.kjv_usage&&<div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4,marginBottom:4}}>
+                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:6}}>KJV USAGE</div>
+                      <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:1.5}}>{strongsPopup.entry.kjv_usage}</div>
+                    </div>}
                     {groupList.length>0&&<div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
-                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}}>KJV USAGE</div>
+                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}}>OCCURRENCES IN KJV</div>
                       {groupList.map(([key,{word,refs}])=>{
                         const isExpanded=strongsExpandedWords.has(key);
                         const refArr=[...refs].map(r=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);

@@ -466,122 +466,101 @@ export function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
-  // Algorithm:
-  //   * anchor   - word has a mapping; renders underlined (and italic too if italic flag set)
-  //   * italic-standalone - italic word with NO mapping; renders italic, breaks any group
-  //   * filler   - word has no mapping and is not italic; forward-extends to the NEXT anchor
-  // Consecutive anchors sharing the same Strong's number merge into one continuous
-  // underlined phrase (e.g. "Let there be" when pos 3,4,5 all carry H1961).
-  // Fillers forward-extend to the next anchor (e.g. "the heaven" when "the" is unmapped).
-  // Italic anchors render with both italic text and underline, e.g. italic "it was"
-  // tagged H1961 becomes one phrase of two italic underlined words.
-  // Italic-standalone (italic, no mapping) terminates any in-progress group and
-  // orphans any pending fillers as plain text.
+  // H853 (אֵת) is the Hebrew direct-object marker — untranslatable in English.
+  // SWORD KJV2003 attaches it to the nearest English word (e.g. "and" in "and the earth",
+  // or as a second entry on "created" in Gen 1:1). Showing H853 on "and" is wrong;
+  // filtering it lets that word fall through as a plain filler instead.
+  const FILTER_STRONGS=new Set(['H853']);
+
+  // classify: return italic flag, effective red-letter color, and filtered mapping list.
+  // Words whose ONLY mapping is H853 return mapped=null and are treated as fillers.
   const classify=(wordIdx)=>{
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
     const effectiveColor=(isRed||isContextRed)?redColor:undefined;
-    const mapped=posMap[wordIdx];
-    return{isItalic,effectiveColor,mapped};
+    const raw=posMap[wordIdx];
+    const mapped=raw?raw.filter(m=>!FILTER_STRONGS.has(m.strongs_num)):null;
+    return{isItalic,effectiveColor,mapped:mapped&&mapped.length?mapped:null};
   };
   const renderPlainWord=(key,w,ec)=>ec?React.createElement('span',{key,style:{color:ec}},w):w;
   const renderItalicWord=(key,w,ec)=>React.createElement('span',{key,style:{fontStyle:'italic',...(ec?{color:ec}:{})}},w);
 
+  // Algorithm:
+  //   * anchor   — mapped word (after H853 filter); consecutive same-sNum anchors merge
+  //                into one continuous underlined phrase.
+  //   * italic-standalone — italic word with no mapping; renders italic-only, breaks group.
+  //   * filler   — unmapped non-italic word; renders plain immediately (NO forward-extension).
+  //
+  // Removing forward-extension means untagged words (Hebrew prefix particles, pronouns
+  // embedded in verb forms, etc.) are plainly visible rather than silently pulled into
+  // the adjacent anchor's group, which previously caused double-tap to fire the wrong
+  // Strong's number on those words.
   const elems=[];
-  let openGroup=null;        // {sNum, anchorW, anchorI, children[]}
-  let tentativeGroupWs=[];   // ws tokens held between openGroup's last anchor and the next real token
-  let pending=[];            // filler tokens (and their internal ws) waiting for next anchor
-  let hasFillerWord=false;
+  let openGroup=null;       // {sNum, anchorW, anchorI, children[]}
+  let tentativeGroupWs=[];  // whitespace held between consecutive same-sNum anchors
   const closeOpenGroup=()=>{
     if(!openGroup)return;
-    const g=openGroup;
     elems.push(React.createElement('span',{
-      key:'g'+g.anchorI,
-      onDoubleClick:e=>{e.stopPropagation();onTap(g.sNum,g.anchorW);},
+      key:'g'+openGroup.anchorI,
+      onDoubleClick:e=>{e.stopPropagation();onTap(openGroup.sNum,openGroup.anchorW);},
       style:{borderBottom:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1}
-    },...g.children));
+    },...openGroup.children));
     openGroup=null;
   };
-  const flushTentativeWs=()=>{
+  const flushTentativeGroupWs=()=>{
     for(const ws of tentativeGroupWs)elems.push(ws);
     tentativeGroupWs=[];
-  };
-  const flushPendingAsPlain=()=>{
-    for(const t of pending){
-      if(t.kind==='ws')elems.push(t.w);
-      else elems.push(renderPlainWord(t.i,t.w,t.effectiveColor));
-    }
-    pending=[];hasFillerWord=false;
   };
 
   let wordIdx=0;
   for(let i=0;i<words.length;i++){
     const w=words[i];
+    // Whitespace token: hold inside current group if one is open, else pass through.
     if(/^\s+$/.test(w)){
-      if(hasFillerWord)pending.push({kind:'ws',i,w});
-      else if(openGroup)tentativeGroupWs.push(w);
+      if(openGroup)tentativeGroupWs.push(w);
       else elems.push(w);
       continue;
     }
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    // Punctuation-only token: treat same as whitespace for grouping purposes.
     if(!wordText){
-      if(hasFillerWord)pending.push({kind:'ws',i,w});
-      else if(openGroup)tentativeGroupWs.push(w);
+      if(openGroup)tentativeGroupWs.push(w);
       else elems.push(w);
       continue;
     }
-    const {isItalic,effectiveColor,mapped}=classify(wordIdx);
+    const{isItalic,effectiveColor,mapped}=classify(wordIdx);
     if(mapped&&mapped.length>0){
-      // Anchor (may be italic). Italic-anchor inner word renders italic-styled; the
-      // outer group span still carries the dotted underline so the phrase visibly
-      // groups italic + non-italic words under one H-number (e.g. italic "it was"
-      // under H1961).
+      // Anchor word. Pick the best-matching Strong's number (prefer exact word_text match).
       const wordLower=wordText.toLowerCase();
       const bestMatch=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wordLower);
       const sNum=bestMatch?bestMatch.strongs_num:mapped[0].strongs_num;
       const renderAnchor=isItalic?renderItalicWord:renderPlainWord;
-      if(openGroup&&openGroup.sNum===sNum&&pending.length===0){
-        // Merge consecutive same-Strong's: absorb tentative ws + this anchor into current group
+      if(openGroup&&openGroup.sNum===sNum){
+        // Same Strong's number as open group — absorb tentative ws and merge.
         for(const ws of tentativeGroupWs)openGroup.children.push(ws);
         tentativeGroupWs=[];
         openGroup.children.push(renderAnchor(i,w,effectiveColor));
-        openGroup.anchorW=w;
-        openGroup.anchorI=i;
+        openGroup.anchorW=w;openGroup.anchorI=i;
       }else{
-        // Different sNum OR pending fillers present → close current group, start new
-        closeOpenGroup();
-        flushTentativeWs();
-        const newChildren=[];
-        for(const t of pending){
-          if(t.kind==='ws')newChildren.push(t.w);
-          else newChildren.push(renderPlainWord(t.i,t.w,t.effectiveColor));
-        }
-        pending=[];hasFillerWord=false;
-        newChildren.push(renderAnchor(i,w,effectiveColor));
-        openGroup={sNum,anchorW:w,anchorI:i,children:newChildren};
+        // Different number — close current group, start a new one.
+        closeOpenGroup();flushTentativeGroupWs();
+        openGroup={sNum,anchorW:w,anchorI:i,children:[renderAnchor(i,w,effectiveColor)]};
       }
       wordIdx++;continue;
     }
     if(isItalic){
-      // Italic without a mapping: render standalone italic, break any group.
-      closeOpenGroup();
-      flushTentativeWs();
-      flushPendingAsPlain();
+      // Italic-standalone: close group, render italic, no underline.
+      closeOpenGroup();flushTentativeGroupWs();
       elems.push(renderItalicWord(i,w,effectiveColor));
       wordIdx++;continue;
     }
-    // Filler word: close current group (fillers forward-extend to NEXT anchor, not current),
-    // then buffer into pending.
-    closeOpenGroup();
-    flushTentativeWs();
-    pending.push({kind:'word',i,w,effectiveColor});
-    hasFillerWord=true;
+    // Filler (unmapped non-italic, or H853-only): render plain immediately.
+    closeOpenGroup();flushTentativeGroupWs();
+    elems.push(renderPlainWord(i,w,effectiveColor));
     wordIdx++;
   }
-  closeOpenGroup();
-  flushTentativeWs();
-  flushPendingAsPlain();
+  closeOpenGroup();flushTentativeGroupWs();
   return React.createElement('span',null,...elems);
 }
 
@@ -622,8 +601,13 @@ export async function dbGetChapter(versionId,bookNum,chapter){
 }
 export async function dbGetStrongsForChapter(bookNum,chapter){
   const token=await getFreshToken();
+  // The DB function now uses RETURNS json + json_agg — returns a single JSON blob,
+  // completely bypassing PostgREST's 1000-row server cap (which Range headers cannot override).
   const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
-  return Array.isArray(data)?data:[];
+  // RETURNS json: PostgREST delivers the value directly; parse it safely.
+  if(Array.isArray(data))return data;
+  if(Array.isArray(data?.[0]))return data[0];  // safety: wrapped case
+  return[];
 }
 export async function dbGetStrongsEntry(strongsNumber){
   try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return local;}}catch{}
@@ -639,8 +623,11 @@ export async function dbSearchStrongs(query){
 }
 export async function dbGetStrongsVerses(strongsNum){
   const token=await getFreshToken();
+  // Same json_agg pattern — no row limit. H3068 (LORD) has ~6800 occurrences.
   const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
-  return Array.isArray(data)?data:[];
+  if(Array.isArray(data))return data;
+  if(Array.isArray(data?.[0]))return data[0];
+  return[];
 }
 export async function dbGetVerse(versionId,bookNum,chapter,verse){
   const token=await getFreshToken();

@@ -1,5 +1,8 @@
-const CACHE = 'scriptorium-v2';
+const CACHE = 'scriptorium-v3';
 const SHELL = ['index.html'];
+
+// Never cache in dev (localhost / 127.0.0.1) so code changes take effect immediately.
+const IS_DEV = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -16,6 +19,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   // Never intercept Supabase API — always live network
   if (e.request.url.includes('supabase.co')) return;
+  // In dev, pass everything through to the network so code changes take effect.
+  if (IS_DEV) return;
 
   if (e.request.url.includes('unpkg.com')) {
     // Network-first for CDN scripts, fall back to cache
