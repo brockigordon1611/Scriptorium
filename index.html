@@ -4017,7 +4017,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&!readSearchRes&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?0:Math.max(0,bottomBarH-4),left:0,right:0,zIndex:135,background:dark?'rgba(14,13,11,0.28)':'rgba(242,236,218,0.32)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'0 8px 4px',display:'flex',alignItems:'center',gap:6,height:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?0:Math.max(0,bottomBarH+44),left:0,right:0,zIndex:135,background:dark?'rgba(14,13,11,0.28)':'rgba(242,236,218,0.32)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'0 8px 4px',display:'flex',alignItems:'center',gap:6,height:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -4046,7 +4046,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:44,boxSizing:'border-box'}}>
+          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
