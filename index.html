@@ -625,6 +625,31 @@ function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(
 function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
 function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';return text.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
+// ── Audio Bible helpers ──
+const USFM_CODES=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
+const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rv1960:'S1SPNVBN1DA',rvg:null,p1602:null};
+const FCBH_BASE='https://4.dbt.io/api';
+async function fcbhCall(path,params={}){
+  const key=localStorage.getItem('scrip:audio:fcbhKey')||'';
+  if(!key)throw new Error('FCBH API key not configured');
+  const u=new URL(FCBH_BASE+path);
+  u.searchParams.set('v','4');
+  u.searchParams.set('key',key);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('FCBH '+(r.status||'error'));
+  return r.json();
+}
+async function fcbhGetChapterUrl(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/bibles/filesets/${filesetId}/${bookUsfm}/${chapter}`);
+  return d.data?.[0];
+}
+async function fcbhGetTimestamps(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/timestamps/${filesetId}/${bookUsfm}/${chapter}`);
+  if(!d.data)return null;
+  return Object.fromEntries((d.data||[]).map(r=>[r.verse_start,r.timestamp]));
+}
+
 // Module-level long-press state for Strong's word taps (only one word pressed at a time)
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
@@ -1828,6 +1853,7 @@ function App(){
     });
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
   const[settingsAppOpen,setSettingsAppOpen]=useState(false);
+  const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.2;}catch{return 1.2;}});
@@ -1837,6 +1863,17 @@ function App(){
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
+  // ── Audio playback state ──
+  const[audioSource,setAudioSource]=useState(()=>{try{return localStorage.getItem('scrip:audio:source')||'auto';}catch{return 'auto';}});
+  const[audioPlaying,setAudioPlaying]=useState(false);
+  const[audioLoaded,setAudioLoaded]=useState(false);
+  const[audioLoading,setAudioLoading]=useState(false);
+  const[audioError,setAudioError]=useState(null);
+  const[currentVerse,setCurrentVerse]=useState(null);
+  const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
+  const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
+  const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
+  const[audioVoice,setAudioVoice]=useState(()=>{try{return localStorage.getItem('scrip:audio:voice')||'';}catch{return '';}});
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const[fsActive,setFsActive]=useState(false);
@@ -1978,6 +2015,9 @@ function App(){
   const swipeTouchT=useRef(null);
   const swipeDir=useRef(null); // null|'h'|'v'
   const readSearchJumpTo=useRef(null);
+  const audioElRef=useRef(null);
+  const audioTimestampsRef=useRef(null);
+  const audioUtterRef=useRef([]);
 
   // ── Parallel Verses state ──
   const[parallelVids,setParallelVids]=useState([]);
@@ -2014,11 +2054,158 @@ function App(){
     if(!r.parentNode)document.head.appendChild(r);
   },[T.g,T.gD]);
 
+  // ── Audio playback functions ──
+  const scrollToVerse=(v)=>{
+    if(!readRef.current)return;
+    const el=readRef.current.querySelector(`[data-verse="${v}"]`);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  };
+  const stopAudio=()=>{
+    setAudioLoaded(false);setCurrentVerse(null);
+    speechSynthesis.cancel();
+    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
+    setAudioPlaying(false);
+  };
+  const loadChapterAudio=async()=>{
+    if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
+    setAudioError(null);setAudioLoading(true);
+    const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+    try{
+      if(src==='fcbh'){
+        const fs=DEFAULT_FILESETS[readVid];
+        if(!fs)throw new Error('FCBH not available for this version');
+        const usfm=USFM_CODES[readBook-1];
+        const [meta,ts]=await Promise.all([
+          fcbhGetChapterUrl(fs,usfm,readCh),
+          fcbhGetTimestamps(fs,usfm,readCh).catch(()=>null),
+        ]);
+        if(!meta||!meta.path)throw new Error('Could not load chapter audio');
+        audioElRef.current.src=meta.path;
+        audioTimestampsRef.current=ts;
+      }else if(src==='speech'){
+        const voices=speechSynthesis.getVoices();
+        const lang=['rvg','p1602','rv1960'].includes(readVid)?'es':'en';
+        const voice=voices.find(v=>v.name===audioVoice)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+        audioUtterRef.current=[];
+        speechSynthesis.cancel();
+        readVerses.forEach(({verse,text})=>{
+          const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+          u.voice=voice;u.rate=audioRate;
+          u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onend=()=>{if(verse===readVerses[readVerses.length-1].verse&&audioAutoAdvance)handleNextChapter();};
+          speechSynthesis.speak(u);
+          audioUtterRef.current.push(u);
+        });
+      }else throw new Error('No audio source available');
+      setAudioLoaded(true);
+    }catch(e){
+      setAudioError(e.message);
+      setAudioLoaded(false);
+    }finally{setAudioLoading(false);}
+  };
+  const handleNextChapter=()=>{
+    const current=BIBLE.find(b=>b.n===readBook);
+    if(!current||readCh>=current.v.length){return;}
+    setReadCh(readCh+1);
+  };
+  const handlePlayPause=async()=>{
+    if(!audioLoaded){
+      await loadChapterAudio();
+      if(!audioLoaded)return;
+    }
+    if(audioPlaying){
+      audioElRef.current?.pause();
+      speechSynthesis.pause();
+      setAudioPlaying(false);
+    }else{
+      const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+      if(src==='fcbh'||src==='auto'){
+        audioElRef.current?.play();
+      }else{
+        speechSynthesis.resume();
+      }
+      setAudioPlaying(true);
+    }
+  };
+
   // ── Persist prefs ──
   useEffect(()=>{localStorage.setItem('scrip:dark',JSON.stringify(dark));},[dark]);
   useEffect(()=>{try{localStorage.setItem('scrip:accent',accent);}catch{}},[accent]);
   useEffect(()=>{localStorage.setItem('scrip:hidden',JSON.stringify(hiddenVers));},[hiddenVers]);
   useEffect(()=>{try{localStorage.setItem('scrip:readBook',readBook);localStorage.setItem('scrip:readCh',readCh);}catch{}},[readBook,readCh]);
+  // ── Persist audio prefs ──
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:source',audioSource);}catch{}},[audioSource]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:rate',audioRate);}catch{}},[audioRate]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(audioAutoScroll));}catch{}},[audioAutoScroll]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(audioAutoAdvance));}catch{}},[audioAutoAdvance]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:voice',audioVoice);}catch{}},[audioVoice]);
+  // ── Stop audio on chapter/version change ──
+  useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Wire up audio element events ──
+  useEffect(()=>{
+    const el=audioElRef.current;
+    if(!el)return;
+    const onPlay=()=>setAudioPlaying(true);
+    const onPause=()=>setAudioPlaying(false);
+    const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapter();};
+    const onTimeUpdate=()=>{
+      if(!audioTimestampsRef.current)return;
+      const t=el.currentTime;
+      const verses=Object.entries(audioTimestampsRef.current);
+      for(let i=0;i<verses.length;i++){
+        const [v,ts]=verses[i];
+        const nextTs=i<verses.length-1?verses[i+1][1]:Infinity;
+        if(t>=ts&&t<nextTs){if(currentVerse!==Number(v)){setCurrentVerse(Number(v));if(audioAutoScroll)scrollToVerse(Number(v));}break;}
+      }
+    };
+    el.addEventListener('play',onPlay);
+    el.addEventListener('pause',onPause);
+    el.addEventListener('ended',onEnded);
+    el.addEventListener('timeupdate',onTimeUpdate);
+    return()=>{
+      el.removeEventListener('play',onPlay);
+      el.removeEventListener('pause',onPause);
+      el.removeEventListener('ended',onEnded);
+      el.removeEventListener('timeupdate',onTimeUpdate);
+    };
+  },[audioAutoScroll,audioAutoAdvance,currentVerse]);
+  // ── Sync rate with audio element ──
+  useEffect(()=>{if(audioElRef.current)audioElRef.current.playbackRate=audioRate;},[audioRate]);
+  // ── Sync rate with speech synthesis ──
+  useEffect(()=>{
+    audioUtterRef.current.forEach(u=>{u.rate=audioRate;});
+  },[audioRate]);
+  // ── Sync voice with speech synthesis ──
+  useEffect(()=>{
+    audioUtterRef.current.forEach(u=>{
+      const voices=speechSynthesis.getVoices();
+      u.voice=voices.find(v=>v.name===audioVoice)||voices[0]||null;
+    });
+  },[audioVoice]);
+  // ── Sync speech playback rate on utterance creation ──
+  useEffect(()=>{
+    const onVoicesChanged=()=>{};
+    speechSynthesis.addEventListener('voiceschanged',onVoicesChanged);
+    return()=>speechSynthesis.removeEventListener('voiceschanged',onVoicesChanged);
+  },[]);
+  // ── Sync audio element currentTime when clicking a verse ──
+  useEffect(()=>{
+    if(audioTimestampsRef.current&&currentVerse!==null){
+      const ts=audioTimestampsRef.current[currentVerse];
+      if(ts!==undefined&&audioElRef.current){
+        // Only seek if the click came from user, not from timeupdate
+        // This is managed in verse click handler below
+      }
+    }
+  },[]);
+  // ── Sync speech synthesis pause/resume with audio player ──
+  useEffect(()=>{
+    if(audioPlaying){
+      if(audioSource==='speech'){
+        // Speech is managed by loadChapterAudio and play/pause handlers
+      }
+    }
+  },[audioPlaying,audioSource]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
   useEffect(()=>{
@@ -3124,6 +3311,89 @@ function App(){
 
           </div>}
           {!settingsAppOpen&&<div style={{marginBottom:14}}/>}
+
+          {/* ── AUDIO SETTINGS ── */}
+          {tab==='read'&&(
+          <button type="button" onClick={()=>setAudioSettingsOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:14}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♪</span>
+            <span style={{flex:1,textAlign:'left'}}>Audio Playback</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSettingsOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+          </button>
+          )}
+
+          {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14,maxHeight:'calc(100dvh - 110px)',overflowY:'auto'}}>
+
+            {/* Playback Source */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Source</div>
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                {[['auto','Auto'],['fcbh','Streaming'],['speech','Browser Voice'],['off','Off']].map(([k,l])=>(
+                  <button key={k} type="button" onClick={()=>{setAudioSource(k);try{localStorage.setItem('scrip:audio:source',k);}catch{}}}
+                    style={{background:audioSource===k?T.gF:'transparent',border:`1px solid ${audioSource===k?T.gD:T.bd}`,borderRadius:6,color:audioSource===k?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left'}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* FCBH API Key (if streaming selected) */}
+            {audioSource==='fcbh'&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>FCBH API Key</div>
+              <input type="password" placeholder="Enter FCBH API key..."
+                defaultValue={localStorage.getItem('scrip:audio:fcbhKey')||''}
+                onBlur={e=>{try{localStorage.setItem('scrip:audio:fcbhKey',e.target.value);}catch{}}}
+                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 10px',outline:'none',boxSizing:'border-box'}}/>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:6}}>Get free at <span style={{color:T.gT}}>bible.faithcomesbyhearing.com</span></div>
+            </div>
+            )}
+
+            {/* Playback Speed */}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Speed</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
+              </div>
+              <input type="range" min="0.5" max="2" step="0.25" value={audioRate}
+                onChange={e=>{const v=Number(e.target.value);setAudioRate(v);try{localStorage.setItem('scrip:audio:rate',v);}catch{}}}
+                style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+            </div>
+
+            {/* Browser Voice (if speech selected) */}
+            {audioSource==='speech'&&(
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Voice</div>
+              <select value={audioVoice} onChange={e=>{setAudioVoice(e.target.value);try{localStorage.setItem('scrip:audio:voice',e.target.value);}catch{}}}
+                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 10px',outline:'none',boxSizing:'border-box'}}>
+                <option value="">Default</option>
+                {speechSynthesis.getVoices().map((v,i)=><option key={i} value={v.name}>{v.name} ({v.lang})</option>)}
+              </select>
+            </div>
+            )}
+
+            {/* Auto Scroll Toggle */}
+            <div style={{marginBottom:14}}>
+              <button type="button" onClick={()=>{const v=!audioAutoScroll;setAudioAutoScroll(v);try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(v));}catch{}}}
+                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Auto-scroll to verse</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
+              </button>
+            </div>
+
+            {/* Auto Advance Toggle */}
+            <div style={{marginBottom:14}}>
+              <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
+                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Auto-advance to next chapter</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
+              </button>
+            </div>
+
+            {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:`1px solid rgba(198,40,40,0.3)`,borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:12,marginBottom:14}}>
+              {audioError}
+            </div>}
+
+          </div>}
+
           <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Manage Bible Versions
@@ -3412,6 +3682,9 @@ function App(){
           )}
 
 
+          {/* Audio element for FCBH streaming */}
+          <audio ref={audioElRef} style={{display:'none'}}/>
+
           {/* Custom overlay scrollbar thumb */}
           <div ref={scrollbarThumbRef} className="read-scrollbar"/>
           {/* Verse content */}
@@ -3448,6 +3721,16 @@ function App(){
               <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
               <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
               <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+              {audioSource!=='off'&&<div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:8,marginTop:8}}>
+                <button type="button" disabled={audioLoading}
+                  onClick={()=>audioLoaded?handlePlayPause():loadChapterAudio().then(()=>{if(audioSource!=='speech')handlePlayPause();})}
+                  style={{display:'flex',alignItems:'center',gap:6,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:20,color:audioPlaying?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'5px 14px',cursor:audioLoading?'wait':'pointer',transition:'all .15s',fontWeight:600}}>
+                  {audioLoading?<Spinner/>:audioPlaying?'⏸ Pause':'▶ Listen'}
+                </button>
+                {(audioLoaded||audioPlaying)&&<button type="button" onClick={stopAudio}
+                  style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,padding:'2px 4px'}}>✕</button>}
+                {audioError&&<span style={{fontFamily:FB,fontSize:11,color:'#ef5350'}}>{audioError}</span>}
+              </div>}
             </div>
           )}
             {readSearchRes&&(
@@ -3540,14 +3823,15 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
+                    const isAudio=currentVerse===v;
                     return(
-                      <span key={v} id={`rv-${v}`} className="reading-verse"
+                      <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)}
-                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
+                        onClick={()=>{if(isAudio&&audioTimestampsRef.current?.[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[v];}verseClick(v);}}
+                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'rgba(200,168,78,0.5)':'transparent'}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
                         {' '}
@@ -3559,11 +3843,12 @@ function App(){
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
                     const sel=readSelVerses.has(v);
+                    const isAudio=currentVerse===v;
                     return(
-                      <div key={v} id={`rv-${v}`} className="reading-verse"
+                      <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
-                        onClick={()=>verseClick(v)}
-                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
+                        onClick={()=>{if(isAudio&&audioTimestampsRef.current?.[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[v];}verseClick(v);}}
+                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'rgba(200,168,78,0.15)':sel?T.gF:'transparent',boxShadow:(isAudio?`0 0 0 1.5px rgba(200,168,78,0.4)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none')+', 0 1px 6px rgba(200,168,78,0.08)',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
@@ -3694,6 +3979,10 @@ function App(){
                     </span>
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
+                    <button type="button" className="s-btn s-ghost" onClick={()=>{loadChapterAudio().then(()=>handlePlayPause());}}
+                      style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'4px 10px',fontWeight:600,flexShrink:0}}>
+                      ▶ Play
+                    </button>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
                       style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 10px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box'}}>
                       ⧉ Copy
