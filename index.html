@@ -1848,8 +1848,8 @@ function App(){
     if(headerAnimRef.current){headerAnimRef.current.cancel();headerAnimRef.current=null;}
     if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
     const h=navRef.current,b=bottomBarRef.current;
-    if(h)headerAnimRef.current=h.animate([{transform:'translateY(0)'},{transform:'translateY(-100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
-    if(b)bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
+    if(h){h.style.willChange='transform';headerAnimRef.current=h.animate([{transform:'translateY(0)'},{transform:'translateY(-100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});}
+    if(b){b.style.willChange='transform';bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});}
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   function exitFullScreen(){
@@ -1858,8 +1858,8 @@ function App(){
     if(headerAnimRef.current){headerAnimRef.current.cancel();headerAnimRef.current=null;}
     if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
     const h=navRef.current,b=bottomBarRef.current;
-    if(h){const a=h.animate([{transform:'translateY(-100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
-    if(b){const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
+    if(h){h.style.willChange='transform';const a=h.animate([{transform:'translateY(-100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>{a.cancel();h.style.willChange='';}}
+    if(b){b.style.willChange='transform';const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>{a.cancel();b.style.willChange='';}}
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   const lastScrollY=useRef(0);
@@ -2659,7 +2659,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none',willChange:'transform'}}>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'12px 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:0,left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -3711,7 +3711,7 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',height:44,boxSizing:'border-box',willChange:'transform'}}>
+          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:44,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
