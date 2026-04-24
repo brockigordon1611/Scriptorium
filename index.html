@@ -2069,7 +2069,10 @@ function App(){
   const loadChapterAudio=async()=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
-    const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+    const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
+    const src=audioSource==='auto'
+      ?(DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
+      :(audioSource==='off'?null:audioSource);
     try{
       if(src==='fcbh'){
         const fs=DEFAULT_FILESETS[readVid];
@@ -2082,6 +2085,9 @@ function App(){
         if(!meta||!meta.path)throw new Error('Could not load chapter audio');
         audioElRef.current.src=meta.path;
         audioTimestampsRef.current=ts;
+        setAudioLoaded(true);
+        audioElRef.current.play().catch(()=>{});
+        setAudioPlaying(true);
       }else if(src==='speech'){
         const voices=speechSynthesis.getVoices();
         const lang=['rvg','p1602','rv1960'].includes(readVid)?'es':'en';
@@ -2096,8 +2102,10 @@ function App(){
           u.onend=()=>{if(verse===lastVerse){setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
           audioUtterRef.current.push(u);
         });
+        setAudioLoaded(true);
+        audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+        setAudioPlaying(true);
       }else throw new Error('No audio source available');
-      setAudioLoaded(true);
     }catch(e){
       setAudioError(e.message);
       setAudioLoaded(false);
@@ -3725,7 +3733,7 @@ function App(){
                 {audioSource!=='off'&&(
                   <div style={{position:'absolute',right:0,display:'flex',alignItems:'center',gap:4}}>
                     <button type="button" disabled={audioLoading}
-                      onClick={()=>{if(audioLoaded){handlePlayPause();}else{loadChapterAudio();}}}
+                      onClick={()=>{audioLoaded?handlePlayPause():loadChapterAudio();}}
                       style={{display:'flex',alignItems:'center',justifyContent:'center',width:38,height:38,background:audioPlaying?T.gF:'transparent',border:`1.5px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:'50%',color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',transition:'all .15s',flexShrink:0}}>
                       {audioLoading
                         ?<Spinner/>
