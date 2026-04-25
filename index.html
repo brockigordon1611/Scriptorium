@@ -2075,6 +2075,8 @@ function App(){
   const loadChapterAudio=async()=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
+    // Start from lowest selected verse, or beginning of chapter if none selected
+    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
     const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
     const src=audioSource==='auto'
       ?(DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
@@ -2092,6 +2094,14 @@ function App(){
         audioElRef.current.src=meta.path;
         audioTimestampsRef.current=ts;
         setAudioLoaded(true);
+        // Seek to first selected verse once metadata is available
+        if(startVerse&&ts&&ts[startVerse]!==undefined){
+          const seekOnLoad=()=>{
+            audioElRef.current.currentTime=ts[startVerse];
+            audioElRef.current.removeEventListener('loadedmetadata',seekOnLoad);
+          };
+          audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
+        }
         audioElRef.current.play().catch(()=>{});
         setAudioPlaying(true);
       }else if(src==='speech'){
@@ -2100,8 +2110,10 @@ function App(){
         const voice=voices.find(v=>v.name===audioVoice)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
         audioUtterRef.current=[];
         speechSynthesis.cancel();
+        const startIdx=startVerse?Math.max(0,readVerses.findIndex(v=>v.verse>=startVerse)):0;
+        const versesToSpeak=readVerses.slice(startIdx);
         const lastVerse=readVerses[readVerses.length-1]?.verse;
-        readVerses.forEach(({verse,text})=>{
+        versesToSpeak.forEach(({verse,text})=>{
           const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
           u.voice=voice;u.rate=audioRate;
           u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
