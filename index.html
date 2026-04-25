@@ -3735,17 +3735,18 @@ function App(){
       {tab==='read'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
 
-          {/* Search results header bar — fixed overlay below nav */}
+          {/* Search results header — floating pill below nav */}
           {readSearchRes&&tab==='read'&&!readMobileSheet&&(
-            <div className="srch-bar-fixed" style={{position:'fixed',top:navH,left:0,right:0,zIndex:210,
-              display:'flex',alignItems:'center',gap:10,padding:'14px 18px 14px',
-              background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
-              backdropFilter:'blur(6px)',boxShadow:'0 2px 14px rgba(0,0,0,0.22)'}}>
+            <div className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
+              display:'flex',alignItems:'center',gap:10,padding:'7px 10px',
+              background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,
+              backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
+              boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
               <button type="button" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');}}
-                style={{display:'flex',alignItems:'center',gap:5,background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',border:`1px solid rgba(255,255,255,0.10)`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',fontWeight:600,padding:'6px 12px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',transition:'all .15s'}}>
+                style={{display:'flex',alignItems:'center',gap:5,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',fontWeight:600,padding:'5px 11px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',transition:'all .15s'}}>
                 ← Back to Reading
               </button>
-              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',textTransform:'uppercase',fontWeight:500}}>
+              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',textTransform:'uppercase',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                 <span>{readSearchRes.length} verse{readSearchRes.length!==1?'s':''}</span>
                 <span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>
                 <span style={{color:T.dim}}> for "{readSearchQ}"</span>
