@@ -4036,13 +4036,13 @@ function App(){
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
                       onMouseEnter={()=>setCopyHover(true)} onMouseLeave={()=>setCopyHover(false)}
-                      style={{background:copyHover?T.bgIn:T.bgSec,border:`1px solid ${copyHover?T.gD:T.bd}`,borderRadius:6,color:copyHover?T.gT:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer'}}>
+                      style={{background:copyHover?'transparent':T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer'}}>
                       ⧉ Copy
                     </button>
                     {user
                       ?<button type="button" onClick={doReadBookmark}
                         onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
-                        style={{background:bmHover?T.bgIn:T.bgSec,border:`1px solid ${bmHover?T.gD:T.bd}`,borderRadius:6,color:bmHover?T.gT:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
+                        style={{background:bmHover?'transparent':T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
                         ✦ Bookmark
                       </button>
                       :<span style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:12,flexShrink:0}}>Sign in to bookmark</span>}
