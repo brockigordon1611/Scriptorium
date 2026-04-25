@@ -3859,11 +3859,11 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+28)}px)`,transform:`translateY(-50%) translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
+                    <div style={{position:'fixed',right:0,top:navH+12,bottom:bottomBarH+12,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      maxHeight:`calc(100vh - ${navH+bottomBarH+24}px)`,overflowY:'auto',
+                      overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)',
                       transition:'transform .3s cubic-bezier(0.4,0,0.2,1)'}}>
                       {booksInRes.map(bn=>{
