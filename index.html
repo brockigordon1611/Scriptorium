@@ -3258,7 +3258,7 @@ function App(){
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
-          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14,maxHeight:'calc(100dvh - 110px)',overflowY:'auto'}}>
+          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
 
             {/* Accent Color */}
             <div style={{marginBottom:14}}>
@@ -3394,7 +3394,7 @@ function App(){
           </button>
           )}
 
-          {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14,maxHeight:'calc(100dvh - 110px)',overflowY:'auto'}}>
+          {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:14}}>
 
             {/* Playback Source */}
             <div style={{marginBottom:14}}>
