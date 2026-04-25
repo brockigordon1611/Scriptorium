@@ -2147,10 +2147,22 @@ function App(){
     }else{
       const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
       const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
-      if(src==='speech'){
-        speechSynthesis.resume();
+      const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+      if(startVerse){
+        // Override current position with first selected verse
+        if(src==='speech'){
+          seekWebSpeechToVerse(startVerse);
+        }else{
+          const ts=audioTimestampsRef.current;
+          if(ts&&ts[startVerse]!==undefined)audioElRef.current.currentTime=ts[startVerse];
+          audioElRef.current?.play();
+        }
       }else{
-        audioElRef.current?.play();
+        if(src==='speech'){
+          speechSynthesis.resume();
+        }else{
+          audioElRef.current?.play();
+        }
       }
       setAudioPlaying(true);
     }
