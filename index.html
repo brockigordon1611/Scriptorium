@@ -1815,6 +1815,8 @@ function App(){
   const[stripClosing,setStripClosing]=useState(false);
   const[copyHover,setCopyHover]=useState(false);
   const[bmHover,setBmHover]=useState(false);
+  const[scrubberVisible,setScrubberVisible]=useState(false);
+  const scrubberTimerRef=useRef(null);
   const longPressTimer=useRef(null);
   const longPressFired=useRef(false);
   const wasTouchEvent=useRef(false);
@@ -2592,6 +2594,10 @@ function App(){
   scrollHandlerRef.current=(el)=>{
     onSearchScroll(el);
     if(tab==='read')handleReadScroll({target:el});
+    // Show book scrubber on scroll, hide after 2.5s idle
+    setScrubberVisible(true);
+    clearTimeout(scrubberTimerRef.current);
+    scrubberTimerRef.current=setTimeout(()=>setScrubberVisible(false),2500);
   };
 
   // ── Reading helpers ──
@@ -3853,12 +3859,13 @@ function App(){
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
                   return(
-                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+28)}px)`,transform:'translateY(-50%)',zIndex:200,
+                    <div style={{position:'fixed',right:0,top:`calc(50% + ${Math.round(navH/2+28)}px)`,transform:`translateY(-50%) translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      maxHeight:`calc(100vh - ${navH+80}px - env(safe-area-inset-bottom, 0px))`,overflowY:'auto',
-                      boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)'}}>
+                      maxHeight:`calc(100vh - ${navH+bottomBarH+24}px)`,overflowY:'auto',
+                      boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)',
+                      transition:'transform .3s cubic-bezier(0.4,0,0.2,1)'}}>
                       {booksInRes.map(bn=>{
                         const nm=bookName(BIBLE.find(x=>x.n===bn),versionLang(readVid))||'?';
                         return(
