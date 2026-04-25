@@ -4040,7 +4040,7 @@ function App(){
                       ⧉ Copy
                     </button>
                     {user
-                      ?<button type="button" onClick={doReadBookmark}
+                      ?<button type="button" className="s-btn s-ghost" onClick={doReadBookmark}
                         onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
                         style={{background:bmHover?'transparent':T.bgSec,border:`1px solid ${bmHover?T.gD:T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
                         ✦ Bookmark
