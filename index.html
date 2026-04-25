@@ -4033,17 +4033,17 @@ function App(){
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
                     <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
-                      style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 10px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box'}}>
+                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer'}}>
                       ⧉ Copy
                     </button>
                     {user
                       ?<button type="button" onClick={doReadBookmark}
-                        style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 10px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box'}}>
+                        style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
                         ✦ Bookmark
                       </button>
                       :<span style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:12,flexShrink:0}}>Sign in to bookmark</span>}
                     <button type="button" onClick={dismissStrip}
-                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18,flexShrink:0,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box'}}>✕</button>
+                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,flexShrink:0,width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                   </>
               }
             </div>
