@@ -3943,7 +3943,7 @@ function App(){
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,maxHeight:'calc(100vh - navH - 200px)',height:'auto',overflow:'auto',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:0,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
-              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1}},
+              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement('button',{onClick:e=>{e.stopPropagation();goBackStrongs();},style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontSize:16,padding:'0 4px 0 0',fontFamily:FB,fontWeight:600}},'‹ Back'),
