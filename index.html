@@ -3940,7 +3940,7 @@ function App(){
             // Use total_count from RPC (accurate even with 1000-row Supabase limit)
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'center',justifyContent:'center',paddingTop:Math.max(navH+80,window.innerHeight*0.15),paddingBottom:bottomBarH+120,animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:Math.max(navH+120,window.innerHeight*0.25),animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,maxHeight:'60vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:0,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1}},
