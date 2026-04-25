@@ -2145,6 +2145,7 @@ function App(){
       audioElRef.current?.pause();
       speechSynthesis.pause();
       setAudioPlaying(false);
+      if(stripOpen)dismissStrip();
     }else{
       const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
       const src=audioSource==='auto'?(DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
