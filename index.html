@@ -1862,6 +1862,7 @@ function App(){
   },[navStep,navPickedBk,navPickedCh,readMobileSheet]);
   const[settingsAppOpen,setSettingsAppOpen]=useState(false);
   const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
+  const[offlineDataOpen,setOfflineDataOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.2;}catch{return 1.2;}});
@@ -3466,25 +3467,39 @@ function App(){
 
           </div>}
 
-          <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
-            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Manage Bible Versions
+          {/* ── Offline Data accordion ── */}
+          <button type="button" onClick={()=>setOfflineDataOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⬇</span>
+            <span style={{flex:1,textAlign:'left'}}>Offline Data</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:offlineDataOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
-          {/* ── Offline Data ── */}
-          {(()=>{
+          {offlineDataOpen&&(()=>{
             const offlineItems=[
               {id:'strongs',label:"Strong's Concordance",sub:'14,197 entries · Hebrew & Greek',icon:'ℍ'},
               {id:'webster',label:"Webster's 1828",sub:'107,793 entries · ~50 MB',icon:'W'},
             ];
             return(
-              <div style={{marginBottom:14}}>
-                <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>OFFLINE DATA</div>
+              <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'10px 12px 12px',marginBottom:14}}>
+                {/* Manage Bible Versions row */}
+                <button type="button" onClick={()=>{closeReadSheet();setModal({type:'versions'});}}
+                  style={{display:'flex',alignItems:'center',gap:10,width:'100%',background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.mut,fontFamily:FB,fontSize:13,padding:'10px 12px',cursor:'pointer',marginBottom:8,boxSizing:'border-box',textAlign:'left'}}>
+                  <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                  </span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,color:T.mut}}>Manage Bible Versions</div>
+                    <div style={{fontSize:10,color:T.dim}}>Download, remove, and organise versions</div>
+                  </div>
+                  <span style={{fontSize:11,color:T.dim}}>›</span>
+                </button>
+                {/* Strong's + Webster download rows */}
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {offlineItems.map(item=>{
                     const dl=dlStates[item.id]||{};
                     const pct=dl.total>0?Math.round((dl.progress/dl.total)*100):0;
                     return(
-                      <div key={item.id} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,padding:'10px 12px'}}>
+                      <div key={item.id} style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'9px 12px'}}>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
                           <span style={{fontFamily:FS,fontSize:16,color:T.gT,width:22,textAlign:'center',flexShrink:0}}>{item.icon}</span>
                           <div style={{flex:1,minWidth:0}}>
