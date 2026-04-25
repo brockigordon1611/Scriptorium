@@ -4061,13 +4061,13 @@ function App(){
                     </span>
                     <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
                       style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.body,fontFamily:FB,fontSize:12,padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
-                    <button type="button" className="s-btn s-ghost" onClick={copySelectedVerses}
+                    <button type="button" className="s-btn s-ghost" onClick={()=>{setCopyHover(false);copySelectedVerses();}}
                       onMouseEnter={()=>setCopyHover(true)} onMouseLeave={()=>setCopyHover(false)}
                       style={{background:copyHover?'transparent':T.bgSec,border:`1px solid ${copyHover?T.gD:T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer'}}>
                       ⧉ Copy
                     </button>
                     {user
-                      ?<button type="button" className="s-btn s-ghost" onClick={doReadBookmark}
+                      ?<button type="button" className="s-btn s-ghost" onClick={()=>{setBmHover(false);doReadBookmark();}}
                         onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
                         style={{background:bmHover?'transparent':T.bgSec,border:`1px solid ${bmHover?T.gD:T.bd}`,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
                         ✦ Bookmark
