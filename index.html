@@ -3940,8 +3940,8 @@ function App(){
             // Use total_count from RPC (accurate even with 1000-row Supabase limit)
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:navH+100,overflowY:'auto',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,height:'auto',overflow:'visible',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:bottomBarH+20,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.45)',backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:navH+100,overflowY:'auto',overflowX:'hidden',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,height:'auto',overflow:'auto',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:bottomBarH+20,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
@@ -3963,7 +3963,7 @@ function App(){
                       React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:6}},'KJV USAGE'),
                       React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight}},strongsPopup.entry.kjv_usage)
                     ),
-                    groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}},
+                    groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4,marginBottom:20}},
                       React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:8}},'OCCURRENCES IN KJV'),
                       groupList.map(([key,{word,refs}])=>{
                         const isExpanded=strongsExpandedWords.has(key);
@@ -3986,7 +3986,11 @@ function App(){
                         );
                       })
                     ),
-                    groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}},'Loading verses…')
+                    groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}},'Loading verses…'),
+                    React.createElement('div',{style:{textAlign:'center',paddingTop:24,paddingBottom:8,borderTop:`1px solid ${T.bd}`,marginTop:16}},
+                      React.createElement('div',{style:{fontSize:24,color:T.gM,marginBottom:6}}),'·',
+                      React.createElement('div',{style:{fontFamily:FB,fontSize:11,color:T.dim,letterSpacing:'0.06em'}}),'End of entry'
+                    )
                   )
                 ):(
                   React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
