@@ -1880,6 +1880,7 @@ function App(){
   const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
   const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
   const[audioVoice,setAudioVoice]=useState(()=>{try{return localStorage.getItem('scrip:audio:voice')||'';}catch{return '';}});
+  const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const[fsActive,setFsActive]=useState(false);
@@ -2237,19 +2238,21 @@ function App(){
   useEffect(()=>{
     audioUtterRef.current.forEach(u=>{u.rate=audioRate;});
   },[audioRate]);
-  // ── Sync voice with speech synthesis ──
+  // ── Populate voice list when browser finishes loading voices ──
   useEffect(()=>{
-    audioUtterRef.current.forEach(u=>{
-      const voices=speechSynthesis.getVoices();
-      u.voice=voices.find(v=>v.name===audioVoice)||voices[0]||null;
-    });
-  },[audioVoice]);
-  // ── Sync speech playback rate on utterance creation ──
-  useEffect(()=>{
-    const onVoicesChanged=()=>{};
+    const onVoicesChanged=()=>setAvailableVoices(speechSynthesis.getVoices());
     speechSynthesis.addEventListener('voiceschanged',onVoicesChanged);
+    // Populate immediately in case voices are already available (Firefox/Safari)
+    const v=speechSynthesis.getVoices();
+    if(v.length)setAvailableVoices(v);
     return()=>speechSynthesis.removeEventListener('voiceschanged',onVoicesChanged);
   },[]);
+  // ── Restart speech from current verse when voice changes while playing ──
+  useEffect(()=>{
+    if(audioPlaying&&audioSource==='speech'&&currentVerse!=null){
+      seekWebSpeechToVerse(currentVerse);
+    }
+  },[audioVoice]);
   // ── Sync audio element currentTime when clicking a verse ──
   useEffect(()=>{
     if(audioTimestampsRef.current&&currentVerse!==null){
@@ -3429,7 +3432,7 @@ function App(){
               <select value={audioVoice} onChange={e=>{setAudioVoice(e.target.value);try{localStorage.setItem('scrip:audio:voice',e.target.value);}catch{}}}
                 style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 10px',outline:'none',boxSizing:'border-box'}}>
                 <option value="">Default</option>
-                {speechSynthesis.getVoices().map((v,i)=><option key={i} value={v.name}>{v.name} ({v.lang})</option>)}
+                {availableVoices.map((v,i)=><option key={i} value={v.name}>{v.name} ({v.lang})</option>)}
               </select>
             </div>
             )}
