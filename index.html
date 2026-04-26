@@ -3307,6 +3307,7 @@ function App(){
               <GhostBtn T={T} ch="↺ Recents" onClick={()=>setModal({type:'recents'})}/>
               <GhostBtn T={T} ch={dark?'☀':'☾'} onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'}/>
               <GhostBtn T={T} ch="⋯" onClick={()=>setModal({type:'help'})} title="Help & more"/>
+              <GhostBtn T={T} ch="§" onClick={()=>setModal({type:'about'})} title="About & Legal"/>
             </div>
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3}}>
               <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.body,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
@@ -3333,6 +3334,7 @@ function App(){
             {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
             {icon:dark?'☀':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
             {icon:'⋯',label:'Help & Reference',fn:()=>{closeMobileSheet();setModal({type:'help'});}},
+            {icon:'§',label:'About & Legal',fn:()=>{closeMobileSheet();setModal({type:'about'});}},
           ].map(item=>(
             <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
               style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
@@ -3769,6 +3771,10 @@ function App(){
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'help'});}}
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⋯</span>Help & Reference
+          </button>
+          <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'about'});}}
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>§</span>About & Legal
           </button>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
@@ -5043,6 +5049,75 @@ function App(){
                   <Chip>Ctrl / ⌘ Z</Chip><span style={{marginRight:16}}>Undo last deleted item</span>
                   <Chip>Esc</Chip><span style={{marginRight:16}}>Close any panel or modal</span>
                   <Chip>Swipe down</Chip><span>Dismiss bottom sheets</span>
+                </div>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
+
+      {modal?.type==='about'&&(
+        <Modal title="About & Legal" onClose={closeModal} wide T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
+          {(()=>{
+            const Hdg=({label})=>(
+              <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
+                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
+                <div style={{flex:1,height:1,background:T.bd}}/>
+              </div>
+            );
+            const P=({children})=>(
+              <p style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.75,marginBottom:10,marginTop:0}}>{children}</p>
+            );
+            const Li=({children})=>(
+              <div style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:7}}>
+                <span style={{color:T.gM,flexShrink:0,marginTop:3,fontSize:10}}>◆</span>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>{children}</span>
+              </div>
+            );
+            return(
+              <div>
+
+                {/* APP */}
+                <Hdg label="About Scriptorium"/>
+                <P>Scriptorium is a Bible study and comparison tool designed for in-depth textual research, supporting multiple translations with verse-level comparison, manuscript notes, and original-language cross-referencing.</P>
+                <P>All renderings in this app should be verified against printed, authoritative texts. Scriptorium provides a study aid — it is not a substitute for careful scholarship or printed editions.</P>
+
+                {/* COPYRIGHT */}
+                <Hdg label="Copyright Disclaimer"/>
+                <P>The Scriptorium application, its interface, design, and original code are copyright © {new Date().getFullYear()} Scriptorium. All rights reserved.</P>
+                <P>Bible translations, lexicons, and dictionaries included in this app are either in the public domain or used in accordance with their respective license terms. No portion of copyrighted version texts may be reproduced beyond personal study use without permission from the copyright holder.</P>
+
+                {/* PUBLIC DOMAIN */}
+                <Hdg label="Public Domain Works"/>
+                <Li><strong style={{color:T.gT}}>King James Version (KJV)</strong> — First published 1611. Public domain in the United States and most jurisdictions worldwide. In the United Kingdom it remains Crown Copyright and is reproduced under the terms of the Cambridge University Press licence.</Li>
+                <Li><strong style={{color:T.gT}}>Strong's Hebrew & Greek Lexicon</strong> — James Strong, <em>Exhaustive Concordance of the Bible</em> (1890). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — Noah Webster (1828). Public domain.</Li>
+
+                {/* THIRD-PARTY VERSIONS */}
+                <Hdg label="Third-Party Bible Versions"/>
+                <Li><strong style={{color:T.gT}}>Reina-Valera Gómez (RVG)</strong> — © Humberto Gómez Caballero. Used for personal study. For commercial or distribution licensing, contact the copyright holder directly.</Li>
+                <Li><strong style={{color:T.gT}}>Reina-Valera 1960 (RVR60)</strong> — © Sociedades Bíblicas Unidas. Used for personal study. For permissions beyond personal use, contact the Sociedades Bíblicas Unidas.</Li>
+                <Li><strong style={{color:T.gT}}>Purificada 1602 (1602P)</strong> — Textual restoration based on the 1602 Reina-Valera. Used for study and research purposes.</Li>
+
+                {/* AUDIO */}
+                <Hdg label="Audio Attribution"/>
+                <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streaming audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT}}>www.faithcomesbyhearing.com</span> for more information.</Li>
+                <Li><strong style={{color:T.gT}}>Browser Text-to-Speech</strong> — Synthesized audio is generated by your device's built-in speech engine and is not derived from any recorded performance.</Li>
+
+                {/* ATTRIBUTION */}
+                <Hdg label="Attribution Requirements"/>
+                <P>If you quote or share content produced with the aid of this app, please attribute the Bible version used (e.g., "KJV", "RVG") and verify the text against a printed edition. For copyrighted versions, follow the attribution guidelines set by each version's copyright holder.</P>
+
+                {/* DISCLAIMER */}
+                <Hdg label="Disclaimer of Warranties"/>
+                <P>Scriptorium is provided "as is" without warranty of any kind, express or implied. While every effort is made to ensure textual accuracy, no guarantee is made that verse text, Strong's data, or dictionary entries are free from error. Users are responsible for verifying all content against authoritative printed sources.</P>
+                <P>This app does not store, transmit, or sell personal study data beyond what is required for account sync. See our Privacy Policy for details.</P>
+
+                {/* VERSION */}
+                <div style={{marginTop:28,paddingTop:16,borderTop:`1px solid ${T.bdS}`,display:'flex',alignItems:'center',gap:12}}>
+                  <div style={{flex:1,height:1,background:T.accentLine}}/>
+                  <span style={{fontFamily:FS,fontSize:8,letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',fontWeight:500}}>To God Alone Be the Glory</span>
+                  <div style={{flex:1,height:1,background:T.accentLine}}/>
                 </div>
               </div>
             );
