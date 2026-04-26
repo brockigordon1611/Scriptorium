@@ -1427,12 +1427,14 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
   const typeColor=(dark?BD:BL)[entry.issueType]||(dark?BD.other:BL.other);
   const delay=typeof idx==='number'?Math.min(idx*0.06,0.3):0;
   const parsed=parseRefDD(entry.reference);
+  const refLang=(versions.find(v=>v.isRef)||versions[0])?.lang||'EN';
+  const displayRef=parsed?`${bookName(BIBLE[parsed.bookNum-1],refLang)} ${parsed.chapter}:${parsed.verse}`:entry.reference;
   return(
     <div id={`card-${entry.id}`} className={`entry-card hov-card fade-up${pulse?' pulse':''}`}
       style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:12,overflow:'hidden',boxShadow:`0 2px 8px rgba(0,0,0,${dark?.3:.06})`,animationDelay:`${delay}s`}}>
       <div style={{height:2,background:`linear-gradient(90deg, ${typeColor.bd}, ${typeColor.bd}60, transparent)`}}/>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'11px 18px',borderBottom:`1px solid ${T.bd}`}}>
-        <span dangerouslySetInnerHTML={{__html:hl(entry.reference,q)}} style={{fontFamily:FS,fontSize:14.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}/>
+        <span dangerouslySetInnerHTML={{__html:hl(displayRef,q)}} style={{fontFamily:FS,fontSize:14.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}/>
         {entry.issueLabel&&<Badge type={entry.issueType} label={entry.issueLabel} dark={dark}/>}
         <div style={{marginLeft:'auto',display:'flex',gap:5}}>
           {parsed&&onRead&&<button className="s-btn s-ghost" onClick={()=>onRead(parsed)} title="Read this chapter" style={{background:'none',border:`1px solid ${T.bd+'40'}`,borderRadius:5,color:T.dim,padding:'3px 8px',fontSize:12,fontFamily:FB}}>📖</button>}
