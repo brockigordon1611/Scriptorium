@@ -1556,7 +1556,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
         <div>
           <Lbl c="Reference" T={T} req/>
           <RefDD bkN={bkN} setBkN={setBkN} ch={ch} setCh={setCh} vs={vs} setVs={setVs} T={T} err={refErr}/>
-          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill from Database'}</button>
+          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill verse text for all versions'}</button>
         </div>
         <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
       </div>
