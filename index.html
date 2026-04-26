@@ -4531,10 +4531,6 @@ function App(){
                 style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'8px 0',cursor:'pointer',fontWeight:500,textAlign:'center'}}>
                 ＋ Section
               </button>
-              <button type="button" onClick={()=>setMobileSheet('compare')}
-                style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'8px 10px',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>
-                ⋯ More
-              </button>
             </div>
 
             {/* Color key — always visible */}
@@ -4542,23 +4538,6 @@ function App(){
 
             <FilterBar filters={filters} setFilters={setFilters} versions={data.versions} T={T} hiddenVers={hiddenVers} togVer={togVer} onExpand={()=>setSecToggle({action:'expand',tick:Date.now()})} onCollapse={()=>setSecToggle({action:'collapse',tick:Date.now()})}/>
           </div>
-
-          {/* Compare actions bottom sheet (mobile) */}
-          {mobileSheet==='compare'&&(
-            <MobileSheet T={T} title={null} onClose={closeMobileSheet} isClosing={mobileSheetClosing} fromTop topOffset={navH}>
-              <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textAlign:'center',marginBottom:14,textTransform:'uppercase'}}>Options</div>
-              {[
-                {icon:'⚙',label:'Manage Versions',fn:()=>{closeMobileSheet();setModal({type:'versions'});}},
-                {icon:'◎',label:'Statistics',fn:()=>{closeMobileSheet();setModal({type:'stats'});}},
-                {icon:'⬇',label:'Export JSON',fn:()=>{closeMobileSheet();doExport();}},
-              ].map(item=>(
-                <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
-                  style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'12px 14px',width:'100%',marginBottom:5}}>
-                  <span style={{width:20,textAlign:'center',color:T.gT,flexShrink:0,fontSize:14}}>{item.icon}</span>{item.label}
-                </button>
-              ))}
-            </MobileSheet>
-          )}
 
           {/* Compare search sheet (mobile) */}
           {mobileSheet==='compareSearch'&&(
