@@ -3326,7 +3326,7 @@ function App(){
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
-          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:5}}>
+          {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
 
             {/* Accent Color */}
             <div style={{marginBottom:14}}>
@@ -3450,19 +3450,17 @@ function App(){
             })()}
 
           </div>}
-          {!settingsAppOpen&&<div style={{marginBottom:14}}/>}
-
           {/* ── AUDIO SETTINGS ── */}
           {tab==='read'&&(
           <button type="button" onClick={()=>setAudioSettingsOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:5}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♪</span>
             <span style={{flex:1,textAlign:'left'}}>Audio Playback</span>
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSettingsOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
           )}
 
-          {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:5}}>
+          {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
 
             {/* Playback Source */}
             <div style={{marginBottom:14}}>
@@ -3536,7 +3534,7 @@ function App(){
 
           {/* ── Offline Data accordion ── */}
           <button type="button" onClick={()=>setOfflineDataOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:14}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
             <span style={{width:22,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,flexShrink:0}}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3553,7 +3551,7 @@ function App(){
               {id:'webster',label:"Webster's 1828",sub:'107,793 entries · ~50 MB',icon:'W'},
             ];
             return(
-              <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'10px 12px 12px',marginBottom:5}}>
+              <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'10px 12px 12px',marginBottom:0}}>
                 {/* Strong's + Webster download rows */}
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {offlineItems.map(item=>{
@@ -3624,14 +3622,12 @@ function App(){
               </div>
             );
           })()}
-          <div style={{height:1,background:T.bd,margin:'10px 0'}}/>
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'help'});}}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⋯</span>Help & Reference
           </button>
-          <div style={{height:1,background:T.bd,margin:'4px 0 12px'}}/>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:9,color:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>Sign Out
           </button>
           {user?.email&&<div style={{fontFamily:FB,fontSize:12,color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
