@@ -4534,9 +4534,6 @@ function App(){
               <div style={{width:1,height:18,background:T.bd,flexShrink:0,margin:'0 2px'}}/>
               <TBtn T={T} ch="＋ Verse" onClick={openAdd} primary/>
               <TBtn T={T} ch="＋ Section" onClick={openAddSec}/>
-              <TBtn T={T} ch="⚙ Versions" onClick={()=>setModal({type:'versions'})}/>
-              <TBtn T={T} ch="≡ Stats" onClick={()=>setModal({type:'stats'})}/>
-              <TBtn T={T} ch="↓ Export" onClick={doExport}/>
               <TBtn T={T} ch="▾" onClick={()=>setSecToggle({action:'expand',tick:Date.now()})} title="Expand all"/>
               <TBtn T={T} ch="▴" onClick={()=>setSecToggle({action:'collapse',tick:Date.now()})} title="Collapse all"/>
             </div>
