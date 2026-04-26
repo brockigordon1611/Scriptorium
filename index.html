@@ -1515,7 +1515,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
   const isEdit=!!entry._isEdit;
   const pd=parseRefDD(entry.reference||'');
   const[bkN,setBkN]=useState(pd?.bookNum||0);const[ch,setCh]=useState(pd?.chapter||0);const[vs,setVs]=useState(pd?.verse||0);
-  const[secId,setSecId]=useState(entry.sectionId||sections[0]?.id||'');
+  const[secId,setSecId]=useState(entry.sectionId||'');
   const[label,setLabel]=useState(entry.issueLabel||'');const[iType,setIType]=useState(entry.issueType||'manuscript');
   const[notes,setNotes]=useState(entry.notes||'');const[greek,setGreek]=useState(entry.greekHebrew||'');const[src,setSrc]=useState(entry.sourceRefs||'');
   const[vTxt,setVTxt]=useState(Object.fromEntries(versions.map(v=>[v.id,entry.versions?.[v.id]?.text||''])));
@@ -1558,7 +1558,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
           <RefDD bkN={bkN} setBkN={setBkN} ch={ch} setCh={setCh} vs={vs} setVs={setVs} T={T} err={refErr}/>
           <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill verse text for all versions'}</button>
         </div>
-        <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
+        <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}><option value="" disabled>— Select a section —</option>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
       </div>
       <div className="form-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:18}}>
         <div><Lbl c="Issue Label" T={T}/><Inp val={label} set={setLabel} ph="e.g. Manuscript — Comma Johanneum" T={T}/></div>
@@ -2931,7 +2931,7 @@ function App(){
   }
 
   // ── Entry CRUD ──
-  function openAdd(){setModal({type:'entry',entry:{id:genId(),sectionId:data.sections[0]?.id||'',reference:'',issueLabel:'',issueType:'manuscript',notes:'',greekHebrew:'',sourceRefs:'',versions:{},_isNew:true}});}
+  function openAdd(){setModal({type:'entry',entry:{id:genId(),sectionId:'',reference:'',issueLabel:'',issueType:'manuscript',notes:'',greekHebrew:'',sourceRefs:'',versions:{},_isNew:true}});}
   function openEdit(id){const e=data.entries.find(x=>x.id===id);if(e)setModal({type:'entry',entry:{...clone(e),_isEdit:true}});}
   function openDup(id){const e=data.entries.find(x=>x.id===id);if(e)setModal({type:'entry',entry:{...clone(e),id:genId(),_isNew:true}});}
   function openDelEntry(id){setModal({type:'delete',delType:'entry',delId:id});}
