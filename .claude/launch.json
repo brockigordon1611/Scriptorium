@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Scriptorium",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["/Users/brockigordon/Desktop/Scriptorium/node_modules/.bin/vite", "--port", "3000"],
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "C:\\Users\\brock\\Desktop\\Scriptorium\\.claude\\serve.bat"],
       "port": 3000
     }
   ]
