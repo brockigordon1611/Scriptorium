@@ -3,3 +3,7 @@
 
 # Version backups
 Backup of versions/
+
+# STEPBible raw data files (large, re-downloadable)
+stepbible/*.txt
+stepbible/*.csv
