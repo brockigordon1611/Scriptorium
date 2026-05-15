@@ -493,7 +493,7 @@ const ISSUE_TYPES=['manuscript','word','omission','article','grammar','doctrine'
 const STATUS_VALUES=['reference','faithful','corrupt','diff','partial','missing'];
 const STATUS_LABELS={reference:'Reference',faithful:'Faithful',corrupt:'Corrupt / Alexandrian',diff:'Differs',partial:'Partial',missing:'Absent'};
 const ISSUE_LABELS={manuscript:'Manuscript',word:'Word Choice',omission:'Omission',article:'Article',grammar:'Grammar',doctrine:'Doctrine',name:'Name/Title',other:'Other'};
-const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false},{id:'p1602',label:'1602P',lang:'ES',isRef:false},{id:'rv1960',label:'RVR60',lang:'ES',isRef:false}];
+const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false},{id:'p1602',label:'1602P',lang:'ES',isRef:false}];
 // Webster's 1828 dictionary: 107,793 entries in Supabase table webster_1828
 // Queried via RPC: search_webster_1828(query_term)
 
@@ -675,7 +675,7 @@ function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){con
 
 // ── Audio Bible helpers ──
 const USFM_CODES=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
-const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rv1960:'S1SPNVBN1DA',rvg:null,p1602:null};
+const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rvg:null,p1602:null};
 const OT_REG_NAMES=['Genesis_____','Exodus______','Leviticus___','Numbers_____','Deuteronomy_','Joshua______','Judges______','Ruth________','1Samuel_____','2Samuel_____','1Kings______','2Kings______','1Chronicles_','2Chronicles_','Ezra________','Nehemiah____','Esther______','Job_________','Psalms______','Proverbs____','Ecclesiastes','SongofSongs_','Isaiah______','Jeremiah____','Lamentations','Ezekiel_____','Daniel______','Hosea_______','Joel________','Amos________','Obadiah_____','Jonah_______','Micah_______','Nahum_______','Habakkuk____','Zephaniah___','Haggai______','Zechariah___','Malachi_____'];
 const NT_REG_NAMES=['Matthew_____','Mark________','Luke________','John________','Acts________','Romans______','1Corinthians','2Corinthians','Galatians___','Ephesians___','Philippians_','Colossians__','1Thess______','2Thess______','1Timothy____','2Timothy____','Titus_______','Philemon____','Hebrews_____','James_______','1Peter______','2Peter______','1John_______','2John_______','3John_______','Jude________','Revelation__'];
 function localAudioStem(bookNum,chapter){
@@ -975,8 +975,13 @@ async function dbSaveVersions(projectId,versions){
   if(versions.length){const t2=await sbFrom('project_versions',token);await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));}
 }
 async function dbLoadBookmarks(userId){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
-async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
+async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label,categoryId,note}){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null,category_id:categoryId||null,note:note||null});return r.data?.[0];}
+async function dbUpdateBookmark(id,{note,categoryId,label}){const token=getToken();const t=await sbFrom('bookmarks',token);const patch={};if(note!==undefined)patch.note=note||null;if(categoryId!==undefined)patch.category_id=categoryId||null;if(label!==undefined)patch.label=label||null;await t.update(patch,{id});}
 async function dbDeleteBookmark(id){const token=getToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
+async function dbLoadCategories(userId){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.select('*',{user_id:userId},{order:'sort_order.asc,created_at.asc'});return r.data||[];}
+async function dbAddCategory(userId,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.insert({user_id:userId,name,color:color||'#62c484'});return r.data?.[0];}
+async function dbUpdateCategory(id,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const patch={};if(name!==undefined)patch.name=name;if(color!==undefined)patch.color=color;await t.update(patch,{id});}
+async function dbDeleteCategory(id){const token=getToken();const t=await sbFrom('bookmark_categories',token);await t.delete({id});}
 async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
 async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
 
@@ -1152,6 +1157,16 @@ function AuthPanel({onAuth}){
   const[suEmail,setSuEmail]=useState('');const[suPw,setSuPw]=useState('');
   const[showSuPw,setShowSuPw]=useState(false);
   const[suErr,setSuErr]=useState('');const[suMsg,setSuMsg]=useState('');const[suBusy,setSuBusy]=useState(false);
+  // Offline versions for dynamic subtitle
+  const[offlineVids,setOfflineVids]=useState(null);
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const checks=await Promise.all(PUBLIC_VERSIONS.map(async v=>({v,dl:await idbIsDownloaded(v.id).catch(()=>false)})));
+        setOfflineVids(checks.filter(c=>c.dl).map(c=>c.v.label));
+      }catch{setOfflineVids([]);}
+    })();
+  },[]);
 
   const pwInputStyle={width:'100%',background:D.bgIn,border:`1px solid ${D.bd}`,borderRadius:6,color:D.body,fontFamily:FB,fontSize:16,padding:'9px 42px 9px 13px',outline:'none',boxSizing:'border-box'};
   const eyeStyle={position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:D.gM,cursor:'pointer',fontSize:15,padding:4,lineHeight:1};
@@ -1196,7 +1211,9 @@ function AuthPanel({onAuth}){
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg,padding:24}}>
       <style>{CSS}</style>
       <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
-        <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{PUBLIC_VERSIONS.map(v=>v.label).join(' / ')}</div>
+        {offlineVids&&offlineVids.length>0&&(
+          <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{offlineVids.join(' / ')}</div>
+        )}
         <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
         <div style={{fontFamily:FB,fontStyle:'italic',color:D.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
@@ -1310,7 +1327,162 @@ function AuthPanel({onAuth}){
 // ══════════════════════════════════════════════════════════
 //  BOOKMARKS & RECENTS PANELS
 // ══════════════════════════════════════════════════════════
-function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions,user,navH,isClosing}){
+const CAT_COLORS=['#62c484','#6ab0f5','#e4cc78','#f08080','#c488c8','#f0a060','#80c8c8','#a0a0b8'];
+
+function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker}){
+  const bk=BIBLE.find(b=>b.n===bm.book_num);
+  const ver=versions.find(v=>v.id===bm.version_id);
+  const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
+  const isRangeRef=bm.label&&bk&&(bm.label.startsWith(bk.name)||(bk.nameES&&bm.label.startsWith(bk.nameES)));
+  const titleRef=isRangeRef?bm.label:ref;
+  const labelNote=isRangeRef?null:bm.label;
+  const displayNote=bm.note!=null?bm.note:labelNote;
+
+  const[editNote,setEditNote]=useState(false);
+  const[noteVal,setNoteVal]=useState(displayNote||'');
+  const[showDelConfirm,setShowDelConfirm]=useState(false);
+
+  function openEditor(){setNoteVal(displayNote||'');setEditNote(true);}
+  function saveNote(){onUpdate(bm.id,{note:noteVal});setEditNote(false);}
+  function cancelNote(){setNoteVal(displayNote||'');setEditNote(false);}
+  function moveCat(catId){onUpdate(bm.id,{categoryId:catId||null});}
+
+  return(
+    <div style={{padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
+            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:11}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span>
+          </div>
+          {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
+          {editNote&&(
+            <div style={{marginTop:6}}>
+              <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:13,padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
+              <div style={{display:'flex',gap:6,marginTop:4}}>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {/* Category picker — shown when panel-level assign mode is on */}
+          {showCatPicker&&categories.length>0&&(
+            <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
+              <button onClick={()=>moveCat(null)}
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                None
+              </button>
+              {categories.map(c=>(
+                <button key={c.id} onClick={()=>moveCat(c.id)}
+                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
+          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
+          {user&&<>
+            <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
+              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:11,padding:'4px 7px',cursor:'pointer',lineHeight:1}}>✎</button>
+            <IBtn T={T} ch="✕" danger onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"/>
+          </>}
+        </div>
+      </div>
+      {showDelConfirm&&<ConfirmDialog T={T} danger
+        title="Delete Bookmark"
+        message={`Remove "${titleRef}"?\n\nTo move it to a different category instead, use Assign Categories at the top of the list.`}
+        confirmLabel="Delete" cancelLabel="Cancel"
+        onConfirm={()=>{setShowDelConfirm(false);onDelete(bm.id);}}
+        onCancel={()=>setShowDelConfirm(false)}/>}
+    </div>
+  );
+}
+
+function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker}){
+  const[open,setOpen]=useState(true);
+  const[renaming,setRenaming]=useState(false);
+  const[nameVal,setNameVal]=useState(cat.name);
+  const[colorIdx,setColorIdx]=useState(CAT_COLORS.indexOf(cat.color)<0?0:CAT_COLORS.indexOf(cat.color));
+  const[showDelCatConfirm,setShowDelCatConfirm]=useState(false);
+
+  function saveRename(){
+    onRename(cat.id,{name:nameVal||cat.name,color:CAT_COLORS[colorIdx]});
+    setRenaming(false);
+  }
+
+  return(
+    <div style={{marginBottom:4}}>
+      {/* Section header row */}
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0 6px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
+        <span style={{fontSize:10,color:T.dim,transition:'transform .15s',display:'inline-block',transform:open?'rotate(90deg)':'rotate(0deg)'}}>▶</span>
+        <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
+        <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
+        <span style={{fontFamily:FS,fontSize:10,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
+        {user&&!renaming&&<>
+          <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
+            style={{background:'none',border:'none',color:T.dim,fontSize:11,cursor:'pointer',padding:'0 3px',lineHeight:1}}>✎</button>
+          <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
+            style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'0 3px',lineHeight:1,display:'flex',alignItems:'center'}}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
+              <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
+            </svg>
+          </button>
+        </>}
+      </div>
+      {/* Rename form — stacked rows, no horizontal overflow */}
+      {renaming&&(
+        <div style={{marginBottom:8,padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
+          <input value={nameVal} onChange={e=>setNameVal(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&saveRename()}
+            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'6px 8px',outline:'none',marginBottom:8}}/>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
+              {CAT_COLORS.map((c,i)=>(
+                <button key={c} onClick={()=>setColorIdx(i)}
+                  style={{width:18,height:18,borderRadius:'50%',background:c,border:`2px solid ${i===colorIdx?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
+              ))}
+            </div>
+            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
+          </div>
+        </div>
+      )}
+      {open&&<div style={{paddingLeft:18}}>
+        {bookmarks.length===0
+          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:13,padding:'6px 0 10px'}}>Empty category</div>
+          :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} T={T} versions={versions} onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate} categories={categories} user={user} showCatPicker={showCatPicker}/>)
+        }
+      </div>}
+      {showDelCatConfirm&&<ConfirmDialog T={T} danger
+        title={`Delete "${cat.name}"?`}
+        message="All bookmarks in this category will become uncategorized. This cannot be undone."
+        confirmLabel="Delete" cancelLabel="Cancel"
+        onConfirm={()=>{setShowDelCatConfirm(false);onDeleteCat(cat.id);}}
+        onCancel={()=>setShowDelCatConfirm(false)}/>}
+    </div>
+  );
+}
+
+function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing}){
+  const[newCatName,setNewCatName]=useState('');
+  const[newCatColor,setNewCatColor]=useState(0);
+  const[addingCat,setAddingCat]=useState(false);
+  const[viewAll,setViewAll]=useState(false);
+  const[assigningCats,setAssigningCats]=useState(false);
+
+  async function createCat(){
+    if(!newCatName.trim())return;
+    await onAddCat(newCatName.trim(),CAT_COLORS[newCatColor]);
+    setNewCatName('');setNewCatColor(0);setAddingCat(false);
+  }
+
+  const grouped=categories.map(cat=>({cat,items:bookmarks.filter(bm=>bm.category_id===cat.id)}));
+  const uncategorized=bookmarks.filter(bm=>!bm.category_id);
+  const hasCats=categories.length>0;
+  const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
+
   return(
     <Modal title="✦ Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
@@ -1320,24 +1492,69 @@ function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions,user,navH,
           <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>Bookmarks are saved to your account. Sign in to save and view bookmarks.</div>
         </div>
       </div>}
-      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>{user?'No bookmarks yet. In Reading Mode, tap any verse to bookmark it.':'No bookmarks. Sign in to save passages.'}</div>}
-      {bookmarks.map(bm=>{
-        const bk=BIBLE.find(b=>b.n===bm.book_num);const ver=versions.find(v=>v.id===bm.version_id);
-        const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
-        const isRangeRef=bm.label&&bk&&(bm.label.startsWith(bk.name)||(bk.nameES&&bm.label.startsWith(bk.nameES)));
-        const titleRef=isRangeRef?bm.label:ref;
-        const noteText=isRangeRef?null:bm.label;
-        return(
-          <div key={bm.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
-            <div style={{flex:1}}>
-              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em',marginBottom:noteText?3:0}}>{titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:11}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span></div>
-              {noteText&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,marginTop:1}}>{noteText}</div>}
+
+      {user&&!user.guest&&(
+        <div style={{marginBottom:12}}>
+          {/* New category form — stacked rows, mobile-safe */}
+          {addingCat?(
+            <div style={{padding:'10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,marginBottom:8}}>
+              <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} autoFocus placeholder="Category name…"
+                onKeyDown={e=>e.key==='Enter'&&createCat()}
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'7px 8px',outline:'none',marginBottom:8}}/>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
+                  {CAT_COLORS.map((c,i)=>(
+                    <button key={c} onClick={()=>setNewCatColor(i)}
+                      style={{width:20,height:20,borderRadius:'50%',background:c,border:`2px solid ${i===newCatColor?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
+                  ))}
+                </div>
+                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
+              </div>
             </div>
-            <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
-            {user&&<IBtn T={T} ch="✕" danger onClick={()=>onDelete(bm.id)} title="Delete bookmark"/>}
-          </div>
-        );
-      })}
+          ):(
+            <button onClick={()=>setAddingCat(true)}
+              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
+              + New Category
+            </button>
+          )}
+          {/* View toggles — only shown when categories exist */}
+          {hasCats&&(
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setViewAll(v=>!v)}
+                style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                {viewAll?'By Category':'View All'}
+              </button>
+              <button onClick={()=>setAssigningCats(v=>!v)}
+                style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                {assigningCats?'Done Assigning':'Assign Categories'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>{user?'No bookmarks yet. In Reading Mode, tap any verse to bookmark it.':'No bookmarks. Sign in to save passages.'}</div>}
+
+      {/* Flat list */}
+      {viewAll&&hasCats?(
+        bookmarks.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)
+      ):(
+        <>
+          {grouped.map(({cat,items})=>(
+            <CatSection key={cat.id} cat={cat} bookmarks={items} T={T} versions={versions}
+              onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate}
+              onRename={onUpdateCat} onDeleteCat={onDeleteCat}
+              categories={categories} user={user} showCatPicker={assigningCats}/>
+          ))}
+          {uncategorized.length>0&&(
+            <div style={{marginTop:hasCats?8:0}}>
+              {hasCats&&<div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
+              {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
+            </div>
+          )}
+        </>
+      )}
     </Modal>
   );
 }
@@ -1995,6 +2212,8 @@ function App(){
   function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current&&!audioPlaying){if(readSelVerses.has(v)){handleVerseToggle(v);}else{openStrip(v);}}setTimeout(()=>{wasTouchEvent.current=false;},300);}
   function verseClick(v){if(wasTouchEvent.current)return;if(audioPlaying)return;if(readFullScreen.current)exitFullScreen();if(readSelVerses.has(v)){if(stripOpen)handleVerseToggle(v);else openStrip(v);}else{openStrip(v);}}
   const[readBmLabel,setReadBmLabel]=useState('');
+  const[readBmCat,setReadBmCat]=useState('');
+  const[readBmLabelFocused,setReadBmLabelFocused]=useState(false);
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
@@ -2234,9 +2453,10 @@ function App(){
   const[dictLiveLoading,setDictLiveLoading]=useState(false);
   const dictTimerRef=useRef(null);
 
-  // ── Bookmarks / Recents ──
+  // ── Bookmarks / Recents / Categories ──
   const[bookmarks,setBookmarks]=useState([]);
   const[recents,setRecents]=useState([]);
+  const[bmCategories,setBmCategories]=useState([]);
 
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(accent==='custom'?buildCustomPalette(customAccentHex):(ACCENTS[accent]||ACCENTS.gold))[dark?'dark':'light'];
@@ -2315,7 +2535,7 @@ function App(){
         setAudioPlaying(true);
       }else if(src==='speech'){
         const voices=speechSynthesis.getVoices();
-        const lang=['rvg','p1602','rv1960'].includes(readVid)?'es':'en';
+        const lang=['rvg','p1602'].includes(readVid)?'es':'en';
         const _saved=voicesByVersion[readVid];
         const _pref=lang==='es'?'Paulina':'Daniel';
         const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
@@ -2387,7 +2607,7 @@ function App(){
     speechSynthesis.cancel();
     audioUtterRef.current=[];
     const voices=speechSynthesis.getVoices();
-    const lang=['rvg','p1602','rv1960'].includes(readVid)?'es':'en';
+    const lang=['rvg','p1602'].includes(readVid)?'es':'en';
     const _saved=voicesByVersion[readVid];
     const _pref=lang==='es'?'Paulina':'Daniel';
     const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
@@ -2580,7 +2800,7 @@ function App(){
       setData(pd);
       setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||PUBLIC_VERSIONS[0]?.id||'kjv');
       setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));
-      setBookmarks([]);setRecents([]);
+      setBookmarks([]);setRecents([]);setBmCategories([]);
       setLoadMsg('');setReady(true);
       return;
     }
@@ -2625,6 +2845,7 @@ function App(){
       setLoadMsg('');setReady(true);
       dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
       dbLoadRecents(user.id).then(setRecents).catch(()=>{});
+      dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
     })();
   },[user]);
 
@@ -2963,8 +3184,8 @@ function App(){
     const ranges=[];let i=0;
     while(i<sorted.length){let s=sorted[i],e=s;while(i+1<sorted.length&&sorted[i+1]===e+1){i++;e=sorted[i];}ranges.push(s===e?`${s}`:`${s}-${e}`);i++;}
     const rangeRef=`${bookName(readBk,versionLang(readVid))} ${readCh}:${ranges.join(', ')}`;
-    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||rangeRef});
-    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');dismissStrip();},1800);
+    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||rangeRef,categoryId:readBmCat||null});
+    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');setReadBmCat('');setReadBmLabelFocused(false);dismissStrip();},1800);
   }
 
   async function copySelectedVerses(){
@@ -3060,6 +3281,29 @@ function App(){
     const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
   }
   async function handleDelBookmark(id){if(!user)return;await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
+  async function handleUpdateBookmark(id,patch){
+    // Map camelCase patch keys to snake_case so local state grouping works
+    const sp={...patch};
+    if('categoryId' in sp){sp.category_id=sp.categoryId;delete sp.categoryId;}
+    setBookmarks(b=>b.map(x=>x.id===id?{...x,...sp}:x));
+    if(user&&!user.guest)await dbUpdateBookmark(id,patch).catch(()=>{});
+  }
+  async function handleAddCategory(name,color){
+    if(!user||user.guest)return;
+    const cat=await dbAddCategory(user.id,{name,color});
+    if(cat)setBmCategories(c=>[...c,cat]);
+    return cat;
+  }
+  async function handleUpdateCategory(id,patch){
+    setBmCategories(c=>c.map(x=>x.id===id?{...x,...patch}:x));
+    if(user&&!user.guest)await dbUpdateCategory(id,patch).catch(()=>{});
+  }
+  async function handleDeleteCategory(id){
+    // Move all bookmarks in this category to uncategorized
+    setBookmarks(b=>b.map(x=>x.category_id===id?{...x,category_id:null}:x));
+    setBmCategories(c=>c.filter(x=>x.id!==id));
+    if(user&&!user.guest)await dbDeleteCategory(id).catch(()=>{});
+  }
   function togVer(vid){setHiddenVers(h=>h.includes(vid)?h.filter(x=>x!==vid):[...h,vid]);}
   function doExport(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`scriptorium-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 
@@ -3076,7 +3320,7 @@ function App(){
       // Delete bookmarks and recents for this user
       const bmT=await sbFrom('bookmarks',token);await bmT.delete({user_id:user.id});
       const rpT=await sbFrom('recent_passages',token);await rpT.delete({user_id:user.id});
-      setBookmarks([]);setRecents([]);
+      setBookmarks([]);setRecents([]);setBmCategories([]);
       // Reset UI prefs
       setHiddenVers([]);setQ('');setFilters({issueTypes:[],statuses:[],vA:'',vB:''});setDark(true);setTab('read');
       localStorage.setItem('scrip:dark','true');localStorage.setItem('scrip:hidden','[]');
@@ -4435,32 +4679,45 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&(!readSearchRes||!readSearchResultsOpen)&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'7px 10px',display:'flex',alignItems:'center',gap:8,height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',flexWrap:'wrap',justifyContent:'center',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
                   ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
-                  :<>
-                    <span style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center'}}>
-                      {(s=>{const a=[...s].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return r.join(', ');})(readSelVerses)}
-                    </span>
-                    <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="label…"
-                      style={{flex:1,minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',height:30,boxSizing:'border-box'}}/>
-                    <button type="button" className="s-btn s-ghost" onClick={()=>{setCopyHover(false);copySelectedVerses();}}
-                      onMouseEnter={()=>setCopyHover(true)} onMouseLeave={()=>setCopyHover(false)}
-                      style={{background:copyHover?'rgba(228,204,120,0.15)':'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer'}}>
-                      ⧉ Copy
-                    </button>
-                    {user
-                      ?<button type="button" className="s-btn s-ghost" onClick={()=>{setBmHover(false);doReadBookmark();}}
-                        onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
-                        style={{background:bmHover?'rgba(228,204,120,0.15)':'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0 12px',fontWeight:600,flexShrink:0,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s'}}>
-                        ✦ Bookmark
+                  :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
+                    {/* Row 1: verse badge + [category] + Bookmark + Copy fill evenly + dismiss */}
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                        {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
+                      </span>
+                      {user&&bmCategories.length>0&&<select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
+                        style={{flex:1,minWidth:0,height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 6px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
+                        <option value="">category…</option>
+                        {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>}
+                      {user
+                        ?<button type="button" className="s-btn s-ghost" onClick={()=>{setBmHover(false);doReadBookmark();}}
+                          onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
+                          style={{flex:1,background:bmHover?'rgba(228,204,120,0.15)':'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          <span>✦</span><span>Bookmark</span>
+                        </button>
+                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
+                      <button type="button" className="s-btn s-ghost" onClick={()=>{setCopyHover(false);copySelectedVerses();}}
+                        onMouseEnter={()=>setCopyHover(true)} onMouseLeave={()=>setCopyHover(false)}
+                        style={{flex:1,background:copyHover?'rgba(228,204,120,0.15)':'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        <span>⧉</span><span>Copy</span>
                       </button>
-                      :<span style={{fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,flexShrink:0}}>Sign in to bookmark</span>}
-                    <button type="button" onClick={dismissStrip}
-                      style={{background:'none',border:'none',color:T.gM,cursor:'pointer',fontSize:14,flexShrink:0,width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
-                  </>
+                      <button type="button" onClick={dismissStrip}
+                        style={{background:'rgba(200,60,60,0.05)',border:'1px solid rgba(200,60,60,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'all .15s',padding:0}}>✕</button>
+                    </div>
+                    {/* Row 2: Bookmark notes — full width */}
+                    <div style={{display:'flex',width:'100%'}}>
+                      <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
+                        onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
+                        placeholder="Bookmark notes…" rows={1}
+                        style={{flex:1,minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
+                    </div>
+                  </div>
               }
             </div>
           )}
@@ -4954,7 +5211,7 @@ function App(){
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing}/>}
-      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
@@ -5138,7 +5395,6 @@ function App(){
                 {/* THIRD-PARTY VERSIONS */}
                 <Hdg label="Third-Party Bible Versions"/>
                 <Li><strong style={{color:T.gT}}>Reina-Valera Gómez (RVG)</strong> — © Dr. Humberto Gómez Caballero. Licensed under Creative Commons CC BY-NC-ND 3.0. Used for personal, non-commercial study only. For commercial or distribution licensing, contact the copyright holder directly.</Li>
-                <Li><strong style={{color:T.gT}}>Reina-Valera 1960 (RVR60)</strong> — © 1960 Sociedades Bíblicas en América Latina; © renovado 1988 Sociedades Bíblicas Unidas. "El texto bíblico ha sido tomado de la versión Reina-Valera © 1960 Sociedades Bíblicas en América Latina; © renovado 1988 Sociedades Bíblicas Unidas. Utilizado con permiso." Electronic distribution requires written permission from the copyright holder. Contact: licensing@americanbible.org.</Li>
                 <Li><strong style={{color:T.gT}}>Purificada 1602 (1602P)</strong> — © 2007–2024 Iglesia Bautista Bíblica de la Gracia, Monterrey, Mexico. Textual restoration based on the 1602 Reina-Valera. Used for study and research purposes without modification.</Li>
 
                 {/* AUDIO */}
