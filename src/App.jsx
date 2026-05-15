@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import {
   SUPA_URL, SUPA_ANON, SB_KEY,
   sbHeaders, getToken, saveSession, sbFrom, sbRpc,
@@ -21,7 +22,7 @@ import {
   dbLoadBookmarks, dbAddBookmark, dbUpdateBookmark, dbDeleteBookmark,
   dbLoadCategories, dbAddCategory, dbUpdateCategory, dbDeleteCategory,
   dbLoadRecents, dbRecordRecent,
-  localAudioUrl, localTimestampUrl, USFM_CODES, DEFAULT_FILESETS,
+  localAudioStem, localAudioUrl, localTimestampUrl, USFM_CODES, DEFAULT_FILESETS,
   fcbhCall, fcbhGetChapterUrl, fcbhGetTimestamps,
 } from './lib.js';
 
@@ -1216,6 +1217,8 @@ function App(){
   const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
   const[availableVoices,setAvailableVoices]=useState(()=>typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[]);
   const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
+  const[audioSetupOpen,setAudioSetupOpen]=useState(false);
+  const[audioCheckStatus,setAudioCheckStatus]=useState(null); // null|'checking'|{ot:bool,nt:bool}
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const bottomBarRef=useRef(null);
@@ -1920,9 +1923,20 @@ function App(){
         audioElRef.current.play().catch(()=>{});
         setAudioPlaying(true);
       }else if(src==='local'){
-        const mp3Url=localAudioUrl(readBook,readCh);
         const tsUrl=localTimestampUrl(readBook,readCh);
-        audioElRef.current.src=mp3Url;
+        if(Capacitor.isNativePlatform()){
+          const{folder,stem}=localAudioStem(readBook,readCh);
+          const nativePath=`Audio/${folder}/KJV Reg/${stem}.mp3`;
+          try{
+            const result=await Filesystem.getUri({directory:Directory.Documents,path:nativePath});
+            audioElRef.current.src=Capacitor.convertFileSrc(result.uri);
+          }catch{
+            setAudioError('Audio file not found. See Audio Setup in Settings.');
+            setAudioLoading(false);return;
+          }
+        }else{
+          audioElRef.current.src=localAudioUrl(readBook,readCh);
+        }
         audioTimestampsRef.current=null;
         fetch(tsUrl).then(r=>r.ok?r.json():null).then(ts=>{if(ts)audioTimestampsRef.current=ts;}).catch(()=>{});
         setAudioLoaded(true);
@@ -2002,6 +2016,19 @@ function App(){
     audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
     setCurrentVerse(targetVerse);
     if(audioAutoScroll)scrollToVerse(targetVerse);
+  };
+
+  const checkAudioFiles=async()=>{
+    setAudioCheckStatus('checking');
+    const check=async(path)=>{
+      if(!Capacitor.isNativePlatform())return true; // web: assume present
+      try{await Filesystem.getUri({directory:Directory.Documents,path});return true;}catch{return false;}
+    };
+    const[ot,nt]=await Promise.all([
+      check('Audio/OT/KJV Reg/A01___01_Genesis_____ENGKJVO1DA.mp3'),
+      check('Audio/NT/KJV Reg/B01___01_Matthew_____ENGKJVN1DA.mp3'),
+    ]);
+    setAudioCheckStatus({ot,nt});
   };
 
   // ── Entry CRUD ──
@@ -2728,6 +2755,61 @@ function App(){
                 style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
             </div>
             {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:'1px solid rgba(198,40,40,0.3)',borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:12,marginBottom:14}}>{audioError}</div>}
+          </div>}
+
+          {/* ── Audio Setup ── */}
+          <button type="button" onClick={()=>setAudioSetupOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSetupOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♫</span>
+            <span style={{flex:1,textAlign:'left'}}>Audio Setup</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSetupOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+          </button>
+          {audioSetupOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 14px',marginBottom:0}}>
+            <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6,marginBottom:12}}>
+              KJV audio requires files downloaded from{' '}
+              <span style={{color:T.gT,fontWeight:600}}>bible.faithcomesbyhearing.com</span>{' '}
+              (free registration). Download the <span style={{color:T.gT}}>ENGKJVO1DA</span> (OT) and{' '}
+              <span style={{color:T.gT}}>ENGKJVN1DA</span> (NT) MP3 sets.
+            </div>
+            {Capacitor.isNativePlatform()?(
+              <>
+                <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,textTransform:'uppercase',marginBottom:6}}>Place files at</div>
+                <div style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',marginBottom:12}}>
+                  <div style={{fontFamily:'monospace',fontSize:11,color:T.gT,lineHeight:1.7,wordBreak:'break-all'}}>
+                    Documents/Audio/OT/KJV Reg/*.mp3<br/>
+                    Documents/Audio/NT/KJV Reg/*.mp3
+                  </div>
+                </div>
+                <div style={{fontFamily:FB,fontSize:12,color:T.dim,marginBottom:12,lineHeight:1.5}}>
+                  <b style={{color:T.mut}}>iOS:</b> Finder → device → Files → Scriptorium → drag Audio/ folder<br/>
+                  <b style={{color:T.mut}}>Android:</b> USB → Internal Storage → Documents → Audio/
+                </div>
+              </>
+            ):(
+              <div style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',marginBottom:12}}>
+                <div style={{fontFamily:'monospace',fontSize:11,color:T.gT,lineHeight:1.7}}>
+                  /audio/OT/KJV Reg/*.mp3<br/>
+                  /audio/NT/KJV Reg/*.mp3
+                </div>
+                <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:6}}>Served from the project root on the local dev server.</div>
+              </div>
+            )}
+            <button type="button" onClick={checkAudioFiles} disabled={audioCheckStatus==='checking'}
+              style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:audioCheckStatus==='checking'?'wait':'pointer',fontWeight:600,marginBottom:audioCheckStatus&&audioCheckStatus!=='checking'?10:0}}>
+              {audioCheckStatus==='checking'?'Checking...':'Check Audio Files'}
+            </button>
+            {audioCheckStatus&&audioCheckStatus!=='checking'&&(
+              <div style={{display:'flex',gap:8}}>
+                <div style={{flex:1,background:audioCheckStatus.ot?'rgba(98,196,132,0.1)':'rgba(198,40,40,0.08)',border:`1px solid ${audioCheckStatus.ot?'#62c484':'rgba(198,40,40,0.3)'}`,borderRadius:6,padding:'8px 10px',textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:audioCheckStatus.ot?'#62c484':'#ef5350',fontWeight:600,marginBottom:2}}>OT</div>
+                  <div style={{fontFamily:FB,fontSize:12,color:audioCheckStatus.ot?'#62c484':'#ef5350'}}>{audioCheckStatus.ot?'Found':'Not found'}</div>
+                </div>
+                <div style={{flex:1,background:audioCheckStatus.nt?'rgba(98,196,132,0.1)':'rgba(198,40,40,0.08)',border:`1px solid ${audioCheckStatus.nt?'#62c484':'rgba(198,40,40,0.3)'}`,borderRadius:6,padding:'8px 10px',textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:audioCheckStatus.nt?'#62c484':'#ef5350',fontWeight:600,marginBottom:2}}>NT</div>
+                  <div style={{fontFamily:FB,fontSize:12,color:audioCheckStatus.nt?'#62c484':'#ef5350'}}>{audioCheckStatus.nt?'Found':'Not found'}</div>
+                </div>
+              </div>
+            )}
           </div>}
 
           {/* ── Offline Data ── */}
