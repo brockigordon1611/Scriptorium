@@ -398,7 +398,7 @@ export const ISSUE_TYPES=['manuscript','word','omission','article','grammar','do
 export const STATUS_VALUES=['reference','faithful','corrupt','diff','partial','missing'];
 export const STATUS_LABELS={reference:'Reference',faithful:'Faithful',corrupt:'Corrupt / Alexandrian',diff:'Differs',partial:'Partial',missing:'Absent'};
 export const ISSUE_LABELS={manuscript:'Manuscript',word:'Word Choice',omission:'Omission',article:'Article',grammar:'Grammar',doctrine:'Doctrine',name:'Name/Title',other:'Other'};
-export const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false},{id:'p1602',label:'1602P',lang:'ES',isRef:false},{id:'rv1960',label:'RVR60',lang:'ES',isRef:false}];
+export const PUBLIC_VERSIONS=[{id:'kjv',label:'KJV',lang:'EN',isRef:true},{id:'rvg',label:'RVG',lang:'ES',isRef:false},{id:'p1602',label:'1602P',lang:'ES',isRef:false}];
 // Webster's 1828 dictionary: 107,793 entries in Supabase table webster_1828
 // Queried via RPC: search_webster_1828(query_term)
 
@@ -729,8 +729,34 @@ export async function dbSaveVersions(projectId,versions){
   }
 }
 export async function dbLoadBookmarks(userId){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
-export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label}){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null});return r.data?.[0];}
+export async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label,categoryId,note}){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null,category_id:categoryId||null,note:note||null});return r.data?.[0];}
+export async function dbUpdateBookmark(id,{note,categoryId,label}){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);const patch={};if(note!==undefined)patch.note=note||null;if(categoryId!==undefined)patch.category_id=categoryId||null;if(label!==undefined)patch.label=label||null;await t.update(patch,{id});}
 export async function dbDeleteBookmark(id){const token=await getFreshToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
+export async function dbLoadCategories(userId){const token=await getFreshToken();const t=await sbFrom('bookmark_categories',token);const r=await t.select('*',{user_id:userId},{order:'sort_order.asc,created_at.asc'});return r.data||[];}
+export async function dbAddCategory(userId,{name,color}){const token=await getFreshToken();const t=await sbFrom('bookmark_categories',token);const r=await t.insert({user_id:userId,name,color:color||'#62c484'});return r.data?.[0];}
+export async function dbUpdateCategory(id,{name,color}){const token=await getFreshToken();const t=await sbFrom('bookmark_categories',token);const patch={};if(name!==undefined)patch.name=name;if(color!==undefined)patch.color=color;await t.update(patch,{id});}
+export async function dbDeleteCategory(id){const token=await getFreshToken();const t=await sbFrom('bookmark_categories',token);await t.delete({id});}
 export async function dbLoadRecents(userId){const token=await getFreshToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
 export async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=await getFreshToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
+
+// ── Audio / Timestamp URL helpers ──
+const OT_REG_NAMES=['Genesis_____','Exodus______','Leviticus___','Numbers_____','Deuteronomy_','Joshua______','Judges______','Ruth________','1Samuel_____','2Samuel_____','1Kings______','2Kings______','1Chronicles_','2Chronicles_','Ezra________','Nehemiah____','Esther______','Job_________','Psalms______','Proverbs____','Ecclesiastes','SongofSongs_','Isaiah______','Jeremiah____','Lamentations','Ezekiel_____','Daniel______','Hosea_______','Joel________','Amos________','Obadiah_____','Jonah_______','Micah_______','Nahum_______','Habakkuk____','Zephaniah___','Haggai______','Zechariah___','Malachi_____'];
+const NT_REG_NAMES=['Matthew_____','Mark________','Luke________','John________','Acts________','Romans______','1Corinthians','2Corinthians','Galatians___','Ephesians___','Philippians_','Colossians__','1Thess______','2Thess______','1Timothy____','2Timothy____','Titus_______','Philemon____','Hebrews_____','James_______','1Peter______','2Peter______','1John_______','2John_______','3John_______','Jude________','Revelation__'];
+export function localAudioStem(bookNum,chapter){
+  if(bookNum<=39){
+    const a='A'+String(bookNum).padStart(2,'0');
+    const isPsalms=bookNum===19;
+    const chStr=isPsalms?String(chapter).padStart(3,'0'):String(chapter).padStart(2,'0');
+    const sep=isPsalms?'__':'___';
+    return{folder:'OT',stem:`${a}${sep}${chStr}_${OT_REG_NAMES[bookNum-1]}ENGKJVO1DA`};
+  }
+  const ntNum=bookNum-39;
+  const b='B'+String(ntNum).padStart(2,'0');
+  const ch2=String(chapter).padStart(2,'0');
+  return{folder:'NT',stem:`${b}___${ch2}_${NT_REG_NAMES[ntNum-1]}ENGKJVN1DA`};
+}
+export function localAudioUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`/audio/${folder}/KJV%20Reg/${stem}.mp3`;}
+export function localTimestampUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`/timestamps/${folder}/${stem}.json`;}
+export const USFM_CODES=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
+export const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rvg:null,p1602:null};
 

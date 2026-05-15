@@ -18,7 +18,8 @@ import {
   dbGetStrongsVerses, dbGetVerse, dbAutoFill,
   dbLoadOrCreateProject, dbLoadProject, dbSaveEntry, dbDeleteEntry,
   dbSaveSection, dbDeleteSection, dbSaveVersions,
-  dbLoadBookmarks, dbAddBookmark, dbDeleteBookmark,
+  dbLoadBookmarks, dbAddBookmark, dbUpdateBookmark, dbDeleteBookmark,
+  dbLoadCategories, dbAddCategory, dbUpdateCategory, dbDeleteCategory,
   dbLoadRecents, dbRecordRecent,
 } from './lib.js';
 
@@ -38,17 +39,30 @@ function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={
 function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
 function Spinner(){return <span className="spinner"/>;}
 
-function Modal({title,onClose,children,footer,wide,T}){
+function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
   return(
-    <div className="modal-overlay" onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',display:'flex',alignItems:'center',justifyContent:'center',padding:20,backdropFilter:'blur(4px)'}}>
-      <div className="modal-in modal-panel" style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.65)'}}>
-        <div style={{height:3,background:T.accentLine}}/>
-        <div style={{background:T.bgCH,borderBottom:`1px solid ${T.bdA}`,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-          <span style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{title}</span>
-          <button className="s-btn s-ghost" onClick={onClose} style={{background:'none',border:'none',color:T.dim,fontSize:16,padding:'2px 8px'}}>✕</button>
-        </div>
+    <div className={topSheet?"modal-overlay modal-topsheet-overlay":"modal-overlay"} onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',...(topSheet?{top:topSheet,right:0,bottom:0,left:0,zIndex:185,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)','--ts-h':topSheet+'px'}:{inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',backdropFilter:'blur(4px)'}),display:'flex',alignItems:'center',justifyContent:'center',padding:20,...(isClosing&&topSheet?{opacity:0,transition:'opacity .25s ease-in'}:{})}}>
+      <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+        {topSheet?(
+          <div style={{background:T.bgCard,padding:'14px 16px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <div style={{position:'absolute',left:16,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+              <button onClick={onBack||onClose} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1}}>←</button>
+            </div>
+            <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
+          </div>
+        ):(
+          <>
+            <div style={{height:3,background:T.accentLine}}/>
+            <div style={{background:T.bgCH,borderBottom:`1px solid ${T.bdA}`,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+              <span style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{title}</span>
+              <button className="s-btn s-ghost" onClick={onClose} style={{background:'none',border:'none',color:T.dim,fontSize:16,padding:'2px 8px'}}>✕</button>
+            </div>
+          </>
+        )}
         <div className="modal-body" style={{overflowY:'auto',flex:1,padding:'22px 24px'}}>{children}</div>
-        {footer&&<div style={{borderTop:`1px solid ${T.bd}`,padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCH,flexShrink:0}}>{footer}</div>}
+        {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
+        {topSheet&&<div style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
+        {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
   );
@@ -163,6 +177,15 @@ function AuthPanel({onAuth}){
   const[suEmail,setSuEmail]=useState('');const[suPw,setSuPw]=useState('');
   const[showSuPw,setShowSuPw]=useState(false);
   const[suErr,setSuErr]=useState('');const[suMsg,setSuMsg]=useState('');const[suBusy,setSuBusy]=useState(false);
+  const[offlineVids,setOfflineVids]=useState(null);
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const checks=await Promise.all(PUBLIC_VERSIONS.map(async v=>({v,dl:await idbIsDownloaded(v.id).catch(()=>false)})));
+        setOfflineVids(checks.filter(c=>c.dl).map(c=>c.v.label));
+      }catch{setOfflineVids([]);}
+    })();
+  },[]);
 
   const pwInputStyle={width:'100%',background:D.bgIn,border:`1px solid ${D.bd}`,borderRadius:6,color:D.body,fontFamily:FB,fontSize:16,padding:'9px 42px 9px 13px',outline:'none',boxSizing:'border-box'};
   const eyeStyle={position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:D.gM,cursor:'pointer',fontSize:15,padding:4,lineHeight:1};
@@ -207,7 +230,9 @@ function AuthPanel({onAuth}){
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg,padding:24}}>
       
       <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
-        <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{PUBLIC_VERSIONS.map(v=>v.label).join(' / ')}</div>
+        {offlineVids&&offlineVids.length>0&&(
+          <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{offlineVids.join(' / ')}</div>
+        )}
         <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
         <div style={{fontFamily:FB,fontStyle:'italic',color:D.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
@@ -328,31 +353,218 @@ function AuthPanel({onAuth}){
 // ══════════════════════════════════════════════════════════
 //  BOOKMARKS & RECENTS PANELS
 // ══════════════════════════════════════════════════════════
-function BookmarksPanel({T,bookmarks,onDelete,onOpen,onClose,versions}){
+const CAT_COLORS=['#62c484','#6ab0f5','#e4cc78','#f08080','#c488c8','#f0a060','#80c8c8','#a0a0b8'];
+
+function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker}){
+  const bk=BIBLE.find(b=>b.n===bm.book_num);
+  const ver=versions.find(v=>v.id===bm.version_id);
+  const ref=String(bk?.name||'?')+' '+bm.chapter+(bm.verse?':'+bm.verse:'');
+  const isRangeRef=bm.label&&bk&&(bm.label.startsWith(bk.name)||(bk.nameES&&bm.label.startsWith(bk.nameES)));
+  const titleRef=isRangeRef?bm.label:ref;
+  const labelNote=isRangeRef?null:bm.label;
+  const displayNote=bm.note!=null?bm.note:labelNote;
+  const[editNote,setEditNote]=useState(false);
+  const[noteVal,setNoteVal]=useState(displayNote||'');
+  const[showDelConfirm,setShowDelConfirm]=useState(false);
+  function openEditor(){setNoteVal(displayNote||'');setEditNote(true);}
+  function saveNote(){onUpdate(bm.id,{note:noteVal});setEditNote(false);}
+  function cancelNote(){setNoteVal(displayNote||'');setEditNote(false);}
+  function moveCat(catId){onUpdate(bm.id,{categoryId:catId||null});}
   return(
-    <Modal title="✦ Bookmarks" onClose={onClose} T={T} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
-      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No bookmarks yet. In Reading Mode, tap any verse to bookmark it.</div>}
-      {bookmarks.map(bm=>{
-        const bk=BIBLE.find(b=>b.n===bm.book_num);const ver=versions.find(v=>v.id===bm.version_id);
-        const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
-        return(
-          <div key={bm.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
-            <div style={{flex:1}}>
-              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em',marginBottom:3}}>{bm.label||ref}</div>
-              <div style={{fontFamily:FB,fontSize:13,color:T.dim}}>{ref} {'\u00B7'} <span style={{color:T.gM}}>{ver?.label||bm.version_id.toUpperCase()}</span></div>
-            </div>
-            <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
-            <IBtn T={T} ch="✕" danger onClick={()=>onDelete(bm.id)} title="Delete bookmark"/>
+    <div style={{padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
+            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:11}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span>
           </div>
-        );
-      })}
+          {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
+          {editNote&&(
+            <div style={{marginTop:6}}>
+              <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:13,padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
+              <div style={{display:'flex',gap:6,marginTop:4}}>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {showCatPicker&&categories.length>0&&(
+            <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
+              <button onClick={()=>moveCat(null)}
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                None
+              </button>
+              {categories.map(cat=>(
+                <button key={cat.id} onClick={()=>moveCat(cat.id)}
+                  style={{background:bm.category_id===cat.id?cat.color+'28':'none',border:`1.5px solid ${bm.category_id===cat.id?cat.color:T.bd}`,borderRadius:12,color:bm.category_id===cat.id?cat.color:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===cat.id?600:400}}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
+          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
+          {user&&<>
+            <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
+              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:11,padding:'4px 7px',cursor:'pointer',lineHeight:1}}>&#9998;</button>
+            <IBtn T={T} ch="x" danger onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"/>
+          </>}
+        </div>
+      </div>
+      {showDelConfirm&&<ConfirmDialog T={T} danger
+        title="Delete Bookmark"
+        message={"Remove bookmark?"}
+        confirmLabel="Delete" cancelLabel="Cancel"
+        onConfirm={()=>{setShowDelConfirm(false);onDelete(bm.id);}}
+        onCancel={()=>setShowDelConfirm(false)}/>}
+    </div>
+  );
+}
+
+function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker}){
+  const[open,setOpen]=useState(true);
+  const[renaming,setRenaming]=useState(false);
+  const[nameVal,setNameVal]=useState(cat.name);
+  const[colorIdx,setColorIdx]=useState(CAT_COLORS.indexOf(cat.color)<0?0:CAT_COLORS.indexOf(cat.color));
+  const[showDelCatConfirm,setShowDelCatConfirm]=useState(false);
+  function saveRename(){onRename(cat.id,{name:nameVal||cat.name,color:CAT_COLORS[colorIdx]});setRenaming(false);}
+  return(
+    <div style={{marginBottom:4}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0 6px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
+        <span style={{fontSize:10,color:T.dim,transition:'transform .15s',display:'inline-block',transform:open?'rotate(90deg)':'rotate(0deg)'}}>{'>'}</span>
+        <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
+        <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
+        <span style={{fontFamily:FS,fontSize:10,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
+        {user&&!renaming&&<>
+          <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
+            style={{background:'none',border:'none',color:T.dim,fontSize:11,cursor:'pointer',padding:'0 3px',lineHeight:1}}>&#9998;</button>
+          <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
+            style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'0 3px',lineHeight:1,display:'flex',alignItems:'center'}}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
+              <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
+            </svg>
+          </button>
+        </>}
+      </div>
+      {renaming&&(
+        <div style={{marginBottom:8,padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
+          <input value={nameVal} onChange={e=>setNameVal(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&saveRename()}
+            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'6px 8px',outline:'none',marginBottom:8}}/>
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
+              {CAT_COLORS.map((col,i)=>(
+                <button key={col} onClick={()=>setColorIdx(i)}
+                  style={{width:18,height:18,borderRadius:'50%',background:col,border:`2px solid ${i===colorIdx?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
+              ))}
+            </div>
+            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
+          </div>
+        </div>
+      )}
+      {open&&<div style={{paddingLeft:18}}>
+        {bookmarks.length===0
+          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:13,padding:'6px 0 10px'}}>Empty category</div>
+          :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} T={T} versions={versions} onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate} categories={categories} user={user} showCatPicker={showCatPicker}/>)
+        }
+      </div>}
+      {showDelCatConfirm&&<ConfirmDialog T={T} danger
+        title={"Delete category?"}
+        message="All bookmarks in this category will become uncategorized."
+        confirmLabel="Delete" cancelLabel="Cancel"
+        onConfirm={()=>{setShowDelCatConfirm(false);onDeleteCat(cat.id);}}
+        onCancel={()=>setShowDelCatConfirm(false)}/>}
+    </div>
+  );
+}
+
+function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing}){
+  const[newCatName,setNewCatName]=useState('');
+  const[newCatColor,setNewCatColor]=useState(0);
+  const[addingCat,setAddingCat]=useState(false);
+  const[viewAll,setViewAll]=useState(false);
+  const[assigningCats,setAssigningCats]=useState(false);
+  async function createCat(){
+    if(!newCatName.trim())return;
+    await onAddCat(newCatName.trim(),CAT_COLORS[newCatColor]);
+    setNewCatName('');setNewCatColor(0);setAddingCat(false);
+  }
+  const grouped=categories.map(cat=>({cat,items:bookmarks.filter(bm=>bm.category_id===cat.id)}));
+  const uncategorized=bookmarks.filter(bm=>!bm.category_id);
+  const hasCats=categories.length>0;
+  const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
+  return(
+    <Modal title="Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+      {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16}}>
+        <div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,marginBottom:4}}>SIGN IN REQUIRED</div>
+        <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>Sign in to save and view bookmarks.</div>
+      </div>}
+      {user&&!user.guest&&(
+        <div style={{marginBottom:12}}>
+          {addingCat?(
+            <div style={{padding:'10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,marginBottom:8}}>
+              <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} autoFocus placeholder="Category name..."
+                onKeyDown={e=>e.key==='Enter'&&createCat()}
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'7px 8px',outline:'none',marginBottom:8}}/>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
+                  {CAT_COLORS.map((col,i)=>(
+                    <button key={col} onClick={()=>setNewCatColor(i)}
+                      style={{width:20,height:20,borderRadius:'50%',background:col,border:`2px solid ${i===newCatColor?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
+                  ))}
+                </div>
+                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
+              </div>
+            </div>
+          ):(
+            <button onClick={()=>setAddingCat(true)}
+              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
+              + New Category
+            </button>
+          )}
+          {hasCats&&(
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setViewAll(v=>!v)}
+                style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                {viewAll?'By Category':'View All'}
+              </button>
+              <button onClick={()=>setAssigningCats(v=>!v)}
+                style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                {assigningCats?'Done Assigning':'Assign Categories'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>{user?'No bookmarks yet.':'No bookmarks. Sign in.'}</div>}
+      {viewAll&&hasCats?(
+        bookmarks.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)
+      ):(
+        <>
+          {grouped.map(({cat,items})=>(
+            <CatSection key={cat.id} cat={cat} bookmarks={items} T={T} versions={versions}
+              onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate}
+              onRename={onUpdateCat} onDeleteCat={onDeleteCat}
+              categories={categories} user={user} showCatPicker={assigningCats}/>
+          ))}
+          {uncategorized.length>0&&(
+            <div style={{marginTop:hasCats?8:0}}>
+              {hasCats&&<div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
+              {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
+            </div>
+          )}
+        </>
+      )}
     </Modal>
   );
 }
 
-function RecentsPanel({T,recents,onOpen,onClose,versions}){
+function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
   return(
-    <Modal title="↺ Recent Passages" onClose={onClose} T={T} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
@@ -371,9 +583,7 @@ function RecentsPanel({T,recents,onOpen,onClose,versions}){
   );
 }
 
-// ══════════════════════════════════════════════════════════
-//  VERSIONS MODAL  (manage + upload — unified)
-// ══════════════════════════════════════════════════════════
+
 function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLocal}){
   const[vers,setVers]=useState(clone(data.versions));
   const builtinAvail=PUBLIC_VERSIONS.filter(pv=>!vers.find(v=>v.id===pv.id));
@@ -945,6 +1155,7 @@ function App(){
   function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){handleVerseToggle(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
   function verseClick(v,dbl=false){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();if(dbl){openStrip(v);}else{handleVerseToggle(v);}}
   const[readBmLabel,setReadBmLabel]=useState('');
+  const[readBmCat,setReadBmCat]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
@@ -1139,6 +1350,7 @@ function App(){
   // ── Bookmarks / Recents ──
   const[bookmarks,setBookmarks]=useState([]);
   const[recents,setRecents]=useState([]);
+  const[bmCategories,setBmCategories]=useState([]);
 
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(ACCENTS[accent]||ACCENTS.gold)[dark?'dark':'light'];
@@ -1227,7 +1439,7 @@ function App(){
       }
     }
     Auth.getSession().then(s=>{setUser(s?.user||null);setAuthChecked(true);});
-    return Auth.onAuthChange(u=>{setUser(u||null);if(!u){setData(null);setReady(false);setProjectId(null);}});
+    return Auth.onAuthChange(u=>{setUser(u||null);if(!u){setData(null);setReady(false);setProjectId(null);setBookmarks([]);setRecents([]);setBmCategories([]);}});
   },[]);
 
   // ── Load project on auth ──
@@ -1283,6 +1495,7 @@ function App(){
       setLoadMsg('');setReady(true);
       dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
       dbLoadRecents(user.id).then(setRecents).catch(()=>{});
+      if(!user.guest)dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
     })().catch(err=>{
       console.error('Project load failed:',err);
       setLoadMsg('Failed to load — check your connection and refresh the page.');
@@ -1568,8 +1781,8 @@ function App(){
   async function doReadBookmark(){
     const v=[...readSelVerses].sort((a,b)=>a-b)[0];
     if(!user||!v)return;
-    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||`${readBk?.name} ${readCh}:${v}`});
-    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');dismissStrip();},1800);
+    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||`${readBk?.name} ${readCh}:${v}`,categoryId:readBmCat||null});
+    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');setReadBmCat('');dismissStrip();},1800);
   }
 
   async function copySelectedVerses(){
@@ -1669,6 +1882,24 @@ function App(){
     const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
   }
   async function handleDelBookmark(id){await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
+  async function handleUpdateBookmark(id,patch){
+    await dbUpdateBookmark(id,patch);
+    setBookmarks(b=>b.map(bm=>bm.id===id?{...bm,...(patch.note!==undefined?{note:patch.note}:{}),...(patch.categoryId!==undefined?{category_id:patch.categoryId}:{})}:bm));
+  }
+  async function handleAddCategory(name,color){
+    if(!user||user.guest)return;
+    const cat=await dbAddCategory(user.id,{name,color});
+    if(cat)setBmCategories(c=>[...c,cat]);
+  }
+  async function handleUpdateCategory(id,patch){
+    await dbUpdateCategory(id,patch);
+    setBmCategories(c=>c.map(cat=>cat.id===id?{...cat,...patch}:cat));
+  }
+  async function handleDeleteCategory(id){
+    await dbDeleteCategory(id);
+    setBmCategories(c=>c.filter(cat=>cat.id!==id));
+    setBookmarks(b=>b.map(bm=>bm.category_id===id?{...bm,category_id:null}:bm));
+  }
   function togVer(vid){setHiddenVers(h=>h.includes(vid)?h.filter(x=>x!==vid):[...h,vid]);}
   function doExport(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`scriptorium-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 
@@ -2792,6 +3023,11 @@ function App(){
                       </span>
                       <input value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)} placeholder="Bookmark label…"
                         style={{flex:1,minWidth:0,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:8,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 12px',outline:'none'}}/>
+                      {bmCategories.length>0&&<select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
+                        style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:8,color:T.body,fontFamily:FS,fontSize:13,padding:'8px 6px',outline:'none',flexShrink:0,maxWidth:120}}>
+                        <option value="">No cat.</option>
+                        {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>}
                       <button type="button" onClick={dismissStrip}
                         style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18,flexShrink:0,padding:'4px 6px'}}>✕</button>
                     </div>
@@ -3256,8 +3492,8 @@ function App(){
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={()=>setModal(null)} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload}/>}
-      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} versions={data.versions}/>}
-      {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={()=>setModal(null)} versions={data.versions}/>}
+      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={()=>setModal(null)} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={false}/>}
+      {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={()=>setModal(null)} versions={data.versions} navH={navH} isClosing={false}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
       {modal?.type==='help'&&(

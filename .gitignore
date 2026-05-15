@@ -7,3 +7,17 @@ Backup of versions/
 # STEPBible raw data files (large, re-downloadable)
 stepbible/*.txt
 stepbible/*.csv
+
+# Vite build output
+dist/
+node_modules/
+package-lock.json
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Temporary patch scripts
+patch_app.js
+patch_app.cjs
