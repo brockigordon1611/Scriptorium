@@ -3455,7 +3455,7 @@ function App(){
           {/* Read-tab toggles: Strong’s + Auto Fullscreen */}
           {tab==='read'&&<div style={{display:'flex',gap:8,marginBottom:8}}>
             {/* Strong’s card */}
-            <div onClick={()=>readVid===’kjv’&&setStrongsMode(v=>!v)} title={readVid!==’kjv’?"Strong’s numbers are only available for the KJV":undefined} style={{flex:1,padding:’9px 10px’,background:strongsMode&&readVid===’kjv’?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid===’kjv’?T.gD:T.bd}`,borderRadius:10,cursor:readVid===’kjv’?’pointer’:’not-allowed’,opacity:readVid===’kjv’?1:0.45,userSelect:’none’,WebkitUserSelect:’none’,transition:’background .2s,border-color .2s,opacity .2s’,display:’flex’,alignItems:’center’,gap:8,minWidth:0}}>
+            <div onClick={()=>readVid==='kjv'&&setStrongsMode(v=>!v)} title={readVid!=='kjv'?"Strong's numbers are only available for the KJV":undefined} style={{flex:1,padding:'9px 10px',background:strongsMode&&readVid==='kjv'?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid==='kjv'?T.gD:T.bd}`,borderRadius:10,cursor:readVid==='kjv'?'pointer':'not-allowed',opacity:readVid==='kjv'?1:0.45,userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s,opacity .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:strongsMode&&readVid===’kjv’?T.gT:T.dim,flexShrink:0,transition:’color .2s’}}>ℍ</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:strongsMode&&readVid===’kjv’?T.mut:T.dim,transition:’color .2s’}}>Strong’s</div>
