@@ -759,4 +759,29 @@ export function localAudioUrl(bookNum,chapter){const{folder,stem}=localAudioStem
 export function localTimestampUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`/timestamps/${folder}/${stem}.json`;}
 export const USFM_CODES=['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV'];
 export const DEFAULT_FILESETS={kjv:'ENGKJVN2DA',rvg:null,p1602:null};
+const FCBH_BASE='https://4.dbt.io/api';
+export async function fcbhCall(path,params={}){
+  const key=localStorage.getItem('scrip:audio:fcbhKey')||'';
+  if(!key)throw new Error('FCBH API key not configured');
+  const u=new URL(FCBH_BASE+path);
+  u.searchParams.set('v','4');
+  u.searchParams.set('key',key);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{headers:{Accept:'application/json'}});
+  if(!r.ok)throw new Error('FCBH '+(r.status||'error'));
+  return r.json();
+}
+export async function fcbhGetChapterUrl(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/bibles/filesets/${filesetId}/${bookUsfm}/${chapter}`);
+  return d.data?.[0];
+}
+export async function fcbhGetTimestamps(filesetId,bookUsfm,chapter){
+  const d=await fcbhCall(`/timestamps/${filesetId}/${bookUsfm}/${chapter}`);
+  if(!d.data)return null;
+  return Object.fromEntries((d.data||[]).map(r=>{
+    let ts=r.timestamp;
+    if(typeof ts==='string'){const parts=ts.split(':');ts=parts.length===3?parseInt(parts[0])*3600+parseInt(parts[1])*60+parseInt(parts[2]):parseInt(parts[0])*60+parseInt(parts[1]);}
+    return[r.verse_start,ts];
+  }));
+}
 

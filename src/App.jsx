@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import {
   SUPA_URL, SUPA_ANON, SB_KEY,
@@ -21,6 +21,8 @@ import {
   dbLoadBookmarks, dbAddBookmark, dbUpdateBookmark, dbDeleteBookmark,
   dbLoadCategories, dbAddCategory, dbUpdateCategory, dbDeleteCategory,
   dbLoadRecents, dbRecordRecent,
+  localAudioUrl, localTimestampUrl, USFM_CODES, DEFAULT_FILESETS,
+  fcbhCall, fcbhGetChapterUrl, fcbhGetTimestamps,
 } from './lib.js';
 
 // ══════════════════════════════════════════════════════════
@@ -1153,7 +1155,16 @@ function App(){
   function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
   function handleVerseToggle(v){const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
   function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current){handleVerseToggle(v);}setTimeout(()=>{wasTouchEvent.current=false;},300);}
-  function verseClick(v,dbl=false){if(wasTouchEvent.current)return;if(readFullScreen.current)exitFullScreen();if(dbl){openStrip(v);}else{handleVerseToggle(v);}}
+  function verseClick(v,dbl=false){
+    if(audioPlaying){
+      if(audioTimestampsRef.current?.[String(v)]!==undefined&&audioElRef.current){audioElRef.current.currentTime=audioTimestampsRef.current[String(v)];}
+      else{seekWebSpeechToVerse(v);}
+      return;
+    }
+    if(wasTouchEvent.current)return;
+    if(readFullScreen.current)exitFullScreen();
+    if(dbl){openStrip(v);}else{handleVerseToggle(v);}
+  }
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmCat,setReadBmCat]=useState('');
   const[readBmOk,setReadBmOk]=useState(false);
@@ -1193,6 +1204,18 @@ function App(){
   const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
   const[readRedLetter,setReadRedLetter]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:redLetter'))===true;}catch{return false;}});
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
+  const[audioSource,setAudioSource]=useState(()=>{try{return localStorage.getItem('scrip:audio:source')||'auto';}catch{return 'auto';}});
+  const[audioPlaying,setAudioPlaying]=useState(false);
+  const[audioLoaded,setAudioLoaded]=useState(false);
+  const[audioLoading,setAudioLoading]=useState(false);
+  const[audioError,setAudioError]=useState(null);
+  const[currentVerse,setCurrentVerse]=useState(null);
+  const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
+  const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
+  const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
+  const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
+  const[availableVoices,setAvailableVoices]=useState(()=>typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[]);
+  const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const bottomBarRef=useRef(null);
@@ -1329,6 +1352,16 @@ function App(){
   const swipeTouchT=useRef(null);
   const swipeDir=useRef(null); // null|'h'|'v'
   const readSearchJumpTo=useRef(null);
+  const audioElRef=useRef(null);
+  const audioTimestampsRef=useRef(null);
+  const audioUtterRef=useRef([]);
+  useLayoutEffect(()=>{
+    const el=document.createElement('audio');
+    el.style.display='none';
+    document.body.appendChild(el);
+    audioElRef.current=el;
+    return()=>{el.remove();};
+  },[]);
 
   // ── Parallel Verses state ──
   const[parallelVids,setParallelVids]=useState([]);
@@ -1362,7 +1395,7 @@ function App(){
     const rgb=hexToRgb(T.g||'#c8a84e');
     const rgbD=hexToRgb(T.gD||'#4a3e22');
     const r=document.getElementById('accent-vars')||Object.assign(document.createElement('style'),{id:'accent-vars'});
-    r.textContent=`:root{--ac-scrollbar:${T.gD};--ac-mark:rgba(${rgb},0.22);--ac-bd:${T.gD};--ac-ghost-bg:rgba(${rgb},0.09);--ac-ghost-bd:rgba(${rgb},0.3);--ac-tbtn-bd:rgba(${rgb},0.5);--ac-tbtn-bg:rgba(${rgb},0.06);--ac-focus:rgba(${rgb},0.4);--ac-pulse0:rgba(${rgb},0);--ac-pulse50:rgba(${rgb},0.25);--ac-shimmer:rgba(${rgb},0.12);--ac-spin-ring:rgba(${rgb},0.2);--ac-spin-top:${T.g};--ac-verse-hover:rgba(${rgb},0.05);--ac-input-bd:rgba(${rgb},0.27);--ac-input-sh:rgba(${rgb},0.08);}`;
+    r.textContent=`:root{--ac-scrollbar:${T.gD};--ac-mark:rgba(${rgb},0.22);--ac-bd:${T.gD};--ac-ghost-bg:rgba(${rgb},0.09);--ac-ghost-bd:rgba(${rgb},0.3);--ac-tbtn-bd:rgba(${rgb},0.5);--ac-tbtn-bg:rgba(${rgb},0.06);--ac-focus:rgba(${rgb},0.4);--ac-pulse0:rgba(${rgb},0);--ac-pulse50:rgba(${rgb},0.25);--ac-shimmer:rgba(${rgb},0.12);--ac-spin-ring:rgba(${rgb},0.2);--ac-spin-top:${T.g};--ac-verse-hover:rgba(${rgb},0.05);--ac-input-bd:rgba(${rgb},0.27);--ac-input-sh:rgba(${rgb},0.08);--ac-audio-bg:rgba(${rgb},0.15);--ac-audio-ring:rgba(${rgb},0.4);--ac-audio-line:rgba(${rgb},0.5);--ac-sel-glow:rgba(${rgb},0.18);}`;
     if(!r.parentNode)document.head.appendChild(r);
   },[T.g,T.gD]);
 
@@ -1371,6 +1404,51 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:accent',accent);}catch{}},[accent]);
   useEffect(()=>{localStorage.setItem('scrip:hidden',JSON.stringify(hiddenVers));},[hiddenVers]);
   useEffect(()=>{try{localStorage.setItem('scrip:readBook',readBook);localStorage.setItem('scrip:readCh',readCh);}catch{}},[readBook,readCh]);
+  // ── Persist audio prefs ──
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:source',audioSource);}catch{}},[audioSource]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:rate',audioRate);}catch{}},[audioRate]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(audioAutoScroll));}catch{}},[audioAutoScroll]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(audioAutoAdvance));}catch{}},[audioAutoAdvance]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
+  // ── Stop audio on chapter/version change ──
+  useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Wire up audio element events ──
+  useEffect(()=>{
+    const el=audioElRef.current;
+    if(!el)return;
+    const onPlay=()=>setAudioPlaying(true);
+    const onPause=()=>setAudioPlaying(false);
+    const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)readNextCh();};
+    const onTimeUpdate=()=>{
+      if(!audioTimestampsRef.current)return;
+      const t=el.currentTime;
+      const verses=Object.entries(audioTimestampsRef.current);
+      for(let i=0;i<verses.length;i++){
+        const[v,ts]=verses[i];
+        const nextTs=i<verses.length-1?verses[i+1][1]:Infinity;
+        const lowerBound=i===0?0:ts;
+        if(t>=lowerBound&&t<nextTs){if(currentVerse!==Number(v)){setCurrentVerse(Number(v));if(audioAutoScroll)scrollToVerse(Number(v));}break;}
+      }
+    };
+    el.addEventListener('play',onPlay);el.addEventListener('pause',onPause);
+    el.addEventListener('ended',onEnded);el.addEventListener('timeupdate',onTimeUpdate);
+    return()=>{
+      el.removeEventListener('play',onPlay);el.removeEventListener('pause',onPause);
+      el.removeEventListener('ended',onEnded);el.removeEventListener('timeupdate',onTimeUpdate);
+    };
+  },[audioAutoScroll,audioAutoAdvance,currentVerse]);
+  useEffect(()=>{if(audioElRef.current)audioElRef.current.playbackRate=audioRate;},[audioRate]);
+  useEffect(()=>{audioUtterRef.current.forEach(u=>{u.rate=audioRate;});},[audioRate]);
+  useEffect(()=>{
+    if(typeof speechSynthesis==='undefined')return;
+    const onVC=()=>setAvailableVoices(speechSynthesis.getVoices());
+    speechSynthesis.addEventListener('voiceschanged',onVC);
+    const v=speechSynthesis.getVoices();if(v.length)setAvailableVoices(v);
+    return()=>speechSynthesis.removeEventListener('voiceschanged',onVC);
+  },[]);
+  useEffect(()=>{
+    if(audioPlaying&&audioSource==='speech'&&currentVerse!=null)seekWebSpeechToVerse(currentVerse);
+  },[voicesByVersion[readVid]]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
   useEffect(()=>{
@@ -1802,6 +1880,129 @@ function App(){
     }
     setReadCopyOk(true);setTimeout(()=>{setReadCopyOk(false);dismissStrip();},1600);
   }
+
+  const scrollToVerse=(v)=>{
+    if(!readRef.current)return;
+    const el=readRef.current.querySelector(`[data-verse="${v}"]`);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  };
+  const stopAudio=()=>{
+    setAudioLoaded(false);setCurrentVerse(null);
+    if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
+    setAudioPlaying(false);
+  };
+  const loadChapterAudio=async()=>{
+    if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
+    setAudioError(null);setAudioLoading(true);
+    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+    const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
+    const src=audioSource==='auto'
+      ?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
+      :(audioSource==='off'?null:audioSource);
+    try{
+      if(src==='fcbh'){
+        const fset=DEFAULT_FILESETS[readVid];
+        if(!fset)throw new Error('FCBH not available for this version');
+        const usfm=USFM_CODES[readBook-1];
+        const[meta,ts]=await Promise.all([
+          fcbhGetChapterUrl(fset,usfm,readCh),
+          fcbhGetTimestamps(fset,usfm,readCh).catch(()=>null),
+        ]);
+        if(!meta||!meta.path)throw new Error('Could not load chapter audio');
+        audioElRef.current.src=meta.path;
+        audioTimestampsRef.current=ts;
+        setAudioLoaded(true);
+        if(startVerse&&ts&&ts[startVerse]!==undefined){
+          const seekOnLoad=()=>{audioElRef.current.currentTime=ts[startVerse];audioElRef.current.removeEventListener('loadedmetadata',seekOnLoad);};
+          audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
+        }
+        audioElRef.current.play().catch(()=>{});
+        setAudioPlaying(true);
+      }else if(src==='local'){
+        const mp3Url=localAudioUrl(readBook,readCh);
+        const tsUrl=localTimestampUrl(readBook,readCh);
+        audioElRef.current.src=mp3Url;
+        audioTimestampsRef.current=null;
+        fetch(tsUrl).then(r=>r.ok?r.json():null).then(ts=>{if(ts)audioTimestampsRef.current=ts;}).catch(()=>{});
+        setAudioLoaded(true);
+        if(startVerse){
+          const seekOnLoad=()=>{const ts=audioTimestampsRef.current;if(ts&&ts[startVerse]!==undefined)audioElRef.current.currentTime=ts[startVerse];audioElRef.current.removeEventListener('loadedmetadata',seekOnLoad);};
+          audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
+        }
+        audioElRef.current.play().catch(()=>{});
+        setAudioPlaying(true);
+      }else if(src==='speech'){
+        const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
+        const lang=['rvg','p1602'].includes(readVid)?'es':'en';
+        const _saved=voicesByVersion[readVid];
+        const _pref=lang==='es'?'Paulina':'Daniel';
+        const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
+        const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+        audioUtterRef.current=[];
+        if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+        const startIdx=startVerse?Math.max(0,readVerses.findIndex(v=>v.verse>=startVerse)):0;
+        const versesToSpeak=readVerses.slice(startIdx);
+        const lastVerse=readVerses[readVerses.length-1]?.verse;
+        versesToSpeak.forEach(({verse,text})=>{
+          const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+          u.voice=voice;u.rate=audioRate;
+          u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onend=()=>{if(verse===lastVerse){setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)readNextCh();}};
+          audioUtterRef.current.push(u);
+        });
+        setAudioLoaded(true);
+        audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+        setAudioPlaying(true);
+      }else throw new Error('No audio source available');
+    }catch(e){setAudioError(e.message);setAudioLoaded(false);setAudioPlaying(false);}
+    finally{setAudioLoading(false);}
+  };
+  const handlePlayPause=async()=>{
+    if(!audioLoaded){await loadChapterAudio();return;}
+    if(audioPlaying){
+      audioElRef.current?.pause();
+      if(typeof speechSynthesis!=='undefined')speechSynthesis.pause();
+      setAudioPlaying(false);
+      if(stripOpen)dismissStrip();
+    }else{
+      const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
+      const src=audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+      const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+      if(startVerse){
+        if(src==='speech'){seekWebSpeechToVerse(startVerse);}
+        else{const ts=audioTimestampsRef.current;if(ts&&ts[startVerse]!==undefined)audioElRef.current.currentTime=ts[startVerse];audioElRef.current?.play();}
+      }else{
+        if(src==='speech'){if(typeof speechSynthesis!=='undefined')speechSynthesis.resume();}
+        else{audioElRef.current?.play();}
+      }
+      setAudioPlaying(true);
+    }
+  };
+  const seekWebSpeechToVerse=(targetVerse)=>{
+    const startIdx=readVerses.findIndex(v=>v.verse===targetVerse);
+    if(startIdx<0||typeof speechSynthesis==='undefined')return;
+    speechSynthesis.cancel();
+    audioUtterRef.current=[];
+    const voices=speechSynthesis.getVoices();
+    const lang=['rvg','p1602'].includes(readVid)?'es':'en';
+    const _saved=voicesByVersion[readVid];
+    const _pref=lang==='es'?'Paulina':'Daniel';
+    const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
+    const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+    const lastVerse=readVerses[readVerses.length-1]?.verse;
+    for(let i=startIdx;i<readVerses.length;i++){
+      const{verse,text}=readVerses[i];
+      const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+      u.voice=voice;u.rate=audioRate;
+      u.onstart=()=>{setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+      u.onend=()=>{if(verse===lastVerse){setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)readNextCh();}};
+      audioUtterRef.current.push(u);
+    }
+    audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+    setCurrentVerse(targetVerse);
+    if(audioAutoScroll)scrollToVerse(targetVerse);
+  };
 
   // ── Entry CRUD ──
   function openAdd(){setModal({type:'entry',entry:{id:genId(),sectionId:data.sections[0]?.id||'',reference:'',issueLabel:'',issueType:'manuscript',notes:'',greekHebrew:'',sourceRefs:'',versions:{},_isNew:true}});}
@@ -2461,6 +2662,74 @@ function App(){
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:14,boxSizing:'border-box'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Manage Bible Versions
           </button>
+          {/* ── Audio Playback ── */}
+          <button type="button" onClick={()=>setAudioSettingsOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
+            <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♪</span>
+            <span style={{flex:1,textAlign:'left'}}>Audio Playback</span>
+            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSettingsOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+          </button>
+          {audioSettingsOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
+            <div style={{display:'flex',gap:4,marginBottom:14}}>
+              <button type="button" onClick={()=>setAudioAutoScroll(v=>!v)}
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Auto-scroll</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
+              </button>
+              <button type="button" onClick={()=>setAudioAutoAdvance(v=>!v)}
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Auto-advance</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
+              </button>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Source</div>
+              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                <div style={{display:'flex',gap:4}}>
+                  {[['auto','Auto'],['off','Off']].map(([k,l])=>(
+                    <button key={k} type="button" onClick={()=>setAudioSource(k)}
+                      style={{flex:1,background:audioSource===k?T.gF:'transparent',border:`1px solid ${audioSource===k?T.gD:T.bd}`,borderRadius:6,color:audioSource===k?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box'}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={()=>setAudioSource('local')}
+                  style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box'}}>
+                  KJV Audio
+                </button>
+                <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                  <button type="button" onClick={()=>setAudioSource('speech')}
+                    style={{flex:1,background:audioSource==='speech'?T.gF:'transparent',border:`1px solid ${audioSource==='speech'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='speech'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',whiteSpace:'nowrap'}}>
+                    Browser Voice (any language)
+                  </button>
+                  <select value={voicesByVersion[readVid]||''} onChange={e=>{const name=e.target.value;setVoicesByVersion(prev=>{const next={...prev};if(name)next[readVid]=name;else delete next[readVid];return next;});}}
+                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 4px',outline:'none',boxSizing:'border-box',height:'36px',WebkitAppearance:'auto',appearance:'auto'}}>
+                    <option value="">Default for language</option>
+                    {availableVoices.map((v,i)=><option key={i} value={v.name}>{v.name} ({v.lang})</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            {audioSource==='fcbh'&&(
+              <div style={{marginBottom:14}}>
+                <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>FCBH API Key</div>
+                <input type="password" placeholder="Enter FCBH API key..."
+                  defaultValue={localStorage.getItem('scrip:audio:fcbhKey')||''}
+                  onBlur={e=>{try{localStorage.setItem('scrip:audio:fcbhKey',e.target.value);}catch{}}}
+                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 10px',outline:'none',boxSizing:'border-box'}}/>
+                <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:6}}>Get free at <span style={{color:T.gT}}>bible.faithcomesbyhearing.com</span></div>
+              </div>
+            )}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Speed</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
+              </div>
+              <input type="range" min="0.5" max="2" step="0.25" value={audioRate}
+                onChange={e=>setAudioRate(Number(e.target.value))}
+                style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+            </div>
+            {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:'1px solid rgba(198,40,40,0.3)',borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:12,marginBottom:14}}>{audioError}</div>}
+          </div>}
+
           {/* ── Offline Data ── */}
           {(()=>{
             const offlineItems=[
@@ -2749,6 +3018,26 @@ function App(){
 
           {/* Custom overlay scrollbar thumb */}
           <div ref={scrollbarThumbRef} className="read-scrollbar"/>
+
+          {/* Fixed audio overlay button */}
+          {audioSource!=='off'&&(!readSearchRes)&&(
+            <button type="button" disabled={audioLoading}
+              onClick={()=>{audioLoaded?handlePlayPause():loadChapterAudio();}}
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading)?'7px 12px':'7px 9px',background:'transparent',border:`1px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:6,color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
+                {audioLoading
+                  ?<Spinner/>
+                  :audioPlaying
+                    ?<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    :<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+                }
+              </div>
+              <span style={{maxWidth:(audioPlaying||audioLoading)?140:0,opacity:(audioPlaying||audioLoading)?1:0,overflow:'hidden',whiteSpace:'nowrap',transition:'max-width .22s ease, opacity .18s ease, margin .22s ease',marginLeft:(audioPlaying||audioLoading)?8:0,fontWeight:600,letterSpacing:'0.06em'}}>
+                {audioLoading?'Loading...':(currentVerse?`Verse ${currentVerse}`:'Ready')}
+              </span>
+            </button>
+          )}
+
           {/* Verse content */}
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${readSearchRes?navH+72:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
@@ -2874,15 +3163,16 @@ function App(){
               readParaMode?(
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
-                    const sel=readSelVerses.has(v);
+                    const sel=!audioPlaying&&readSelVerses.has(v);
+                    const isAudio=audioPlaying&&currentVerse===v;
                     return(
-                      <span key={v} id={`rv-${v}`} className="reading-verse"
+                      <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
                         onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
-                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:sel?T.gF:'transparent',borderRadius:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
-                        {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
-                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                        style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .12s'}}>
+                        {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel||isAudio?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
+                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel||isAudio?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio?'underline':'none',textDecorationColor:'var(--ac-audio-line)'}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
                         {' '}
@@ -2893,14 +3183,15 @@ function App(){
               ):(
                 <div style={{textAlign:readTextAlign,padding:'3px 4px'}}>
                   {readVerses.map(({verse:v,text})=>{
-                    const sel=readSelVerses.has(v);
+                    const sel=!audioPlaying&&readSelVerses.has(v);
+                    const isAudio=audioPlaying&&currentVerse===v;
                     return(
-                      <div key={v} id={`rv-${v}`} className="reading-verse"
+                      <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
                         onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
                         onClick={()=>verseClick(v)} onDoubleClick={()=>verseClick(v,true)}
-                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:sel?T.gF:'transparent',boxShadow:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
-                        {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
-                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
+                        style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',boxShadow:isAudio?'0 0 0 1.5px var(--ac-audio-ring)':sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px rgba(200,168,78,0.18)`:'none',marginBottom:1,transition:'all .12s'}}>
+                        {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel||isAudio?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
+                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel||isAudio?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
