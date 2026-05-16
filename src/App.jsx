@@ -2768,6 +2768,11 @@ function App(){
                 <button type="button" onClick={()=>setAudioSource('local')}
                   style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:audioSource==='local'&&Capacitor.isNativePlatform()?'6px 6px 0 0':'6px',color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box'}}>
                   KJV Audio
+                  {Capacitor.isNativePlatform()&&(!otInstalled||!ntInstalled)&&(
+                    <span style={{marginLeft:6,fontSize:10,color:audioSource==='local'?'#f0a040':T.dim,fontFamily:FS,letterSpacing:'0.04em'}}>
+                      {otInstalled||ntInstalled?'partial':'· import required'}
+                    </span>
+                  )}
                 </button>
                 {audioSource==='local'&&Capacitor.isNativePlatform()&&(
                   <div style={{background:T.bgIn,border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderTop:'none',borderRadius:'0 0 6px 6px',padding:'12px',marginBottom:4}}>
@@ -2855,7 +2860,7 @@ function App(){
               {id:'webster',label:"Webster's 1828",sub:'107,793 entries · ~50 MB',icon:'W'},
             ];
             return(
-              <div style={{marginBottom:14}}>
+              <div style={{marginBottom:14,marginTop:16}}>
                 <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>OFFLINE DATA</div>
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {offlineItems.map(item=>{
