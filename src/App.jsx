@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import JSZip from 'jszip';
 import {
   SUPA_URL, SUPA_ANON, SB_KEY,
   sbHeaders, getToken, saveSession, sbFrom, sbRpc,
@@ -1219,6 +1220,9 @@ function App(){
   const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
   const[audioSetupOpen,setAudioSetupOpen]=useState(false);
   const[audioCheckStatus,setAudioCheckStatus]=useState(null); // null|'checking'|{ot:bool,nt:bool}
+  const[otInstalled,setOtInstalled]=useState(()=>localStorage.getItem('scrip:audio:otInstalled')==='true');
+  const[ntInstalled,setNtInstalled]=useState(()=>localStorage.getItem('scrip:audio:ntInstalled')==='true');
+  const[audioImport,setAudioImport]=useState(null); // {pack:'OT'|'NT', current:0, total:0, error:null}
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const bottomBarRef=useRef(null);
@@ -2031,6 +2035,49 @@ function App(){
     setAudioCheckStatus({ot,nt});
   };
 
+  const importAudioZip=async(file,pack)=>{
+    setAudioImport({pack,current:0,total:0,error:null});
+    try{
+      const buf=await file.arrayBuffer();
+      const zip=await JSZip.loadAsync(buf);
+      // NT zip has MP3s inside English_eng_KJV_NT_Non-Drama/ subfolder; OT has them at root
+      const prefix=pack==='NT'?'English_eng_KJV_NT_Non-Drama/':'';
+      const entries=Object.values(zip.files).filter(f=>
+        !f.dir&&f.name.toLowerCase().endsWith('.mp3')&&
+        (prefix===''||f.name.startsWith(prefix))
+      );
+      setAudioImport({pack,current:0,total:entries.length,error:null});
+      for(let i=0;i<entries.length;i++){
+        const entry=entries[i];
+        const filename=prefix?entry.name.slice(prefix.length):entry.name;
+        if(!filename)continue;
+        const data=await entry.async('base64');
+        await Filesystem.writeFile({
+          path:`Audio/${pack}/KJV Reg/${filename}`,
+          data,
+          directory:Directory.Documents,
+          recursive:true,
+        });
+        setAudioImport(s=>({...s,current:i+1}));
+      }
+      localStorage.setItem(`scrip:audio:${pack.toLowerCase()}Installed`,'true');
+      if(pack==='OT')setOtInstalled(true);else setNtInstalled(true);
+      setAudioImport(null);
+      setAudioCheckStatus(s=>s&&s!=='checking'?{...s,[pack.toLowerCase()]:true}:s);
+    }catch(e){
+      setAudioImport(s=>({...s,error:e.message||String(e)}));
+    }
+  };
+
+  const removeAudioPack=async(pack)=>{
+    try{
+      await Filesystem.rmdir({path:`Audio/${pack}`,directory:Directory.Documents,recursive:true});
+    }catch{}
+    localStorage.removeItem(`scrip:audio:${pack.toLowerCase()}Installed`);
+    if(pack==='OT')setOtInstalled(false);else setNtInstalled(false);
+    setAudioCheckStatus(s=>s&&s!=='checking'?{...s,[pack.toLowerCase()]:false}:s);
+  };
+
   // ── Entry CRUD ──
   function openAdd(){setModal({type:'entry',entry:{id:genId(),sectionId:data.sections[0]?.id||'',reference:'',issueLabel:'',issueType:'manuscript',notes:'',greekHebrew:'',sourceRefs:'',versions:{},_isNew:true}});}
   function openEdit(id){const e=data.entries.find(x=>x.id===id);if(e)setModal({type:'entry',entry:{...clone(e),_isEdit:true}});}
@@ -2773,17 +2820,48 @@ function App(){
             </div>
             {Capacitor.isNativePlatform()?(
               <>
-                <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,textTransform:'uppercase',marginBottom:6}}>Place files at</div>
-                <div style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',marginBottom:12}}>
-                  <div style={{fontFamily:'monospace',fontSize:11,color:T.gT,lineHeight:1.7,wordBreak:'break-all'}}>
-                    Documents/Audio/OT/KJV Reg/*.mp3<br/>
-                    Documents/Audio/NT/KJV Reg/*.mp3
+                {audioImport?(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontFamily:FB,fontSize:13,color:T.mut,marginBottom:6}}>
+                      Extracting {audioImport.pack==='OT'?'Old Testament':'New Testament'}...
+                      {audioImport.total>0&&` (${audioImport.current} / ${audioImport.total})`}
+                    </div>
+                    {audioImport.total>0&&(
+                      <div style={{height:4,background:T.bd,borderRadius:2,overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${Math.round((audioImport.current/audioImport.total)*100)}%`,background:T.gT,borderRadius:2,transition:'width .2s'}}/>
+                      </div>
+                    )}
+                    {audioImport.error&&<div style={{fontFamily:FB,fontSize:12,color:'#ef5350',marginTop:6}}>{audioImport.error}</div>}
                   </div>
-                </div>
-                <div style={{fontFamily:FB,fontSize:12,color:T.dim,marginBottom:12,lineHeight:1.5}}>
-                  <b style={{color:T.mut}}>iOS:</b> Finder → device → Files → Scriptorium → drag Audio/ folder<br/>
-                  <b style={{color:T.mut}}>Android:</b> USB → Internal Storage → Documents → Audio/
-                </div>
+                ):(
+                  <>
+                    <div style={{display:'flex',gap:8,marginBottom:10}}>
+                      {[{pack:'OT',label:'Old Testament',installed:otInstalled},{pack:'NT',label:'New Testament',installed:ntInstalled}].map(({pack,label,installed})=>(
+                        <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgIn,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:7,padding:'10px 10px'}}>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:installed?0:8}}>
+                            <span style={{fontFamily:FB,fontSize:12,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
+                            {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:11,cursor:'pointer',padding:0}}>✕</button>}
+                          </div>
+                          {!installed&&(
+                            <>
+                              <input id={`audiozip-${pack}`} type="file" accept=".zip" style={{display:'none'}}
+                                onChange={e=>{const f=e.target.files[0];if(f)importAudioZip(f,pack);e.target.value='';}}/>
+                              <button onClick={()=>document.getElementById(`audiozip-${pack}`).click()}
+                                style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                                ↑ Import ZIP
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.55,marginBottom:12}}>
+                      Download <b style={{color:T.mut}}>ENGKJVO1DA</b> (OT) and <b style={{color:T.mut}}>ENGKJVN1DA</b> (NT) from{' '}
+                      <span style={{color:T.gT,wordBreak:'break-all'}}>faithcomesbyhearing.com/audio-bible-resources/mp3-downloads</span>
+                      {' '}then import each ZIP above.
+                    </div>
+                  </>
+                )}
               </>
             ):(
               <div style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',marginBottom:12}}>
