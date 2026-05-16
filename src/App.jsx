@@ -2766,9 +2766,53 @@ function App(){
                   ))}
                 </div>
                 <button type="button" onClick={()=>setAudioSource('local')}
-                  style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box'}}>
+                  style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:audioSource==='local'&&Capacitor.isNativePlatform()?'6px 6px 0 0':'6px',color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box'}}>
                   KJV Audio
                 </button>
+                {audioSource==='local'&&Capacitor.isNativePlatform()&&(
+                  <div style={{background:T.bgIn,border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderTop:'none',borderRadius:'0 0 6px 6px',padding:'12px',marginBottom:4}}>
+                    {audioImport?(
+                      <>
+                        <div style={{fontFamily:FB,fontSize:12,color:T.mut,marginBottom:6}}>
+                          Extracting {audioImport.pack==='OT'?'Old Testament':'New Testament'}...
+                          {audioImport.total>0&&` (${audioImport.current} / ${audioImport.total})`}
+                        </div>
+                        {audioImport.total>0&&(
+                          <div style={{height:4,background:T.bd,borderRadius:2,overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${Math.round((audioImport.current/audioImport.total)*100)}%`,background:T.gT,borderRadius:2,transition:'width .2s'}}/>
+                          </div>
+                        )}
+                        {audioImport.error&&<div style={{fontFamily:FB,fontSize:11,color:'#ef5350',marginTop:6}}>{audioImport.error}</div>}
+                      </>
+                    ):(
+                      <>
+                        <div style={{display:'flex',gap:6,marginBottom:8}}>
+                          {[{pack:'OT',label:'Old Testament',installed:otInstalled},{pack:'NT',label:'New Testament',installed:ntInstalled}].map(({pack,label,installed})=>(
+                            <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgCard,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:6,padding:'8px'}}>
+                              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:installed?0:6}}>
+                                <span style={{fontFamily:FB,fontSize:11,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
+                                {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:11,cursor:'pointer',padding:0}}>✕</button>}
+                              </div>
+                              {!installed&&(
+                                <>
+                                  <input id={`audiozip-${pack}`} type="file" accept=".zip" style={{display:'none'}}
+                                    onChange={e=>{const f=e.target.files[0];if(f)importAudioZip(f,pack);e.target.value='';}}/>
+                                  <button onClick={()=>document.getElementById(`audiozip-${pack}`).click()}
+                                    style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                                    ↑ Import ZIP
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.5}}>
+                          Download from <span style={{color:T.gT}}>faithcomesbyhearing.com</span> → search "King James" → download ENGKJVO1DA (OT) and ENGKJVN1DA (NT), then import each ZIP above.
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div style={{display:'flex',gap:4,alignItems:'center'}}>
                   <button type="button" onClick={()=>setAudioSource('speech')}
                     style={{flex:1,background:audioSource==='speech'?T.gF:'transparent',border:`1px solid ${audioSource==='speech'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='speech'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',whiteSpace:'nowrap'}}>
