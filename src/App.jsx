@@ -2579,6 +2579,23 @@ function App(){
               </div>
             </div>
           </div>
+          {/* Bookmarks & Recents — always accessible on mobile */}
+          <div style={{display:'flex',gap:8,marginBottom:14}}>
+            <button type="button" onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Bookmarks</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Saved verses</div>
+              </div>
+            </button>
+            <button type="button" onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>↺</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Recents</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Recent passages</div>
+              </div>
+            </button>
+          </div>
           {/* Read-tab toggles: Strong's + Auto Fullscreen — compact row */}
           {tab==='read'&&<div style={{display:'flex',gap:8,marginBottom:14}}>
             {/* Strong's card */}
@@ -3438,7 +3455,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:readFullScreen.current?'10px 12px':'10px 12px 34px',display:'flex',flexDirection:'column',gap:8}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:160,background:T.bgCH,borderTop:`1px solid ${T.bdA}`,padding:'10px 12px 0',paddingBottom:readFullScreen.current?'10px':'max(34px, env(safe-area-inset-bottom, 0px) + 16px)',display:'flex',flexDirection:'column',gap:8}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
