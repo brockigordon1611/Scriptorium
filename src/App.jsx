@@ -3330,6 +3330,13 @@ function App(){
                 </div>
               )
             )}
+            {!readSearchRes&&readVerses.length>0&&(
+              <div style={{paddingTop:130,paddingBottom:24,textAlign:'center'}}>
+                <span style={{fontFamily:FS,fontSize:11,color:T.dim,letterSpacing:'0.12em',textTransform:'uppercase'}}>
+                  {readCh===readTotalCh?`End of ${readBk?.name||'Book'}`:`End of Chapter ${readCh}`}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Strong's popup */}
