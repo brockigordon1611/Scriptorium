@@ -2744,6 +2744,15 @@ function App(){
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSettingsOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
           </button>
           {audioSettingsOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Speed</span>
+                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
+              </div>
+              <input type="range" min="0.5" max="2" step="0.25" value={audioRate}
+                onChange={e=>setAudioRate(Number(e.target.value))}
+                style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
+            </div>
             <div style={{display:'flex',gap:4,marginBottom:14}}>
               <button type="button" onClick={()=>setAudioAutoScroll(v=>!v)}
                 style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
@@ -2811,8 +2820,11 @@ function App(){
                             </div>
                           ))}
                         </div>
-                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.5}}>
-                          Download from <span style={{color:T.gT}}>faithcomesbyhearing.com</span> → search "King James" → download ENGKJVO1DA (OT) and ENGKJVN1DA (NT), then import each ZIP above.
+                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6}}>
+                          Visit <span style={{color:T.gT,wordBreak:'break-all'}}>faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA</span> and download:{' '}
+                          <span style={{color:T.mut}}>"King James Version audio Old Testament"</span> and{' '}
+                          <span style={{color:T.mut}}>"King James Version audio New Testament"</span>.
+                          Then import each ZIP above.
                         </div>
                       </>
                     )}
@@ -2841,15 +2853,6 @@ function App(){
                 <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:6}}>Get free at <span style={{color:T.gT}}>bible.faithcomesbyhearing.com</span></div>
               </div>
             )}
-            <div style={{marginBottom:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Speed</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
-              </div>
-              <input type="range" min="0.5" max="2" step="0.25" value={audioRate}
-                onChange={e=>setAudioRate(Number(e.target.value))}
-                style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
-            </div>
             {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:'1px solid rgba(198,40,40,0.3)',borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:12,marginBottom:14}}>{audioError}</div>}
           </div>}
 
