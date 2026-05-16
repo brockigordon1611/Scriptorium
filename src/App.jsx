@@ -1012,7 +1012,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
         style={{position:'absolute',...(fromTop?{top:topOffset}:{bottom:0}),left:0,right:0,background:T.bgCard,
           borderRadius:fromTop?'0 0 18px 18px':'18px 18px 0 0',
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
-          maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':fromTop?`calc(100vh - ${topOffset}px - 50px)`:'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
+          maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':fromTop?`calc(100vh - ${topOffset}px - max(50px, env(safe-area-inset-bottom, 0px) + 20px))`:`calc(82vh - env(safe-area-inset-bottom, 0px))`),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
           boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
           transform:(!closing&&dragY!==0)?dragTx:undefined,
           transition:(!closing&&dragY===0)?'transform .2s ease-out, max-height .12s cubic-bezier(0.4,0,0.2,1), height .12s cubic-bezier(0.4,0,0.2,1)':'none'}}>
@@ -1023,7 +1023,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px',WebkitOverflowScrolling:'touch'}} onScroll={onScroll}>
+        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 0',paddingBottom:fromTop?undefined:'max(32px, env(safe-area-inset-bottom, 0px) + 16px)',WebkitOverflowScrolling:'touch'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div ref={fromTop?handleRef:undefined} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
@@ -2555,7 +2555,7 @@ function App(){
 
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px - 50px)`}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`calc(100vh - ${navH}px - max(50px, env(safe-area-inset-bottom, 0px) + 20px))`}>
           {/* Header row: back + absolutely centered title + dark mode pill */}
           <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
             <button type="button" onClick={closeReadSheet}
