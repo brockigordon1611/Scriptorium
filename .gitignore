@@ -21,3 +21,11 @@ package-lock.json
 # Temporary patch scripts
 patch_app.js
 patch_app.cjs
+patch_audio.cjs
+
+# Audio timestamp JSONs — large, only needed for Android/iOS builds, generated locally
+public/timestamps/
+
+# Android/iOS Capacitor builds — generated, not source
+android/
+# ios/
