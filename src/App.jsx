@@ -1228,6 +1228,7 @@ function App(){
   const bottomBarRef=useRef(null);
   const headerAnimRef=useRef(null);
   const bottomAnimRef=useRef(null);
+  const audioButtonRef=useRef(null);
   function enterFullScreen(){
     if(readFullScreen.current||fsTransitioning.current)return;
     readFullScreen.current=true;fsTransitioning.current=true;
@@ -1236,6 +1237,7 @@ function App(){
     const h=navRef.current,b=bottomBarRef.current;
     if(h)headerAnimRef.current=h.animate([{transform:'translateY(0)'},{transform:'translateY(-100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
     if(b)bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});
+    if(audioButtonRef.current)audioButtonRef.current.style.top=Math.max(4,navH-44)+'px';
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   function exitFullScreen(){
@@ -1246,6 +1248,7 @@ function App(){
     const h=navRef.current,b=bottomBarRef.current;
     if(h){const a=h.animate([{transform:'translateY(-100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
     if(b){const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>a.cancel();}
+    if(audioButtonRef.current)audioButtonRef.current.style.top=Math.max(8,navH+8)+'px';
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   const lastScrollY=useRef(0);
@@ -3147,7 +3150,7 @@ function App(){
 
           {/* Fixed audio overlay button */}
           {audioSource!=='off'&&(!readSearchRes)&&(
-            <button type="button" disabled={audioLoading}
+            <button type="button" ref={audioButtonRef} disabled={audioLoading}
               onClick={()=>{audioLoaded?handlePlayPause():loadChapterAudio();}}
               style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading)?'7px 12px':'7px 9px',background:'transparent',border:`1px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:6,color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
