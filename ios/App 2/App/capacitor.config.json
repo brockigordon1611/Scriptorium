@@ -1,0 +1,20 @@
+{
+	"appId": "com.scriptorium.app",
+	"appName": "Scriptorium",
+	"webDir": "dist",
+	"ios": {
+		"contentInset": "never",
+		"backgroundColor": "#0e0d0b"
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false,
+			"backgroundColor": "#0e0d0b"
+		},
+		"Keyboard": {
+			"resize": "body",
+			"style": "dark"
+		}
+	},
+	"packageClassList": []
+}

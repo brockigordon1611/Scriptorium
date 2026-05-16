@@ -1,0 +1,17 @@
+{
+  "name": "Scriptorium",
+  "short_name": "Scriptorium",
+  "description": "Bible Version Comparison Tool",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0e0d0b",
+  "theme_color": "#0e0d0b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%230e0d0b' width='512' height='512' rx='80'/><text x='256' y='300' text-anchor='middle' font-family='Georgia,serif' font-size='220' font-weight='bold' fill='%23c8a84e'>S</text><text x='256' y='400' text-anchor='middle' font-family='Georgia,serif' font-size='60' fill='%238a7a48'>✦</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
