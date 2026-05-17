@@ -5163,16 +5163,11 @@ function App(){
                 :readCopyOk
                   ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
-                    {/* Row 1: verse badge + [category] + Bookmark + Copy fill evenly + dismiss */}
+                    {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'rgba(228,204,120,0.08)',border:`1px solid ${T.gD}`,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
-                      {user&&bmCategories.length>0&&<select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
-                        style={{flex:1,minWidth:0,height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 6px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
-                        <option value="">category…</option>
-                        {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>}
                       {user
                         ?<button type="button" className="s-btn s-ghost" onClick={()=>{setBmHover(false);doReadBookmark();}}
                           onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
@@ -5188,13 +5183,19 @@ function App(){
                       <button type="button" onClick={dismissStrip}
                         style={{background:'rgba(200,60,60,0.05)',border:'1px solid rgba(200,60,60,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'all .15s',padding:0}}>✕</button>
                     </div>
-                    {/* Row 2: Bookmark notes — full width */}
-                    <div style={{display:'flex',width:'100%'}}>
-                      <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
-                        onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
-                        placeholder="Bookmark notes…" rows={1}
-                        style={{flex:1,minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
-                    </div>
+                    {/* Row 2: Category — full width, matches collapsed notes style */}
+                    {user&&bmCategories.length>0&&(
+                      <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
+                        style={{width:'100%',height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
+                        <option value="">Category…</option>
+                        {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    )}
+                    {/* Row 3: Bookmark notes — full width */}
+                    <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
+                      onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
+                      placeholder="Bookmark notes…" rows={1}
+                      style={{width:'100%',minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
                   </div>
               }
             </div>
