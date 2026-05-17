@@ -1,5 +1,8 @@
 {
   "appId": "com.scriptorium.app",
   "appName": "Scriptorium",
-  "webDir": "dist"
+  "webDir": "dist",
+  "ios": {
+    "webContentsDebuggingEnabled": true
+  }
 }
