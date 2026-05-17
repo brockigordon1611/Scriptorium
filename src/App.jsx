@@ -333,6 +333,46 @@ async function _batchDownload({table,select,filter,order,putFn,dlKey,total:initT
 async function downloadVersionLocally(versionId,onProgress,signal){
   await _batchDownload({table:'bible_verses',select:'book_num,chapter,verse,text',filter:`version_id=eq.${encodeURIComponent(versionId)}`,order:'book_num.asc,chapter.asc,verse.asc',putFn:rows=>idbPutVerses(versionId,rows),dlKey:versionId,total:31102,onProgress,signal});
 }
+// e-Sword .bblx book number → canonical 1-66
+// OT: 10=Gen…390=Mal (÷10), NT: 470=Matt…730=Rev ((n-470)÷10+40)
+function eswordBookToNum(b){return b<=390?b/10:(b-470)/10+40;}
+
+async function importBblxFile({file,label,lang,userId,existingVersionId,onProgress}){
+  // Lazily load sql.js WASM only when needed (~644 KB, loaded once)
+  const initSqlJs=(await import('sql.js')).default;
+  const SQL=await initSqlJs({locateFile:()=>'/sql-wasm.wasm'});
+  const buf=await file.arrayBuffer();
+  const db=new SQL.Database(new Uint8Array(buf));
+  // Try standard e-Sword Bible table; some files use a "verses" table
+  let rows;
+  try{rows=db.exec('SELECT Book,Chapter,Verse,Scripture FROM Bible ORDER BY Book,Chapter,Verse');}
+  catch{rows=db.exec('SELECT Book,Chapter,Verse,Text FROM verses ORDER BY Book,Chapter,Verse');}
+  db.close();
+  if(!rows||!rows[0]||!rows[0].values.length)throw new Error('No verse data found in file');
+  const values=rows[0].values;
+  const stripTags=t=>String(t||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+  const mapped=values.map(([bk,ch,vs,txt])=>({book_num:eswordBookToNum(bk),chapter:ch,verse:vs,text:stripTags(txt)}));
+  const invalid=mapped.find(r=>!r.book_num||r.book_num<1||r.book_num>66);
+  if(invalid)throw new Error(`Unrecognised book number in file`);
+  const versionId=existingVersionId||`user-${userId||'local'}-${Date.now()}`;
+  const BATCH=2000;
+  for(let i=0;i<mapped.length;i+=BATCH){
+    await idbPutVerses(versionId,mapped.slice(i,i+BATCH));
+    if(onProgress)onProgress(Math.min(i+BATCH,mapped.length),mapped.length);
+  }
+  await idbPutMeta(`dl:${versionId}`,true);
+  // Register metadata in Supabase for new versions only (re-imports skip this)
+  if(userId&&!existingVersionId){
+    const token=getToken();
+    await fetch(`${SUPA_URL}/rest/v1/bible_versions`,{
+      method:'POST',
+      headers:{...sbHeaders(token),'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({id:versionId,label,lang:lang||'EN',is_public:false,owner_id:userId,verse_count:mapped.length}),
+    }).catch(()=>{});
+  }
+  return{id:versionId,label,lang:lang||'EN',isRef:false};
+}
+
 async function downloadStrongsLocally(onProgress,signal){
   await idbPutMeta('dl:strongs',false);
   await idbClearStrongs();
@@ -1526,13 +1566,54 @@ function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
 // ══════════════════════════════════════════════════════════
 //  VERSIONS MODAL  (manage + upload — unified)
 // ══════════════════════════════════════════════════════════
-function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLocal,navH,onBack,isClosing}){
+function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLocal,navH,onBack,isClosing,user}){
   const[vers,setVers]=useState(clone(data.versions));
   const builtinAvail=PUBLIC_VERSIONS.filter(pv=>!vers.find(v=>v.id===pv.id));
+
+  // Local availability for user-imported versions: null=checking, true=on device, false=not on device
+  const[localAvail,setLocalAvail]=useState({});
+  useEffect(()=>{
+    vers.filter(v=>!PUBLIC_VERSIONS.some(pv=>pv.id===v.id)).forEach(v=>{
+      setLocalAvail(a=>({...a,[v.id]:null}));
+      idbIsDownloaded(v.id).then(ok=>setLocalAvail(a=>({...a,[v.id]:ok})));
+    });
+  },[]);
+
+  // Import form state
+  const[importLabel,setImportLabel]=useState('');
+  const[importLang,setImportLang]=useState('ES');
+  const[importFile,setImportFile]=useState(null);
+  const[importing,setImporting]=useState(null); // null | 'new' | versionId
+  const[importProg,setImportProg]=useState([0,0]);
+  const[importErr,setImportErr]=useState('');
 
   function remove(id){setVers(v=>v.filter(x=>x.id!==id));}
   function addBuiltin(pv){setVers(v=>[...v,{id:pv.id,label:pv.label,lang:pv.lang,isRef:false}]);}
   function doSave(){let v=[...vers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};onSave(v);}
+
+  async function doImport(){
+    if(!importFile||!importLabel.trim())return;
+    setImportErr('');setImporting('new');setImportProg([0,0]);
+    try{
+      const v=await importBblxFile({file:importFile,label:importLabel.trim(),lang:importLang,userId:user?.id,onProgress:(d,t)=>setImportProg([d,t])});
+      setVers(vs=>[...vs,v]);
+      setLocalAvail(a=>({...a,[v.id]:true}));
+      setImportLabel('');setImportFile(null);
+    }catch(e){setImportErr(e.message);}
+    finally{setImporting(null);}
+  }
+
+  async function doReImport(vId,file){
+    const v=vers.find(x=>x.id===vId);
+    setImportErr('');setImporting(vId);setImportProg([0,0]);
+    try{
+      await importBblxFile({file,label:v?.label||'',lang:v?.lang||'EN',userId:user?.id,existingVersionId:vId,onProgress:(d,t)=>setImportProg([d,t])});
+      setLocalAvail(a=>({...a,[vId]:true}));
+    }catch(e){setImportErr(e.message);}
+    finally{setImporting(null);}
+  }
+
+  const inputStyle={width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8};
 
   return(
     <Modal title="Bible Versions" onClose={onClose} onBack={onBack} wide T={T} topSheet={navH} isClosing={isClosing} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
@@ -1541,6 +1622,8 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
       {vers.map((v,i)=>{
         const dl=dlStates[v.id]||{};
         const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
+        const avail=localAvail[v.id];
+        const isReImporting=importing===v.id;
         return(
           <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -1548,25 +1631,24 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
                 <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
                 <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
               </div>
-              {/* Offline download controls (built-in versions only) */}
+              {/* Built-in offline controls */}
               {isBuiltin&&onDownload&&(
-                dl.downloading?(
-                  <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
-                    {dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}
-                  </span>
-                ):dl.downloaded?(
-                  <button onClick={()=>onDeleteLocal(v.id)} title="Remove offline copy" style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                    ✓ Offline
-                  </button>
-                ):(
-                  <button onClick={()=>onDownload(v.id)} title="Download for offline use" style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                    ↓ Offline
-                  </button>
-                )
+                dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
+                :dl.downloaded?<button onClick={()=>onDeleteLocal(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
+                :<button onClick={()=>onDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
+              )}
+              {/* User-imported device status */}
+              {!isBuiltin&&(
+                isReImporting
+                  ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
+                  :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
+                  :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                    ⚠ Re-import<input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
+                  </label>
+                  :<span style={{fontFamily:FS,fontSize:9,color:T.dim}}>…</span>
               )}
               <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
             </div>
-            {/* Progress bar */}
             {isBuiltin&&dl.downloading&&dl.total>0&&(
               <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
                 <div style={{height:'100%',width:`${Math.round((dl.progress/dl.total)*100)}%`,background:T.gT,borderRadius:1,transition:'width .2s'}}/>
@@ -1587,6 +1669,41 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
           </div>
         </div>
       )}
+      {/* Import your own Bible */}
+      <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
+        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
+        <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). The text stays on your device only — never uploaded.</div>
+        <input value={importLabel} onChange={e=>setImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={inputStyle}/>
+        <select value={importLang} onChange={e=>setImportLang(e.target.value)} style={{...inputStyle,marginBottom:8}}>
+          <option value="EN">English</option>
+          <option value="ES">Spanish</option>
+          <option value="PT">Portuguese</option>
+          <option value="FR">French</option>
+          <option value="DE">German</option>
+          <option value="IT">Italian</option>
+          <option value="ZH">Chinese</option>
+          <option value="AR">Arabic</option>
+          <option value="RU">Russian</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:importFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {importFile?importFile.name:'Choose .bblx or .SQLite3 file…'}
+          <input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+        </label>
+        {importing==='new'?(
+          <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
+            Importing…{importProg[1]>0?` ${Math.round((importProg[0]/importProg[1])*100)}%`:''}
+            <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
+              <div style={{height:'100%',width:importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'0%',background:T.gT,borderRadius:1,transition:'width .3s'}}/>
+            </div>
+          </div>
+        ):(
+          <button onClick={doImport} disabled={!importFile||!importLabel.trim()} style={{width:'100%',background:(!importFile||!importLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!importFile||!importLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!importFile||!importLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:(!importFile||!importLabel.trim())?'default':'pointer',fontWeight:600,transition:'all .15s'}}>
+            IMPORT
+          </button>
+        )}
+        {importErr&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:6}}>{importErr}</div>}
+      </div>
       {/* Request a new version */}
       <div style={{marginTop:20,paddingTop:16}}>
         <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
@@ -5495,7 +5612,7 @@ function App(){
           cancelLabel={modal.delType==='section'&&data.entries.some(e=>e.sectionId===modal.delId)?'OK':'Cancel'}
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
-      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing} user={user}/>}
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
