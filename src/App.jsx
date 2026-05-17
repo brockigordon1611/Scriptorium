@@ -2389,6 +2389,10 @@ function App(){
   const audioModeRef=useRef(null); // tracks what is actually playing: 'fcbh'|'local'|'speech'|null
   const currentVerseRef=useRef(null); // mirror of currentVerse for use inside event handlers
   const autoAdvancePendingRef=useRef(false); // set before chapter change so new chapter auto-starts
+  const msBookRef=useRef(readBook);
+  const msChRef=useRef(readCh);
+  useEffect(()=>{msBookRef.current=readBook;},[readBook]);
+  useEffect(()=>{msChRef.current=readCh;},[readCh]);
 
   // ── Parallel Verses state ──
   const[parallelVids,setParallelVids]=useState([]);
@@ -2439,6 +2443,15 @@ function App(){
     if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
     setAudioPlaying(false);
   };
+  const updateMediaSession=(bookNum,ch)=>{
+    if(!('mediaSession' in navigator))return;
+    const bk=BIBLE[bookNum-1];
+    navigator.mediaSession.metadata=new MediaMetadata({
+      title:bk?`${bk.name} ${ch}`:'Scriptorium',
+      artist:'Scriptorium',
+      album:'The Bible',
+    });
+  };
   const loadChapterAudio=async(srcOverride=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
@@ -2471,6 +2484,7 @@ function App(){
           };
           audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
         }
+        updateMediaSession(readBook,readCh);
         audioElRef.current.play().catch(()=>{});
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else if(src==='local'){
@@ -2508,6 +2522,7 @@ function App(){
           };
           audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
         }
+        updateMediaSession(readBook,readCh);
         audioElRef.current.play().catch(()=>{});
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else if(src==='speech'){
@@ -2531,6 +2546,7 @@ function App(){
           audioUtterRef.current.push(u);
         });
         setAudioLoaded(true);
+        updateMediaSession(readBook,readCh);
         audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else throw new Error('No audio source available');
@@ -2556,16 +2572,38 @@ function App(){
     }
     const mode=audioModeRef.current;
     if(audioLoaded&&(mode==='fcbh'||mode==='local')){
-      // Always resume from current position — verse-seek is done by tapping the verse
       if(!audioElRef.current.ended){
+        const selVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+        if(selVerse){
+          const ts=audioTimestampsRef.current;
+          if(ts&&ts[selVerse]!==undefined){
+            audioElRef.current.currentTime=ts[selVerse];
+            currentVerseRef.current=selVerse;
+            setCurrentVerse(selVerse);
+          }
+          setReadSelVerses(new Set());
+          if(stripOpen)dismissStrip();
+        }
         audioElRef.current.play().catch(()=>{});
         setAudioPlaying(true);
       }else{
         await loadChapterAudio();
       }
     }else if(audioLoaded&&mode==='speech'){
-      if(speechSynthesis.paused){speechSynthesis.resume();setAudioPlaying(true);}
-      else{await loadChapterAudio();}
+      const selVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+      if(speechSynthesis.paused){
+        if(selVerse){
+          setReadSelVerses(new Set());
+          if(stripOpen)dismissStrip();
+          seekWebSpeechToVerse(selVerse);
+          setAudioPlaying(true);
+        }else{
+          speechSynthesis.resume();
+          setAudioPlaying(true);
+        }
+      }else{
+        await loadChapterAudio();
+      }
     }else{
       await loadChapterAudio();
     }
@@ -2622,6 +2660,7 @@ function App(){
       audioUtterRef.current.push(u);
     }
     setAudioLoaded(true);
+    updateMediaSession(readBook,readCh);
     audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
     currentVerseRef.current=sv;setAudioPlaying(true);setCurrentVerse(sv);
   };
@@ -2646,6 +2685,18 @@ function App(){
     autoAdvancePendingRef.current=false;
     loadChapterAudio();
   },[readVerses]);
+  // ── Media Session lock-screen controls ──
+  useEffect(()=>{
+    if(!('mediaSession' in navigator))return;
+    navigator.mediaSession.setActionHandler('play',()=>{audioElRef.current?.play().catch(()=>{});setAudioPlaying(true);});
+    navigator.mediaSession.setActionHandler('pause',()=>{audioElRef.current?.pause();speechSynthesis.pause();setAudioPlaying(false);});
+  },[]);
+  useEffect(()=>{
+    if(!('mediaSession' in navigator))return;
+    const current=BIBLE.find(b=>b.n===readBook);
+    navigator.mediaSession.setActionHandler('nexttrack',current&&readCh<current.v.length?()=>{autoAdvancePendingRef.current=true;setReadCh(c=>c+1);}:null);
+    navigator.mediaSession.setActionHandler('previoustrack',readCh>1?()=>setReadCh(c=>c-1):(readBook>1?()=>{const prev=BIBLE.find(b=>b.n===readBook-1);if(prev){setReadBook(readBook-1);setReadCh(prev.v.length);}}:null));
+  },[readBook,readCh]);
   // ── Close topSheet modals when a nav sheet opens or tab changes ──
   useEffect(()=>{if(readMobileSheet)closeModal();},[readMobileSheet]);
   useEffect(()=>{closeModal();},[tab]);
