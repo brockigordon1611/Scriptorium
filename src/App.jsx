@@ -2225,6 +2225,7 @@ function App(){
   const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
   const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
   const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
+  const[audioInfoOpen,setAudioInfoOpen]=useState(null); // 'scroll'|'advance'|null
   const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
   const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
   const readFullScreen=useRef(false);
@@ -2387,6 +2388,7 @@ function App(){
   const audioUtterRef=useRef([]);
   const audioModeRef=useRef(null); // tracks what is actually playing: 'fcbh'|'local'|'speech'|null
   const currentVerseRef=useRef(null); // mirror of currentVerse for use inside event handlers
+  const autoAdvancePendingRef=useRef(false); // set before chapter change so new chapter auto-starts
 
   // ── Parallel Verses state ──
   const[parallelVids,setParallelVids]=useState([]);
@@ -2541,6 +2543,7 @@ function App(){
   const handleNextChapter=()=>{
     const current=BIBLE.find(b=>b.n===readBook);
     if(!current||readCh>=current.v.length){return;}
+    autoAdvancePendingRef.current=true;
     setReadCh(readCh+1);
   };
   const handlePlayPause=async()=>{
@@ -2637,6 +2640,12 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Auto-advance: start next chapter once its verses are loaded ──
+  useEffect(()=>{
+    if(!autoAdvancePendingRef.current||!readVerses||!readVerses.length)return;
+    autoAdvancePendingRef.current=false;
+    loadChapterAudio();
+  },[readVerses]);
   // ── Close topSheet modals when a nav sheet opens or tab changes ──
   useEffect(()=>{if(readMobileSheet)closeModal();},[readMobileSheet]);
   useEffect(()=>{closeModal();},[tab]);
@@ -4015,15 +4024,30 @@ function App(){
           {audioSettingsOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
 
             {/* Auto-scroll + Auto-advance row */}
-            <div style={{display:'flex',gap:4,marginBottom:14}}>
-              <button type="button" onClick={()=>{const v=!audioAutoScroll;setAudioAutoScroll(v);try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(v));}catch{}}}
-                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
-                <span>Auto-scroll</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
-              </button>
-              <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
-                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
-                <span>Auto-advance</span><span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
-              </button>
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',gap:4,marginBottom:audioInfoOpen?4:0}}>
+                <button type="button" onClick={()=>{const v=!audioAutoScroll;setAudioAutoScroll(v);try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(v));}catch{}}}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  <span>Auto-scroll</span>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
+                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none'}}>ⓘ</span>
+                  </div>
+                </button>
+                <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  <span>Auto-advance</span>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
+                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none'}}>ⓘ</span>
+                  </div>
+                </button>
+              </div>
+              {audioInfoOpen&&<div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:6,padding:'7px 10px',fontSize:11,fontFamily:FB,color:T.dim,lineHeight:1.5}}>
+                {audioInfoOpen==='scroll'
+                  ?'Automatically scrolls the page to keep the currently reading verse visible.'
+                  :'Automatically loads and plays the next chapter when the current one ends.'}
+              </div>}
             </div>
 
             {/* Playback Source */}
