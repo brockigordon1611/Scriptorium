@@ -4031,7 +4031,7 @@ function App(){
                   <span>Auto-scroll</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
                     <span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
-                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
                 <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
@@ -4039,7 +4039,7 @@ function App(){
                   <span>Auto-advance</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
                     <span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
-                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
               </div>
@@ -4596,7 +4596,7 @@ function App(){
                 }
               </div>
               <span style={{maxWidth:(audioPlaying||audioLoading||audioLoaded)?160:0,opacity:(audioPlaying||audioLoading||audioLoaded)?1:0,overflow:'hidden',whiteSpace:'nowrap',transition:'max-width .22s ease, opacity .18s ease, margin .22s ease',marginLeft:(audioPlaying||audioLoading||audioLoaded)?8:0,fontWeight:600,letterSpacing:'0.06em'}}>
-                {audioLoading?'Loading…':!audioPlaying&&audioLoaded?`Resume · Verse ${currentVerse||1}`:(currentVerse?`Verse ${currentVerse}`:'Ready')}
+                {audioLoading?'Loading…':!audioPlaying&&audioLoaded?(readSelVerses.size>0?`Play from Verse ${Math.min(...readSelVerses)}`:`Resume · Verse ${currentVerse||1}`):(currentVerse?`Verse ${currentVerse}`:'Ready')}
               </span>
             </button>
           )}
