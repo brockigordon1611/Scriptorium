@@ -2444,8 +2444,8 @@ function App(){
     setAudioError(null);setAudioLoading(true);
     speechSynthesis.cancel();audioUtterRef.current=[];
     if(audioElRef.current){audioElRef.current.pause();}
-    // Start from lowest selected verse, or verse 1 if none selected
-    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
+    // Only seek if the user explicitly selected a verse; otherwise play from 0 to include chapter intro
+    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
     const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
     const src=srcOverride||(audioSource==='auto'
       ?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
@@ -3831,7 +3831,7 @@ function App(){
                 <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
                 <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
               </div>
-              {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0}}>ⓘ</span>}
+              {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0,padding:'8px',margin:'-8px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>}
             </div>
             {/* Auto Fullscreen card */}
             <div onClick={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}} style={{flex:1,padding:'9px 10px',background:readAutoFullscreen?T.gF:T.bgSec,border:`1.5px solid ${readAutoFullscreen?T.gD:T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
@@ -4031,7 +4031,7 @@ function App(){
                   <span>Auto-scroll</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
                     <span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
-                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none'}}>ⓘ</span>
+                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
                 <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
@@ -4039,7 +4039,7 @@ function App(){
                   <span>Auto-advance</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
                     <span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
-                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none'}}>ⓘ</span>
+                    <span onPointerDown={e=>{e.stopPropagation();e.preventDefault();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
               </div>
