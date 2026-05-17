@@ -5183,19 +5183,20 @@ function App(){
                       <button type="button" onClick={dismissStrip}
                         style={{background:'rgba(200,60,60,0.05)',border:'1px solid rgba(200,60,60,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'all .15s',padding:0}}>✕</button>
                     </div>
-                    {/* Row 2: Category — full width, matches collapsed notes style */}
-                    {user&&bmCategories.length>0&&(
-                      <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
-                        style={{width:'100%',height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
-                        <option value="">Category…</option>
-                        {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    )}
-                    {/* Row 3: Bookmark notes — full width */}
-                    <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
-                      onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
-                      placeholder="Bookmark notes…" rows={1}
-                      style={{width:'100%',minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
+                    {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
+                    <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
+                      <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
+                        onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
+                        placeholder="Bookmark notes…" rows={1}
+                        style={{flex:1,minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
+                      {user&&bmCategories.length>0&&!readBmLabelFocused&&(
+                        <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
+                          style={{flexShrink:0,width:120,height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
+                          <option value="">Category…</option>
+                          {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      )}
+                    </div>
                   </div>
               }
             </div>
