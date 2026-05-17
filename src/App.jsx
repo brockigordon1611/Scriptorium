@@ -2238,11 +2238,45 @@ function App(){
   const[readSheetClosing,setReadSheetClosing]=useState(false);
   const[versionSheetView,setVersionSheetView]=useState('list');
   const[manageVers,setManageVers]=useState([]);
+  const[mngLocalAvail,setMngLocalAvail]=useState({});
+  const[mngImportLabel,setMngImportLabel]=useState('');
+  const[mngImportLang,setMngImportLang]=useState('ES');
+  const[mngImportFile,setMngImportFile]=useState(null);
+  const[mngImporting,setMngImporting]=useState(null);
+  const[mngImportProg,setMngImportProg]=useState([0,0]);
+  const[mngImportErr,setMngImportErr]=useState('');
   function closeReadSheet(){setReadSheetClosing(true);setTimeout(()=>{setReadMobileSheet(null);setReadSheetClosing(false);setVersionSheetView('list');},260);}
-  function openManageView(){setManageVers(clone(data.versions));setVersionSheetView('manage');}
+  function openManageView(){
+    setManageVers(clone(data.versions));
+    setVersionSheetView('manage');
+    setMngImportErr('');setMngImportFile(null);setMngImportLabel('');
+    // Check local availability for user-imported versions
+    const uv=data.versions.filter(v=>!PUBLIC_VERSIONS.some(pv=>pv.id===v.id));
+    uv.forEach(v=>{idbIsDownloaded(v.id).then(ok=>setMngLocalAvail(a=>({...a,[v.id]:ok})));});
+  }
   function manageRemove(id){setManageVers(v=>v.filter(x=>x.id!==id));}
   function manageAddBuiltin(pv){setManageVers(v=>[...v,{id:pv.id,label:pv.label,lang:pv.lang,isRef:false}]);}
   function manageDoSave(){let v=[...manageVers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};saveVersions(v);setVersionSheetView('list');}
+  async function mngDoImport(){
+    if(!mngImportFile||!mngImportLabel.trim())return;
+    setMngImportErr('');setMngImporting('new');setMngImportProg([0,0]);
+    try{
+      const v=await importBblxFile({file:mngImportFile,label:mngImportLabel.trim(),lang:mngImportLang,userId:user?.id,onProgress:(d,t)=>setMngImportProg([d,t])});
+      setManageVers(vs=>[...vs,v]);
+      setMngLocalAvail(a=>({...a,[v.id]:true}));
+      setMngImportLabel('');setMngImportFile(null);
+    }catch(e){setMngImportErr(e.message);}
+    finally{setMngImporting(null);}
+  }
+  async function mngDoReImport(vId,file){
+    const v=manageVers.find(x=>x.id===vId);
+    setMngImportErr('');setMngImporting(vId);setMngImportProg([0,0]);
+    try{
+      await importBblxFile({file,label:v?.label||'',lang:v?.lang||'EN',userId:user?.id,existingVersionId:vId,onProgress:(d,t)=>setMngImportProg([d,t])});
+      setMngLocalAvail(a=>({...a,[vId]:true}));
+    }catch(e){setMngImportErr(e.message);}
+    finally{setMngImporting(null);}
+  }
 
   // ── Reading state (persistent in tab, not modal) ──
   const[readBook,setReadBook]=useState(()=>{try{return Number(localStorage.getItem('scrip:readBook'))||1;}catch{return 1;}});
@@ -4579,6 +4613,8 @@ function App(){
                   {manageVers.map((v,i)=>{
                     const dl=dlStates[v.id]||{};
                     const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
+                    const avail=mngLocalAvail[v.id];
+                    const isReImporting=mngImporting===v.id;
                     return(
                       <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
                         <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -4587,19 +4623,18 @@ function App(){
                             <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
                           </div>
                           {isBuiltin&&startDownload&&(
-                            dl.downloading?(
-                              <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',whiteSpace:'nowrap'}}>
-                                {dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}
-                              </span>
-                            ):dl.downloaded?(
-                              <button onClick={()=>deleteDownload(v.id)} title="Remove offline copy" style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                ✓ Offline
-                              </button>
-                            ):(
-                              <button onClick={()=>startDownload(v.id)} title="Download for offline use" style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                ↓ Offline
-                              </button>
-                            )
+                            dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
+                            :dl.downloaded?<button onClick={()=>deleteDownload(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
+                            :<button onClick={()=>startDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
+                          )}
+                          {!isBuiltin&&(
+                            isReImporting
+                              ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
+                              :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
+                              :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                                ⚠ Re-import<input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
+                              </label>
+                              :null
                           )}
                           <button onClick={()=>manageRemove(v.id)} disabled={manageVers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:manageVers.length===1?'default':'pointer',opacity:manageVers.length===1?0.4:1}}>✕</button>
                         </div>
@@ -4623,6 +4658,41 @@ function App(){
                       </div>
                     </div>
                   )}
+                  {/* Import your own Bible */}
+                  <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
+                    <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
+                    <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). Text stays on your device only — never uploaded.</div>
+                    <input value={mngImportLabel} onChange={e=>setMngImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8}}/>
+                    <select value={mngImportLang} onChange={e=>setMngImportLang(e.target.value)} style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8}}>
+                      <option value="EN">English</option>
+                      <option value="ES">Spanish</option>
+                      <option value="PT">Portuguese</option>
+                      <option value="FR">French</option>
+                      <option value="DE">German</option>
+                      <option value="IT">Italian</option>
+                      <option value="ZH">Chinese</option>
+                      <option value="AR">Arabic</option>
+                      <option value="RU">Russian</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                    <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:mngImportFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {mngImportFile?mngImportFile.name:'Choose .bblx or .SQLite3 file…'}
+                      <input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+                    </label>
+                    {mngImporting==='new'?(
+                      <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
+                        Importing…{mngImportProg[1]>0?` ${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:''}
+                        <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
+                          <div style={{height:'100%',width:mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'0%',background:T.gT,borderRadius:1,transition:'width .3s'}}/>
+                        </div>
+                      </div>
+                    ):(
+                      <button onClick={mngDoImport} disabled={!mngImportFile||!mngImportLabel.trim()} style={{width:'100%',background:(!mngImportFile||!mngImportLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!mngImportFile||!mngImportLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!mngImportFile||!mngImportLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:(!mngImportFile||!mngImportLabel.trim())?'default':'pointer',fontWeight:600}}>
+                        IMPORT
+                      </button>
+                    )}
+                    {mngImportErr&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:6}}>{mngImportErr}</div>}
+                  </div>
                   {/* Request a new version */}
                   <div style={{marginTop:20,paddingTop:16}}>
                     <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
