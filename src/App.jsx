@@ -351,7 +351,10 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
   if(!rows||!rows[0]||!rows[0].values.length)throw new Error('No verse data found in file');
   const values=rows[0].values;
   const stripTags=t=>String(t||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-  const mapped=values.map(([bk,ch,vs,txt])=>({book_num:eswordBookToNum(bk),chapter:ch,verse:vs,text:stripTags(txt)}));
+  // Auto-detect book numbering: .bbli uses 1-66, .bblx uses multiples of 10 (10=Gen…730=Rev)
+  const maxBook=Math.max(...values.map(([bk])=>bk));
+  const toBookNum=maxBook>66?eswordBookToNum:(bk=>bk);
+  const mapped=values.map(([bk,ch,vs,txt])=>({book_num:toBookNum(bk),chapter:ch,verse:vs,text:stripTags(txt)}));
   const invalid=mapped.find(r=>!r.book_num||r.book_num<1||r.book_num>66);
   if(invalid)throw new Error(`Unrecognised book number in file`);
   const versionId=existingVersionId||`user-${userId||'local'}-${Date.now()}`;
@@ -1643,7 +1646,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
                   ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
                   :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                   :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                    ⚠ Re-import<input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
+                    ⚠ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
                   </label>
                   :<span style={{fontFamily:FS,fontSize:9,color:T.dim}}>…</span>
               )}
@@ -1687,8 +1690,8 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
           <option value="OTHER">Other</option>
         </select>
         <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:importFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-          {importFile?importFile.name:'Choose .bblx or .SQLite3 file…'}
-          <input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+          {importFile?importFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
+          <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
         </label>
         {importing==='new'?(
           <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
@@ -4632,7 +4635,7 @@ function App(){
                               ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
                               :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                               :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                ⚠ Re-import<input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
+                                ⚠ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
                               </label>
                               :null
                           )}
@@ -4676,8 +4679,8 @@ function App(){
                       <option value="OTHER">Other</option>
                     </select>
                     <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:mngImportFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {mngImportFile?mngImportFile.name:'Choose .bblx or .SQLite3 file…'}
-                      <input type="file" accept=".bblx,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+                      {mngImportFile?mngImportFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
+                      <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
                     </label>
                     {mngImporting==='new'?(
                       <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
