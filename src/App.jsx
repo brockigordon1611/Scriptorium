@@ -352,11 +352,14 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
   const values=rows[0].values;
   const stripTags=t=>String(t||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
   // Auto-detect book numbering: .bbli uses 1-66, .bblx uses multiples of 10 (10=Gen…730=Rev)
-  const maxBook=Math.max(...values.map(([bk])=>bk));
+  // Use reduce instead of Math.max(...spread) to avoid stack overflow on large arrays
+  const maxBook=values.reduce((m,[bk])=>bk>m?bk:m,0);
   const toBookNum=maxBook>66?eswordBookToNum:(bk=>bk);
-  const mapped=values.map(([bk,ch,vs,txt])=>({book_num:toBookNum(bk),chapter:ch,verse:vs,text:stripTags(txt)}));
-  const invalid=mapped.find(r=>!r.book_num||r.book_num<1||r.book_num>66);
-  if(invalid)throw new Error(`Unrecognised book number in file`);
+  // Filter out apocryphal/unrecognised book numbers rather than throwing
+  const mapped=values
+    .map(([bk,ch,vs,txt])=>({book_num:toBookNum(bk),chapter:Number(ch),verse:Number(vs),text:stripTags(txt)}))
+    .filter(r=>Number.isInteger(r.book_num)&&r.book_num>=1&&r.book_num<=66);
+  if(!mapped.length)throw new Error('No valid Bible verses found in file');
   const versionId=existingVersionId||`user-${userId||'local'}-${Date.now()}`;
   const BATCH=2000;
   for(let i=0;i<mapped.length;i+=BATCH){
