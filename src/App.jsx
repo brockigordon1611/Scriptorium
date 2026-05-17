@@ -2461,20 +2461,15 @@ function App(){
         if(!meta||!meta.path)throw new Error('Could not load chapter audio');
         audioElRef.current.src=meta.path;
         audioTimestampsRef.current=ts;
-        console.log('[FCBH] timestamps loaded:',ts?Object.keys(ts).length+' verses':'null');
-        console.log('[FCBH] startVerse:',startVerse,'ts[sv]:',ts?ts[startVerse]:undefined,'keys sample:',ts?Object.keys(ts).slice(0,5):null);
         setAudioLoaded(true);
         if(startVerse&&ts&&ts[startVerse]!==undefined){
           const seekOnLoad=()=>{
-            console.log('[FCBH] seekOnLoad fired, seeking to',ts[startVerse],'currentTime was',audioElRef.current.currentTime);
             audioElRef.current.currentTime=ts[startVerse];
             audioElRef.current.removeEventListener('loadedmetadata',seekOnLoad);
           };
           audioElRef.current.addEventListener('loadedmetadata',seekOnLoad);
-        }else{
-          console.log('[FCBH] NO seek: startVerse=',startVerse,'ts null?',!ts,'ts[sv] undefined?',ts&&ts[startVerse]===undefined);
         }
-        audioElRef.current.play().catch(e=>console.warn('[FCBH] play() failed:',e));
+        audioElRef.current.play().catch(()=>{});
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else if(src==='local'){
         audioModeRef.current='local';
@@ -2556,27 +2551,17 @@ function App(){
       if(stripOpen)dismissStrip();
       return;
     }
-    const mode=audioModeRef.current; // what is actually loaded, not what setting says
-    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+    const mode=audioModeRef.current;
     if(audioLoaded&&(mode==='fcbh'||mode==='local')){
-      if(startVerse){
-        const ts=audioTimestampsRef.current;
-        if(ts&&ts[startVerse]!==undefined){
-          audioElRef.current.currentTime=ts[startVerse];
-          audioElRef.current.play().catch(()=>{});
-          currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
-        }else{
-          await loadChapterAudio();
-        }
-      }else if(!audioElRef.current.ended){
+      // Always resume from current position — verse-seek is done by tapping the verse
+      if(!audioElRef.current.ended){
         audioElRef.current.play().catch(()=>{});
         setAudioPlaying(true);
       }else{
         await loadChapterAudio();
       }
     }else if(audioLoaded&&mode==='speech'){
-      if(startVerse){seekWebSpeechToVerse(startVerse);}
-      else if(speechSynthesis.paused){speechSynthesis.resume();setAudioPlaying(true);}
+      if(speechSynthesis.paused){speechSynthesis.resume();setAudioPlaying(true);}
       else{await loadChapterAudio();}
     }else{
       await loadChapterAudio();
@@ -4577,7 +4562,7 @@ function App(){
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
               }}
-              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading)?'7px 12px':'7px 9px',background:'transparent',border:`1px solid ${audioPlaying?T.gD:T.bd}`,borderRadius:6,color:audioPlaying?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'transparent',border:`1px solid ${audioPlaying||audioLoaded?T.gD:T.bd}`,borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 18px rgba(0,0,0,0.18)',opacity:!audioPlaying&&audioLoaded&&!audioLoading?0.72:1}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
                 {audioLoading
                   ?<Spinner/>
@@ -4586,8 +4571,8 @@ function App(){
                     :<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
                 }
               </div>
-              <span style={{maxWidth:(audioPlaying||audioLoading)?140:0,opacity:(audioPlaying||audioLoading)?1:0,overflow:'hidden',whiteSpace:'nowrap',transition:'max-width .22s ease, opacity .18s ease, margin .22s ease',marginLeft:(audioPlaying||audioLoading)?8:0,fontWeight:600,letterSpacing:'0.06em'}}>
-                {audioLoading?'Loading…':(currentVerse?`Verse ${currentVerse}`:'Ready')}
+              <span style={{maxWidth:(audioPlaying||audioLoading||audioLoaded)?160:0,opacity:(audioPlaying||audioLoading||audioLoaded)?1:0,overflow:'hidden',whiteSpace:'nowrap',transition:'max-width .22s ease, opacity .18s ease, margin .22s ease',marginLeft:(audioPlaying||audioLoading||audioLoaded)?8:0,fontWeight:600,letterSpacing:'0.06em'}}>
+                {audioLoading?'Loading…':!audioPlaying&&audioLoaded?`Resume · Verse ${currentVerse||1}`:(currentVerse?`Verse ${currentVerse}`:'Ready')}
               </span>
             </button>
           )}
