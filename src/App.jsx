@@ -2224,7 +2224,7 @@ function App(){
   const[currentVerse,setCurrentVerse]=useState(null);
   const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
   const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
-  const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'false');}catch{return false;}});
+  const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'true');}catch{return true;}});
   const[audioInfoOpen,setAudioInfoOpen]=useState(null); // 'scroll'|'advance'|null
   const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
   const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
