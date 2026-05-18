@@ -2839,14 +2839,15 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
-  // ── Measure safe-area-inset-top once ──
-  useEffect(()=>{
+  // ── Measure safe-area-inset-top (lazy — done on first scroll so WKWebView is settled) ──
+  function measureSafeAreaTop(){
     const el=document.createElement('div');
     el.style.cssText='position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
     document.body.appendChild(el);
-    safeAreaTopRef.current=el.getBoundingClientRect().top;
+    const v=el.getBoundingClientRect().top;
     document.body.removeChild(el);
-  },[]);
+    return v;
+  }
   // ── Chapter line pin: reset when chapter changes ──
   useEffect(()=>{setChLineAbove(false);},[readBook,readCh]);
   // ── Auto-advance: start next chapter once its verses are loaded ──
@@ -3268,6 +3269,7 @@ function App(){
     scrubberTimerRef.current=setTimeout(()=>setScrubberVisible(false),2500);
     // Chapter line pin: trigger when line enters the safe-area slab
     if(chLineRef.current){
+      if(!safeAreaTopRef.current)safeAreaTopRef.current=measureSafeAreaTop();
       const rect=chLineRef.current.getBoundingClientRect();
       setChLineAbove(rect.bottom<=safeAreaTopRef.current);
     }
