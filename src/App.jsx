@@ -5188,11 +5188,11 @@ function App(){
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:1,minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,background:'rgba(228,204,120,0.06)',border:`1px solid ${readBmLabelFocused?T.gT:T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:readBmLabelFocused?14:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?1.6:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease, border-color 0.15s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
                         <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
-                          style={{flexShrink:0,width:120,height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
-                          <option value="">Category…</option>
+                          style={{flex:'1 1 0',minWidth:0,height:30,background:'rgba(228,204,120,0.06)',border:`1px solid ${T.gD}`,borderRadius:6,color:readBmCat?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box'}}>
+                          <option value="">Bookmark Category…</option>
                           {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       )}
