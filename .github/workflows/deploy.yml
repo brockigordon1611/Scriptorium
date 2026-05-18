@@ -34,6 +34,7 @@ jobs:
         env:
           VITE_SUPA_URL: ${{ secrets.VITE_SUPA_URL }}
           VITE_SUPA_ANON: ${{ secrets.VITE_SUPA_ANON }}
+          GITHUB_PAGES: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
