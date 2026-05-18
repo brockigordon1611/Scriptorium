@@ -2388,6 +2388,8 @@ function App(){
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const[fsActive,setFsActive]=useState(false);
+  const chLineRef=useRef(null);
+  const[chLineAbove,setChLineAbove]=useState(false);
   const bottomBarRef=useRef(null);
   const headerAnimRef=useRef(null);
   const bottomAnimRef=useRef(null);
@@ -2836,6 +2838,14 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Chapter line pin: observe when the 1px accent line scrolls above viewport ──
+  useEffect(()=>{
+    setChLineAbove(false);
+    if(!chLineRef.current)return;
+    const obs=new IntersectionObserver(([e])=>setChLineAbove(!e.isIntersecting&&e.boundingClientRect.top<0),{threshold:0});
+    obs.observe(chLineRef.current);
+    return()=>obs.disconnect();
+  },[readBook,readCh]);
   // ── Auto-advance: start next chapter once its verses are loaded ──
   useEffect(()=>{
     if(!autoAdvancePendingRef.current||!readVerses||!readVerses.length)return;
@@ -4786,10 +4796,10 @@ function App(){
             </MobileSheet>
           )}
 
-      {/* Fullscreen status-bar mask + gold line — only when fsActive */}
+      {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
       {fsActive&&tab==='read'&&<>
         <div style={{position:'fixed',top:0,left:0,right:0,height:'env(safe-area-inset-top,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
-        <div style={{position:'fixed',top:'env(safe-area-inset-top,0px)',left:0,right:0,height:3,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>
+        {chLineAbove&&<div style={{position:'fixed',top:'env(safe-area-inset-top,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
       </>}
 
       {/* ═══ READ TAB ═══ */}
@@ -4916,7 +4926,7 @@ function App(){
               <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
               </div>
-              <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+              <div ref={chLineRef} style={{height:1,background:T.accentLine,marginTop:8}}/>
             </div>
           )}
             {readSearchRes&&readSearchResultsOpen&&(
