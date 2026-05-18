@@ -4786,6 +4786,12 @@ function App(){
             </MobileSheet>
           )}
 
+      {/* Fullscreen status-bar mask + gold line — only when fsActive */}
+      {fsActive&&tab==='read'&&<>
+        <div style={{position:'fixed',top:0,left:0,right:0,height:'env(safe-area-inset-top,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
+        <div style={{position:'fixed',top:'env(safe-area-inset-top,0px)',left:0,right:0,height:3,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>
+      </>}
+
       {/* ═══ READ TAB ═══ */}
       {tab==='read'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
