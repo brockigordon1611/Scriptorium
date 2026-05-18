@@ -697,8 +697,8 @@ function localAudioStem(bookNum,chapter){
   const ch2=String(chapter).padStart(2,'0');
   return{folder:'NT',stem:`${b}___${ch2}_${NT_REG_NAMES[ntNum-1]}ENGKJVN1DA`};
 }
-function localAudioUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`/audio/${folder}/KJV%20Reg/${stem}.mp3`;}
-function localTimestampUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`/timestamps/${folder}/${stem}.json`;}
+function localAudioUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`${import.meta.env.BASE_URL}audio/${folder}/KJV%20Reg/${stem}.mp3`;}
+function localTimestampUrl(bookNum,chapter){const{folder,stem}=localAudioStem(bookNum,chapter);return`${import.meta.env.BASE_URL}timestamps/${folder}/${stem}.json`;}
 const FCBH_BASE='https://4.dbt.io/api';
 async function fcbhCall(path,params={}){
   const key=localStorage.getItem('scrip:audio:fcbhKey')||'';
