@@ -2390,6 +2390,7 @@ function App(){
   const[fsActive,setFsActive]=useState(false);
   const chLineRef=useRef(null);
   const[chLineAbove,setChLineAbove]=useState(false);
+  const safeAreaTopRef=useRef(0);
   const bottomBarRef=useRef(null);
   const headerAnimRef=useRef(null);
   const bottomAnimRef=useRef(null);
@@ -2838,6 +2839,14 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // ── Measure safe-area-inset-top once ──
+  useEffect(()=>{
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
+    document.body.appendChild(el);
+    safeAreaTopRef.current=el.getBoundingClientRect().top;
+    document.body.removeChild(el);
+  },[]);
   // ── Chapter line pin: reset when chapter changes ──
   useEffect(()=>{setChLineAbove(false);},[readBook,readCh]);
   // ── Auto-advance: start next chapter once its verses are loaded ──
@@ -3257,10 +3266,10 @@ function App(){
     setScrubberVisible(true);
     clearTimeout(scrubberTimerRef.current);
     scrubberTimerRef.current=setTimeout(()=>setScrubberVisible(false),2500);
-    // Chapter line pin
+    // Chapter line pin: trigger when line enters the safe-area slab
     if(chLineRef.current){
       const rect=chLineRef.current.getBoundingClientRect();
-      setChLineAbove(rect.bottom<=0);
+      setChLineAbove(rect.bottom<=safeAreaTopRef.current);
     }
   };
 
