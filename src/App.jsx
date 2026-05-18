@@ -2894,6 +2894,12 @@ function App(){
     const onPlay=()=>setAudioPlaying(true);
     const onPause=()=>setAudioPlaying(false);
     const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapter();};
+    const onError=()=>{
+      if(!el.src)return;
+      setAudioLoaded(false);setAudioPlaying(false);
+      el.src='';
+      if(!Capacitor.isNativePlatform()){loadChapterAudio('speech');}
+    };
     const onTimeUpdate=()=>{
       if(!audioTimestampsRef.current)return;
       const t=el.currentTime;
@@ -2916,11 +2922,13 @@ function App(){
     el.addEventListener('play',onPlay);
     el.addEventListener('pause',onPause);
     el.addEventListener('ended',onEnded);
+    el.addEventListener('error',onError);
     el.addEventListener('timeupdate',onTimeUpdate);
     return()=>{
       el.removeEventListener('play',onPlay);
       el.removeEventListener('pause',onPause);
       el.removeEventListener('ended',onEnded);
+      el.removeEventListener('error',onError);
       el.removeEventListener('timeupdate',onTimeUpdate);
     };
   },[audioAutoScroll,audioAutoAdvance]);
