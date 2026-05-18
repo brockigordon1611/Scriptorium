@@ -2838,14 +2838,8 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
-  // ── Chapter line pin: observe when the 1px accent line scrolls above viewport ──
-  useEffect(()=>{
-    setChLineAbove(false);
-    if(!chLineRef.current)return;
-    const obs=new IntersectionObserver(([e])=>setChLineAbove(!e.isIntersecting&&e.boundingClientRect.top<0),{threshold:0});
-    obs.observe(chLineRef.current);
-    return()=>obs.disconnect();
-  },[readBook,readCh]);
+  // ── Chapter line pin: reset when chapter changes ──
+  useEffect(()=>{setChLineAbove(false);},[readBook,readCh]);
   // ── Auto-advance: start next chapter once its verses are loaded ──
   useEffect(()=>{
     if(!autoAdvancePendingRef.current||!readVerses||!readVerses.length)return;
@@ -3263,6 +3257,11 @@ function App(){
     setScrubberVisible(true);
     clearTimeout(scrubberTimerRef.current);
     scrubberTimerRef.current=setTimeout(()=>setScrubberVisible(false),2500);
+    // Chapter line pin
+    if(chLineRef.current){
+      const rect=chLineRef.current.getBoundingClientRect();
+      setChLineAbove(rect.bottom<=0);
+    }
   };
 
   // ── Reading helpers ──
