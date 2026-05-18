@@ -3051,11 +3051,11 @@ function App(){
       setReady(false);setLoadMsg('Loading project…');
       let proj;
       try{proj=await dbLoadOrCreateProject(user.id);}catch(e){proj=null;}
-      if(!proj){setData({versions:[],sections:[],entries:[]});setLoadMsg('');setReady(true);return;}
+      if(!proj){setData({versions:PUBLIC_VERSIONS,sections:[],entries:[]});setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||'kjv');setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));setLoadMsg('');setReady(true);return;}
       setProjectId(proj.id);
       setLoadMsg('Loading study data…');
       let pd;
-      try{pd=await dbLoadProject(proj.id);}catch(e){setData({versions:[],sections:[],entries:[]});setLoadMsg('');setReady(true);return;}
+      try{pd=await dbLoadProject(proj.id);}catch(e){setData({versions:PUBLIC_VERSIONS,sections:[],entries:[]});setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||'kjv');setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));setLoadMsg('');setReady(true);return;}
       if(!pd.versions.length){
         setLoadMsg('Setting up versions…');
         await dbSaveVersions(proj.id,PUBLIC_VERSIONS);
