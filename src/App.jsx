@@ -1405,7 +1405,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
     <div style={{marginBottom:4}}>
       {/* Section header row */}
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0 6px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
-        <span style={{fontSize:10,color:T.dim,transition:'transform .15s',display:'inline-block',transform:open?'rotate(90deg)':'rotate(0deg)'}}>▶</span>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
         <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
         <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
         <span style={{fontFamily:FS,fontSize:10,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
