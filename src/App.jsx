@@ -4956,10 +4956,10 @@ function App(){
                   return(
                     <div style={{position:'fixed',right:0,top:navH+(readSearchRes?62:12),bottom:bottomBarH+12,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
-                      background:dark?'rgba(28,23,12,0.18)':'rgba(248,243,228,0.18)',
+                      background:'var(--ac-ghost-bg)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
                       overflowY:'auto',
-                      boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(6px)',
+                      boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
                       transition:'transform .3s cubic-bezier(0.4,0,0.2,1)'}}>
                       {booksInRes.map(bn=>{
                         const nm=bookName(BIBLE.find(x=>x.n===bn),versionLang(readVid))||'?';
