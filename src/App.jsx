@@ -193,6 +193,15 @@ async function idbGetChapterLocal(versionId,bookNum,chapter){
   const rows=await _idbReq(db.transaction('verses','readonly').objectStore('verses').index('by_chapter').getAll([versionId,bookNum,chapter]));
   return rows.sort((a,b)=>a.verse-b.verse);
 }
+async function idbSearchLocal(versionId,bookMin,bookMax){
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const range=IDBKeyRange.bound([versionId,bookMin,0],[versionId,bookMax,9999]);
+    const req=db.transaction('verses','readonly').objectStore('verses').index('by_chapter').getAll(range);
+    req.onsuccess=e=>resolve(e.target.result||[]);
+    req.onerror=e=>reject(e.target.error);
+  });
+}
 async function idbPutVerses(versionId,rows){
   const db=await idbOpen();
   const tx=db.transaction('verses','readwrite');
@@ -3361,15 +3370,21 @@ function App(){
       const PAGE=900;
       const baseParams=(q)=>({p_version_id:readVid,p_query:q,p_limit:PAGE,p_book_min:bookMin,p_book_max:bookMax,p_case_sensitive:cs,p_whole_word:ww});
       async function fetchAll(q){
-        let all=[];let offset=0;
-        while(true){
-          const{data:res}=await sbRpc('search_verses',{...baseParams(q),p_offset:offset},token);
-          if(!Array.isArray(res)||res.length===0)break;
-          all=all.concat(res);
-          if(res.length<PAGE)break;
-          offset+=res.length;
+        try{
+          let all=[];let offset=0;
+          while(true){
+            const{data:res}=await sbRpc('search_verses',{...baseParams(q),p_offset:offset},token);
+            if(!Array.isArray(res)||res.length===0)break;
+            all=all.concat(res);
+            if(res.length<PAGE)break;
+            offset+=res.length;
+          }
+          return all;
+        }catch{
+          const all=await idbSearchLocal(readVid,bookMin,bookMax);
+          const ql=q.toLowerCase();
+          return all.filter(r=>(r.text||'').toLowerCase().includes(ql));
         }
-        return all;
       }
       function matches(text){
         const chk=w=>{
