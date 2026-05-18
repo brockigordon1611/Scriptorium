@@ -2585,7 +2585,7 @@ function App(){
     const rgb=hexToRgb(T.g||'#c8a84e');
     const rgbD=hexToRgb(T.gD||'#4a3e22');
     const r=document.getElementById('accent-vars')||Object.assign(document.createElement('style'),{id:'accent-vars'});
-    r.textContent=`:root{--ac-scrollbar:${T.gD};--ac-mark:rgba(${rgb},0.22);--ac-bd:${T.gD};--ac-ghost-bg:rgba(${rgb},0.09);--ac-ghost-bg-h:rgba(${rgb},0.16);--ac-ghost-bd:rgba(${rgb},0.3);--ac-tbtn-bd:rgba(${rgb},0.5);--ac-tbtn-bg:rgba(${rgb},0.06);--ac-focus:rgba(${rgb},0.4);--ac-pulse0:rgba(${rgb},0);--ac-pulse50:rgba(${rgb},0.25);--ac-shimmer:rgba(${rgb},0.12);--ac-spin-ring:rgba(${rgb},0.2);--ac-spin-top:${T.g};--ac-verse-hover:rgba(${rgb},0.05);--ac-input-bd:rgba(${rgb},0.27);--ac-input-sh:rgba(${rgb},0.08);--ac-audio-bg:rgba(${rgb},0.15);--ac-audio-ring:rgba(${rgb},0.4);--ac-audio-line:rgba(${rgb},0.5);--ac-sel-glow:rgba(${rgb},0.18);--ac-dim:${T.dim};}`;
+    r.textContent=`:root{--ac-scrollbar:${T.gD};--ac-mark:rgba(${rgb},0.22);--ac-bd:${T.gD};--ac-ghost-bg:rgba(${rgb},0.09);--ac-ghost-bg-h:rgba(${rgb},0.16);--ac-ghost-bd:rgba(${rgb},0.3);--ac-tbtn-bd:rgba(${rgb},0.5);--ac-tbtn-bg:rgba(${rgb},0.06);--ac-focus:rgba(${rgb},0.4);--ac-pulse0:rgba(${rgb},0);--ac-pulse50:rgba(${rgb},0.25);--ac-shimmer:rgba(${rgb},0.12);--ac-spin-ring:rgba(${rgb},0.2);--ac-spin-top:${T.g};--ac-verse-hover:rgba(${rgb},0.05);--ac-input-bd:rgba(${rgb},0.27);--ac-input-sh:rgba(${rgb},0.08);--ac-audio-bg:rgba(${rgb},0.15);--ac-audio-ring:rgba(${rgb},0.4);--ac-audio-line:rgba(${rgb},0.5);--ac-sel-glow:rgba(${rgb},0.18);--ac-dim:${T.dim};--ac-glass-bg:rgba(${rgb},0.14);}`;
     if(!r.parentNode)document.head.appendChild(r);
   },[T.g,T.gD]);
 
@@ -4809,7 +4809,7 @@ function App(){
           {readSearchRes&&tab==='read'&&!readMobileSheet&&!modal&&readSearchResultsOpen&&(
             <div className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
-              background:'transparent',borderRadius:8,
+              background:'var(--ac-glass-bg)',borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
               boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
               <button type="button" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(false);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=readViewScrollRef.current;},30);}}
@@ -4845,7 +4845,7 @@ function App(){
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
               }}
-              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'transparent',border:'none',outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'var(--ac-glass-bg)',border:'none',outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
                 {audioLoading
                   ?<Spinner/>
@@ -4971,7 +4971,7 @@ function App(){
                   return(
                     <div style={{position:'fixed',right:0,top:navH+(readSearchRes?62:12),bottom:bottomBarH+12,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
-                      background:'var(--ac-ghost-bg)',
+                      background:'var(--ac-glass-bg)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
                       overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
@@ -5172,7 +5172,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&(!readSearchRes||!readSearchResultsOpen)&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'var(--ac-glass-bg)',borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
