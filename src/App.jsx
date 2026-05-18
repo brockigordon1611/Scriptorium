@@ -4796,7 +4796,7 @@ function App(){
               display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
               background:'transparent',borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-              boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
+              boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
               <button type="button" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(false);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=readViewScrollRef.current;},30);}}
                 style={{display:'flex',alignItems:'center',gap:5,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',fontWeight:600,padding:'5px 11px',cursor:'pointer',flexShrink:0,whiteSpace:'nowrap',transition:'all .15s'}}>
                 ← Back to Reading
@@ -4830,7 +4830,7 @@ function App(){
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
               }}
-              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'transparent',border:'none',outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 18px rgba(0,0,0,0.18)',opacity:1}}>
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'transparent',border:'none',outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
                 {audioLoading
                   ?<Spinner/>
@@ -5157,7 +5157,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&(!readSearchRes||!readSearchResultsOpen)&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 18px rgba(0,0,0,0.18)'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'transparent',borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
