@@ -90,11 +90,16 @@ const Auth = {
       if (!raw) return null;
       const s = JSON.parse(raw);
       if (s.expires_at && Date.now()/1000 > s.expires_at - 60) {
-        const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
-          method:'POST', headers: sbHeaders(null), body: JSON.stringify({ refresh_token: s.refresh_token })
-        });
-        if (r.ok) { const ns = await r.json(); saveSession(ns); return ns; }
-        saveSession(null); return null;
+        try {
+          const ac = new AbortController();
+          const tid = setTimeout(()=>ac.abort(), 5000);
+          const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+            method:'POST', headers: sbHeaders(null), body: JSON.stringify({ refresh_token: s.refresh_token }), signal: ac.signal
+          });
+          clearTimeout(tid);
+          if (r.ok) { const ns = await r.json(); saveSession(ns); return ns; }
+          saveSession(null); return null;
+        } catch { return s; }
       }
       return s;
     } catch { return null; }
