@@ -4979,8 +4979,11 @@ function App(){
                     if(idx>=readSearchLimit){readSearchJumpTo.current=String(bn);setReadSearchLimit(idx+1);}
                     else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
                   }
+                  const _avail=window.innerHeight-navH-(readSearchRes?62:12)-bottomBarH-12;
+                  const _ch=Math.min(booksInRes.length*15+12,_avail);
+                  const _top=navH+(readSearchRes?62:12)+Math.max(0,(_avail-_ch)/2);
                   return(
-                    <div style={{position:'fixed',right:0,top:navH+(readSearchRes?62:12),bottom:bottomBarH+12,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
+                    <div style={{position:'fixed',right:0,top:_top,height:_ch,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
                       background:'var(--ac-glass-bg)',
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
