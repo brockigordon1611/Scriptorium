@@ -32,6 +32,8 @@ function saveSession(s) {
 }
 
 // ── REST helpers ──────────────────────────────────────────
+function sbSignal(ms=8000){const ac=new AbortController();setTimeout(()=>ac.abort(),ms);return ac.signal;}
+
 async function sbFrom(table, token) {
   const hdrs = sbHeaders(token);
   const base = `${SUPA_URL}/rest/v1/${table}`;
@@ -41,33 +43,33 @@ async function sbFrom(table, token) {
       for (const [k,v] of Object.entries(filters)) url += `&${k}=eq.${encodeURIComponent(v)}`;
       if (opts.order) url += `&order=${opts.order}`;
       if (opts.limit) url += `&limit=${opts.limit}`;
-      const r = await fetch(url, { headers: hdrs });
+      const r = await fetch(url, { headers: hdrs, signal: sbSignal() });
       const d = await r.json();
       return { data: Array.isArray(d)?d:[], error: r.ok?null:d };
     },
     async insert(rows) {
       const body = Array.isArray(rows)?rows:[rows];
-      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(body) });
+      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(body), signal: sbSignal() });
       const d = await r.json();
       return { data: Array.isArray(d)?d:[d], error: r.ok?null:d };
     },
     async upsert(rows) {
       const body = Array.isArray(rows)?rows:[rows];
-      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation,resolution=merge-duplicates'}, body:JSON.stringify(body) });
+      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation,resolution=merge-duplicates'}, body:JSON.stringify(body), signal: sbSignal() });
       const d = await r.json();
       return { data: Array.isArray(d)?d:[d], error: r.ok?null:d };
     },
     async update(vals, filters={}) {
       let url = `${base}?`;
       for (const [k,v] of Object.entries(filters)) url += `${k}=eq.${encodeURIComponent(v)}&`;
-      const r = await fetch(url, { method:'PATCH', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(vals) });
+      const r = await fetch(url, { method:'PATCH', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(vals), signal: sbSignal() });
       const d = await r.json();
       return { data: Array.isArray(d)?d:[], error: r.ok?null:d };
     },
     async delete(filters={}) {
       let url = `${base}?`;
       for (const [k,v] of Object.entries(filters)) url += `${k}=eq.${encodeURIComponent(v)}&`;
-      const r = await fetch(url, { method:'DELETE', headers:hdrs });
+      const r = await fetch(url, { method:'DELETE', headers:hdrs, signal: sbSignal() });
       return { error: r.ok?null:await r.json() };
     },
   };
@@ -75,7 +77,7 @@ async function sbFrom(table, token) {
 
 async function sbRpc(func, params, token) {
   const r = await fetch(`${SUPA_URL}/rest/v1/rpc/${func}`, {
-    method:'POST', headers: sbHeaders(token), body: JSON.stringify(params)
+    method:'POST', headers: sbHeaders(token), body: JSON.stringify(params), signal: sbSignal()
   });
   const d = await r.json();
   return { data: d, error: r.ok?null:d };
@@ -3047,11 +3049,13 @@ function App(){
     }
     (async()=>{
       setReady(false);setLoadMsg('Loading project…');
-      const proj=await dbLoadOrCreateProject(user.id);
-      if(!proj){setLoadMsg('Could not load project. Check network.');return;}
+      let proj;
+      try{proj=await dbLoadOrCreateProject(user.id);}catch(e){proj=null;}
+      if(!proj){setLoadMsg('');setReady(true);return;}
       setProjectId(proj.id);
       setLoadMsg('Loading study data…');
-      const pd=await dbLoadProject(proj.id);
+      let pd;
+      try{pd=await dbLoadProject(proj.id);}catch(e){setLoadMsg('');setReady(true);return;}
       if(!pd.versions.length){
         setLoadMsg('Setting up versions…');
         await dbSaveVersions(proj.id,PUBLIC_VERSIONS);
