@@ -2990,15 +2990,22 @@ function App(){
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
   useEffect(()=>{
-    const measure=()=>{if(navRef.current)setNavH(navRef.current.offsetHeight);};
+    const measure=()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);};
     measure();
     const ro=new ResizeObserver(measure);
     if(navRef.current)ro.observe(navRef.current);
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
   },[]);
-  // Re-measure nav height after loading completes (navRef is null during loading screen)
-  useEffect(()=>{if(ready&&navRef.current)setNavH(navRef.current.offsetHeight);},[ready]);
+  // Re-measure nav height after loading completes (navRef is null during loading screen).
+  // Double rAF ensures WKWebView has resolved env(safe-area-inset-top) before measuring.
+  useEffect(()=>{
+    if(!ready||!navRef.current)return;
+    setNavH(navRef.current.getBoundingClientRect().height);
+    let r2;
+    const r1=requestAnimationFrame(()=>{r2=requestAnimationFrame(()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);});});
+    return()=>{cancelAnimationFrame(r1);if(r2)cancelAnimationFrame(r2);};
+  },[ready]);
   // Measure bottom bar height
   useEffect(()=>{
     const measure=()=>{if(bottomBarRef.current)setBottomBarH(bottomBarRef.current.offsetHeight);};
