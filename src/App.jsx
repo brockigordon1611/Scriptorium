@@ -2895,9 +2895,10 @@ function App(){
     const onPause=()=>setAudioPlaying(false);
     const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapter();};
     const onError=()=>{
-      if(!el.src)return;
+      if(audioModeRef.current==='speech')return;
+      if(!el.src||el.src===window.location.href)return;
       setAudioLoaded(false);setAudioPlaying(false);
-      el.src='';
+      el.removeAttribute('src');
       if(!Capacitor.isNativePlatform()){loadChapterAudio('speech');}
     };
     const onTimeUpdate=()=>{
