@@ -3804,8 +3804,8 @@ function App(){
           {(()=>{
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
             const anySheet=!!readMobileSheet;
-            // soft=true → all three properties dim: fill→bgCard, border→bdA, text→gM
-            const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCard:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.gM:T.gT:T.dim});
+            // soft=true → subtle dim: fill→bgCH, border→bdA, text→T.g
+            const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCH:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.g:T.gT:T.dim});
             const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:44,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
             return(
             <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
@@ -3825,7 +3825,7 @@ function App(){
                 <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb(readMobileSheet==='search'||(tab==='compare'?!!q&&!anySheet:!studyActive&&!!readSearchRes&&!anySheet)),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(false),width:44,background:studyActive?'transparent':anySheet?T.bgCard:T.gF,border:`1px solid ${studyActive?'transparent':anySheet?T.bdA:T.gD}`,color:studyActive?T.dim:anySheet?T.gM:T.gT,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(readMobileSheet==='nav'),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* left page */}
                     <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
