@@ -3806,10 +3806,10 @@ function App(){
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
             const studyIsActive=(studyActive||readMobileSheet==='studyTools')&&!readSheetClosing;
-            const nonMajorSheet=sheetOpen&&readMobileSheet!=='studyTools'; // settings/search/version/nav
+            const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen; // settings/search/version/nav, or search results visible
             const readIsActive=tab==='read'&&!studyIsActive;
             // Right pill indicator state
-            const rSearch=readMobileSheet==='search'&&!readSheetClosing;
+            const rSearch=(readMobileSheet==='search'&&!readSheetClosing)||readSearchResultsOpen;
             const rVersion=readMobileSheet==='version'&&!readSheetClosing;
             const rNav=readMobileSheet==='nav'&&!readSheetClosing;
             const rAny=rSearch||rVersion||rNav; // any right-pill sheet open
