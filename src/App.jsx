@@ -2597,7 +2597,7 @@ function App(){
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(accent==='custom'?buildCustomPalette(customAccentHex):(ACCENTS[accent]||ACCENTS.gold))[dark?'dark':'light'];
   const T={...(dark?D:L),..._acc,accentLine:`linear-gradient(90deg,transparent,${_acc.gD},${_acc.g},${_acc.gD},transparent)`};
-  const gTBright=`color-mix(in srgb, ${T.gT}, white 12%)`;
+  const gTBright=(h=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16),p=0.15;return `rgb(${Math.round(r+(255-r)*p)},${Math.round(g+(255-g)*p)},${Math.round(b+(255-b)*p)})`;})(T.gT);
 
   // ── CSS variable accent injection ──
   useEffect(()=>{
