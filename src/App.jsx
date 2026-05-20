@@ -2398,6 +2398,7 @@ function App(){
   const[audioRate,setAudioRate]=useState(()=>{try{return Number(localStorage.getItem('scrip:audio:rate'))||1;}catch{return 1;}});
   const[audioAutoScroll,setAudioAutoScroll]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoScroll')??'true');}catch{return true;}});
   const[audioAutoAdvance,setAudioAutoAdvance]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:autoAdvance')??'true');}catch{return true;}});
+  const[audioKeepAwake,setAudioKeepAwake]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:keepAwake')??'true');}catch{return true;}});
   const[audioInfoOpen,setAudioInfoOpen]=useState(null); // 'scroll'|'advance'|null
   const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
   const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
@@ -2854,7 +2855,18 @@ function App(){
   useEffect(()=>{try{localStorage.setItem('scrip:audio:rate',audioRate);}catch{}},[audioRate]);
   useEffect(()=>{try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(audioAutoScroll));}catch{}},[audioAutoScroll]);
   useEffect(()=>{try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(audioAutoAdvance));}catch{}},[audioAutoAdvance]);
+  useEffect(()=>{try{localStorage.setItem('scrip:audio:keepAwake',JSON.stringify(audioKeepAwake));}catch{}},[audioKeepAwake]);
   useEffect(()=>{try{localStorage.setItem('scrip:audio:voices',JSON.stringify(voicesByVersion));}catch{}},[voicesByVersion]);
+  // ── Wake lock: prevent screen sleep while audio is playing ──
+  useEffect(()=>{
+    if(!audioPlaying||!audioKeepAwake||!('wakeLock' in navigator))return;
+    let lock=null;
+    const acquire=async()=>{try{lock=await navigator.wakeLock.request('screen');}catch{}};
+    const onVis=()=>{if(document.visibilityState==='visible')acquire();};
+    acquire();
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{document.removeEventListener('visibilitychange',onVis);lock?.release().catch(()=>{});};
+  },[audioPlaying,audioKeepAwake]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
   // ── Measure safe-area-inset-top (lazy — done on first scroll so WKWebView is settled) ──
@@ -4309,8 +4321,22 @@ function App(){
               {audioInfoOpen&&<div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:6,padding:'7px 10px',fontSize:11,fontFamily:FB,color:T.dim,lineHeight:1.5}}>
                 {audioInfoOpen==='scroll'
                   ?'Automatically scrolls the page to keep the currently reading verse visible.'
-                  :'Automatically loads and plays the next chapter when the current one ends.'}
+                  :audioInfoOpen==='advance'
+                  ?'Automatically loads and plays the next chapter when the current one ends.'
+                  :'Keeps the screen on while audio is playing so the display does not lock.'}
               </div>}
+            </div>
+
+            {/* Keep screen awake */}
+            <div style={{marginBottom:14}}>
+              <button type="button" onClick={()=>{const v=!audioKeepAwake;setAudioKeepAwake(v);try{localStorage.setItem('scrip:audio:keepAwake',JSON.stringify(v));}catch{}}}
+                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',background:audioKeepAwake?T.gF:'transparent',border:`1px solid ${audioKeepAwake?T.gD:T.bd}`,borderRadius:6,color:audioKeepAwake?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Keep screen on</span>
+                <div style={{display:'flex',alignItems:'center',gap:5}}>
+                  <span style={{fontSize:9,opacity:0.7}}>{audioKeepAwake?'ON':'OFF'}</span>
+                  <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='keepAwake'?null:'keepAwake');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                </div>
+              </button>
             </div>
 
             {/* Playback Source */}
