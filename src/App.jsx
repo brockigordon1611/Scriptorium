@@ -3808,7 +3808,7 @@ function App(){
             const nonMajorSheet=readMobileSheet&&readMobileSheet!=='studyTools'; // settings/search/version/nav
             const readIsActive=tab==='read'&&!studyIsActive;
             // soft=true → subtle dim: fill→bgCH, border→bdA, text→T.g
-            const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background-color .08s ease-out,border-color .08s ease-out,color .06s ease-out',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCH:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.g:T.gT:T.dim});
+            const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background-color .04s ease-out,border-color .04s ease-out,color .04s ease-out',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCH:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.g:T.gT:T.dim});
             const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:44,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
             return(
             <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
