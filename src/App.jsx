@@ -2616,7 +2616,7 @@ function App(){
     audioModeRef.current=null;currentVerseRef.current=null;
     setAudioLoaded(false);setCurrentVerse(null);
     speechSynthesis.cancel();audioUtterRef.current=[];
-    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
+    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.removeAttribute('src');}
     setAudioPlaying(false);
   };
   const updateMediaSession=(bookNum,ch)=>{
@@ -2815,7 +2815,7 @@ function App(){
   const doStartSpeech=(startVerse)=>{
     if(!readVerses||!readVerses.length)return;
     audioModeRef.current='speech';
-    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.src='';}
+    if(audioElRef.current){audioElRef.current.pause();audioElRef.current.removeAttribute('src');}
     const voices=speechSynthesis.getVoices();
     const lang=['rvg','p1602'].includes(readVid)?'es':'en';
     const _saved=voicesByVersion[readVid];
