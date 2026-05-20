@@ -5159,7 +5159,7 @@ function App(){
               )
             )}
             {(!readSearchRes||!readSearchResultsOpen)&&readVerses.length>0&&(
-              <div style={{paddingTop:20,paddingBottom:69,textAlign:'center'}}>
+              <div style={{paddingTop:20,paddingBottom:stripOpen&&!stripClosing?130:69,textAlign:'center',transition:'padding-bottom .18s ease'}}>
                 <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.22em',textTransform:'uppercase',color:T.gD,fontWeight:500}}>
                   {readCh===readTotalCh?'End of Book':'End of Chapter'}
                 </div>
