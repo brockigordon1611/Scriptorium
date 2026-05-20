@@ -2632,7 +2632,7 @@ function App(){
   const loadChapterAudio=async(srcOverride=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
-    speechSynthesis.cancel();audioUtterRef.current=[];
+    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();audioUtterRef.current=[];
     if(audioElRef.current){audioElRef.current.pause();}
     // Only seek if the user explicitly selected a verse; otherwise play from 0 to include chapter intro
     const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
@@ -2791,7 +2791,7 @@ function App(){
     const startIdx=readVerses.findIndex(v=>v.verse===targetVerse);
     if(startIdx<0)return;
     audioModeRef.current='speech';
-    speechSynthesis.cancel();
+    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();
     audioUtterRef.current=[];
     const voices=speechSynthesis.getVoices();
     const lang=['rvg','p1602'].includes(readVid)?'es':'en';
@@ -2825,7 +2825,7 @@ function App(){
     const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
     const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
     audioUtterRef.current=[];
-    speechSynthesis.cancel();
+    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();
     const sv=startVerse||(readVerses[0]?.verse||1);
     const startIdx=Math.max(0,readVerses.findIndex(v=>v.verse>=sv));
     const lastVerse=readVerses[readVerses.length-1]?.verse;
