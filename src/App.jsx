@@ -4884,8 +4884,9 @@ function App(){
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
                 const src=audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
                 if(src==='speech'||audioModeRef.current==='speech'){
-                  const sv=readSelVerses.size>0?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
-                  if(audioLoaded&&speechSynthesis.paused){speechSynthesis.resume();setAudioPlaying(true);}
+                  const hasSelection=readSelVerses.size>0;
+                  const sv=hasSelection?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
+                  if(audioLoaded&&speechSynthesis.paused&&!hasSelection){speechSynthesis.resume();setAudioPlaying(true);}
                   else if(audioLoaded){doStartSpeech(sv);}
                   else{loadChapterAudio('speech');}
                   return;
