@@ -2597,6 +2597,7 @@ function App(){
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(accent==='custom'?buildCustomPalette(customAccentHex):(ACCENTS[accent]||ACCENTS.gold))[dark?'dark':'light'];
   const T={...(dark?D:L),..._acc,accentLine:`linear-gradient(90deg,transparent,${_acc.gD},${_acc.g},${_acc.gD},transparent)`};
+  const gTBright=`color-mix(in srgb, ${T.gT}, white 12%)`;
 
   // ── CSS variable accent injection ──
   useEffect(()=>{
@@ -5279,12 +5280,12 @@ function App(){
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
