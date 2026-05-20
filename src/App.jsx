@@ -1243,7 +1243,7 @@ function AuthPanel({onAuth}){
           <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:18}}>
             <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Forgot password?</button>
-            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
+            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
           </div>
         </div>
       </div>
