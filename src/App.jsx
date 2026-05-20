@@ -5266,7 +5266,7 @@ function App(){
 
           {/* Selection action strip */}
           {stripOpen&&tab==='read'&&(!readSearchRes||!readSearchResultsOpen)&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,background:'var(--ac-glass-bg)',borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
