@@ -4052,6 +4052,23 @@ function App(){
             </div>
             <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
           </div>
+          {/* Bookmarks + Recent Passages */}
+          <div style={{display:'flex',gap:8,marginBottom:12}}>
+            <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Bookmarks</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Saved verses</div>
+              </div>
+            </div>
+            <div onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>↺</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Recent Passages</div>
+                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>History</div>
+              </div>
+            </div>
+          </div>
           {[
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
@@ -4117,23 +4134,6 @@ function App(){
               </div>
             </div>
           </div>}
-          {/* Bookmarks + Recent Passages cards -- always visible */}
-          <div style={{display:'flex',gap:8,marginBottom:8}}>
-            <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Bookmarks</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Saved verses</div>
-              </div>
-            </div>
-            <div onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>↺</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Recent Passages</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>History</div>
-              </div>
-            </div>
-          </div>
           {strongsInfoVisible&&tab==='read'&&<div style={{marginTop:-8,marginBottom:14,padding:'10px 14px',background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:9,display:'flex',gap:8,alignItems:'flex-start'}}>
             <span style={{color:T.gT,flexShrink:0}}>ⓘ</span>
             <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.5}}>Underlines every word with its original Hebrew or Greek number. Tap any word to see its definition and every verse where it appears. KJV only.</span>
