@@ -3808,6 +3808,13 @@ function App(){
             const studyIsActive=(studyActive||readMobileSheet==='studyTools')&&!readSheetClosing;
             const nonMajorSheet=sheetOpen&&readMobileSheet!=='studyTools'; // settings/search/version/nav
             const readIsActive=tab==='read'&&!studyIsActive;
+            // Right pill indicator state
+            const rSearch=readMobileSheet==='search'&&!readSheetClosing;
+            const rVersion=readMobileSheet==='version'&&!readSheetClosing;
+            const rNav=readMobileSheet==='nav'&&!readSheetClosing;
+            const rAny=rSearch||rVersion||rNav; // any right-pill sheet open
+            // indicator left: search=3, nav=49 (default), version=95
+            const rIndLeft=rSearch?3:rVersion?95:49;
             // soft=true → subtle dim: fill→bgCH, border→bdA, text→T.g
             const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background-color .04s ease-out,border-color .04s ease-out,color .04s ease-out',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCH:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.g:T.gT:T.dim});
             const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:44,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
@@ -3826,12 +3833,14 @@ function App(){
                 <button type="button" onClick={()=>{closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.g:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.g:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
-              {/* Tools pill: Search, Version, Navigate */}
-              <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb((readMobileSheet==='search'&&!readSheetClosing)||(tab==='compare'&&!!q)),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+              {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
+              <div style={{...pill,position:'relative'}}>
+                {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
+                {!studyActive&&<div style={{position:'absolute',top:3,left:rIndLeft,width:44,height:'calc(100% - 6px)',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(true,readMobileSheet!=='nav'||readSheetClosing),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:!rAny?T.g:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* left page */}
                     <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
@@ -3855,7 +3864,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(readMobileSheet==='version'&&!readSheetClosing),color:studyActive?'transparent':readMobileSheet==='version'&&!readSheetClosing?T.gT:T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:!rAny?T.g:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
