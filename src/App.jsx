@@ -4898,7 +4898,7 @@ function App(){
           {readSearchRes&&tab==='read'&&!readMobileSheet&&!modal&&readSearchResultsOpen&&(
             <div className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',alignItems:'center',gap:8,padding:'7px 10px',
-              background:'var(--ac-glass-bg)',borderRadius:8,
+              background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
               boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
               <button type="button" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(false);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=readViewScrollRef.current;},30);}}
@@ -4936,7 +4936,7 @@ function App(){
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
               }}
-              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'var(--ac-glass-bg)',border:'none',outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
                 {audioLoading
                   ?<Spinner/>
@@ -5065,7 +5065,7 @@ function App(){
                   return(
                     <div style={{position:'fixed',right:0,top:_top,height:_ch,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
                       display:'flex',flexDirection:'column',alignItems:'center',
-                      background:'var(--ac-glass-bg)',
+                      background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,
                       borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
                       overflowY:'auto',
                       boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
