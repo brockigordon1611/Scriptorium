@@ -3864,7 +3864,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:!rAny?T.g:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
