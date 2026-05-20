@@ -3803,6 +3803,7 @@ function App(){
           {/* ── 6-button nav bar ── */}
           {(()=>{
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
+            const anySheet=!!readMobileSheet;
             const nb=(active)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'all .15s',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,color:active?T.gT:T.dim});
             const pill={display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2,height:44,boxSizing:'border-box',alignItems:'stretch',flexShrink:0};
             return(
@@ -3815,12 +3816,12 @@ function App(){
               </div>
               {/* Tab pill: Read | Study */}
               <div style={{...pill,flex:1}}>
-                <button type="button" onClick={()=>{closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{...nb(tab==='read'),flex:1,fontSize:10.5,fontWeight:tab==='read'?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{...nb(studyActive),flex:1,fontSize:10.5,fontWeight:studyActive?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{...nb(tab==='read'&&!anySheet),flex:1,fontSize:10.5,fontWeight:tab==='read'&&!anySheet?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{...nb(readMobileSheet==='studyTools'||(studyActive&&!anySheet)),flex:1,fontSize:10.5,fontWeight:readMobileSheet==='studyTools'||(studyActive&&!anySheet)?600:400,whiteSpace:'nowrap',padding:'0 12px'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb(tab==='compare'?!!q:!studyActive&&!!readSearchRes),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb(readMobileSheet==='search'||(tab==='compare'?!!q&&!anySheet:!studyActive&&!!readSearchRes&&!anySheet)),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(false),width:44,background:studyActive?'transparent':T.gF,border:`1px solid ${studyActive?'transparent':T.gD}`,color:studyActive?T.dim:T.gT,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
@@ -3847,7 +3848,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(false),color:studyActive?'transparent':T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(readMobileSheet==='version'),color:studyActive?'transparent':readMobileSheet==='version'?T.gT:T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
