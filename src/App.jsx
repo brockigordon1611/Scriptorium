@@ -5274,23 +5274,21 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:'none',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
-                        ?<button type="button" className="s-btn s-ghost" onClick={()=>{setBmHover(false);doReadBookmark();}}
-                          onMouseEnter={()=>setBmHover(true)} onMouseLeave={()=>setBmHover(false)}
-                          style={{flex:1,background:bmHover?'var(--ac-ghost-bg-h)':'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'all .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        ?<button type="button" onClick={()=>doReadBookmark()}
+                          style={{flex:1,background:'var(--ac-glass-bg)',border:'none',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
-                      <button type="button" className="s-btn s-ghost" onClick={()=>{setCopyHover(false);copySelectedVerses();}}
-                        onMouseEnter={()=>setCopyHover(true)} onMouseLeave={()=>setCopyHover(false)}
-                        style={{flex:1,background:copyHover?'var(--ac-ghost-bg-h)':'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'all .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                      <button type="button" onClick={()=>copySelectedVerses()}
+                        style={{flex:1,background:'var(--ac-glass-bg)',border:'none',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
-                        style={{background:'rgba(200,60,60,0.05)',border:'1px solid rgba(200,60,60,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'all .15s',padding:0}}>✕</button>
+                        style={{background:'var(--ac-glass-bg)',border:'none',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
                     {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
                     <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
