@@ -2565,6 +2565,7 @@ function App(){
   const audioModeRef=useRef(null); // tracks what is actually playing: 'fcbh'|'local'|'speech'|null
   const currentVerseRef=useRef(null); // mirror of currentVerse for use inside event handlers
   const autoAdvancePendingRef=useRef(false); // set before chapter change so new chapter auto-starts
+  const loadChapterAudioRef=useRef(null); // always points to latest loadChapterAudio (avoids stale closures)
   const msBookRef=useRef(readBook);
   const msChRef=useRef(readCh);
   useEffect(()=>{msBookRef.current=readBook;},[readBook]);
@@ -2732,6 +2733,7 @@ function App(){
       setAudioPlaying(false);
     }finally{setAudioLoading(false);}
   };
+  loadChapterAudioRef.current=loadChapterAudio;
   const handleNextChapter=()=>{
     const current=BIBLE.find(b=>b.n===readBook);
     if(!current||readCh>=current.v.length){return;}
@@ -2899,7 +2901,7 @@ function App(){
       if(!el.src||el.src===window.location.href)return;
       setAudioLoaded(false);setAudioPlaying(false);
       el.removeAttribute('src');
-      if(!Capacitor.isNativePlatform()){loadChapterAudio('speech');}
+      if(!Capacitor.isNativePlatform()){loadChapterAudioRef.current?.('speech');}
     };
     const onTimeUpdate=()=>{
       if(!audioTimestampsRef.current)return;
