@@ -4881,10 +4881,11 @@ function App(){
                 if(audioPlaying){audioElRef.current?.pause();speechSynthesis.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
                 const src=audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
-                if(src==='speech'){
+                if(src==='speech'||audioModeRef.current==='speech'){
                   const sv=readSelVerses.size>0?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
                   if(audioLoaded&&speechSynthesis.paused){speechSynthesis.resume();setAudioPlaying(true);}
-                  else{doStartSpeech(sv);}
+                  else if(audioLoaded){doStartSpeech(sv);}
+                  else{loadChapterAudio('speech');}
                   return;
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
