@@ -3803,9 +3803,10 @@ function App(){
           {/* ── 6-button nav bar ── */}
           {(()=>{
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
-            const anySheet=!!readMobileSheet;
-            const studyIsActive=studyActive||readMobileSheet==='studyTools';
-            const nonMajorSheet=readMobileSheet&&readMobileSheet!=='studyTools'; // settings/search/version/nav
+            const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
+            const anySheet=sheetOpen;
+            const studyIsActive=(studyActive||readMobileSheet==='studyTools')&&!readSheetClosing;
+            const nonMajorSheet=sheetOpen&&readMobileSheet!=='studyTools'; // settings/search/version/nav
             const readIsActive=tab==='read'&&!studyIsActive;
             // soft=true → subtle dim: fill→bgCH, border→bdA, text→T.g
             const nb=(active,soft=false)=>({display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',transition:'background-color .04s ease-out,border-color .04s ease-out,color .04s ease-out',borderRadius:6,fontFamily:FS,letterSpacing:'0.07em',background:active?soft?T.bgCH:T.gF:'transparent',border:`1px solid ${active?soft?T.bdA:T.gD:'transparent'}`,color:active?soft?T.g:T.gT:T.dim});
@@ -3814,7 +3815,7 @@ function App(){
             <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
               {/* Settings pill */}
               <div style={pill}>
-                <button type="button" title="Settings" onClick={()=>readMobileSheet==='settings'?closeReadSheet():setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <button type="button" title="Settings" onClick={()=>readMobileSheet==='settings'?closeReadSheet():setReadMobileSheet('settings')} style={{...nb(readMobileSheet==='settings'&&!readSheetClosing),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
@@ -3825,10 +3826,10 @@ function App(){
               </div>
               {/* Tools pill: Search, Version, Navigate */}
               <div style={pill}>
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb(readMobileSheet==='search'||(tab==='compare'&&!!q)),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{...nb((readMobileSheet==='search'&&!readSheetClosing)||(tab==='compare'&&!!q)),width:44,fontSize:21,paddingLeft:2,visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(true,readMobileSheet!=='nav'),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{...nb(true,readMobileSheet!=='nav'||readSheetClosing),width:44,visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* left page */}
                     <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
@@ -3852,7 +3853,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(readMobileSheet==='version'),color:studyActive?'transparent':readMobileSheet==='version'?T.gT:T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{...nb(readMobileSheet==='version'&&!readSheetClosing),color:studyActive?'transparent':readMobileSheet==='version'&&!readSheetClosing?T.gT:T.gM,fontSize:10,fontWeight:600,width:44,padding:0,whiteSpace:'nowrap',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
