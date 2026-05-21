@@ -5305,11 +5305,16 @@ function App(){
                         placeholder="Bookmark notes…" rows={1}
                         style={{flex:'1 1 0',minWidth:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
-                        <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
-                          style={{flex:'1 1 0',minWidth:0,height:30,backgroundColor:'rgba(0,0,0,0.45)',backgroundImage:`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M0 0L5 6L10 0" stroke="${T.dim}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`)}")`,backgroundRepeat:'no-repeat',backgroundPosition:'right 8px center',backgroundSize:'10px 6px',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:readBmCat?gTBright:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 24px 0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none'}}>
-                          <option value="">Bookmark Category…</option>
-                          {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
+                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,overflow:'hidden'}}>
+                          <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
+                            style={{position:'absolute',inset:0,width:'100%',height:'100%',background:'transparent',border:'none',color:readBmCat?gTBright:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'0 24px 0 8px',outline:'none',cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none'}}>
+                            <option value="">Bookmark Category…</option>
+                            {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                          <div style={{position:'absolute',right:8,top:0,bottom:0,display:'flex',alignItems:'center',pointerEvents:'none'}}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M0 0L5 6L10 0" stroke={T.dim} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
