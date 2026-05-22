@@ -3154,7 +3154,17 @@ function App(){
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
         if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
-      if(user&&!user.guest&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).then(()=>{dbLoadRecents(user.id).then(setRecents).catch(()=>{});}).catch(()=>{});
+      if(user&&!user.guest&&!cancelled){
+        // Optimistic local update — works offline too
+        const now=new Date().toISOString();
+        setRecents(prev=>{
+          const existing=prev.find(r=>r.version_id===readVid&&r.book_num===readBook&&r.chapter===readCh);
+          const entry={id:existing?.id||`local-${readVid}-${readBook}-${readCh}`,user_id:user.id,version_id:readVid,book_num:readBook,chapter:readCh,visited_at:now};
+          return[entry,...prev.filter(r=>!(r.version_id===readVid&&r.book_num===readBook&&r.chapter===readCh))].slice(0,20);
+        });
+        // Persist to Supabase and refresh with real DB state (online only)
+        dbRecordRecent(user.id,readVid,readBook,readCh).then(()=>{dbLoadRecents(user.id).then(setRecents).catch(()=>{});}).catch(()=>{});
+      }
     }).catch(()=>{
       if(!cancelled)setReadVerses([]);
     });
