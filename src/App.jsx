@@ -3823,7 +3823,8 @@ function App(){
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
-            const studyIsActive=studyActive||((readMobileSheet==='studyTools')&&!readSheetClosing);
+            const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='recents';
+            const studyIsActive=studyActive||studyModalOpen||((readMobileSheet==='studyTools')&&!readSheetClosing);
             const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen; // settings/search/version/nav, or search results visible
             const readIsActive=tab==='read'&&!studyIsActive;
             // Right pill indicator state
