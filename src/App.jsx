@@ -3154,7 +3154,7 @@ function App(){
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
         if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
-      if(user&&!user.guest&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).catch(()=>{});
+      if(user&&!user.guest&&!cancelled)dbRecordRecent(user.id,readVid,readBook,readCh).then(()=>{dbLoadRecents(user.id).then(setRecents).catch(()=>{});}).catch(()=>{});
     }).catch(()=>{
       if(!cancelled)setReadVerses([]);
     });
