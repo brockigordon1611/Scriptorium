@@ -11,8 +11,8 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
    ══════════════════════════════════════════════════════════════ */
 
 // ── Supabase config ───────────────────────────────────────
-const SUPA_URL  = "https://garuwsjczcptykehgjdx.supabase.co";
-const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcnV3c2pjemNwdHlrZWhnamR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNzU3ODYsImV4cCI6MjA4ODY1MTc4Nn0.AL6IpnRaOAs8EQJSpnS0Ep4O9WD85RFU0xIm2ipXixE";
+const SUPA_URL  = import.meta.env.VITE_SUPA_URL;
+const SUPA_ANON = import.meta.env.VITE_SUPA_ANON;
 
 const SB_KEY = `sb-garuwsjczcptykehgjdx-auth-token`;
 
@@ -3598,7 +3598,7 @@ function App(){
       // Extract and write one file at a time — peak memory ~2 MP3s
       for(let i=0;i<entries.length;i++){
         const{method,csize,lhOff,name}=entries[i];
-        const filename=prefix?name.slice(prefix.length):name;
+        const filename=(prefix?name.slice(prefix.length):name).split('/').pop();
         if(!filename)continue;
         const lh=await rb(lhOff+26,4); // read local header filename+extra lengths
         const dataOff=lhOff+30+r16(lh,0)+r16(lh,2);
