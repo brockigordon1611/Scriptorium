@@ -3938,6 +3938,8 @@ function App(){
 
   const filtered=getFiltered();
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
+  // Lock background scroll areas when any sheet/modal is open (prevents iOS scroll-through on fixed overlays)
+  const anySheetOpen=!!(readMobileSheet||mobileSheet||modal||parallelMobileSheet);
 
   return(
     <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -5155,7 +5157,7 @@ function App(){
 
           {/* Verse content */}
 
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:'auto',padding:`${(readSearchRes&&readSearchResultsOpen)?navH+72:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className="read-area" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:`${(readSearchRes&&readSearchResultsOpen)?navH+72:navH+8}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
@@ -5521,7 +5523,7 @@ function App(){
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
           {/* Version cards */}
-          <div style={{flex:1,overflowY:'auto',padding:'8px 14px 72px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 14px 72px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
@@ -5657,7 +5659,7 @@ function App(){
           )}
 
           {/* Content */}
-          <div style={{flex:1,overflowY:'auto'}}>
+          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto'}}>
             <div className="cmp-area" style={{maxWidth:1120,margin:'0 auto',padding:'14px 14px 20px'}}>
               {hasFilter?(
                 <>
@@ -5741,7 +5743,7 @@ function App(){
               return parts;
             }
             return(
-              <div style={{flex:1,overflow:'auto',padding:'16px 18px 32px'}}>
+              <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'16px 18px 32px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
                     <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{te.strongs_number}</span>
@@ -5798,7 +5800,7 @@ function App(){
 
           {/* Search results list */}
           {strongsSearchRes&&strongsSearchRes.length>0&&!strongsTabEntry&&(
-            <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
+            <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0'}}>
               {strongsSearchRes.map(r=>(
                 <div key={r.strongs_number} onClick={()=>{
                   const sn=r.strongs_number;
@@ -5858,7 +5860,7 @@ function App(){
             </div>
             {/* DB results grouped by word then POS */}
             {hasDb&&(
-              <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
+              <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0'}}>
                 {groupedKeys.map(word=>{
                   const entries=grouped[word];
                   return(
@@ -5891,7 +5893,7 @@ function App(){
             )}
             {/* External API fallback results */}
             {!isLoading&&!hasDb&&hasLive&&(
-              <div style={{flex:1,overflow:'auto',padding:'6px 0'}}>
+              <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0'}}>
                 <div style={{padding:'6px 18px 10px',display:'flex',alignItems:'center',gap:6}}>
                   <span style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.1em',color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'2px 6px'}}>EXTERNAL SOURCE</span>
                   <span style={{fontFamily:FB,fontSize:10,color:T.dim}}>Not found in Webster's 1828</span>
@@ -5958,7 +5960,7 @@ function App(){
               <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{MAPS.length} biblical maps</div>
             </div>
             {/* Map grid */}
-            <div style={{flex:1,overflowY:'auto',padding:'10px 12px 80px'}}>
+            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 12px 80px'}}>
               <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
             </div>
           </div>
@@ -6010,7 +6012,7 @@ function App(){
               <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} charts</div>
             </div>
             {/* Scrollable sections */}
-            <div style={{flex:1,overflowY:'auto',padding:'8px 12px 80px'}}>
+            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 12px 80px'}}>
               {LARKIN_SECTIONS.map(({title,imgs})=>(
                 <LarkinSection key={title} title={title} imgs={imgs} BASE={BASE} T={T} allImgs={allImgs}/>
               ))}
