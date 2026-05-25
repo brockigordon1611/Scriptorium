@@ -2229,6 +2229,68 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
 
 
 // ══════════════════════════════════════════════════════════
+//  LARKIN CHARTS
+// ══════════════════════════════════════════════════════════
+function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
+  const[idx,setIdx]=useState(startIdx);
+  const[zoomed,setZoomed]=useState(false);
+  const cur=imgs[idx];
+  useEffect(()=>{
+    const fn=e=>{if(e.key==='ArrowRight')setIdx(i=>Math.min(i+1,imgs.length-1));else if(e.key==='ArrowLeft')setIdx(i=>Math.max(i-1,0));else if(e.key==='Escape')onClose();};
+    window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);
+  },[imgs.length,onClose]);
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onClick={()=>zoomed?setZoomed(false):onClose()}>
+      {/* Top bar */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
+        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
+      </div>
+      {/* Image */}
+      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:zoomed?'auto':'hidden',padding:zoomed?0:'12px'}} onClick={e=>{e.stopPropagation();setZoomed(z=>!z);}}>
+        <img src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section}
+          style={{maxWidth:zoomed?'none':'100%',maxHeight:zoomed?'none':'100%',objectFit:'contain',cursor:zoomed?'zoom-out':'zoom-in',display:'block'}}/>
+      </div>
+      {/* Prev / Next */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+        <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
+          style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
+        <div style={{fontFamily:'Georgia,serif',fontSize:9,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Tap image to zoom</div>
+        <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
+          style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
+      </div>
+    </div>
+  );
+}
+function LarkinSection({title,imgs,BASE,T,allImgs}){
+  const[open,setOpen]=useState(false);
+  const[lightbox,setLightbox]=useState(null);
+  const startIdx=allImgs.findIndex(x=>x.img===imgs[0]);
+  return(
+    <div style={{marginBottom:4}}>
+      <div onClick={()=>setOpen(v=>!v)} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderBottom:`1px solid ${T.bdS}`}}>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
+        <span style={{fontFamily:'Georgia,serif',fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1}}>{title}</span>
+        <span style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,flexShrink:0}}>{imgs.length}</span>
+      </div>
+      {open&&(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:6,padding:'8px 0 10px'}}>
+          {imgs.map((img,i)=>(
+            <div key={img} onClick={()=>setLightbox(startIdx+i)}
+              style={{aspectRatio:'4/3',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,overflow:'hidden',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <img src={`${BASE}charts/larkin/${img}`} alt={`${title} ${i+1}`}
+                style={{width:'100%',height:'100%',objectFit:'contain',display:'block'}} loading="lazy"/>
+            </div>
+          ))}
+        </div>
+      )}
+      {lightbox!==null&&<LarkinLightbox imgs={allImgs} startIdx={lightbox} BASE={BASE} T={T} onClose={()=>setLightbox(null)}/>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
 //  MAIN APP
 // ══════════════════════════════════════════════════════════
 function App(){
@@ -5806,16 +5868,58 @@ function App(){
       )}
 
       {/* ═══ CHARTS TAB ═══ */}
-      {tab==='charts'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>▦</div>
-            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Charts</div>
-            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Timelines and visual references are coming soon.</div>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginTop:18,opacity:0.5}}>COMING SOON</div>
+      {tab==='charts'&&(()=>{
+        const BASE=import.meta.env.BASE_URL;
+        const LARKIN_SECTIONS=[
+          {title:'Rightly Dividing the Word',imgs:Array.from({length:30},(_,i)=>`Rightly_Dividing_the_Word__${String(i+1).padStart(2,'0')}.png`)},
+          {title:'Mountain Peaks of Prophecy',imgs:['Mountain_Peaks_of_Prophecy__01.png','Mountain_Peaks_of_Prophecy__02.png']},
+          {title:'The Prophetic Word',imgs:['The_Prophetic_Word__01.png']},
+          {title:'The Spirit World',imgs:Array.from({length:5},(_,i)=>`The_Spirit_World__${String(i+1).padStart(2,'0')}.png`)},
+          {title:'The Church',imgs:['The_Church__01.png','The_Church__02.png','The_Church__03.png','The_Church__04.png']},
+          {title:'The Covenants',imgs:['The_Covenants__01.png','The_Covenants__02.png']},
+          {title:'The Dispensational Work of the Lord Jesus Christ',imgs:['The_Dispensational_Work_of_the_Lord_Jesus_Christ__01.png','The_Dispensational_Work_of_the_Lord_Jesus_Christ__02.png']},
+          {title:'The Feasts of the Lord',imgs:['The_Feasts_of_the_Lord__01.png','The_Feasts_of_the_Lord__02.png']},
+          {title:'The Four Gospels',imgs:['The_Four_Gospels__01.png','The_Four_Gospels__02.png']},
+          {title:'The Seven Churches',imgs:['The_Seven_Churches__01.png','The_Seven_Churches__02.png','The_Seven_Churches__03.png','The_Seven_Churches__04.png']},
+          {title:'The Gentiles',imgs:Array.from({length:5},(_,i)=>`The_Gentiles__${String(i+1).padStart(2,'0')}.png`)},
+          {title:'The Jews',imgs:['The_Jews__01.png','The_Jews__02.png','The_Jews__03.png','The_Jews__04.png']},
+          {title:'The Kingdom',imgs:Array.from({length:5},(_,i)=>`The_Kingdom__${String(i+1).padStart(2,'0')}.png`)},
+          {title:'The King',imgs:['The_King__01.png','The_King__02.png','The_King__03.png']},
+          {title:'The Judgments',imgs:['The_Judgments__01.png','The_Judgments__02.png']},
+          {title:'The Resurrection',imgs:['The_Resurrection__01.png','The_Resurrection__02.png']},
+          {title:'The Second Coming of Christ',imgs:['The_Second_Coming_of_Christ__01.png','The_Second_Coming_of_Christ__02.png','The_Second_Coming_of_Christ__03.png','The_Second_Coming_of_Christ__04.png']},
+          {title:'The Tribulation',imgs:['The_Tribulation__01.png','The_Tribulation__02.png','The_Tribulation__03.png']},
+          {title:'The Antichrist',imgs:Array.from({length:12},(_,i)=>`The_Antichrist__${String(i+1).padStart(2,'0')}.png`)},
+          {title:'The Satanic Trinity',imgs:['The_Satanic_Trinity__01.png','The_Satanic_Trinity__02.png']},
+          {title:'Satan',imgs:['Satan__01.png','Satan__02.png']},
+          {title:'The Mysteries',imgs:['The_Mysteries__01.png']},
+          {title:'The Offerings',imgs:['The_Offerings__01.png']},
+          {title:'The Signs of the Times',imgs:['The_Signs_of_the_Times__01.png']},
+          {title:'Renovation of the Earth',imgs:['Renovation_of_the_Earth__01.png','Renovation_of_the_Earth__02.png','Renovation_of_the_Earth__03.png']},
+          {title:'Three Trees to Which Israel is Compared',imgs:['Three_Trees_to_Which_Israel_is_Compared__01.png','Three_Trees_to_Which_Israel_is_Compared__02.png','Three_Trees_to_Which_Israel_is_Compared__03.png']},
+          {title:'Types and Anti-Types',imgs:['Types_and_Anti-Types__01.png','Types_and_Anti-Types__02.png','Types_and_Anti-Types__03.png']},
+          {title:'Scripture Numerics',imgs:['Scripture_Numerics__01.png']},
+          {title:'Spiritism',imgs:['Spiritism__01.png']},
+          {title:'Dispensational Teaching of the Great Pyramid',imgs:['Dispensational_Teaching_of_the_Great_Pyramid__01.png','Dispensational_Teaching_of_the_Great_Pyramid__02.png','Dispensational_Teaching_of_the_Great_Pyramid__03.png']},
+        ];
+        // Flatten all images into one array for lightbox prev/next
+        const allImgs=LARKIN_SECTIONS.flatMap(s=>s.imgs.map(img=>({section:s.title,img})));
+        return(
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+            {/* Header */}
+            <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
+              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Larkin's Charts</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} charts</div>
+            </div>
+            {/* Scrollable sections */}
+            <div style={{flex:1,overflowY:'auto',padding:'8px 12px 80px'}}>
+              {LARKIN_SECTIONS.map(({title,imgs})=>(
+                <LarkinSection key={title} title={title} imgs={imgs} BASE={BASE} T={T} allImgs={allImgs}/>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══ OTHER RESOURCES TAB ═══ */}
       {tab==='other'&&(
