@@ -148,6 +148,17 @@ const Auth = {
     if (!r.ok) return { error: d.error_description || d.msg || d.message || 'Error '+r.status };
     return { ok: true };
   },
+  async deleteAccount() {
+    const token = getToken();
+    if (!token) return { error: 'Not authenticated.' };
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/delete_my_account`, {
+      method:'POST', headers: sbHeaders(token), body: JSON.stringify({})
+    });
+    if (!r.ok) { const d = await r.json().catch(()=>{}); return { error: d?.message || 'Error '+r.status }; }
+    saveSession(null);
+    authListeners.forEach(fn => fn(null));
+    return { ok: true };
+  },
   onAuthChange(fn) { authListeners.push(fn); return () => { const i=authListeners.indexOf(fn); if(i>=0) authListeners.splice(i,1); }; }
 };
 
@@ -2565,6 +2576,7 @@ function App(){
   },[versionSheetView,readMobileSheet]);
   const[settingsAppOpen,setSettingsAppOpen]=useState(false);
   const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
+  const[deleteAccountConfirm,setDeleteAccountConfirm]=useState(false);
   const[offlineDataOpen,setOfflineDataOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
@@ -4268,6 +4280,28 @@ function App(){
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>{user?.guest?'Log In':'Sign Out'}
           </button>
+          {!user?.guest&&!deleteAccountConfirm&&(
+            <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              Delete Account
+            </button>
+          )}
+          {!user?.guest&&deleteAccountConfirm&&(
+            <div style={{marginTop:10,background:T.bgSec,border:`1px solid ${T.redTxt}44`,borderRadius:9,padding:'14px 16px'}}>
+              <div style={{fontFamily:FB,fontSize:13,color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
+              <div style={{display:'flex',gap:8}}>
+                <button type="button" onClick={()=>setDeleteAccountConfirm(false)}
+                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
+                  Cancel
+                </button>
+                <button type="button" onClick={async()=>{const r=await Auth.deleteAccount();if(r.error)alert(r.error);setDeleteAccountConfirm(false);}}
+                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer',fontWeight:600}}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
         </MobileSheet>
       )}
 
@@ -4776,6 +4810,28 @@ function App(){
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>{user?.guest?'Log In':'Sign Out'}
           </button>
           {user?.email&&<div style={{fontFamily:FB,fontSize:12,color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
+          {!user?.guest&&!deleteAccountConfirm&&(
+            <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              Delete Account
+            </button>
+          )}
+          {!user?.guest&&deleteAccountConfirm&&(
+            <div style={{marginTop:10,background:T.bgSec,border:`1px solid ${T.redTxt}44`,borderRadius:9,padding:'14px 16px'}}>
+              <div style={{fontFamily:FB,fontSize:13,color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
+              <div style={{display:'flex',gap:8}}>
+                <button type="button" onClick={()=>setDeleteAccountConfirm(false)}
+                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
+                  Cancel
+                </button>
+                <button type="button" onClick={async()=>{const r=await Auth.deleteAccount();if(r.error)alert(r.error);setDeleteAccountConfirm(false);}}
+                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer',fontWeight:600}}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
         </MobileSheet>
       )}
 
