@@ -2233,11 +2233,20 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
 // ══════════════════════════════════════════════════════════
 function MapLightboxGrid({maps,BASE,T}){
   const[lightbox,setLightbox]=useState(null);
+  const mapTouchX=useRef(null);
+  const mapSwiped=useRef(false);
   useEffect(()=>{
     if(lightbox===null)return;
     const fn=e=>{if(e.key==='ArrowRight')setLightbox(i=>Math.min(i+1,maps.length-1));else if(e.key==='ArrowLeft')setLightbox(i=>Math.max(i-1,0));else if(e.key==='Escape')setLightbox(null);};
     window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);
   },[lightbox,maps.length]);
+  const mapOnTouchStart=e=>{mapTouchX.current=e.touches[0].clientX;mapSwiped.current=false;};
+  const mapOnTouchEnd=e=>{
+    if(mapTouchX.current===null)return;
+    const dx=e.changedTouches[0].clientX-mapTouchX.current;
+    mapTouchX.current=null;
+    if(Math.abs(dx)>40){mapSwiped.current=true;if(dx<0)setLightbox(i=>Math.min(i+1,maps.length-1));else setLightbox(i=>Math.max(i-1,0));}
+  };
   return(
     <>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:8}}>
@@ -2251,7 +2260,7 @@ function MapLightboxGrid({maps,BASE,T}){
         ))}
       </div>
       {lightbox!==null&&(
-        <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onClick={()=>setLightbox(null)}>
+        <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={mapOnTouchStart} onTouchEnd={mapOnTouchEnd} onClick={()=>{if(mapSwiped.current){mapSwiped.current=false;return;}setLightbox(null);}}>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
             <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
@@ -2278,13 +2287,22 @@ function MapLightboxGrid({maps,BASE,T}){
 function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
   const[idx,setIdx]=useState(startIdx);
   const[zoomed,setZoomed]=useState(false);
+  const lkTouchX=useRef(null);
+  const lkSwiped=useRef(false);
   const cur=imgs[idx];
   useEffect(()=>{
     const fn=e=>{if(e.key==='ArrowRight')setIdx(i=>Math.min(i+1,imgs.length-1));else if(e.key==='ArrowLeft')setIdx(i=>Math.max(i-1,0));else if(e.key==='Escape')onClose();};
     window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);
   },[imgs.length,onClose]);
+  const lkOnTouchStart=e=>{lkTouchX.current=e.touches[0].clientX;lkSwiped.current=false;};
+  const lkOnTouchEnd=e=>{
+    if(lkTouchX.current===null)return;
+    const dx=e.changedTouches[0].clientX-lkTouchX.current;
+    lkTouchX.current=null;
+    if(Math.abs(dx)>40){lkSwiped.current=true;if(dx<0)setIdx(i=>Math.min(i+1,imgs.length-1));else setIdx(i=>Math.max(i-1,0));}
+  };
   return(
-    <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onClick={()=>zoomed?setZoomed(false):onClose()}>
+    <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={lkOnTouchStart} onTouchEnd={lkOnTouchEnd} onClick={()=>{if(lkSwiped.current){lkSwiped.current=false;return;}zoomed?setZoomed(false):onClose();}}>
       {/* Top bar */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
