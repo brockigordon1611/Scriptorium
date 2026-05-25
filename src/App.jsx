@@ -1018,7 +1018,11 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
     if(!el)return;
     const prevent=(e)=>{
       let node=e.target;
-      while(node&&node!==el){if(node.dataset&&node.dataset.sheetScroll)return;node=node.parentNode;}
+      while(node&&node!==el){
+        const oy=window.getComputedStyle(node).overflowY;
+        if((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight)return;
+        node=node.parentNode;
+      }
       e.preventDefault();
     };
     el.addEventListener('touchmove',prevent,{passive:false});
@@ -1054,7 +1058,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
             </div>
           </>
         )}
-        <div className="modal-body" data-sheet-scroll="1" style={{overflowY:'auto',flex:1,padding:'22px 24px'}}>{children}</div>
+        <div className="modal-body" style={{overflowY:'auto',flex:1,padding:'22px 24px'}}>{children}</div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
@@ -2140,15 +2144,18 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
   const overlayRef=React.useRef(null);
 
   // Prevent background scroll-through on iOS WKWebView.
-  // CSS overflow:hidden doesn't block iOS native scroll routing — only a
-  // non-passive touchmove listener that calls preventDefault() does.
-  // We exclude the sheet's own scroll container (data-sheet-scroll="1").
+  // Only allow scroll gestures on elements that are truly scrollable AND
+  // actually have overflowing content — everything else does nothing.
   React.useEffect(()=>{
     const el=overlayRef.current;
     if(!el)return;
     const prevent=(e)=>{
       let node=e.target;
-      while(node&&node!==el){if(node.dataset&&node.dataset.sheetScroll)return;node=node.parentNode;}
+      while(node&&node!==el){
+        const oy=window.getComputedStyle(node).overflowY;
+        if((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight)return;
+        node=node.parentNode;
+      }
       e.preventDefault();
     };
     el.addEventListener('touchmove',prevent,{passive:false});
@@ -2191,7 +2198,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div data-sheet-scroll="1" style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
+        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
