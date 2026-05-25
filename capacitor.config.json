@@ -1,8 +1,8 @@
 {
-  "appId": "com.scriptorium.app",
+  "appId": "com.brockgordon.scriptorium",
   "appName": "Scriptorium",
   "webDir": "dist",
   "ios": {
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false
   }
 }
