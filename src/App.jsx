@@ -1020,7 +1020,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
       let node=e.target;
       while(node&&node!==el){
         const oy=window.getComputedStyle(node).overflowY;
-        if((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight)return;
+        if((oy==='auto'||oy==='scroll')&&node.scrollHeight-node.clientHeight>60)return;
         node=node.parentNode;
       }
       e.preventDefault();
@@ -2153,7 +2153,9 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
       let node=e.target;
       while(node&&node!==el){
         const oy=window.getComputedStyle(node).overflowY;
-        if((oy==='auto'||oy==='scroll')&&node.scrollHeight>node.clientHeight)return;
+        // Require >60px of real scrollable content so padding-only overflow
+        // (the 32px bottom pad on the sheet container) doesn't count as scrollable.
+        if((oy==='auto'||oy==='scroll')&&node.scrollHeight-node.clientHeight>60)return;
         node=node.parentNode;
       }
       e.preventDefault();
@@ -2198,7 +2200,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:noScroll?'hidden':'auto',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
+        <div style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
