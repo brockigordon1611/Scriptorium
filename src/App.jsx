@@ -1405,9 +1405,10 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   );
 }
 
-function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker}){
+function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker,catToggle}){
   const[open,setOpen]=useState(true);
   const[renaming,setRenaming]=useState(false);
+  useEffect(()=>{if(catToggle)setOpen(catToggle.action==='expand');},[catToggle]);
   const[nameVal,setNameVal]=useState(cat.name);
   const[colorIdx,setColorIdx]=useState(CAT_COLORS.indexOf(cat.color)<0?0:CAT_COLORS.indexOf(cat.color));
   const[showDelCatConfirm,setShowDelCatConfirm]=useState(false);
@@ -1476,6 +1477,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
   const[addingCat,setAddingCat]=useState(false);
   const[viewAll,setViewAll]=useState(false);
   const[assigningCats,setAssigningCats]=useState(false);
+  const[catToggle,setCatToggle]=useState(null);
 
   async function createCat(){
     if(!newCatName.trim())return;
@@ -1525,16 +1527,30 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
           )}
           {/* View toggles — only shown when categories exist */}
           {hasCats&&(
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={()=>setViewAll(v=>!v)}
-                style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
-                {viewAll?'By Category':'View All'}
-              </button>
-              <button onClick={()=>setAssigningCats(v=>!v)}
-                style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
-                {assigningCats?'Done Assigning':'Assign Categories'}
-              </button>
-            </div>
+            <>
+              <div style={{display:'flex',gap:8,marginBottom:6}}>
+                <button onClick={()=>setViewAll(v=>!v)}
+                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  {viewAll?'By Category':'View All'}
+                </button>
+                <button onClick={()=>setAssigningCats(v=>!v)}
+                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  {assigningCats?'Done Assigning':'Assign Categories'}
+                </button>
+              </div>
+              {!viewAll&&(
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    ▾ Expand All
+                  </button>
+                  <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    ▸ Collapse All
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -1550,7 +1566,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
             <CatSection key={cat.id} cat={cat} bookmarks={items} T={T} versions={versions}
               onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate}
               onRename={onUpdateCat} onDeleteCat={onDeleteCat}
-              categories={categories} user={user} showCatPicker={assigningCats}/>
+              categories={categories} user={user} showCatPicker={assigningCats} catToggle={catToggle}/>
           ))}
           {uncategorized.length>0&&(
             <div style={{marginTop:hasCats?8:0}}>
