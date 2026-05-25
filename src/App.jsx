@@ -1009,9 +1009,22 @@ function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL
 function Spinner(){return <span className="spinner"/>;}
 
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
+  const[dragY,setDragY]=React.useState(0);
+  const modalStartY=React.useRef(null);
+  function modalTouchStart(e){modalStartY.current=e.touches[0].clientY;}
+  function modalTouchMove(e){
+    if(modalStartY.current===null)return;
+    const dy=e.touches[0].clientY-modalStartY.current;
+    if(dy<0)setDragY(dy); // only allow upward drag (collapses back to top)
+  }
+  function modalTouchEnd(){
+    if(Math.abs(dragY)>80){onClose();}
+    else{setDragY(0);}
+    modalStartY.current=null;
+  }
   return(
     <div className={topSheet?"modal-overlay modal-topsheet-overlay":"modal-overlay"} onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',...(topSheet?{top:topSheet,right:0,bottom:0,left:0,zIndex:185,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)','--ts-h':topSheet+'px'}:{inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',backdropFilter:'blur(4px)'}),display:'flex',alignItems:'center',justifyContent:'center',padding:20,...(isClosing&&topSheet?{opacity:0,transition:'opacity .25s ease-in'}:{})}}>
-      <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)'}}>
+      <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',transform:(topSheet&&!isClosing&&dragY!==0)?`translateY(${dragY}px)`:undefined,transition:(topSheet&&!isClosing&&dragY===0)?'transform .2s ease-out':undefined}}>
         {topSheet?(
           <div style={{background:T.bgCard,padding:'14px 16px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <div style={{position:'absolute',left:16,top:0,bottom:0,display:'flex',alignItems:'center'}}>
@@ -1030,7 +1043,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
         )}
         <div className="modal-body" style={{overflowY:'auto',flex:1,padding:'22px 24px'}}>{children}</div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
-        {topSheet&&<div style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
+        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
