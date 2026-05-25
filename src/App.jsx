@@ -2299,6 +2299,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
     if(lkTouchX.current===null)return;
     const dx=e.changedTouches[0].clientX-lkTouchX.current;
     lkTouchX.current=null;
+    if(zoomed)return;
     if(Math.abs(dx)>40){lkSwiped.current=true;if(dx<0)setIdx(i=>Math.min(i+1,imgs.length-1));else setIdx(i=>Math.max(i-1,0));}
   };
   return(
