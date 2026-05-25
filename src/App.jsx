@@ -2229,6 +2229,50 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
 
 
 // ══════════════════════════════════════════════════════════
+//  SCRIPTURE ATLAS MAPS
+// ══════════════════════════════════════════════════════════
+function MapLightboxGrid({maps,BASE,T}){
+  const[lightbox,setLightbox]=useState(null);
+  useEffect(()=>{
+    if(lightbox===null)return;
+    const fn=e=>{if(e.key==='ArrowRight')setLightbox(i=>Math.min(i+1,maps.length-1));else if(e.key==='ArrowLeft')setLightbox(i=>Math.max(i-1,0));else if(e.key==='Escape')setLightbox(null);};
+    window.addEventListener('keydown',fn);return()=>window.removeEventListener('keydown',fn);
+  },[lightbox,maps.length]);
+  return(
+    <>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:8}}>
+        {maps.map((m,i)=>(
+          <div key={m.file} onClick={()=>setLightbox(i)} style={{display:'flex',flexDirection:'column',gap:5,cursor:'pointer'}}>
+            <div style={{aspectRatio:'3/4',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <img src={`${BASE}maps/${m.file}`} alt={m.title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} loading="lazy"/>
+            </div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
+          </div>
+        ))}
+      </div>
+      {lightbox!==null&&(
+        <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onClick={()=>setLightbox(null)}>
+          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
+            <button onClick={()=>setLightbox(null)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
+          </div>
+          <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',padding:'12px'}} onClick={e=>e.stopPropagation()}>
+            <img src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block'}}/>
+          </div>
+          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+            <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
+              style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
+            <button onClick={()=>setLightbox(i=>Math.min(i+1,maps.length-1))} disabled={lightbox===maps.length-1}
+              style={{background:'none',border:`1px solid ${lightbox===maps.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===maps.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===maps.length-1?'default':'pointer'}}>Next ›</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════
 //  LARKIN CHARTS
 // ══════════════════════════════════════════════════════════
 function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
@@ -5856,16 +5900,38 @@ function App(){
       })()}
 
       {/* ═══ MAPS TAB ═══ */}
-      {tab==='maps'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18}}><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></div>
-            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Maps</div>
-            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Biblical maps and geography are coming soon.</div>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginTop:18,opacity:0.5}}>COMING SOON</div>
+      {tab==='maps'&&(()=>{
+        const BASE=import.meta.env.BASE_URL;
+        const MAPS=[
+          {title:'The Holy Land',file:'The_Holy_Land__01.jpg'},
+          {title:'Tribe of Asher',file:'Tribe_of_Asher__01.jpg'},
+          {title:'Tribe of Benjamin',file:'Tribe_of_Benjamin__01.jpg'},
+          {title:'Tribe of Dan',file:'Tribe_of_Dan__01.jpg'},
+          {title:'Tribe of Ephraim',file:'Tribe_of_Ephraim__01.jpg'},
+          {title:'Tribe of Gad',file:'Tribe_of_Gad__01.jpg'},
+          {title:'Tribe of Issachar',file:'Tribe_of_Issachar__01.jpg'},
+          {title:'Tribe of Judah',file:'Tribe_of_Judah__01.jpg'},
+          {title:'Tribe of Manasseh (Beyond Jordan)',file:'Tribe_of_Manasseh_beyond_Jordan__01.jpg'},
+          {title:'Tribe of Manasseh (This Side Jordan)',file:'Tribe_of_Manasseh_this_side_Jordan__01.jpg'},
+          {title:'Tribe of Naphtali',file:'Tribe_of_Naphtali__01.jpg'},
+          {title:'Tribe of Reuben',file:'Tribe_of_Reuben__01.jpg'},
+          {title:'Tribe of Simeon',file:'Tribe_of_Simeon__01.jpg'},
+          {title:'Tribe of Zebulun',file:'Tribe_of_Zebulun__01.jpg'},
+        ];
+        return(
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+            {/* Header */}
+            <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
+              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Scripture Atlas</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{MAPS.length} biblical maps</div>
+            </div>
+            {/* Map grid */}
+            <div style={{flex:1,overflowY:'auto',padding:'10px 12px 80px'}}>
+              <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══ CHARTS TAB ═══ */}
       {tab==='charts'&&(()=>{
