@@ -1406,7 +1406,7 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
 }
 
 function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker,catToggle}){
-  const[open,setOpen]=useState(true);
+  const[open,setOpen]=useState(false);
   const[renaming,setRenaming]=useState(false);
   useEffect(()=>{if(catToggle)setOpen(catToggle.action==='expand');},[catToggle]);
   const[nameVal,setNameVal]=useState(cat.name);
