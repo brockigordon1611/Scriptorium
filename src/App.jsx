@@ -4654,14 +4654,14 @@ function App(){
                                 <>
                                   <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>1. Download</div>
                                   <a href={url} target="_blank" rel="noreferrer"
-                                    style={{display:'block',width:'100%',boxSizing:'border-box',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
+                                    style={{display:'block',width:'100%',boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
                                     Download {pack} File
                                   </a>
                                   <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>2. Import</div>
                                   <input id={`audiozip-${pack}`} type="file" accept=".zip" style={{display:'none'}}
                                     onChange={e=>{const f=e.target.files[0];if(f)importAudioZip(f,pack);e.target.value='';}}/>
                                   <button onClick={()=>document.getElementById(`audiozip-${pack}`).click()}
-                                    style={{width:'100%',background:'transparent',border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                                    style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                                     Import {pack} File (.ZIP)
                                   </button>
                                 </>
