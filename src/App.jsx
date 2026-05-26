@@ -4637,18 +4637,27 @@ function App(){
                       </>
                     ):(
                       <>
-                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
-                          Visit <a href="https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA" target="_blank" rel="noreferrer" style={{color:T.gT}}>faithcomesbyhearing.com</a> and download the KJV OT and NT MP3 packs, then import each ZIP below.
+                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:10}}>
+                          Download the free KJV MP3 packs from faithcomesbyhearing.com, then import each ZIP file below.
                         </div>
                         <div style={{display:'flex',gap:6,marginBottom:8}}>
-                          {[{pack:'OT',label:'Old Testament',installed:otInstalled},{pack:'NT',label:'New Testament',installed:ntInstalled}].map(({pack,label,installed})=>(
+                          {[
+                            {pack:'OT',label:'Old Testament',installed:otInstalled,url:'https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA'},
+                            {pack:'NT',label:'New Testament',installed:ntInstalled,url:'https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVN1DA'}
+                          ].map(({pack,label,installed,url})=>(
                             <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgCard,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:6,padding:'8px'}}>
-                              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:installed?0:6}}>
+                              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
                                 <span style={{fontFamily:FB,fontSize:11,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
                                 {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:11,cursor:'pointer',padding:0}}>✕</button>}
                               </div>
                               {!installed&&(
                                 <>
+                                  <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>① Download</div>
+                                  <a href={url} target="_blank" rel="noreferrer"
+                                    style={{display:'block',width:'100%',boxSizing:'border-box',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:4,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
+                                    ↗ Open Download Page
+                                  </a>
+                                  <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>② Import ZIP</div>
                                   <input id={`audiozip-${pack}`} type="file" accept=".zip" style={{display:'none'}}
                                     onChange={e=>{const f=e.target.files[0];if(f)importAudioZip(f,pack);e.target.value='';}}/>
                                   <button onClick={()=>document.getElementById(`audiozip-${pack}`).click()}
