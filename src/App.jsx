@@ -4637,6 +4637,9 @@ function App(){
                       </>
                     ):(
                       <>
+                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
+                          Visit <a href="https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA" target="_blank" rel="noreferrer" style={{color:T.gT}}>faithcomesbyhearing.com</a> and download the KJV OT and NT MP3 packs, then import each ZIP below.
+                        </div>
                         <div style={{display:'flex',gap:6,marginBottom:8}}>
                           {[{pack:'OT',label:'Old Testament',installed:otInstalled},{pack:'NT',label:'New Testament',installed:ntInstalled}].map(({pack,label,installed})=>(
                             <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgCard,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:6,padding:'8px'}}>
@@ -4656,9 +4659,6 @@ function App(){
                               )}
                             </div>
                           ))}
-                        </div>
-                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6}}>
-                          Visit <a href="https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA" target="_blank" rel="noreferrer" style={{color:T.gT}}>faithcomesbyhearing.com</a> and download the KJV OT and NT MP3 packs, then import each ZIP above.
                         </div>
                       </>
                     )}
