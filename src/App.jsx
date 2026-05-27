@@ -470,7 +470,7 @@ const BIBLE = [
   {n:46,name:'1 Corinthians',nameES:'1 Corintios',v:[31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24]},
   {n:47,name:'2 Corinthians',nameES:'2 Corintios',v:[24,17,18,18,21,18,16,24,15,18,33,21,14]},
   {n:48,name:'Galatians',nameES:'Gálatas',v:[24,21,29,31,26,18]},
-  {n:49,name:'Ephesians',nameES:'Efesios',v:[23,22,21,28,20,12]},
+  {n:49,name:'Ephesians',nameES:'Efesios',v:[23,22,21,32,33,24]},
   {n:50,name:'Philippians',nameES:'Filipenses',v:[30,30,21,23]},
   {n:51,name:'Colossians',nameES:'Colosenses',v:[29,23,25,18]},
   {n:52,name:'1 Thessalonians',nameES:'1 Tesalonicenses',v:[10,20,13,18,28]},
@@ -919,8 +919,41 @@ async function dbLoadOrCreateProject(userId){
   const t=await sbFrom('projects',token);
   const r=await t.select('*',{user_id:userId},{order:'created_at.asc',limit:1});
   if(r.data?.length)return r.data[0];
+  // Create project
   const ins=await t.insert({user_id:userId,title:'My Study'});
-  return ins.data?.[0]||null;
+  const proj=ins.data?.[0];
+  if(!proj)return null;
+  // Seed default sections
+  const sectT=await sbFrom('sections',token);
+  const [s1,s2,s3]=await Promise.all([
+    sectT.insert({project_id:proj.id,title:'English',description:'Use this section to compare English Bible versions',position:0}),
+    sectT.insert({project_id:proj.id,title:'Spanish / Espanol',description:'Use this section to make notes on Spanish bible versions',position:1}),
+    sectT.insert({project_id:proj.id,title:'Albanian / Shqip',description:'Use this section to make notes on Albanian Bible versions',position:2}),
+  ]);
+  // Seed default versions
+  const pvT=await sbFrom('project_versions',token);
+  await Promise.all([
+    pvT.insert({project_id:proj.id,version_id:'kjv',label:'KJV',lang:'EN',is_ref:true,position:0}),
+    pvT.insert({project_id:proj.id,version_id:'rvg',label:'RVG',lang:'ES',is_ref:false,position:1}),
+    pvT.insert({project_id:proj.id,version_id:'p1602',label:'1602P',lang:'ES',is_ref:false,position:2}),
+    pvT.insert({project_id:proj.id,version_id:'rv1960',label:'RVR60',lang:'ES',is_ref:false,position:3}),
+  ]);
+  // Seed example entry in Spanish section
+  const sectEsId=s2.data?.[0]?.id;
+  if(sectEsId){
+    const entT=await sbFrom('entries',token);
+    const entIns=await entT.insert({project_id:proj.id,section_id:sectEsId,book_num:1,chapter:1,verse_start:1,verse_end:1,issue_type:'manuscript',notes:'Some versions translate Genesis 1:1 "heaven" as plural. This is not accurate as God had only created one heaven at this point.',position:0});
+    const entId=entIns.data?.[0]?.id;
+    if(entId){
+      const evT=await sbFrom('entry_versions',token);
+      await Promise.all([
+        evT.insert({entry_id:entId,version_id:'kjv',text:'In the beginning God created the heaven and the earth.',status:'reference'}),
+        evT.insert({entry_id:entId,version_id:'rvg',text:'En el principio creó Dios el cielo y la tierra.',status:'faithful'}),
+        evT.insert({entry_id:entId,version_id:'p1602',text:'EN el principio creó Dios el cielo y la tierra.',status:'faithful'}),
+      ]);
+    }
+  }
+  return proj;
 }
 async function dbLoadProject(projectId){
   const token=getToken();
