@@ -5,5 +5,6 @@ export default defineConfig({
   plugins: [react()],
   base: process.env.GITHUB_PAGES === 'true' ? '/Scriptorium/' : '/',
   build: { outDir: 'dist' },
-  server: { port: 3000 }
+  server: { port: 3000 },
+  optimizeDeps: { include: ['fflate/browser'] },
 });

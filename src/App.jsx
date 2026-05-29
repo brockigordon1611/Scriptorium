@@ -646,7 +646,7 @@ async function _importSqliteResource(file,id,baseName,ext,category){
 }
 
 async function _importDzipResource(file,id,baseName,category){
-  const{unzipSync}=await import('fflate');
+  const{unzipSync}=await import('fflate/browser');
   const buf=await file.arrayBuffer();
   let files;
   try{files=unzipSync(new Uint8Array(buf));}
