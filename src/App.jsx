@@ -646,18 +646,19 @@ async function _importSqliteResource(file,id,baseName,ext,category){
 }
 
 async function _importDzipResource(file,id,baseName,category){
-  const{unzipSync}=await import('fflate/browser');
+  const JSZip=(await import('jszip')).default;
   const buf=await file.arrayBuffer();
-  let files;
-  try{files=unzipSync(new Uint8Array(buf));}
+  let zip;
+  try{zip=await JSZip.loadAsync(buf);}
   catch(e){throw new Error('Could not open archive: '+e.message);}
-  const entries=Object.entries(files);
+  const entries=Object.entries(zip.files).filter(([,f])=>!f.dir);
   if(!entries.length)throw new Error('Archive is empty.');
   const knownExts=['lexi','dcti','cmti','devi','refi'];
   const found=entries.find(([n])=>knownExts.includes(n.split('.').pop().toLowerCase()));
   if(!found)throw new Error('No recognized database file found inside archive.');
-  const[innerName,innerData]=found;
+  const[innerName,innerZipFile]=found;
   const innerExt=innerName.split('.').pop().toLowerCase();
+  const innerData=await innerZipFile.async('uint8array');
   const innerFile=new File([innerData.buffer],innerName,{type:'application/octet-stream'});
   return _importSqliteResource(innerFile,id,baseName,innerExt,category);
 }
