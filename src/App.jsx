@@ -6191,6 +6191,8 @@ function App(){
       {modal?.type==='help'&&(
         <Modal title="Help & Reference" onClose={closeModal} wide T={T} topSheet={navH} isClosing={modalClosing} footer={<><PBtn ch="⚠ Reset to Defaults" onClick={()=>setModal({type:'reset'})} T={T} danger sm/><SBtn ch="Close" onClick={closeModal} T={T}/></>}>
           {(()=>{
+            const rdFont=fontFamilyMap[readFontFamily];
+            const rdLH=Math.max(1.5,Math.min(readLineHeight,2.2));
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
                 <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
@@ -6200,7 +6202,7 @@ function App(){
             const Row=({icon,children})=>(
               <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:9}}>
                 <span style={{fontSize:15,flexShrink:0,width:22,textAlign:'center',marginTop:1}}>{icon}</span>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>{children}</span>
+                <span style={{fontFamily:rdFont,fontSize:15,color:T.mut,lineHeight:rdLH}}>{children}</span>
               </div>
             );
             const Chip=({children})=>(
@@ -6211,55 +6213,76 @@ function App(){
                 {/* ── READING ── */}
                 <Hdg label="Reading"/>
                 <Row icon="✦">
-                  <strong style={{color:T.gT}}>Navigate</strong> with the bottom bar — tap the <strong style={{color:T.gT}}>book icon</strong> to jump to any book and chapter, or tap the <strong style={{color:T.gT}}>version label</strong> (e.g. KJV) to switch translations.
+                  <strong style={{color:T.gT}}>Navigate</strong> using the bar at the bottom of the screen — tap the <strong style={{color:T.gT}}>book name</strong> (e.g. Genesis 1) to jump to any book and chapter, or tap <strong style={{color:T.gT}}>CH 2 ›</strong> to move to the next chapter.
+                </Row>
+                <Row icon="📖">
+                  Tap the <strong style={{color:T.gT}}>version label</strong> (e.g. KJV) in the top bar to switch Bible translations.
                 </Row>
                 <Row icon="👆">
-                  <strong style={{color:T.gT}}>Tap any verse</strong> to select it (it highlights). Tap again to deselect. You can select multiple verses at once.
+                  <strong style={{color:T.gT}}>Tap any verse</strong> to select it — it highlights and a toolbar appears at the bottom. Tap again to deselect. You can select multiple verses at once.
                 </Row>
                 <Row icon="⛶">
-                  <strong style={{color:T.gT}}>Fullscreen mode</strong> hides the navigation bar when you scroll down for distraction-free reading. Enable it in <em>Settings → Fullscreen</em>. Scroll back up to reveal the bar.
+                  <strong style={{color:T.gT}}>Fullscreen mode</strong> hides the top navigation bar when you scroll down for distraction-free reading. Scroll back up to reveal it. Enable in <em>Settings → Fullscreen</em>.
+                </Row>
+                <Row icon="¶">
+                  <strong style={{color:T.gT}}>Paragraph Mode</strong> flows verses into continuous paragraphs instead of numbered lines — useful for narrative reading. Enable in <em>Settings → Reading Appearance</em>.
                 </Row>
                 <Row icon="🔴">
                   <strong style={{color:T.gT}}>Red Letter</strong> highlights words spoken by Jesus. Enable in <em>Settings → Reading Appearance → Red Letter</em>. Only available on versions with red-letter data.
-                </Row>
-                <Row icon="¶">
-                  <strong style={{color:T.gT}}>Paragraph Mode</strong> flows verses into continuous paragraphs instead of numbered lines — useful for narrative reading.
                 </Row>
 
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
                 <Row icon="🔍">
-                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the bottom bar to search the current version. Results are grouped by book.
+                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Type a word or phrase and results are grouped by book.
                 </Row>
                 <Row icon="≡">
                   A <strong style={{color:T.gT}}>book jump list</strong> appears on the right edge while scrolling through results — tap any abbreviation to jump straight to that book's results.
                 </Row>
                 <Row icon="←">
-                  Tap <strong style={{color:T.gT}}>← Back to Reading</strong> (floating pill at the top) to dismiss results and return to where you were.
+                  Tap <strong style={{color:T.gT}}>← Back to Reading</strong> (floating pill at the top of results) to dismiss results and return to where you were.
                 </Row>
 
                 {/* ── VERSE SELECTION & BOOKMARKS ── */}
                 <Hdg label="Verse Selection & Bookmarks"/>
                 <Row icon="⧉">
-                  After selecting one or more verses a bar appears at the bottom. Tap <strong style={{color:T.gT}}>Copy</strong> to copy the verses with their reference formatted for sharing.
+                  After selecting one or more verses a toolbar appears at the bottom. Tap <strong style={{color:T.gT}}>Copy</strong> to copy the verse text with its reference formatted for sharing.
                 </Row>
                 <Row icon="✦">
-                  Tap <strong style={{color:T.gT}}>Bookmark</strong> to save the selected passage. View all bookmarks in <em>Settings → Bookmarks</em>.
+                  Tap <strong style={{color:T.gT}}>Bookmark</strong> to save the selected passage. View and manage all bookmarks in <em>Settings → Bookmarks</em>.
                 </Row>
                 <Row icon="▶">
-                  If verses are selected when you press <strong style={{color:T.gT}}>Play</strong>, audio starts from the first selected verse instead of the chapter beginning.
+                  Tap <strong style={{color:T.gT}}>Play</strong> from the verse toolbar to start audio from that verse instead of the chapter beginning.
                 </Row>
 
                 {/* ── AUDIO ── */}
                 <Hdg label="Audio"/>
                 <Row icon="▶">
-                  Tap the <strong style={{color:T.gT}}>play button</strong> (bottom-right while in the Read tab) to start audio for the current chapter. The button expands to show the active verse number.
+                  Tap the <strong style={{color:T.gT}}>play button</strong> (bottom-right corner in the Read tab) to start audio for the current chapter. The button expands to show the current verse number as it plays.
                 </Row>
                 <Row icon="🎙">
                   Audio uses <strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> streaming where available — professional narration matched to the text. Falls back to your device's built-in text-to-speech when FCBH isn't available for a version.
                 </Row>
                 <Row icon="⚙">
                   Change the audio source, voice, and playback speed in <em>Settings → Audio Settings</em>. Voice selection only applies when using text-to-speech.
+                </Row>
+                <Row icon="📥">
+                  Import local KJV MP3 audio files (Old or New Testament) in <em>Settings → Audio Settings → KJV Local Audio</em> for fully offline playback.
+                </Row>
+
+                {/* ── STUDY / COMPARE ── */}
+                <Hdg label="Study & Compare"/>
+                <Row icon="✦">
+                  The <strong style={{color:T.gT}}>Study tab</strong> is your personal Bible comparison workspace. It stores entries organized into sections, each with a verse reference, notes, and side-by-side version comparisons.
+                </Row>
+                <Row icon="＋">
+                  Tap <strong style={{color:T.gT}}>Add Entry</strong> inside any section to create a new comparison entry. Choose a verse reference, select an issue type, add notes, and record how each version renders the passage.
+                </Row>
+                <Row icon="⚑">
+                  Each entry version can be marked with a <strong style={{color:T.gT}}>status</strong> — Reference, Faithful, Questionable, or Mistranslation — to track translation accuracy at a glance.
+                </Row>
+                <Row icon="📖">
+                  Tap <strong style={{color:T.gT}}>Read</strong> on any entry to jump directly to that passage in the reading view.
                 </Row>
 
                 {/* ── STRONG'S NUMBERS ── */}
@@ -6268,59 +6291,61 @@ function App(){
                   Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV+</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
-                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words that share one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word.
+                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word.
                 </Row>
                 <Row icon="👆">
                   <strong style={{color:T.gT}}>Double-tap</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
                 </Row>
                 <Row icon="⬇">
-                  Download the <strong style={{color:T.gT}}>Strong's Concordance</strong> offline (Settings → Offline Data) for instant lookups without an internet connection. 14,197 Hebrew & Greek entries, ~8 MB.
+                  Download the <strong style={{color:T.gT}}>Strong's Concordance</strong> offline in <em>Settings → Offline Data</em> for instant lookups without an internet connection. 14,197 Hebrew & Greek entries, ~8 MB.
                 </Row>
 
                 {/* ── WEBSTER'S 1828 ── */}
                 <Hdg label="Webster's 1828 Dictionary"/>
                 <Row icon="W">
-                  Access the full <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> from the Study tab. Search any English word for its historical definition — written in the same era as many classic translations.
+                  Access the full <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> from the Study tab. Search any English word for its historical definition — written in the same era as many classic Bible translations.
                 </Row>
                 <Row icon="⬇">
-                  Download Webster's offline (Settings → Offline Data) for 107,793 entries without internet. ~50 MB.
+                  Download Webster's offline in <em>Settings → Offline Data</em> for 107,793 entries without internet. ~50 MB.
                 </Row>
 
                 {/* ── OFFLINE DATA ── */}
                 <Hdg label="Offline Data"/>
                 <Row icon="📖">
-                  <strong style={{color:T.gT}}>Bible versions</strong> can be downloaded for offline use. Go to <em>Settings → Offline Data → Manage Bible Versions</em> and tap the download arrow next to any version.
+                  <strong style={{color:T.gT}}>Bible versions</strong> can be downloaded for fully offline use. Go to <em>Settings → Offline Data → Manage Bible Versions</em> and tap the download arrow next to any version.
                 </Row>
                 <Row icon="✓">
-                  A version marked <strong style={{color:T.greenTxt||'#62c484'}}>✓ Offline</strong> is fully cached — it works with no internet. Tap the button again to remove the offline copy and free up space.
+                  A version marked <strong style={{color:T.greenTxt||'#62c484'}}>✓ Offline</strong> is fully cached and works with no internet. Tap the button again to remove the offline copy and free up storage.
                 </Row>
 
                 {/* ── SETTINGS REFERENCE ── */}
                 <Hdg label="Settings Reference"/>
                 {[
-                  ['Accent Color','Changes the highlight color throughout the entire app — underlines, active borders, selected verse glow, buttons.'],
-                  ['Text Size','Adjust the reading font size from small to large.'],
-                  ['Line Spacing','Controls how much vertical space appears between lines of text (Tight → Wide).'],
+                  ['Accent Color','Changes the highlight color throughout the app — underlines, active borders, selected verse glow, and buttons.'],
+                  ['Text Size','Adjust the reading font size. Drag the slider from small to large.'],
+                  ['Line Spacing','Controls vertical space between lines of text (Tight → Wide).'],
                   ['Font','Serif (Cormorant Garamond), Sans-Serif (Inter), or Monospace (JetBrains Mono).'],
                   ['Alignment','Left-aligned or fully justified text.'],
-                  ['Verse Numbers','Superscript (small raised numbers), Inline (same size as text), or Hidden.'],
-                  ['Paragraph Mode','Removes verse-by-verse line breaks and flows text as paragraphs.'],
-                  ['Red Letter','Colors words of Jesus red (versions that support it only).'],
-                  ['Strong\'s','Activates Hebrew/Greek root underlines on every word. KJV+ only.'],
-                  ['Fullscreen','Auto-hides the navigation bar when scrolling down.'],
+                  ['Verse Numbers','Superscript (small raised), Inline (same size as body text), or Hidden.'],
+                  ['Paragraph Mode','Removes verse-by-verse line breaks and flows text as continuous paragraphs.'],
+                  ['Red Letter','Colors words of Jesus red. Only on versions that include red-letter data.'],
+                  ["Strong's",'Activates Hebrew/Greek root underlines on every word. KJV+ only.'],
+                  ['Fullscreen','Auto-hides the top navigation bar when scrolling down.'],
+                  ['Theme','Light or Dark mode. Follows your system setting by default.'],
                 ].map(([k,v])=>(
-                  <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',marginBottom:7}}>
-                    <span style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:100,fontWeight:600}}>{k}</span>
-                    <span style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.6}}>{v}</span>
+                  <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',marginBottom:8}}>
+                    <span style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:110,fontWeight:600}}>{k}</span>
+                    <span style={{fontFamily:rdFont,fontSize:14,color:T.dim,lineHeight:rdLH}}>{v}</span>
                   </div>
                 ))}
 
                 {/* ── SHORTCUTS ── */}
-                <Hdg label="Keyboard Shortcuts"/>
-                <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:FB,fontSize:13,color:T.mut}}>
-                  <Chip>Ctrl / ⌘ Z</Chip><span style={{marginRight:16}}>Undo last deleted item</span>
+                <Hdg label="Gestures & Shortcuts"/>
+                <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:rdFont,fontSize:14,color:T.mut}}>
+                  <Chip>Swipe down</Chip><span style={{marginRight:16}}>Dismiss any bottom sheet or modal</span>
                   <Chip>Esc</Chip><span style={{marginRight:16}}>Close any panel or modal</span>
-                  <Chip>Swipe down</Chip><span>Dismiss bottom sheets</span>
+                  <Chip>Tap verse</Chip><span style={{marginRight:16}}>Select / deselect a verse</span>
+                  <Chip>Tap + hold</Chip><span>Select verse range</span>
                 </div>
               </div>
             );
