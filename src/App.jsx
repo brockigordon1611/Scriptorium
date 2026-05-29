@@ -6893,7 +6893,10 @@ function App(){
                 </div>
               </div>
               {/* Content */}
-              <div key={`${openResId}-${openResChapter}`} style={{flex:1,overflowY:'auto',padding:`28px ${Math.max(20,Math.min(48,window.innerWidth*0.07))}px 24px`}}>
+              <div key={`${openResId}-${openResChapter}`} style={{flex:1,overflowY:'auto',padding:`28px ${Math.max(20,Math.min(48,window.innerWidth*0.07))}px 24px`}}
+                onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
+                onTouchMove={e=>{if(swipeTouchX.current===null)return;const dx=e.touches[0].clientX-swipeTouchX.current;const dy=e.touches[0].clientY-swipeTouchY.current;if(!swipeDir.current&&(Math.abs(dx)>12||Math.abs(dy)>12)){swipeDir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';}}}
+                onTouchEnd={e=>{if(swipeTouchX.current===null)return;const wasH=swipeDir.current==='h';const dx=e.changedTouches[0].clientX-swipeTouchX.current;const dt=Math.max(1,Date.now()-swipeTouchT.current);const velocity=Math.abs(dx)/dt;swipeTouchX.current=null;swipeDir.current=null;if(!wasH)return;if(Math.abs(dx)<60&&velocity<0.35)return;if(dx<0)setOpenResChapter(c=>Math.min((openResData?.chapters?.length||1)-1,c+1));else setOpenResChapter(c=>Math.max(0,c-1));}}>
                 {openResData?.chapters?.[openResChapter]?.title&&(
                   <div style={{fontFamily:FS,fontSize:13,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24,textAlign:'center'}}>{openResData.chapters[openResChapter].title}</div>
                 )}
