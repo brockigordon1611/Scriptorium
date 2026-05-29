@@ -16,7 +16,42 @@
   <style>
     html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;}
     #root{height:100%;display:flex;flex-direction:column;overflow:hidden;}
+    /* Safe-area-inset-top CSS variable — refined by JS below */
+    :root{--sat:env(safe-area-inset-top,0px);}
   </style>
+  <script>
+    /* Detect iPad and set a minimum safe-area floor before React renders. */
+    (function(){
+      var isIPad=/iPad/.test(navigator.userAgent)||(navigator.maxTouchPoints>2&&/Mac/.test(navigator.userAgent));
+      /* Use screen height to distinguish large iPads (Pro 13") from smaller ones (Air 11").
+         iPad Pro 13" logical portrait height ~1376pt; iPad Air 11" ~1180pt.
+         Large iPad iOS 26 status bar ~130-140px; small iPad ~70-80px. */
+      /* sat-min is a safety floor only — used when env() returns 0 inside Capacitor native builds.
+         In a web browser or PWA, env(safe-area-inset-top) works correctly so no floor is needed.
+         iPad Pro 13" (logicalHeight>1250) may have env()=0 in this Capacitor build, needs ~150px.
+         Other native devices: a 20px floor is enough. Web/PWA: 0px (env() is reliable). */
+      var isNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+      var satMin='0px';
+      if(isNative){
+        satMin='20px';
+        if(isIPad){var longDim=Math.max(screen.width,screen.height);satMin=longDim>1250?'150px':'20px';}
+      }
+      document.documentElement.style.setProperty('--sat-min',satMin);
+
+      /* Also try to measure env(safe-area-inset-top) directly and set --sat */
+      var probe=null;
+      function apply(){
+        if(!document.body)return;
+        if(!probe){probe=document.createElement('div');probe.style.cssText='position:fixed;top:env(safe-area-inset-top,0px);left:0;width:0;height:0;visibility:hidden;pointer-events:none;';document.body.appendChild(probe);}
+        var v=probe.getBoundingClientRect().top;
+        if(v>10)document.documentElement.style.setProperty('--sat',v+'px');
+      }
+      function init(){apply();requestAnimationFrame(function(){requestAnimationFrame(apply);});setTimeout(apply,300);setTimeout(apply,1000);setTimeout(apply,3000);}
+      if(document.body){init();}else{document.addEventListener('DOMContentLoaded',init);}
+      window.addEventListener('resize',apply);
+      window.addEventListener('orientationchange',function(){setTimeout(apply,300);});
+    })();
+  </script>
 </head>
 <body>
   <div id="root"></div>

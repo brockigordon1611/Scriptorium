@@ -167,7 +167,7 @@ const Auth = {
 //  LOCAL-FIRST: IndexedDB Bible text cache
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
-const IDB_VER=3;
+const IDB_VER=4;
 let _idbInst=null;
 
 function idbOpen(){
@@ -194,6 +194,10 @@ function idbOpen(){
       // v3 stores
       if(!db.objectStoreNames.contains('resources')){
         db.createObjectStore('resources',{keyPath:'id'});
+      }
+      // v4 stores — binary blobs for images, PDFs, SQLite chapter data
+      if(!db.objectStoreNames.contains('resource_blobs')){
+        db.createObjectStore('resource_blobs',{keyPath:'id'});
       }
     };
     req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
@@ -435,9 +439,35 @@ async function idbPutResource(res){
   const db=await idbOpen();
   return _idbReq(db.transaction('resources','readwrite').objectStore('resources').put(res));
 }
+async function idbPutResourceBlob(id,data){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resource_blobs','readwrite').objectStore('resource_blobs').put({id,data}));
+}
+async function idbGetResourceBlob(id){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resource_blobs','readonly').objectStore('resource_blobs').get(id));
+}
+async function idbDeleteResourceBlob(id){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resource_blobs','readwrite').objectStore('resource_blobs').delete(id));
+}
 async function idbDeleteResource(id){
   const db=await idbOpen();
+  try{await _idbReq(db.transaction('resource_blobs','readwrite').objectStore('resource_blobs').delete(id));}catch{}
   return _idbReq(db.transaction('resources','readwrite').objectStore('resources').delete(id));
+}
+// Load a resource and populate its chapters from blob store if needed
+async function idbGetResourceWithChapters(id){
+  const res=await idbGetResource(id);
+  if(!res)return null;
+  if(res.chapters)return res;
+  if(res.kind==='sqlite'){
+    const blob=await idbGetResourceBlob(id).catch(()=>null);
+    if(blob?.data){
+      try{const chapters=JSON.parse(new TextDecoder().decode(blob.data));return{...res,chapters};}catch{}
+    }
+  }
+  return res;
 }
 
 function parseResourceFile(text,filename){
@@ -494,13 +524,142 @@ function parseResourceFile(text,filename){
 }
 
 async function importResourceFile(file){
-  const ext=(file.name||'').split('.').pop().toLowerCase();
-  if(!['txt','md'].includes(ext))throw new Error('Only .txt and .md files are supported.');
-  const text=await file.text();
-  if(!text.trim())throw new Error('File is empty.');
-  const res=parseResourceFile(text,file.name);
-  await idbPutResource(res);
-  return res;
+  return importUserResource(file,'other');
+}
+
+// ── Unified multi-format resource importer ────────────────
+async function importUserResource(file,category){
+  const name=file.name||'untitled';
+  const ext=name.split('.').pop().toLowerCase();
+  const baseName=name.replace(/\.[^/.]+$/,'').replace(/[-_]/g,' ').trim()||'Untitled';
+  const id=`res-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+
+  if(ext==='txt'||ext==='md'){
+    const text=await file.text();
+    if(!text.trim())throw new Error('File is empty.');
+    const parsed=parseResourceFile(text,name);
+    const res={...parsed,id,category};
+    await idbPutResource(res);
+    return res;
+  }
+
+  if(ext==='jpg'||ext==='jpeg'||ext==='png'||ext==='webp'||ext==='gif'){
+    const buf=await file.arrayBuffer();
+    const mimeMap={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif'};
+    const mime=mimeMap[ext]||'image/jpeg';
+    const meta={id,title:baseName,ext,category,importedAt:Date.now(),kind:'image',mime,size:buf.byteLength};
+    await idbPutResourceBlob(id,buf);
+    await idbPutResource(meta);
+    return meta;
+  }
+
+  if(ext==='pdf'){
+    const buf=await file.arrayBuffer();
+    const meta={id,title:baseName,ext,category,importedAt:Date.now(),kind:'pdf',mime:'application/pdf',size:buf.byteLength};
+    await idbPutResourceBlob(id,buf);
+    await idbPutResource(meta);
+    return meta;
+  }
+
+  if(ext==='dzip'){
+    return _importDzipResource(file,id,baseName,category);
+  }
+
+  if(['lexi','dcti','cmti','devi','refi'].includes(ext)){
+    return _importSqliteResource(file,id,baseName,ext,category);
+  }
+
+  throw new Error(`Unsupported file type: .${ext}`);
+}
+
+async function _importSqliteResource(file,id,baseName,ext,category){
+  const initSqlJs=(await import('sql.js')).default;
+  const SQL=await initSqlJs({locateFile:()=>'/sql-wasm.wasm'});
+  const buf=await file.arrayBuffer();
+  const db=new SQL.Database(new Uint8Array(buf));
+  let chapters=[];
+  try{
+    if(ext==='lexi'){
+      let rows;
+      try{rows=db.exec('SELECT Topic, Definition FROM Lexicon ORDER BY Topic');}
+      catch{rows=db.exec('SELECT Topic, Details FROM Lexicon ORDER BY Topic');}
+      if(rows[0])chapters=rows[0].values.map(([t,d])=>({title:String(t||''),body:String(d||'')}));
+    } else if(ext==='dcti'){
+      let rows;
+      try{rows=db.exec('SELECT Topic, Definition FROM Dictionary ORDER BY Topic');}
+      catch{rows=db.exec('SELECT Topic, Details FROM Dictionary ORDER BY Topic');}
+      if(rows[0])chapters=rows[0].values.map(([t,d])=>({title:String(t||''),body:String(d||'')}));
+    } else if(ext==='cmti'){
+      let rows;
+      try{rows=db.exec('SELECT BookNumber, ChapterNumber, VerseNumber, CommentaryText FROM Commentary ORDER BY BookNumber,ChapterNumber,VerseNumber');}
+      catch{rows=db.exec('SELECT Book, Chapter, Verse, Text FROM Commentary ORDER BY Book,Chapter,Verse');}
+      if(rows[0]){
+        const grouped={};
+        for(const [bn,ch,vs,txt] of rows[0].values){
+          const bname=(typeof BIBLE!=='undefined'&&BIBLE[bn-1]?.name)||`Book ${bn}`;
+          const key=`${bn}|${ch}`;
+          if(!grouped[key])grouped[key]={title:`${bname} ${ch}`,body:''};
+          grouped[key].body+=`[${vs}] ${String(txt||'').replace(/<[^>]+>/g,'').trim()}\n\n`;
+        }
+        chapters=Object.values(grouped);
+      }
+    } else if(ext==='devi'){
+      let rows;
+      try{rows=db.exec('SELECT Day, Title, Text FROM Devotional ORDER BY Day');}
+      catch{rows=db.exec('SELECT Day, Title, Description FROM Devotional ORDER BY Day');}
+      if(rows[0])chapters=rows[0].values.map(([day,t,txt])=>({title:t||`Day ${day}`,body:String(txt||'').replace(/<[^>]+>/g,'').trim()}));
+    } else if(ext==='refi'){
+      // Try Reference book format first (Chapter title + HTML Content)
+      let refRows=null;
+      try{refRows=db.exec('SELECT Chapter, Content FROM Reference ORDER BY rowid');}catch{}
+      if(refRows?.[0]?.values?.length){
+        // Pull proper title from Details table
+        try{const dtl=db.exec('SELECT Title FROM Details LIMIT 1');if(dtl[0]?.values[0]?.[0])title=String(dtl[0].values[0][0]).split('(')[0].trim()||baseName;}catch{}
+        const stripHtml=s=>String(s||'').replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').trim();
+        chapters=refRows[0].values.map(([ch,content])=>({title:String(ch||''),body:stripHtml(content)}));
+      } else {
+        // Fall back to verse cross-reference format
+        let rows;
+        try{rows=db.exec('SELECT Book, Chapter, Verse, CrossReference FROM CrossReference ORDER BY Book,Chapter,Verse');}
+        catch{rows=db.exec('SELECT Book, Chapter, Verse, References FROM CrossReference ORDER BY Book,Chapter,Verse');}
+        if(rows?.[0]){
+          const grouped={};
+          for(const [bn,ch,vs,refs] of rows[0].values){
+            const bname=(typeof BIBLE!=='undefined'&&BIBLE[bn-1]?.name)||`Book ${bn}`;
+            const key=`${bn}|${ch}`;
+            if(!grouped[key])grouped[key]={title:`${bname} ${ch}`,body:''};
+            grouped[key].body+=`[${vs}] ${String(refs||'').trim()}\n`;
+          }
+          chapters=Object.values(grouped);
+        }
+      }
+    }
+  } finally {
+    try{db.close();}catch{}
+  }
+  if(!chapters.length)throw new Error('No data found in this file. Make sure it is a valid MySword database.');
+  const chapterJson=new TextEncoder().encode(JSON.stringify(chapters)).buffer;
+  await idbPutResourceBlob(id,chapterJson);
+  const meta={id,title:baseName,ext,category,importedAt:Date.now(),kind:'sqlite',entryCount:chapters.length};
+  await idbPutResource(meta);
+  return meta;
+}
+
+async function _importDzipResource(file,id,baseName,category){
+  const{unzipSync}=await import('fflate');
+  const buf=await file.arrayBuffer();
+  let files;
+  try{files=unzipSync(new Uint8Array(buf));}
+  catch(e){throw new Error('Could not open archive: '+e.message);}
+  const entries=Object.entries(files);
+  if(!entries.length)throw new Error('Archive is empty.');
+  const knownExts=['lexi','dcti','cmti','devi','refi'];
+  const found=entries.find(([n])=>knownExts.includes(n.split('.').pop().toLowerCase()));
+  if(!found)throw new Error('No recognized database file found inside archive.');
+  const[innerName,innerData]=found;
+  const innerExt=innerName.split('.').pop().toLowerCase();
+  const innerFile=new File([innerData.buffer],innerName,{type:'application/octet-stream'});
+  return _importSqliteResource(innerFile,id,baseName,innerExt,category);
 }
 
 
@@ -2535,6 +2694,20 @@ function LarkinSection({title,imgs,BASE,T,allImgs}){
   );
 }
 
+// ── UserBlobThumb: loads an image blob from IDB and renders as a thumbnail ──
+function UserBlobThumb({id,mime,title,T}){
+  const[src,setSrc]=useState(null);
+  useEffect(()=>{
+    let url=null;
+    idbGetResourceBlob(id).then(blob=>{
+      if(blob?.data){url=URL.createObjectURL(new Blob([blob.data],{type:mime}));setSrc(url);}
+    }).catch(()=>{});
+    return()=>{if(url)URL.revokeObjectURL(url);};
+  },[id,mime]);
+  if(!src)return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:12,width:'100%',height:'100%'}}><div style={{fontSize:28,marginBottom:6}}>🖼</div><div style={{fontFamily:'system-ui',fontSize:11,color:T.body,lineHeight:1.3,textAlign:'center',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',maxWidth:'100%'}}>{title}</div></div>;
+  return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
+}
+
 // ══════════════════════════════════════════════════════════
 //  MAIN APP
 // ══════════════════════════════════════════════════════════
@@ -2732,6 +2905,26 @@ function App(){
   const[openResChapter,setOpenResChapter]=useState(0);
   const[resImporting,setResImporting]=useState(false);
   const[resImportErr,setResImportErr]=useState('');
+  // ── Multi-format resources per section ──
+  const[userMaps,setUserMaps]=useState([]);
+  const[userCharts,setUserCharts]=useState([]);
+  const[userLexicons,setUserLexicons]=useState([]);
+  const[userDicts,setUserDicts]=useState([]);
+  const[activeLexiconId,setActiveLexiconId]=useState(()=>{try{return localStorage.getItem('scrip:activeLexId')||null;}catch{return null;}});
+  const[activeDictId,setActiveDictId]=useState(()=>{try{return localStorage.getItem('scrip:activeDictId')||null;}catch{return null;}});
+  const[activeLexData,setActiveLexData]=useState(null);
+  const[activeDictData,setActiveDictData]=useState(null);
+  const[viewingBlob,setViewingBlob]=useState(null); // {url,title,kind,id}
+  const[mapsImporting,setMapsImporting]=useState(false);
+  const[mapsImportErr,setMapsImportErr]=useState('');
+  const[chartsImporting,setChartsImporting]=useState(false);
+  const[chartsImportErr,setChartsImportErr]=useState('');
+  const[lexImporting,setLexImporting]=useState(false);
+  const[lexImportErr,setLexImportErr]=useState('');
+  const[lexSearchQ,setLexSearchQ]=useState('');
+  const[lexOpenEntry,setLexOpenEntry]=useState(null);
+  const[dictImporting,setDictImporting]=useState(false);
+  const[dictImportErr,setDictImportErr]=useState('');
   const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
@@ -3388,6 +3581,24 @@ function App(){
     if(el){el.scrollIntoView({behavior:'smooth',block:'start'});readSearchJumpTo.current=null;}
   },[readSearchLimit]);
 
+  // ── Load active lexicon data when activeLexiconId changes ──
+  useEffect(()=>{
+    if(!activeLexiconId){setActiveLexData(null);return;}
+    idbGetResourceWithChapters(activeLexiconId).then(res=>{
+      if(res)setActiveLexData(res);
+      else{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}
+    }).catch(()=>{});
+  },[activeLexiconId]);
+
+  // ── Load active dictionary data when activeDictId changes ──
+  useEffect(()=>{
+    if(!activeDictId){setActiveDictData(null);return;}
+    idbGetResourceWithChapters(activeDictId).then(res=>{
+      if(res)setActiveDictData(res);
+      else{setActiveDictId(null);try{localStorage.removeItem('scrip:activeDictId');}catch{}}
+    }).catch(()=>{});
+  },[activeDictId]);
+
   // ── Auth init — process email link hash params first ──
   useEffect(()=>{
     const hash=window.location.hash.substring(1);
@@ -3462,7 +3673,31 @@ function App(){
       dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
       dbLoadRecents(user.id).then(setRecents).catch(()=>{});
       dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
-      idbGetAllResources().then(setResources).catch(()=>{});
+      idbGetAllResources().then(all=>{
+        setResources(all.filter(r=>r.category==='other'||!r.category));
+        setUserMaps(all.filter(r=>r.category==='maps'));
+        setUserCharts(all.filter(r=>r.category==='charts'));
+        setUserLexicons(all.filter(r=>r.category==='lexicon').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
+        setUserDicts(all.filter(r=>r.category==='dict').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
+      }).catch(()=>{});
+      // ── Install bundled default resources (once per device) ──
+      (async()=>{
+        const FOXES_ID='bundled-foxes-book-of-martyrs';
+        const already=await idbGetMeta('bundled:foxes').catch(()=>null);
+        if(already)return;
+        try{
+          const resp=await fetch('/defaults/foxes_book_of_martyrs.refi');
+          if(!resp.ok)return;
+          const buf=await resp.arrayBuffer();
+          const file=new File([buf],'foxes_book_of_martyrs.refi',{type:'application/octet-stream'});
+          const res=await _importSqliteResource(file,FOXES_ID,"Foxe's Book of Martyrs",'refi','other');
+          await idbPutMeta('bundled:foxes',true);
+          setResources(prev=>{
+            if(prev.find(r=>r.id===FOXES_ID))return prev;
+            return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
+          });
+        }catch(e){console.warn('Bundled Foxe\'s install failed:',e);}
+      })();
     })();
   },[user]);
 
@@ -4144,8 +4379,8 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(env(safe-area-inset-top,0px) + 12px),32px) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
-        <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(env(safe-area-inset-top,0px),20px)',left:0,right:0}}/>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+        <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(var(--sat,0px),20px)',left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
@@ -5292,8 +5527,8 @@ function App(){
 
       {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
       {fsActive&&tab==='read'&&<>
-        <div style={{position:'fixed',top:0,left:0,right:0,height:'env(safe-area-inset-top,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
-        {chLineAbove&&<div style={{position:'fixed',top:'env(safe-area-inset-top,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
+        <div style={{position:'fixed',top:0,left:0,right:0,height:'var(--sat,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
+        {chLineAbove&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
       </>}
 
       {/* ═══ READ TAB ═══ */}
@@ -6060,10 +6295,102 @@ function App(){
             </div>
           )}
           {!strongsSearchRes&&!strongsTabEntry&&(
-            <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-              <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>ℍ</div>
-              <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
-              <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+              {/* Scrollable content area */}
+              <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'16px 18px 16px',display:'flex',flexDirection:'column'}}>
+                {/* Active custom lexicon search */}
+                {activeLexiconId&&activeLexData&&(()=>{
+                  const q=lexSearchQ.trim().toLowerCase();
+                  const chapters=activeLexData.chapters||[];
+                  const filtered=q.length>=2?chapters.filter(c=>c.title.toLowerCase().includes(q)||c.body.toLowerCase().includes(q)):[];
+                  return(
+                    <div>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                          <span style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.1em'}}>CUSTOM LEXICON</span>
+                          <span style={{fontFamily:FB,fontSize:13,color:T.gT,fontWeight:600}}>{activeLexData.title}</span>
+                          <span style={{fontFamily:FS,fontSize:8,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'1px 5px'}}>{(activeLexData.entryCount||chapters.length).toLocaleString()} entries</span>
+                        </div>
+                        <button onClick={()=>{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>Restore Built-in</button>
+                      </div>
+                      <input value={lexSearchQ} onChange={e=>setLexSearchQ(e.target.value)} placeholder={`Search ${activeLexData.title}…`}
+                        style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+                      {q.length>=2&&filtered.length===0&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,padding:'16px 0',textAlign:'center'}}>No matches for "{lexSearchQ}"</div>}
+                      {q.length<2&&<div style={{fontFamily:FS,fontSize:8.5,color:T.dim,letterSpacing:'0.08em',marginBottom:8}}>{q.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeLexData.entryCount||chapters.length).toLocaleString()} ENTRIES — SEARCH ABOVE`}</div>}
+                      {lexOpenEntry?(
+                        <div>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                            <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.1),color:T.gT,fontWeight:600}}>{lexOpenEntry.title}</span>
+                            <button onClick={()=>setLexOpenEntry(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                          </div>
+                          <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,whiteSpace:'pre-wrap'}}>{lexOpenEntry.body}</div>
+                        </div>
+                      ):(
+                        filtered.map((c,i)=>(
+                          <div key={i} onClick={()=>setLexOpenEntry(c)} style={{padding:'10px 0',borderBottom:`1px solid ${T.bdS}`,cursor:'pointer'}}>
+                            <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.gT,fontWeight:600,marginBottom:2}}>{c.title}</div>
+                            <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.body.slice(0,120)}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  );
+                })()}
+                {/* No active lexicon — icon + description + uploaded list */}
+                {!activeLexiconId&&(
+                  <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
+                    <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
+                    <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7,marginBottom:24}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
+                    {userLexicons.length>0&&(
+                      <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
+                        <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED LEXICONS</div>
+                        {userLexicons.map(lex=>(
+                          <div key={lex.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lex.title}</div>
+                              <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2}}>{(lex.entryCount||0).toLocaleString()} entries · {lex.ext?.toUpperCase()}</div>
+                            </div>
+                            <button onClick={()=>{setActiveLexiconId(lex.id);setLexSearchQ('');setLexOpenEntry(null);try{localStorage.setItem('scrip:activeLexId',lex.id);}catch{}}}
+                              style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
+                            <button onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${lex.title}"?`))return;await idbDeleteResource(lex.id);setUserLexicons(prev=>prev.filter(x=>x.id!==lex.id));}}
+                              style={{background:'none',border:'none',color:T.dim,fontSize:15,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Pinned upload footer — only shown when no active lexicon */}
+              {!activeLexiconId&&(
+                <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                    <div>
+                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
+                        {['.lexi','.txt','.md','.pdf'].map(f=>(
+                          <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 16px',cursor:lexImporting?'default':'pointer',opacity:lexImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
+                      {lexImporting?'Importing…':'＋ Upload Lexicon'}
+                      <input type="file" accept=".lexi,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={lexImporting}
+                        onChange={async e=>{
+                          const f=e.target.files[0];if(!f)return;e.target.value='';
+                          setLexImporting(true);setLexImportErr('');
+                          try{
+                            const res=await importUserResource(f,'lexicon');
+                            const meta={id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount||res.chapters?.length||0};
+                            setUserLexicons(prev=>[meta,...prev]);
+                          }catch(ex){setLexImportErr(String(ex.message||ex));}
+                          setLexImporting(false);
+                        }}/>
+                    </label>
+                  </div>
+                  {lexImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:12,color:T.redTxt,lineHeight:1.5}}>{lexImportErr}</div>}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -6083,6 +6410,57 @@ function App(){
         },{}):null;
         const groupedKeys=grouped?Object.keys(grouped).sort((a,b)=>{const al=a.toLowerCase(),bl=b.toLowerCase();const rankA=al===q?0:al.startsWith(q)?1:2;const rankB=bl===q?0:bl.startsWith(q)?1:2;if(rankA!==rankB)return rankA-rankB;return al.localeCompare(bl);}):[];
         const statusLabel=isLoading?'LOOKING UP…':hasDb?`WEBSTER'S 1828 · ${groupedKeys.length} WORD${groupedKeys.length!==1?'S':''} · ${dictDbEntries.length} ENTR${dictDbEntries.length!==1?'IES':'Y'}`:hasLive?'EXTERNAL SOURCE':!q?'WEBSTER\'S 1828 · 107,793 ENTRIES':q.length<2?'TYPE AT LEAST 2 CHARACTERS':'NO RESULTS FOUND';
+
+        // ── Custom dictionary view ──
+        if(activeDictId&&activeDictData){
+          const dq=lexSearchQ.trim().toLowerCase();
+          const chapters=activeDictData.chapters||[];
+          const filtered=dq.length>=2?chapters.filter(c=>c.title.toLowerCase().includes(dq)||c.body.toLowerCase().includes(dq)):[];
+          return(
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+              <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>CUSTOM DICTIONARY</span>
+                    <span style={{fontFamily:FB,fontSize:13,color:T.gT,fontWeight:600}}>{activeDictData.title}</span>
+                  </div>
+                  <button onClick={()=>{setActiveDictId(null);try{localStorage.removeItem('scrip:activeDictId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap'}}>Restore Webster's 1828</button>
+                </div>
+                <input value={lexSearchQ} onChange={e=>{setLexSearchQ(e.target.value);setLexOpenEntry(null);}} placeholder={`Search ${activeDictData.title}…`}
+                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
+                  {dq.length>=2?`${filtered.length} RESULT${filtered.length!==1?'S':''}`:dq.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeDictData.entryCount||chapters.length).toLocaleString()} ENTRIES`}
+                </div>
+              </div>
+              <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0 80px'}}>
+                {lexOpenEntry?(
+                  <div style={{padding:'16px 18px'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                      <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.1),color:T.gT,fontWeight:600}}>{lexOpenEntry.title}</span>
+                      <button onClick={()=>setLexOpenEntry(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                    </div>
+                    <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,whiteSpace:'pre-wrap'}}>{lexOpenEntry.body}</div>
+                  </div>
+                ):dq.length>=2&&filtered.length===0?(
+                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:14,color:T.dim}}>No results for "{lexSearchQ}"</div>
+                ):dq.length>=2?(
+                  filtered.map((c,i)=>(
+                    <div key={i} onClick={()=>setLexOpenEntry(c)} style={{padding:'10px 18px',borderBottom:`1px solid ${T.bdS}`,cursor:'pointer'}}
+                      onMouseEnter={el=>el.currentTarget.style.background=T.gF} onMouseLeave={el=>el.currentTarget.style.background='transparent'}>
+                      <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.gT,fontWeight:600,marginBottom:2}}>{c.title}</div>
+                      <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.body.slice(0,120)}</div>
+                    </div>
+                  ))
+                ):(
+                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:14,color:T.dim}}>
+                    Type at least 2 characters to search {activeDictData.title}.
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
@@ -6154,9 +6532,57 @@ function App(){
             )}
             {/* Empty state / no results */}
             {!isLoading&&!hasDb&&!hasLive&&(
-              <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-                <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:290}}>
-                  {!q?'Search for any English word in Webster\'s 1828 Dictionary.':q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
+              <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+                {/* Scrollable content: message + uploaded dict list */}
+                <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'24px 18px 16px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
+                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
+                    {!q?<>Search for any English word in Webster&rsquo;s 1828 Dictionary. Words not found there (e.g. &ldquo;internet&rdquo;) are automatically looked up via the Free Dictionary API, sourced from Wiktionary.</>:q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
+                  </div>
+                  {userDicts.length>0&&(
+                    <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
+                      <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED DICTIONARIES</div>
+                      {userDicts.map(d=>(
+                        <div key={d.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.title}</div>
+                            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2}}>{(d.entryCount||0).toLocaleString()} entries · {d.ext?.toUpperCase()}</div>
+                          </div>
+                          <button onClick={()=>{setActiveDictId(d.id);setLexSearchQ('');setLexOpenEntry(null);try{localStorage.setItem('scrip:activeDictId',d.id);}catch{}}}
+                            style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
+                          <button onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${d.title}"?`))return;await idbDeleteResource(d.id);setUserDicts(prev=>prev.filter(x=>x.id!==d.id));}}
+                            style={{background:'none',border:'none',color:T.dim,fontSize:15,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Pinned upload footer */}
+                <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                    <div>
+                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
+                        {['.dcti','.txt','.md','.pdf'].map(f=>(
+                          <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 16px',cursor:dictImporting?'default':'pointer',opacity:dictImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
+                      {dictImporting?'Importing…':'＋ Upload Dictionary'}
+                      <input type="file" accept=".dcti,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={dictImporting}
+                        onChange={async e=>{
+                          const f=e.target.files[0];if(!f)return;e.target.value='';
+                          setDictImporting(true);setDictImportErr('');
+                          try{
+                            const res=await importUserResource(f,'dict');
+                            const meta={id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount||res.chapters?.length||0};
+                            setUserDicts(prev=>[meta,...prev]);
+                          }catch(ex){setDictImportErr(String(ex.message||ex));}
+                          setDictImporting(false);
+                        }}/>
+                    </label>
+                  </div>
+                  {dictImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:12,color:T.redTxt,lineHeight:1.5}}>{dictImportErr}</div>}
                 </div>
               </div>
             )}
@@ -6188,11 +6614,66 @@ function App(){
             {/* Header */}
             <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
               <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Scripture Atlas</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{MAPS.length} biblical maps</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{MAPS.length} built-in · {userMaps.length} imported</div>
             </div>
             {/* Map grid */}
-            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 12px 80px'}}>
+            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 12px 16px'}}>
+              {/* User-imported maps */}
+              {userMaps.length>0&&(
+                <div style={{marginBottom:18}}>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED MAPS</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
+                    {userMaps.map(m=>(
+                      <div key={m.id} style={{position:'relative',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden',cursor:'pointer',aspectRatio:'4/3',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}
+                        onClick={async()=>{
+                          const blob=await idbGetResourceBlob(m.id);
+                          if(blob?.data){const url=URL.createObjectURL(new Blob([blob.data],{type:m.mime}));setViewingBlob({url,title:m.title,kind:m.kind,id:m.id});}
+                        }}>
+                        {m.kind==='image'?(
+                          <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
+                        ):(
+                          <div style={{textAlign:'center',padding:12}}>
+                            <div style={{fontSize:28,marginBottom:6}}>📄</div>
+                            <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
+                            <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
+                          </div>
+                        )}
+                        <button type="button" onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${m.title}"?`))return;await idbDeleteResource(m.id);setUserMaps(prev=>prev.filter(x=>x.id!==m.id));}}
+                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{height:1,background:T.bdS,margin:'18px 0'}}/>
+                </div>
+              )}
+              {/* Built-in maps */}
+              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
               <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
+            </div>
+            {/* Import footer */}
+            <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                <div>
+                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
+                    {['.jpg','.png','.webp','.pdf'].map(f=>(
+                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:mapsImporting?0.5:1}}>
+                  {mapsImporting?'Importing…':'＋ Import Map'}
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" style={{display:'none'}} disabled={mapsImporting}
+                    onChange={async e=>{
+                      const f=e.target.files[0];if(!f)return;e.target.value='';
+                      setMapsImporting(true);setMapsImportErr('');
+                      try{const res=await importUserResource(f,'maps');setUserMaps(prev=>[{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,mime:res.mime,size:res.size},...prev]);}
+                      catch(ex){setMapsImportErr(String(ex.message||ex));}
+                      setMapsImporting(false);
+                    }}/>
+                </label>
+              </div>
+              {mapsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{mapsImportErr}</div>}
             </div>
           </div>
         );
@@ -6240,13 +6721,68 @@ function App(){
             {/* Header */}
             <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
               <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Larkin's Charts</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} charts</div>
+              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} built-in · {userCharts.length} imported</div>
             </div>
             {/* Scrollable sections */}
-            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 12px 80px'}}>
+            <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 12px 16px'}}>
+              {/* User-imported charts */}
+              {userCharts.length>0&&(
+                <div style={{marginBottom:18}}>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED CHARTS</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
+                    {userCharts.map(m=>(
+                      <div key={m.id} style={{position:'relative',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden',cursor:'pointer',aspectRatio:'4/3',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}
+                        onClick={async()=>{
+                          const blob=await idbGetResourceBlob(m.id);
+                          if(blob?.data){const url=URL.createObjectURL(new Blob([blob.data],{type:m.mime}));setViewingBlob({url,title:m.title,kind:m.kind,id:m.id});}
+                        }}>
+                        {m.kind==='image'?(
+                          <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
+                        ):(
+                          <div style={{textAlign:'center',padding:12}}>
+                            <div style={{fontSize:28,marginBottom:6}}>📄</div>
+                            <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
+                            <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
+                          </div>
+                        )}
+                        <button type="button" onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${m.title}"?`))return;await idbDeleteResource(m.id);setUserCharts(prev=>prev.filter(x=>x.id!==m.id));}}
+                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{height:1,background:T.bdS,margin:'18px 0'}}/>
+                </div>
+              )}
+              {/* Built-in Larkin sections */}
+              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>LARKIN'S CHARTS</div>
               {LARKIN_SECTIONS.map(({title,imgs})=>(
                 <LarkinSection key={title} title={title} imgs={imgs} BASE={BASE} T={T} allImgs={allImgs}/>
               ))}
+            </div>
+            {/* Import footer */}
+            <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                <div>
+                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
+                    {['.jpg','.png','.webp','.pdf'].map(f=>(
+                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:chartsImporting?0.5:1}}>
+                  {chartsImporting?'Importing…':'＋ Import Chart'}
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" style={{display:'none'}} disabled={chartsImporting}
+                    onChange={async e=>{
+                      const f=e.target.files[0];if(!f)return;e.target.value='';
+                      setChartsImporting(true);setChartsImportErr('');
+                      try{const res=await importUserResource(f,'charts');setUserCharts(prev=>[{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,mime:res.mime,size:res.size},...prev]);}
+                      catch(ex){setChartsImportErr(String(ex.message||ex));}
+                      setChartsImporting(false);
+                    }}/>
+                </label>
+              </div>
+              {chartsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{chartsImportErr}</div>}
             </div>
           </div>
         );
@@ -6256,55 +6792,79 @@ function App(){
       {tab==='other'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           {!openResId?(
-            /* ── Resource list ── */
-            <div style={{flex:1,overflowY:'auto',padding:'20px 16px 100px'}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+            <>
+            {/* ── Resource list ── */}
+            <div style={{flex:1,overflowY:'auto',padding:'20px 16px 16px'}}>
+              <div style={{marginBottom:18}}>
                 <div style={{fontFamily:FS,fontSize:13,fontWeight:700,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Other Resources</div>
-                <label style={{display:'flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,opacity:resImporting?0.5:1}}>
-                  {resImporting?'Importing…':'+ Import'}
-                  <input type="file" accept=".txt,.md" style={{display:'none'}} disabled={resImporting}
-                    onChange={async e=>{
-                      const f=e.target.files[0];if(!f)return;
-                      e.target.value='';
-                      setResImporting(true);setResImportErr('');
-                      try{
-                        const res=await importResourceFile(f);
-                        setResources(prev=>[res,...prev]);
-                      }catch(ex){setResImportErr(String(ex.message||ex));}
-                      setResImporting(false);
-                    }}/>
-                </label>
               </div>
-              {resImportErr&&<div style={{marginBottom:14,padding:'10px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:13,color:T.redTxt,lineHeight:1.6}}>{resImportErr}</div>}
               {resources.length===0&&!resImporting&&(
-                <div style={{textAlign:'center',padding:'48px 24px'}}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',minHeight:'55vh',padding:'24px'}}>
                   <div style={{fontSize:36,marginBottom:16,opacity:0.4}}>📚</div>
                   <div style={{fontFamily:FS,fontSize:13,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>No Resources Yet</div>
-                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import any plain text or Markdown book — Foxe's Book of Martyrs, Treasury of Scripture Knowledge, personal notes, and more.</div>
-                  <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.1em',textTransform:'uppercase',marginTop:16,opacity:0.6}}>Supports .txt and .md files</div>
+                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import books, commentaries, devotionals, cross-references, PDFs, and more.</div>
                 </div>
               )}
-              {resources.map(res=>(
+              {resources.map(res=>{
+                const kindIcon=res.kind==='pdf'?'📄':res.kind==='image'?'🖼':res.kind==='sqlite'?'🗃':'📖';
+                const kindLabel=res.kind==='pdf'?'PDF':res.kind==='image'?res.ext?.toUpperCase()||'Image':res.kind==='sqlite'?`${(res.entryCount||res.chapters?.length||0).toLocaleString()} entries`:(`${(res.chapters?.length||1)} ${(res.chapters?.length||1)===1?'section':'chapters'}`);
+                return(
                 <div key={res.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'14px 16px',marginBottom:10,cursor:'pointer',gap:12}}
                   onClick={async()=>{
-                    const full=await idbGetResource(res.id);
+                    if(res.kind==='pdf'||res.kind==='image'){
+                      const blob=await idbGetResourceBlob(res.id);
+                      if(blob?.data){const url=URL.createObjectURL(new Blob([blob.data],{type:res.mime}));setViewingBlob({url,title:res.title,kind:res.kind,id:res.id});}
+                      return;
+                    }
+                    const full=await idbGetResourceWithChapters(res.id);
                     if(full){setOpenResData(full);setOpenResChapter(0);setOpenResId(res.id);}
                   }}>
+                  <div style={{fontSize:22,flexShrink:0}}>{kindIcon}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{res.title}</div>
                     <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.08em',textTransform:'uppercase'}}>
-                      {res.chapters?.length||1} {(res.chapters?.length||1)===1?'section':'chapters'} · {res.ext?.toUpperCase()} · {new Date(res.importedAt).toLocaleDateString()}
+                      {kindLabel} · {res.ext?.toUpperCase()} · {new Date(res.importedAt).toLocaleDateString()}
                     </div>
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:10}}>
                     <button type="button"
                       onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${res.title}"?`))return;await idbDeleteResource(res.id);setResources(prev=>prev.filter(r=>r.id!==res.id));}}
                       style={{background:'none',border:'none',color:T.dim,fontSize:16,cursor:'pointer',padding:'4px 6px',lineHeight:1,opacity:0.6}}>✕</button>
-                    <div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>
+                    {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
+            {/* Import footer */}
+            <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                <div>
+                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
+                    {['.txt','.md','.pdf','.jpg','.png','.cmti','.devi','.refi','.dzip'].map(f=>(
+                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                    ))}
+                  </div>
+                </div>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:resImporting?0.5:1}}>
+                  {resImporting?'Importing…':'＋ Import Resource'}
+                  <input type="file" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.cmti,.devi,.refi,.dzip" style={{display:'none'}} disabled={resImporting}
+                    onChange={async e=>{
+                      const f=e.target.files[0];if(!f)return;
+                      e.target.value='';
+                      setResImporting(true);setResImportErr('');
+                      try{
+                        const res=await importUserResource(f,'other');
+                        setResources(prev=>[res,...prev]);
+                      }catch(ex){setResImportErr(String(ex.message||ex));}
+                      setResImporting(false);
+                    }}/>
+                </label>
+              </div>
+              {resImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{resImportErr}</div>}
+            </div>
+            </>
           ):(
             /* ── Resource reader ── */
             <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
@@ -6370,6 +6930,28 @@ function App(){
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ═══ BLOB VIEWER (PDF / Image overlay) ═══ */}
+      {viewingBlob&&(
+        <div style={{position:'fixed',inset:0,zIndex:950,background:'rgba(0,0,0,0.92)',display:'flex',flexDirection:'column'}} onClick={e=>{if(e.target===e.currentTarget){URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}}}>
+          {/* Header bar */}
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:`max(calc(var(--sat,0px) + 10px),var(--sat-min,20px)) 14px 10px`,background:'rgba(0,0,0,0.6)',flexShrink:0,backdropFilter:'blur(8px)'}}>
+            <button onClick={()=>{URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.8)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'4px 8px',flexShrink:0}}>✕</button>
+            <div style={{flex:1,overflow:'hidden',textAlign:'center'}}>
+              <div style={{fontFamily:'system-ui,sans-serif',fontSize:13,color:'rgba(255,255,255,0.9)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{viewingBlob.title}</div>
+            </div>
+            <div style={{width:40,flexShrink:0}}/>
+          </div>
+          {/* Content */}
+          <div style={{flex:1,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',padding:8}}>
+            {viewingBlob.kind==='pdf'?(
+              <iframe src={viewingBlob.url} title={viewingBlob.title} style={{width:'100%',height:'100%',border:'none',borderRadius:6,background:'#fff'}}/>
+            ):(
+              <img src={viewingBlob.url} alt={viewingBlob.title} style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',borderRadius:8,userSelect:'none'}} draggable={false}/>
+            )}
+          </div>
         </div>
       )}
 
