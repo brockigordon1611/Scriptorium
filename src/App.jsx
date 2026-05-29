@@ -167,7 +167,7 @@ const Auth = {
 //  LOCAL-FIRST: IndexedDB Bible text cache
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
-const IDB_VER=2;
+const IDB_VER=3;
 let _idbInst=null;
 
 function idbOpen(){
@@ -190,6 +190,10 @@ function idbOpen(){
       if(!db.objectStoreNames.contains('webster')){
         const wb=db.createObjectStore('webster',{autoIncrement:true});
         wb.createIndex('word_lower','word_lower',{unique:false});
+      }
+      // v3 stores
+      if(!db.objectStoreNames.contains('resources')){
+        db.createObjectStore('resources',{keyPath:'id'});
       }
     };
     req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
@@ -415,6 +419,88 @@ async function downloadWebsterLocally(onProgress,signal){
   await idbPutMeta('dl:webster',false);
   await idbClearWebster();
   await _batchDownload({table:'webster_1828',select:'word,pos,definitions',order:'word.asc',putFn:idbPutWebsterEntries,dlKey:'webster',total:107793,onProgress,signal});
+}
+
+// ── Other Resources (user-imported books) ─────────────────
+async function idbGetAllResources(){
+  const db=await idbOpen();
+  const rows=await _idbReq(db.transaction('resources','readonly').objectStore('resources').getAll());
+  return(rows||[]).sort((a,b)=>b.importedAt-a.importedAt);
+}
+async function idbGetResource(id){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resources','readonly').objectStore('resources').get(id));
+}
+async function idbPutResource(res){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resources','readwrite').objectStore('resources').put(res));
+}
+async function idbDeleteResource(id){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('resources','readwrite').objectStore('resources').delete(id));
+}
+
+function parseResourceFile(text,filename){
+  const ext=(filename||'').split('.').pop().toLowerCase();
+  const baseName=filename.replace(/\.[^/.]+$/,'').replace(/[-_]/g,' ').trim();
+  let title=baseName;
+  let chapters=[];
+
+  if(ext==='md'){
+    const lines=text.split('\n');
+    let titleSet=false;let cur=null;let curLines=[];
+    for(const line of lines){
+      if(line.startsWith('# ')){
+        const heading=line.slice(2).trim();
+        if(!titleSet&&cur===null&&!curLines.some(l=>l.trim())){
+          title=heading;titleSet=true;
+        } else {
+          if(cur!==null||curLines.some(l=>l.trim()))
+            chapters.push({title:cur||'Introduction',body:curLines.join('\n').trim()});
+          cur=heading;curLines=[];
+        }
+      } else {
+        curLines.push(line);
+      }
+    }
+    if(cur!==null)chapters.push({title:cur,body:curLines.join('\n').trim()});
+    if(!chapters.length)chapters=[{title,body:text.trim()}];
+  } else {
+    // Plain text: detect "Chapter X" lines as section breaks
+    const CHAPTER_RE=/^\s*(?:CHAPTER|Chapter)\s+(?:\d+|[IVXLCDM]+|One|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Eleven|Twelve)\b.*$/;
+    const lines=text.split('\n');
+    let cur=null;let curLines=[];
+    for(const line of lines){
+      if(CHAPTER_RE.test(line.trim())){
+        if(cur!==null)chapters.push({title:cur,body:curLines.join('\n').trim()});
+        else if(curLines.some(l=>l.trim()))chapters.push({title:'Introduction',body:curLines.join('\n').trim()});
+        cur=line.trim();curLines=[];
+      } else {
+        curLines.push(line);
+      }
+    }
+    // Flush final chapter
+    if(cur!==null)chapters.push({title:cur,body:curLines.join('\n').trim()});
+    else if(curLines.some(l=>l.trim()))chapters=[{title,body:text.trim()}];
+    if(!chapters.length)chapters=[{title,body:text.trim()}];
+  }
+
+  return{
+    id:`res-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+    title,ext,chapters,
+    importedAt:Date.now(),
+    totalChars:text.length,
+  };
+}
+
+async function importResourceFile(file){
+  const ext=(file.name||'').split('.').pop().toLowerCase();
+  if(!['txt','md'].includes(ext))throw new Error('Only .txt and .md files are supported.');
+  const text=await file.text();
+  if(!text.trim())throw new Error('File is empty.');
+  const res=parseResourceFile(text,file.name);
+  await idbPutResource(res);
+  return res;
 }
 
 
@@ -2639,6 +2725,13 @@ function App(){
   const[audioKeepAwake,setAudioKeepAwake]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:keepAwake')??'true');}catch{return true;}});
   const[audioInfoOpen,setAudioInfoOpen]=useState(null); // 'scroll'|'advance'|null
   const[voicesByVersion,setVoicesByVersion]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:audio:voices')||'{}');}catch{return {};}});
+  // ── Other Resources ──
+  const[resources,setResources]=useState([]);
+  const[openResId,setOpenResId]=useState(null);
+  const[openResData,setOpenResData]=useState(null);
+  const[openResChapter,setOpenResChapter]=useState(0);
+  const[resImporting,setResImporting]=useState(false);
+  const[resImportErr,setResImportErr]=useState('');
   const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
@@ -3369,6 +3462,7 @@ function App(){
       dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
       dbLoadRecents(user.id).then(setRecents).catch(()=>{});
       dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
+      idbGetAllResources().then(setResources).catch(()=>{});
     })();
   },[user]);
 
@@ -6161,12 +6255,121 @@ function App(){
       {/* ═══ OTHER RESOURCES TAB ═══ */}
       {tab==='other'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px 24px',textAlign:'center'}}>
-            <div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:14,color:T.gT,fontSize:26,marginBottom:18,fontFamily:FS}}>⋯</div>
-            <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Other Resources</div>
-            <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7}}>Additional study materials are coming soon.</div>
-            <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginTop:18,opacity:0.5}}>COMING SOON</div>
-          </div>
+          {!openResId?(
+            /* ── Resource list ── */
+            <div style={{flex:1,overflowY:'auto',padding:'20px 16px 100px'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+                <div style={{fontFamily:FS,fontSize:13,fontWeight:700,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Other Resources</div>
+                <label style={{display:'flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,opacity:resImporting?0.5:1}}>
+                  {resImporting?'Importing…':'+ Import'}
+                  <input type="file" accept=".txt,.md" style={{display:'none'}} disabled={resImporting}
+                    onChange={async e=>{
+                      const f=e.target.files[0];if(!f)return;
+                      e.target.value='';
+                      setResImporting(true);setResImportErr('');
+                      try{
+                        const res=await importResourceFile(f);
+                        setResources(prev=>[res,...prev]);
+                      }catch(ex){setResImportErr(String(ex.message||ex));}
+                      setResImporting(false);
+                    }}/>
+                </label>
+              </div>
+              {resImportErr&&<div style={{marginBottom:14,padding:'10px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:13,color:T.redTxt,lineHeight:1.6}}>{resImportErr}</div>}
+              {resources.length===0&&!resImporting&&(
+                <div style={{textAlign:'center',padding:'48px 24px'}}>
+                  <div style={{fontSize:36,marginBottom:16,opacity:0.4}}>📚</div>
+                  <div style={{fontFamily:FS,fontSize:13,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>No Resources Yet</div>
+                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import any plain text or Markdown book — Foxe's Book of Martyrs, Treasury of Scripture Knowledge, personal notes, and more.</div>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.1em',textTransform:'uppercase',marginTop:16,opacity:0.6}}>Supports .txt and .md files</div>
+                </div>
+              )}
+              {resources.map(res=>(
+                <div key={res.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'14px 16px',marginBottom:10,cursor:'pointer',gap:12}}
+                  onClick={async()=>{
+                    const full=await idbGetResource(res.id);
+                    if(full){setOpenResData(full);setOpenResChapter(0);setOpenResId(res.id);}
+                  }}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{res.title}</div>
+                    <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                      {res.chapters?.length||1} {(res.chapters?.length||1)===1?'section':'chapters'} · {res.ext?.toUpperCase()} · {new Date(res.importedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <button type="button"
+                      onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${res.title}"?`))return;await idbDeleteResource(res.id);setResources(prev=>prev.filter(r=>r.id!==res.id));}}
+                      style={{background:'none',border:'none',color:T.dim,fontSize:16,cursor:'pointer',padding:'4px 6px',lineHeight:1,opacity:0.6}}>✕</button>
+                    <div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ):(
+            /* ── Resource reader ── */
+            <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+              {/* Reader header */}
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderBottom:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
+                <button type="button" onClick={()=>{setOpenResId(null);setOpenResData(null);setOpenResChapter(0);}}
+                  style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',cursor:'pointer',padding:'6px 0',display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
+                  ← Library
+                </button>
+                <div style={{flex:1,overflow:'hidden'}}>
+                  <div style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.06em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{openResData?.title}</div>
+                </div>
+                <div style={{flexShrink:0,minWidth:60}}/>
+              </div>
+              {/* Chapter navigation bar */}
+              {openResData?.chapters?.length>1&&(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 16px',borderBottom:`1px solid ${T.bd}`,background:T.bgSec,flexShrink:0,gap:8}}>
+                  <button type="button" disabled={openResChapter===0}
+                    onClick={()=>setOpenResChapter(c=>Math.max(0,c-1))}
+                    style={{background:'none',border:'none',color:openResChapter===0?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',cursor:openResChapter===0?'default':'pointer',padding:'4px 8px',opacity:openResChapter===0?0.3:1}}>
+                    ← Prev
+                  </button>
+                  <div style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.08em',textAlign:'center',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {openResData.chapters[openResChapter]?.title||`Chapter ${openResChapter+1}`}
+                  </div>
+                  <button type="button" disabled={openResChapter===openResData.chapters.length-1}
+                    onClick={()=>setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1))}
+                    style={{background:'none',border:'none',color:openResChapter===openResData.chapters.length-1?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',cursor:openResChapter===openResData.chapters.length-1?'default':'pointer',padding:'4px 8px',opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
+                    Next →
+                  </button>
+                </div>
+              )}
+              {/* Chapter counter */}
+              {openResData?.chapters?.length>1&&(
+                <div style={{textAlign:'center',padding:'4px 0',background:T.bgSec,borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+                  <span style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.1em'}}>{openResChapter+1} / {openResData.chapters.length}</span>
+                </div>
+              )}
+              {/* Content */}
+              <div key={`${openResId}-${openResChapter}`} style={{flex:1,overflowY:'auto',padding:`24px ${Math.max(16,Math.min(40,window.innerWidth*0.06))}px 80px`}}>
+                {openResData?.chapters?.[openResChapter]?.body
+                  ?.split(/\n{2,}/)
+                  .filter(p=>p.trim())
+                  .map((para,i)=>(
+                    <p key={i} style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign,margin:`0 0 ${readFontSize*0.8}px`}}>{para.trim()}</p>
+                  ))
+                }
+              </div>
+              {/* Bottom chapter nav */}
+              {openResData?.chapters?.length>1&&(
+                <div style={{display:'flex',borderTop:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
+                  <button type="button" disabled={openResChapter===0}
+                    onClick={()=>{setOpenResChapter(c=>Math.max(0,c-1));}}
+                    style={{flex:1,background:'none',border:'none',borderRight:`1px solid ${T.bd}`,color:openResChapter===0?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'14px 0',cursor:openResChapter===0?'default':'pointer',opacity:openResChapter===0?0.3:1}}>
+                    ← Previous
+                  </button>
+                  <button type="button" disabled={openResChapter===openResData.chapters.length-1}
+                    onClick={()=>{setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1));}}
+                    style={{flex:1,background:'none',border:'none',color:openResChapter===openResData.chapters.length-1?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'14px 0',cursor:openResChapter===openResData.chapters.length-1?'default':'pointer',opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
+                    Next →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
