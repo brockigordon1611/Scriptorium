@@ -1986,7 +1986,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
+                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
               </div>
               {/* Built-in offline controls */}
               {isBuiltin&&onDownload&&(
@@ -5365,7 +5365,7 @@ function App(){
                         <div style={{display:'flex',alignItems:'center',gap:12}}>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{v.id} · {v.lang}{i===0?' · default':''}</div>
+                            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
                           </div>
                           {isBuiltin&&startDownload&&(
                             dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
