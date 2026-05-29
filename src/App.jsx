@@ -1039,7 +1039,7 @@ async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getT
 // ══════════════════════════════════════════════════════════
 //  UI ATOMS
 // ══════════════════════════════════════════════════════════
-function Lbl({c,req,T}){return <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:500}}>{c}{req&&<span style={{color:'#d46868',marginLeft:4}}>*</span>}</div>;}
+function Lbl({c,req,T}){return <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:500}}>{c}{req&&<span style={{color:'#d46868',marginLeft:4}}>*</span>}</div>;}
 function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}><div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:8,lineHeight:1}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/></div>);}
 function Inp({val,set,ph,T,type}){return <input className="s-btn" type={type||'text'} value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',outline:'none'}}/>;}
 function Sel({val,set,children,T,sm,dis}){return <select className="s-btn" value={val} onChange={e=>set(e.target.value)} disabled={dis} style={{width:sm?'auto':'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:val?T.mut:T.dim,fontFamily:FB,fontSize:sm?14:16,padding:sm?'5px 10px':'9px 13px',cursor:'pointer',opacity:dis?.4:1,outline:'none'}}>{children}</select>;}
@@ -1299,10 +1299,10 @@ function AuthPanel({onAuth}){
       </div>
 
       {/* Login card */}
-      <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
+      <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:D.accentLine}}/>
         <div style={{padding:'28px 32px'}}>
-          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:22,textAlign:'center'}}>Sign In</div>
+          <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:22,textAlign:'center'}}>Sign In</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
           {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
           <div style={{marginBottom:14}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
@@ -1314,24 +1314,24 @@ function AuthPanel({onAuth}){
               <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'}>{showPw?'🙈':'👁'}</button>
             </div>
           </div>
-          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
+          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:18}}>
-            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Forgot password?</button>
-            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
+            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Forgot password?</button>
+            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
           </div>
         </div>
       </div>
       <div style={{marginTop:16,textAlign:'center'}}>
-        <button type="button" onClick={()=>setShowGuestWarning(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0,opacity:0.7}}>Continue without an account</button>
+        <button type="button" onClick={()=>setShowGuestWarning(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:13,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Continue without an account</button>
       </div>
 
       {/* Guest warning modal */}
       {showGuestWarning&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:24}} onClick={e=>e.target===e.currentTarget&&setShowGuestWarning(false)}>
-          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
+          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
-              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:16,textAlign:'center'}}>Guest Mode</div>
+              <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:16,textAlign:'center'}}>Guest Mode</div>
               <div style={{fontFamily:FB,fontSize:14,color:D.mut,lineHeight:1.7,marginBottom:16}}>You can browse and read without an account, but:</div>
               <ul style={{fontFamily:FB,fontSize:13,color:D.dim,lineHeight:1.9,margin:'0 0 20px 18px',padding:0}}>
                 <li>No data saved between sessions</li>
@@ -1339,8 +1339,8 @@ function AuthPanel({onAuth}){
                 <li>No sync across devices</li>
                 <li>No personal Bible versions</li>
               </ul>
-              <button type="button" onClick={()=>{setShowGuestWarning(false);onAuth({id:'guest',email:'',guest:true});}} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:'pointer',marginBottom:10}}>Continue as Guest</button>
-              <button type="button" onClick={()=>setShowGuestWarning(false)} style={{width:'100%',background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 0',cursor:'pointer'}}>Back to Sign In</button>
+              <button type="button" onClick={()=>{setShowGuestWarning(false);onAuth({id:'guest',email:'',guest:true});}} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:'pointer',marginBottom:10}}>Continue as Guest</button>
+              <button type="button" onClick={()=>setShowGuestWarning(false)} style={{width:'100%',background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>
             </div>
           </div>
         </div>
@@ -1349,11 +1349,11 @@ function AuthPanel({onAuth}){
       {/* Signup modal */}
       {showSignup&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:24}} onClick={e=>e.target===e.currentTarget&&closeSignup()}>
-          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
+          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
-                <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
+                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
                 <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
               </div>
               {suMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{suMsg}</div>}
@@ -1367,9 +1367,9 @@ function AuthPanel({onAuth}){
                   <button type="button" onClick={()=>setShowSuPw(v=>!v)} style={eyeStyle} title={showSuPw?'Hide password':'Show password'}>{showSuPw?'🙈':'👁'}</button>
                 </div>
               </div>
-              <button type="button" onClick={doSignUp} disabled={suBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:suBusy?'default':'pointer',opacity:suBusy?.6:1}}>{suBusy?'…':'Create Account'}</button>
+              <button type="button" onClick={doSignUp} disabled={suBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:suBusy?'default':'pointer',opacity:suBusy?.6:1}}>{suBusy?'…':'Create Account'}</button>
               <div style={{textAlign:'center',marginTop:14}}>
-                <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline'}}>Already have an account? Sign in</button>
+                <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline'}}>Already have an account? Sign in</button>
               </div>
             </div>
           </div>
@@ -1379,11 +1379,11 @@ function AuthPanel({onAuth}){
       {/* Forgot password modal */}
       {showForgot&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:24}} onClick={e=>e.target===e.currentTarget&&closeForgot()}>
-          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
+          <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Reset Password</div>
+                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Reset Password</div>
                 <button type="button" onClick={closeForgot} style={{background:'none',border:'none',color:D.gM,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
               </div>
               <div style={{fontFamily:FB,fontSize:13,color:D.mut,marginBottom:20,lineHeight:1.6}}>Enter your email and we'll send you a link to reset your password.</div>
@@ -1391,9 +1391,9 @@ function AuthPanel({onAuth}){
               {forgotErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt}}>{forgotErr}</div>}
               {!forgotMsg&&<>
                 <div style={{marginBottom:20}}><Lbl c="Email" T={D}/><Inp val={forgotEmail} set={setForgotEmail} ph="you@example.com" T={D} type="email"/></div>
-                <button type="button" onClick={doForgotPassword} disabled={forgotBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:forgotBusy?'default':'pointer',opacity:forgotBusy?.6:1}}>{forgotBusy?'…':'Send Reset Link'}</button>
+                <button type="button" onClick={doForgotPassword} disabled={forgotBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:forgotBusy?'default':'pointer',opacity:forgotBusy?.6:1}}>{forgotBusy?'…':'Send Reset Link'}</button>
               </>}
-              {forgotMsg&&<button type="button" onClick={closeForgot} style={{width:'100%',marginTop:4,background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 0',cursor:'pointer'}}>Back to Sign In</button>}
+              {forgotMsg&&<button type="button" onClick={closeForgot} style={{width:'100%',marginTop:4,background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>}
             </div>
           </div>
         </div>
