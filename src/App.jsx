@@ -4144,8 +4144,8 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'calc(env(safe-area-inset-top,0px) + 12px) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
-        <div style={{height:3,background:T.accentLine,position:'absolute',top:'env(safe-area-inset-top,0px)',left:0,right:0}}/>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(env(safe-area-inset-top,0px) + 12px),32px) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+        <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(env(safe-area-inset-top,0px),20px)',left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
