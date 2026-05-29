@@ -6871,63 +6871,49 @@ function App(){
           ):(
             /* ── Resource reader ── */
             <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-              {/* Reader header */}
-              <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px',borderBottom:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
+              {/* Single top bar: back + title + chapter counter */}
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',borderBottom:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
                 <button type="button" onClick={()=>{setOpenResId(null);setOpenResData(null);setOpenResChapter(0);}}
-                  style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',cursor:'pointer',padding:'6px 0',display:'flex',alignItems:'center',gap:5,flexShrink:0}}>
-                  ← Library
+                  style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0',display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                  ‹ Library
                 </button>
-                <div style={{flex:1,overflow:'hidden'}}>
-                  <div style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.06em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{openResData?.title}</div>
+                <div style={{flex:1,overflow:'hidden',textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:12,color:T.gT,letterSpacing:'0.06em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{openResData?.title}</div>
                 </div>
-                <div style={{flexShrink:0,minWidth:60}}/>
-              </div>
-              {/* Chapter navigation bar */}
-              {openResData?.chapters?.length>1&&(
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 16px',borderBottom:`1px solid ${T.bd}`,background:T.bgSec,flexShrink:0,gap:8}}>
-                  <button type="button" disabled={openResChapter===0}
-                    onClick={()=>setOpenResChapter(c=>Math.max(0,c-1))}
-                    style={{background:'none',border:'none',color:openResChapter===0?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',cursor:openResChapter===0?'default':'pointer',padding:'4px 8px',opacity:openResChapter===0?0.3:1}}>
-                    ← Prev
-                  </button>
-                  <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.08em',textAlign:'center',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    {openResData.chapters[openResChapter]?.title||`Chapter ${openResChapter+1}`}
+                {openResData?.chapters?.length>1&&(
+                  <div style={{fontFamily:FS,fontSize:11,color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>
+                    {openResChapter+1}/{openResData.chapters.length}
                   </div>
-                  <button type="button" disabled={openResChapter===openResData.chapters.length-1}
-                    onClick={()=>setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1))}
-                    style={{background:'none',border:'none',color:openResChapter===openResData.chapters.length-1?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',cursor:openResChapter===openResData.chapters.length-1?'default':'pointer',padding:'4px 8px',opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
-                    Next →
-                  </button>
-                </div>
-              )}
-              {/* Chapter counter */}
-              {openResData?.chapters?.length>1&&(
-                <div style={{textAlign:'center',padding:'4px 0',background:T.bgSec,borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-                  <span style={{fontFamily:FS,fontSize:12,color:T.dim,letterSpacing:'0.1em'}}>{openResChapter+1} / {openResData.chapters.length}</span>
-                </div>
-              )}
+                )}
+              </div>
               {/* Content */}
-              <div key={`${openResId}-${openResChapter}`} style={{flex:1,overflowY:'auto',padding:`24px ${Math.max(16,Math.min(40,window.innerWidth*0.06))}px 80px`}}>
+              <div key={`${openResId}-${openResChapter}`} style={{flex:1,overflowY:'auto',padding:`28px ${Math.max(20,Math.min(48,window.innerWidth*0.07))}px 100px`}}>
+                {openResData?.chapters?.[openResChapter]?.title&&(
+                  <div style={{fontFamily:FS,fontSize:13,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24,textAlign:'center'}}>{openResData.chapters[openResChapter].title}</div>
+                )}
                 {openResData?.chapters?.[openResChapter]?.body
                   ?.split(/\n{2,}/)
                   .filter(p=>p.trim())
                   .map((para,i)=>(
-                    <p key={i} style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign,margin:`0 0 ${readFontSize*0.8}px`}}>{para.trim()}</p>
+                    <p key={i} style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign,margin:`0 0 ${Math.round(readFontSize*1.1)}px`}}>{para.trim()}</p>
                   ))
                 }
               </div>
-              {/* Bottom chapter nav */}
+              {/* Bottom chapter nav — matches Bible reader style */}
               {openResData?.chapters?.length>1&&(
-                <div style={{display:'flex',borderTop:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
+                <div style={{display:'flex',alignItems:'center',borderTop:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0,padding:'0 8px'}}>
                   <button type="button" disabled={openResChapter===0}
                     onClick={()=>{setOpenResChapter(c=>Math.max(0,c-1));}}
-                    style={{flex:1,background:'none',border:'none',borderRight:`1px solid ${T.bd}`,color:openResChapter===0?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'14px 0',cursor:openResChapter===0?'default':'pointer',opacity:openResChapter===0?0.3:1}}>
-                    ← Previous
+                    style={{flex:1,background:'none',border:'none',color:openResChapter===0?T.dim:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.06em',padding:'15px 8px',cursor:openResChapter===0?'default':'pointer',opacity:openResChapter===0?0.3:1,textAlign:'left'}}>
+                    ‹ {openResChapter>0?(openResData.chapters[openResChapter-1]?.title||`Ch ${openResChapter}`):''}
                   </button>
+                  <div style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.08em',textAlign:'center',padding:'0 8px',flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'40%'}}>
+                    {openResData.chapters[openResChapter]?.title||`Chapter ${openResChapter+1}`}
+                  </div>
                   <button type="button" disabled={openResChapter===openResData.chapters.length-1}
                     onClick={()=>{setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1));}}
-                    style={{flex:1,background:'none',border:'none',color:openResChapter===openResData.chapters.length-1?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'14px 0',cursor:openResChapter===openResData.chapters.length-1?'default':'pointer',opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
-                    Next →
+                    style={{flex:1,background:'none',border:'none',color:openResChapter===openResData.chapters.length-1?T.dim:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.06em',padding:'15px 8px',cursor:openResChapter===openResData.chapters.length-1?'default':'pointer',opacity:openResChapter===openResData.chapters.length-1?0.3:1,textAlign:'right'}}>
+                    {openResChapter<openResData.chapters.length-1?(openResData.chapters[openResChapter+1]?.title||`Ch ${openResChapter+2}`):''} ›
                   </button>
                 </div>
               )}
