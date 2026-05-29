@@ -1182,7 +1182,6 @@ async function dbLoadOrCreateProject(userId){
     pvT.insert({project_id:proj.id,version_id:'kjv',label:'KJV',lang:'EN',is_ref:true,position:0}),
     pvT.insert({project_id:proj.id,version_id:'rvg',label:'RVG',lang:'ES',is_ref:false,position:1}),
     pvT.insert({project_id:proj.id,version_id:'p1602',label:'1602P',lang:'ES',is_ref:false,position:2}),
-    pvT.insert({project_id:proj.id,version_id:'rv1960',label:'RVR60',lang:'ES',is_ref:false,position:3}),
   ]);
   // Seed example entry in Spanish section
   const sectEsId=s2.data?.[0]?.id;
