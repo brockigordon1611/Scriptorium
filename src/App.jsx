@@ -3680,26 +3680,29 @@ function App(){
         setUserLexicons(all.filter(r=>r.category==='lexicon').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
         setUserDicts(all.filter(r=>r.category==='dict').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
       }).catch(()=>{});
-      // ── Install bundled default resources (once per device) ──
-      (async()=>{
-        const FOXES_ID='bundled-foxes-book-of-martyrs';
-        const already=await idbGetMeta('bundled:foxes').catch(()=>null);
-        if(already)return;
-        try{
-          const resp=await fetch('/defaults/foxes_book_of_martyrs.refi');
-          if(!resp.ok)return;
-          const buf=await resp.arrayBuffer();
-          const file=new File([buf],'foxes_book_of_martyrs.refi',{type:'application/octet-stream'});
-          const res=await _importSqliteResource(file,FOXES_ID,"Foxe's Book of Martyrs",'refi','other');
-          await idbPutMeta('bundled:foxes',true);
-          setResources(prev=>{
-            if(prev.find(r=>r.id===FOXES_ID))return prev;
-            return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
-          });
-        }catch(e){console.warn('Bundled Foxe\'s install failed:',e);}
-      })();
     })();
   },[user]);
+
+  // ── Install bundled default resources (once per device, regardless of login) ──
+  useEffect(()=>{
+    const FOXES_ID='bundled-foxes-book-of-martyrs';
+    (async()=>{
+      const already=await idbGetMeta('bundled:foxes').catch(()=>null);
+      if(already)return;
+      try{
+        const resp=await fetch('/defaults/foxes_book_of_martyrs.refi');
+        if(!resp.ok)return;
+        const buf=await resp.arrayBuffer();
+        const file=new File([buf],'foxes_book_of_martyrs.refi',{type:'application/octet-stream'});
+        const res=await _importSqliteResource(file,FOXES_ID,"Foxe's Book of Martyrs",'refi','other');
+        await idbPutMeta('bundled:foxes',true);
+        setResources(prev=>{
+          if(prev.find(r=>r.id===FOXES_ID))return prev;
+          return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
+        });
+      }catch(e){console.warn("Bundled Foxe's install failed:",e);}
+    })();
+  },[]);
 
   // ── Load reading chapter ──
   useEffect(()=>{
