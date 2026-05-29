@@ -6193,6 +6193,7 @@ function App(){
           {(()=>{
             const rdFont=fontFamilyMap[readFontFamily];
             const rdLH=Math.max(1.5,Math.min(readLineHeight,2.2));
+            const rdSz=Math.max(15,Math.min(readFontSize,22));
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
                 <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
@@ -6201,8 +6202,8 @@ function App(){
             );
             const Row=({icon,children})=>(
               <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:9}}>
-                <span style={{fontSize:15,flexShrink:0,width:22,textAlign:'center',marginTop:1}}>{icon}</span>
-                <span style={{fontFamily:rdFont,fontSize:15,color:T.mut,lineHeight:rdLH}}>{children}</span>
+                <span style={{fontSize:rdSz,flexShrink:0,width:22,textAlign:'center',marginTop:1}}>{icon}</span>
+                <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.mut,lineHeight:rdLH}}>{children}</span>
               </div>
             );
             const Chip=({children})=>(
@@ -6334,14 +6335,14 @@ function App(){
                   ['Theme','Light or Dark mode. Follows your system setting by default.'],
                 ].map(([k,v])=>(
                   <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',marginBottom:8}}>
-                    <span style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:110,fontWeight:600}}>{k}</span>
-                    <span style={{fontFamily:rdFont,fontSize:14,color:T.dim,lineHeight:rdLH}}>{v}</span>
+                    <span style={{fontFamily:FS,fontSize:Math.max(10,rdSz-4),color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:110,fontWeight:600}}>{k}</span>
+                    <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.dim,lineHeight:rdLH}}>{v}</span>
                   </div>
                 ))}
 
                 {/* ── SHORTCUTS ── */}
                 <Hdg label="Gestures & Shortcuts"/>
-                <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:rdFont,fontSize:14,color:T.mut}}>
+                <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:rdFont,fontSize:rdSz,color:T.mut}}>
                   <Chip>Swipe down</Chip><span style={{marginRight:16}}>Dismiss any bottom sheet or modal</span>
                   <Chip>Esc</Chip><span style={{marginRight:16}}>Close any panel or modal</span>
                   <Chip>Tap verse</Chip><span style={{marginRight:16}}>Select / deselect a verse</span>
