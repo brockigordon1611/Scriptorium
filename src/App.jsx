@@ -3627,6 +3627,13 @@ function App(){
       setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));
       setBookmarks([]);setRecents([]);setBmCategories([]);
       setLoadMsg('');setReady(true);
+      idbGetAllResources().then(all=>{
+        setResources(all.filter(r=>r.category==='other'||!r.category));
+        setUserMaps(all.filter(r=>r.category==='maps'));
+        setUserCharts(all.filter(r=>r.category==='charts'));
+        setUserLexicons(all.filter(r=>r.category==='lexicon').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
+        setUserDicts(all.filter(r=>r.category==='dict').map(r=>({id:r.id,title:r.title,ext:r.ext,importedAt:r.importedAt,kind:r.kind,entryCount:r.entryCount})));
+      }).catch(()=>{});
       return;
     }
     (async()=>{
