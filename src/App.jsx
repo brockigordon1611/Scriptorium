@@ -4545,7 +4545,7 @@ function App(){
               <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'14px 16px',width:310,boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
                 {/* Scope */}
                 <div style={{marginBottom:12}}>
-                  <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Scope</div>
+                  <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Scope</div>
                   <div style={{display:'flex',gap:4}}>
                     {[['all','All Scripture'],['ot','OT Only'],['nt','NT Only']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,scope:v}))}
@@ -4557,7 +4557,7 @@ function App(){
                 </div>
                 {/* Match mode */}
                 <div style={{marginBottom:12}}>
-                  <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Match Mode</div>
+                  <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Match Mode</div>
                   <div style={{display:'flex',gap:4}}>
                     {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,mode:v}))}
@@ -4687,15 +4687,15 @@ function App(){
             <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Bookmarks</div>
-                <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>Saved verses</div>
+                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>Bookmarks</div>
+                <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>Saved verses</div>
               </div>
             </div>
             <div onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>↺</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Recent Passages</div>
-                <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>History</div>
+                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>Recent Passages</div>
+                <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>History</div>
               </div>
             </div>
           </div>
@@ -4734,7 +4734,7 @@ function App(){
             {/* Dark mode pill — compact */}
             <div onClick={()=>setDark(d=>!d)} style={{position:'relative',width:72,height:32,borderRadius:16,background:T.bgCard,boxShadow:`0 0 0 1.5px ${T.gD},0 3px 10px rgba(0,0,0,${dark?0.5:0.12})`,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',flexShrink:0,transition:'background .3s,box-shadow .3s',overflow:'hidden'}}>
               <div style={{position:'absolute',top:0,bottom:0,left:dark?8:'auto',right:dark?'auto':8,display:'flex',alignItems:'center',justifyContent:'center',width:32,pointerEvents:'none'}}>
-                <span style={{fontFamily:FS,fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:T.gT,lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
+                <span style={{fontFamily:FS,fontSize:9,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:T.gT,lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
               </div>
               <div style={{position:'absolute',top:3,left:dark?'calc(100% - 29px)':3,width:26,height:26,borderRadius:'50%',background:T.bgSec,boxShadow:`0 2px 6px rgba(0,0,0,${dark?0.5:0.18}),0 0 0 1px ${T.gD}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'left .25s cubic-bezier(.4,0,.2,1),background .3s',fontSize:13}}>
                 {dark
@@ -4750,8 +4750,8 @@ function App(){
             <div onClick={()=>readVid==='kjv'&&setStrongsMode(v=>!v)} title={readVid!=='kjv'?"Strong's numbers are only available for the KJV":undefined} style={{flex:1,padding:'9px 10px',background:strongsMode&&readVid==='kjv'?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid==='kjv'?T.gD:T.bd}`,borderRadius:10,cursor:readVid==='kjv'?'pointer':'not-allowed',opacity:readVid==='kjv'?1:0.45,userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s,opacity .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:strongsMode&&readVid==='kjv'?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
-                <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
+                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
+                <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
               </div>
               {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0,padding:'8px',margin:'-8px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>}
             </div>
@@ -4759,8 +4759,8 @@ function App(){
             <div onClick={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}} style={{flex:1,padding:'9px 10px',background:readAutoFullscreen?T.gF:T.bgSec,border:`1.5px solid ${readAutoFullscreen?T.gD:T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:readAutoFullscreen?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>⛶</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
-                <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>Auto on scroll</div>
+                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
+                <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>Auto on scroll</div>
               </div>
             </div>
           </div>}
@@ -5481,7 +5481,7 @@ function App(){
               {/* Search options */}
               <div style={{marginBottom:14,padding:'10px 12px',background:T.bgSec,borderRadius:8,border:`1px solid ${T.bd}`}}>
                 <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+                  <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                   {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>(
                     <button key={v} type="button" onClick={()=>{const o={...searchOpts,scope:v};setSearchOpts(o);}}
                       style={{flex:1,background:searchOpts.scope===v?T.gF:'transparent',border:`1px solid ${searchOpts.scope===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.scope===v?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
@@ -5490,7 +5490,7 @@ function App(){
                   ))}
                 </div>
                 <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+                  <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
                   {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                     <button key={v} type="button" onClick={()=>{const o={...searchOpts,mode:v};setSearchOpts(o);}}
                       style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
