@@ -1285,16 +1285,16 @@ async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getT
 //  UI ATOMS
 // ══════════════════════════════════════════════════════════
 function Lbl({c,req,T}){return <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:500}}>{c}{req&&<span style={{color:'#d46868',marginLeft:4}}>*</span>}</div>;}
-function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}><div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:11,lineHeight:1}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/></div>);}
+function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}><div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:8,lineHeight:1}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/></div>);}
 function Inp({val,set,ph,T,type}){return <input className="s-btn" type={type||'text'} value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',outline:'none'}}/>;}
 function Sel({val,set,children,T,sm,dis}){return <select className="s-btn" value={val} onChange={e=>set(e.target.value)} disabled={dis} style={{width:sm?'auto':'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:val?T.mut:T.dim,fontFamily:FB,fontSize:sm?14:16,padding:sm?'5px 10px':'9px 13px',cursor:'pointer',opacity:dis?.4:1,outline:'none'}}>{children}</select>;}
 function TA({val,set,ph,T,rows}){return <textarea className="s-btn" value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} rows={rows||3} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',resize:'vertical',lineHeight:1.7,outline:'none'}}/>;}
-function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
-function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
+function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
+function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
 function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s-btn${danger?' s-danger':' s-ghost'}`} onClick={onClick} title={title} disabled={disabled} style={{background:danger?T.red:'transparent',border:`1px solid ${danger?T.redTxt+'33':T.bd+'40'}`,borderRadius:5,color:danger?T.redTxt:T.dim,padding:'4px 9px',fontSize:13,fontFamily:FB,lineHeight:1,fontWeight:500,opacity:disabled?.3:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
 function PBtn({ch,onClick,T,sm,danger,disabled}){const bg=danger?T.red:T.gF;const bc=danger?T.redTxt+'55':T.gD;const tc=danger?T.redTxt:T.gT;return <button className="s-btn" onClick={onClick} disabled={disabled} style={{background:bg,border:`1px solid ${bc}`,borderRadius:6,color:tc,fontFamily:FS,fontSize:sm?9:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:sm?'6px 13px':'8px 18px',whiteSpace:'nowrap',fontWeight:600,opacity:disabled?.45:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
-function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={onClick} style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',padding:'8px 18px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
-function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
+function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={onClick} style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'8px 18px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
+function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
 function Spinner(){return <span className="spinner"/>;}
 
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
@@ -1386,13 +1386,13 @@ function Legend({T,refLabel}){
   ];
   return(
     <div className="no-print" style={{display:'flex',alignItems:'center',padding:'7px 10px',background:T.bg2,borderBottom:`1px solid ${T.bd}`,overflowX:'auto',WebkitOverflowScrolling:'touch',flexShrink:0,scrollbarWidth:'none',msOverflowStyle:'none'}}>
-      <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,marginRight:8,flexShrink:0}}>Key</span>
+      <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,marginRight:8,flexShrink:0}}>Key</span>
       <div style={{display:'flex',gap:5,alignItems:'center',minWidth:'max-content'}}>
         {items.map(({bg,txt,label,detail})=>(
           <div key={label} style={{display:'inline-flex',alignItems:'center',gap:4,background:bg,border:`1px solid ${txt}44`,borderRadius:20,padding:'4px 10px 4px 8px',flexShrink:0}}>
             <div style={{width:6,height:6,borderRadius:'50%',background:txt,flexShrink:0}}/>
-            <span style={{fontFamily:FS,fontSize:11,color:txt,fontWeight:600,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{label}</span>
-            {detail&&<span style={{fontFamily:FB,fontSize:12,color:txt+'aa',lineHeight:1,whiteSpace:'nowrap',fontStyle:'italic'}}>{detail}</span>}
+            <span style={{fontFamily:FS,fontSize:8.5,color:txt,fontWeight:600,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{label}</span>
+            {detail&&<span style={{fontFamily:FB,fontSize:9,color:txt+'aa',lineHeight:1,whiteSpace:'nowrap',fontStyle:'italic'}}>{detail}</span>}
           </div>
         ))}
       </div>
@@ -1461,7 +1461,7 @@ function RecoveryPanel({T,onDone}){
                 <input className="s-btn" type={showPw?'text':'password'} value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doUpdate()} placeholder="••••••••" style={pwInputStyle}/>
               </div>
             </div>
-            <button type="button" onClick={doUpdate} disabled={busy} style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Update Password'}</button>
+            <button type="button" onClick={doUpdate} disabled={busy} style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Update Password'}</button>
           </>}
         </div>
       </div>
@@ -1684,8 +1684,8 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
               <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
                 style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:13,padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
               <div style={{display:'flex',gap:6,marginTop:4}}>
-                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
-                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
               </div>
             </div>
           )}
@@ -1693,12 +1693,12 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           {showCatPicker&&categories.length>0&&(
             <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
               <button onClick={()=>moveCat(null)}
-                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:12,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
                 None
               </button>
               {categories.map(c=>(
                 <button key={c.id} onClick={()=>moveCat(c.id)}
-                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:12,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
                   {c.name}
                 </button>
               ))}
@@ -1706,7 +1706,7 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           )}
         </div>
         <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
-          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
+          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
           {user&&<>
             <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
               style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:11,padding:'4px 7px',cursor:'pointer',lineHeight:1}}>✎</button>
@@ -1744,7 +1744,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
         <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
         <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
-        <span style={{fontFamily:FS,fontSize:11,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
+        <span style={{fontFamily:FS,fontSize:10,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
           <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
             style={{background:'none',border:'none',color:T.dim,fontSize:11,cursor:'pointer',padding:'0 3px',lineHeight:1}}>✎</button>
@@ -1769,8 +1769,8 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
                   style={{width:18,height:18,borderRadius:'50%',background:c,border:`2px solid ${i===colorIdx?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
               ))}
             </div>
-            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:12,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:12,padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
+            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
           </div>
         </div>
       )}
@@ -1834,13 +1834,13 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
                       style={{width:20,height:20,borderRadius:'50%',background:c,border:`2px solid ${i===newCatColor?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
                   ))}
                 </div>
-                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:12,padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
+                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
               </div>
             </div>
           ):(
             <button onClick={()=>setAddingCat(true)}
-              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
+              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
               + New Category
             </button>
           )}
@@ -1849,22 +1849,22 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
             <>
               <div style={{display:'flex',gap:8,marginBottom:6}}>
                 <button onClick={()=>setViewAll(v=>!v)}
-                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
                   {viewAll?'By Category':'View All'}
                 </button>
                 <button onClick={()=>setAssigningCats(v=>!v)}
-                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
                   {assigningCats?'Done Assigning':'Assign Categories'}
                 </button>
               </div>
               {!viewAll&&(
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                     ▾ Expand All
                   </button>
                   <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                     ▸ Collapse All
                   </button>
                 </div>
@@ -1889,7 +1889,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
           ))}
           {uncategorized.length>0&&(
             <div style={{marginTop:hasCats?8:0}}>
-              {hasCats&&<div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
+              {hasCats&&<div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
               {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
             </div>
           )}
@@ -1912,7 +1912,7 @@ function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
               <span style={{fontFamily:FB,fontSize:13,color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
             </div>
             <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>{fmtDate(r.visited_at)}</div>
-            <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
+            <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
           </div>
         );
       })}
@@ -1986,23 +1986,23 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                <div style={{fontFamily:FS,fontSize:11,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
+                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
               </div>
               {/* Built-in offline controls */}
               {isBuiltin&&onDownload&&(
-                dl.downloading?<span style={{fontFamily:FS,fontSize:12,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
-                :dl.downloaded?<button onClick={()=>onDeleteLocal(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
-                :<button onClick={()=>onDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
+                dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
+                :dl.downloaded?<button onClick={()=>onDeleteLocal(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
+                :<button onClick={()=>onDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
               )}
               {/* User-imported device status */}
               {!isBuiltin&&(
                 isReImporting
-                  ?<span style={{fontFamily:FS,fontSize:12,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
-                  :avail===true?<span style={{fontFamily:FS,fontSize:12,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
-                  :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:12,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
+                  :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
+                  :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
                     ⚠ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
                   </label>
-                  :<span style={{fontFamily:FS,fontSize:12,color:T.dim}}>…</span>
+                  :<span style={{fontFamily:FS,fontSize:9,color:T.dim}}>…</span>
               )}
               <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
             </div>
@@ -2018,7 +2018,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
       {/* Add built-in versions */}
       {builtinAvail.length>0&&(
         <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-          <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
+          <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {builtinAvail.map(pv=>(
               <button key={pv.id} onClick={()=>addBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:15,padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
@@ -2028,7 +2028,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
       )}
       {/* Import your own Bible */}
       <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-        <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
+        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
         <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). The text stays on your device only — never uploaded.</div>
         <input value={importLabel} onChange={e=>setImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={inputStyle}/>
         <select value={importLang} onChange={e=>setImportLang(e.target.value)} style={{...inputStyle,marginBottom:8}}>
@@ -2055,7 +2055,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
             </div>
           </div>
         ):(
-          <button onClick={doImport} disabled={!importFile||!importLabel.trim()} style={{width:'100%',background:(!importFile||!importLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!importFile||!importLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!importFile||!importLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.1em',padding:'10px 0',cursor:(!importFile||!importLabel.trim())?'default':'pointer',fontWeight:600,transition:'all .15s'}}>
+          <button onClick={doImport} disabled={!importFile||!importLabel.trim()} style={{width:'100%',background:(!importFile||!importLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!importFile||!importLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!importFile||!importLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:(!importFile||!importLabel.trim())?'default':'pointer',fontWeight:600,transition:'all .15s'}}>
             IMPORT
           </button>
         )}
@@ -2063,7 +2063,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
       </div>
       {/* Request a new version */}
       <div style={{marginTop:20,paddingTop:16}}>
-        <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
+        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
         <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
       </div>
     </Modal>
@@ -2103,8 +2103,8 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
             const vd=entry.versions?.[v.id];if(!vd?.text)return null;
             const st=stSt(vd.status,T);
             return(<tr key={v.id} className="text-reveal" style={{background:st.bg,borderTop:vi>0?`1px solid ${T.bd}`:'none',animationDelay:`${vi*0.05}s`}}>
-              <td style={{padding:'9px 16px',whiteSpace:'nowrap',fontFamily:FS,fontSize:11,letterSpacing:'0.1em',textTransform:'uppercase',color:st.txt,width:66,verticalAlign:'top',fontWeight:600}}>{v.label}</td>
-              <td style={{padding:'9px 4px',fontFamily:FS,fontSize:12,color:T.dim,width:26,verticalAlign:'top',paddingTop:11,fontWeight:500}}>{v.lang}</td>
+              <td style={{padding:'9px 16px',whiteSpace:'nowrap',fontFamily:FS,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase',color:st.txt,width:66,verticalAlign:'top',fontWeight:600}}>{v.label}</td>
+              <td style={{padding:'9px 4px',fontFamily:FS,fontSize:9,color:T.dim,width:26,verticalAlign:'top',paddingTop:11,fontWeight:500}}>{v.lang}</td>
               <td style={{padding:'9px 16px 9px 6px',fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,color:st.txt,verticalAlign:'top'}} dangerouslySetInnerHTML={{__html:hl(vd.text,q)}}/>
             </tr>);
           })}
@@ -2112,8 +2112,8 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
       </table>
       {!det&&prev&&<div className="text-reveal" style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',fontSize:readFontSize,color:T.dim,padding:'8px 18px',borderTop:`1px solid ${T.bd}`}} dangerouslySetInnerHTML={{__html:hl(prev,q)}}/>}
       {hasDet&&(<>
-        <div className="s-btn s-ghost" onClick={()=>setDet(!det)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 18px',fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.dim,borderTop:`1px solid ${T.bd}`,background:T.bgCH,userSelect:'none',fontWeight:500}}>
-          <span style={{display:'inline-block',transition:'transform .2s',transform:det?'rotate(90deg)':'none',fontSize:11}}>▸</span> Details
+        <div className="s-btn s-ghost" onClick={()=>setDet(!det)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 18px',fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:T.dim,borderTop:`1px solid ${T.bd}`,background:T.bgCH,userSelect:'none',fontWeight:500}}>
+          <span style={{display:'inline-block',transition:'transform .2s',transform:det?'rotate(90deg)':'none',fontSize:8}}>▸</span> Details
         </div>
         {det&&(<div className="slide-down" style={{padding:'14px 20px',borderTop:`1px solid ${T.bd}`}}>
           {entry.notes&&<><Lbl c="Notes / Analysis" T={T}/><div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.notes,q)}}/></>}
@@ -2144,11 +2144,11 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
     <div className="section-enter" style={{marginBottom:28,animationDelay:`${delay}s`}}>
       <div className="s-btn" onClick={()=>setCol(!col)}
         style={{display:'flex',alignItems:'center',gap:8,background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:col?10:'10px 10px 0 0',padding:'13px 12px',userSelect:'none',transition:'border-radius .2s',flexWrap:'wrap'}}>
-        <span style={{color:T.gM,fontSize:12,display:'inline-block',transition:'transform .2s',transform:col?'rotate(-90deg)':'none'}}>▼</span>
+        <span style={{color:T.gM,fontSize:9,display:'inline-block',transition:'transform .2s',transform:col?'rotate(-90deg)':'none'}}>▼</span>
         <span style={{fontFamily:FS,fontSize:12.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1,minWidth:60}}>{sec.title}</span>
-        <span style={{fontFamily:FS,fontSize:12,color:T.dim,letterSpacing:'0.1em',fontWeight:500}}>{entries.length} {entries.length===1?'entry':'entries'}</span>
+        <span style={{fontFamily:FS,fontSize:9.5,color:T.dim,letterSpacing:'0.1em',fontWeight:500}}>{entries.length} {entries.length===1?'entry':'entries'}</span>
         <div style={{display:'flex',gap:5}} onClick={e=>e.stopPropagation()}>
-          <select className="s-btn hide-mobile" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
+          <select className="s-btn hide-mobile" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
             <option value="default">Sort: Default</option><option value="bible">Sort: Bible Order</option><option value="issue">Sort: Issue Type</option><option value="status">Sort: Status</option>
           </select>
           <IBtn T={T} ch="↑" onClick={onMoveUp} disabled={isFirst}/>
@@ -2215,7 +2215,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
         <div>
           <Lbl c="Reference" T={T} req/>
           <RefDD bkN={bkN} setBkN={setBkN} ch={ch} setCh={setCh} vs={vs} setVs={setVs} T={T} err={refErr}/>
-          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill verse text for all versions'}</button>
+          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill verse text for all versions'}</button>
         </div>
         <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}><option value="" disabled>— Select a section —</option>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
       </div>
@@ -2233,8 +2233,8 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
       {versions.map(v=>(
         <div key={v.id} style={{marginBottom:16,padding:'14px 16px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>{v.label}</span>
-            <select className="s-btn" value={vSt[v.id]||'faithful'} onChange={e=>setVSt(s=>({...s,[v.id]:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FS,fontSize:12,letterSpacing:'0.06em',padding:'4px 8px',outline:'none'}}>
+            <span style={{fontFamily:FS,fontSize:10.5,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>{v.label}</span>
+            <select className="s-btn" value={vSt[v.id]||'faithful'} onChange={e=>setVSt(s=>({...s,[v.id]:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.06em',padding:'4px 8px',outline:'none'}}>
               {STATUS_VALUES.map(s=><option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </div>
@@ -2271,16 +2271,16 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
     <div className="no-print" style={{borderTop:`1px solid ${T.bdS}`}}>
       <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 8px 4px 10px'}}>
         <button type="button" onClick={()=>setOpen(!open)}
-          style={{display:'flex',alignItems:'center',gap:6,background:'transparent',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:6,color:active>0?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',fontWeight:active>0?600:500,flexShrink:0}}>
-          <span style={{display:'inline-block',transition:'transform .2s',transform:open?'rotate(90deg)':'none',fontSize:11,lineHeight:1}}>▸</span>
+          style={{display:'flex',alignItems:'center',gap:6,background:'transparent',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:6,color:active>0?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:active>0?600:500,flexShrink:0}}>
+          <span style={{display:'inline-block',transition:'transform .2s',transform:open?'rotate(90deg)':'none',fontSize:8,lineHeight:1}}>▸</span>
           <span>Filters</span>
-          {active>0&&<span style={{background:T.gF,border:`1px solid ${T.gD}`,color:T.gT,fontSize:11,padding:'1px 6px',borderRadius:10,fontWeight:700,letterSpacing:'0.04em'}}>{active}</span>}
+          {active>0&&<span style={{background:T.gF,border:`1px solid ${T.gD}`,color:T.gT,fontSize:8,padding:'1px 6px',borderRadius:10,fontWeight:700,letterSpacing:'0.04em'}}>{active}</span>}
         </button>
         {!open&&filters.statuses.length>0&&<div style={{display:'flex',gap:3,overflowX:'auto',scrollbarWidth:'none'}}>
           {filters.statuses.map(s=>{const m=statusMeta[s];return m?(
             <div key={s} style={{display:'inline-flex',alignItems:'center',gap:3,background:m.bg,border:`1px solid ${m.txt}44`,borderRadius:20,padding:'2px 7px',flexShrink:0}}>
               <div style={{width:5,height:5,borderRadius:'50%',background:m.txt}}/>
-              <span style={{fontFamily:FS,fontSize:11,color:m.txt,fontWeight:600,whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
+              <span style={{fontFamily:FS,fontSize:7.5,color:m.txt,fontWeight:600,whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
             </div>
           ):null;})}
         </div>}
@@ -2288,7 +2288,7 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
           <div style={{display:'flex',alignItems:'center',gap:4,marginLeft:'auto',flexShrink:0}}>
             {versions.map(v=>{const hidden=hiddenVers.includes(v.id);return(
               <button key={v.id} type="button" onClick={()=>togVer(v.id)}
-                style={{background:hidden?'transparent':T.gF,border:`1px solid ${hidden?T.bd:T.gD}`,borderRadius:6,color:hidden?T.dim:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.07em',padding:'3px 7px',fontWeight:hidden?400:600,opacity:hidden?.5:1,cursor:'pointer',transition:'all .15s',textDecoration:hidden?'line-through':'none'}}>
+                style={{background:hidden?'transparent':T.gF,border:`1px solid ${hidden?T.bd:T.gD}`,borderRadius:6,color:hidden?T.dim:T.gT,fontFamily:FS,fontSize:7,letterSpacing:'0.07em',padding:'3px 7px',fontWeight:hidden?400:600,opacity:hidden?.5:1,cursor:'pointer',transition:'all .15s',textDecoration:hidden?'line-through':'none'}}>
               {v.label}
             </button>);})}
             {(onExpand||onCollapse)&&<>
@@ -2302,7 +2302,7 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
       {open&&(
         <div className="slide-down" style={{padding:'12px 12px 14px',background:T.bgSec,borderTop:`1px solid ${T.bdS}`,display:'flex',flexDirection:'column',gap:14}}>
           <div>
-            <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Status</div>
+            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Status</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
               {['faithful','corrupt','diff','partial','missing'].map(s=>{
                 const m=statusMeta[s];const on=filters.statuses.includes(s);
@@ -2310,25 +2310,25 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
                   <button key={s} type="button" onClick={()=>togS(s)}
                     style={{display:'inline-flex',alignItems:'center',gap:5,background:on?m.bg:'transparent',border:`1px solid ${on?m.txt+'66':T.bd}`,borderRadius:20,padding:'5px 11px 5px 9px',cursor:'pointer',transition:'all .15s'}}>
                     <div style={{width:7,height:7,borderRadius:'50%',background:on?m.txt:T.bd,flexShrink:0,transition:'background .15s'}}/>
-                    <span style={{fontFamily:FS,fontSize:12,color:on?m.txt:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
+                    <span style={{fontFamily:FS,fontSize:9,color:on?m.txt:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
                   </button>
                 ):null;
               })}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Issue Type</div>
+            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Issue Type</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
               {ISSUE_TYPES.map(t=>{const on=filters.issueTypes.includes(t);return(
                 <button key={t} type="button" onClick={()=>togI(t)}
                   style={{background:on?T.gF:'transparent',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:20,padding:'5px 11px',cursor:'pointer',transition:'all .15s'}}>
-                  <span style={{fontFamily:FS,fontSize:12,color:on?T.gT:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em'}}>{ISSUE_LABELS[t]||t}</span>
+                  <span style={{fontFamily:FS,fontSize:9,color:on?T.gT:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em'}}>{ISSUE_LABELS[t]||t}</span>
                 </button>
               );})}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Version Alignment</div>
+            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Version Alignment</div>
             <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
               <select value={filters.vA} onChange={e=>setFilters(f=>({...f,vA:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'6px 10px',outline:'none',flex:1,minWidth:80}}><option value="">— any —</option>{versions.map(v=><option key={v.id} value={v.id}>{v.label}</option>)}</select>
               <span style={{color:T.gM,fontFamily:FS,fontSize:13,fontWeight:600}}>≠</span>
@@ -2336,7 +2336,7 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
             </div>
           </div>
           {active>0&&<button type="button" onClick={()=>setFilters({issueTypes:[],statuses:[],vA:'',vB:''})}
-            style={{alignSelf:'flex-start',background:'transparent',border:`1px solid ${T.bd}`,color:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 12px',borderRadius:20,cursor:'pointer',fontWeight:500}}>
+            style={{alignSelf:'flex-start',background:'transparent',border:`1px solid ${T.bd}`,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',borderRadius:20,cursor:'pointer',fontWeight:500}}>
             ✕ Clear all filters
           </button>}
         </div>
@@ -2353,11 +2353,11 @@ function NavBar({data,T,setQ,onScroll,inline}){
   const bks=books();if(!bks.length)return null;const chs=bk?chapters(bk):[];const vss=(bk&&ch)?verses(bk,ch):[];
   const dd=(a)=>({background:T.bgIn,border:`1px solid ${T.bd}`,color:a?T.mut:T.dim,fontFamily:FB,fontSize:13,padding:'4px 7px',borderRadius:5,opacity:a?1:.4,outline:'none'});
   const inner=(<>
-    <span style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',flexShrink:0,fontWeight:600}}>Go to</span>
+    <span style={{fontFamily:FS,fontSize:8.5,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',flexShrink:0,fontWeight:600}}>Go to</span>
     <select className="s-btn" value={bk} onChange={e=>{setBk(e.target.value);setCh('');setVs('');setQ(e.target.value||'');}} style={dd(true)}><option value="">— Book —</option>{bks.map(b=><option key={b} value={b}>{b}</option>)}</select>
     <select className="s-btn" value={ch} disabled={!bk} onChange={e=>{setCh(e.target.value);setVs('');setQ(bk+' '+e.target.value);}} style={dd(!!bk)}><option value="">— Ch —</option>{chs.map(c=><option key={c} value={c}>{c}</option>)}</select>
     <select className="s-btn" value={vs} disabled={!ch} onChange={e=>{const r=e.target.value;setVs(r);if(r){setQ('');onScroll(r);}}} style={dd(!!ch)}><option value="">— Vs —</option>{vss.map(v=><option key={v.ref} value={v.ref}>{v.label}</option>)}</select>
-    {bk&&<button type="button" className="s-btn s-ghost" onClick={()=>{setBk('');setCh('');setVs('');setQ('');}} style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:11}}>✕</button>}
+    {bk&&<button type="button" className="s-btn s-ghost" onClick={()=>{setBk('');setCh('');setVs('');setQ('');}} style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:10}}>✕</button>}
   </>);
   if(inline)return <>{inner}</>;
   return(
@@ -2378,12 +2378,12 @@ function StatsModal({data,T,onClose}){
   const iC={};for(const e of data.entries)if(e.issueType)iC[e.issueType]=(iC[e.issueType]||0)+1;
   const iCol={manuscript:'#d46868',word:'#cc9a38',omission:'#9468c0',article:'#48b8b8',grammar:'#58a0c0',doctrine:'#b86828',name:'#b8a848',other:'#786248'};
   const tc={padding:'7px 12px',fontFamily:FB,fontSize:14,borderBottom:`1px solid ${T.bd}`,color:T.body,textAlign:'center'};
-  const th={...tc,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,fontWeight:600,borderBottom:`2px solid ${T.bdA}`};
+  const th={...tc,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,fontWeight:600,borderBottom:`2px solid ${T.bdA}`};
   return(
     <Modal title="Statistics" onClose={onClose} wide T={T} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       <div style={{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:14,lineHeight:1.7}}>{total} passage{total!==1?'s':''} across {data.sections.length} section{data.sections.length!==1?'s':''}, comparing {data.versions.length} version{data.versions.length!==1?'s':''}.</div>
       <OrnRule T={T}/>
-      <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Version Agreement with {refLabel}</div>
+      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Version Agreement with {refLabel}</div>
       <div style={{overflowX:'auto',marginBottom:16}}>
         <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
           <thead><tr>{['Version','Passages','Faithful','Corrupt','Differs','Partial','Absent','Agreement'].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
@@ -2392,10 +2392,10 @@ function StatsModal({data,T,onClose}){
       </div>
       {Object.keys(iC).length>0&&(<>
         <OrnRule T={T}/>
-        <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Issues by Type</div>
+        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Issues by Type</div>
         {Object.entries(iC).sort(([,a],[,b])=>b-a).map(([t,n])=>{const mx=Math.max(1,...Object.values(iC));return(
           <div key={t} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
-            <span style={{fontFamily:FS,fontSize:11,color:T.dim,width:90,flexShrink:0,fontWeight:500}}>{ISSUE_LABELS[t]||t}</span>
+            <span style={{fontFamily:FS,fontSize:10,color:T.dim,width:90,flexShrink:0,fontWeight:500}}>{ISSUE_LABELS[t]||t}</span>
             <div style={{flex:1,height:6,background:T.bgSec,borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.round((n/mx)*100)}%`,background:iCol[t]||'#786248',borderRadius:3}}/></div>
             <span style={{fontFamily:FB,fontSize:14,color:T.body,minWidth:24,textAlign:'right'}}>{n}</span>
           </div>);
@@ -2412,9 +2412,9 @@ function UndoToast({ud,onUndo,onDismiss,T}){
   if(!ud)return null;
   return(<div className="no-print fade-up" style={{position:'fixed',bottom:28,left:'50%',transform:'translateX(-50%)',zIndex:300,minWidth:340,background:T.bgCH,border:`1px solid ${T.g}40`,borderRadius:10,overflow:'hidden',boxShadow:`0 8px 40px rgba(0,0,0,0.5)`}}>
     <div style={{display:'flex',alignItems:'center',gap:14,padding:'13px 18px'}}>
-      <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.14em',textTransform:'uppercase',color:T.g,flexShrink:0,fontWeight:600}}>Deleted</span>
+      <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.g,flexShrink:0,fontWeight:600}}>Deleted</span>
       <span style={{fontFamily:FB,fontSize:15,color:T.mut,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ud.label}</span>
-      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↩ Undo</button>
+      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↩ Undo</button>
       <button className="s-btn s-ghost" onClick={onDismiss} style={{background:'none',border:'none',color:T.dim,fontSize:14,padding:'2px 6px',flexShrink:0}}>✕</button>
     </div>
     <div style={{height:3,background:T.bd}}><div style={{height:'100%',width:`${ud.pct}%`,background:T.g,transition:'width 0.1s linear'}}/></div>
@@ -2521,11 +2521,11 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
             </div>
             <div>
               <div style={{fontFamily:FS,fontSize:15,fontWeight:700,letterSpacing:'0.06em',color:'#f08080',marginBottom:3}}>Reset to Defaults</div>
-              <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.14em',textTransform:'uppercase',color:'#8a3030',fontWeight:500}}>This action cannot be undone</div>
+              <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'#8a3030',fontWeight:500}}>This action cannot be undone</div>
             </div>
           </div>
           <div style={{background:'#200808',border:'1px solid #6a1818',borderRadius:8,padding:'16px 18px',marginBottom:18}}>
-            <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',color:'#d46868',marginBottom:10,fontWeight:600}}>The following will be permanently deleted:</div>
+            <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',color:'#d46868',marginBottom:10,fontWeight:600}}>The following will be permanently deleted:</div>
             <div style={{fontFamily:FB,fontSize:15,color:'#c09090',lineHeight:2}}>
               &#x2022; All <strong style={{color:'#f08080'}}>{entryCount} comparison {entryCount===1?'entry':'entries'}</strong> and their verse texts<br/>
               &#x2022; All <strong style={{color:'#f08080'}}>{sectionCount} {sectionCount===1?'section':'sections'}</strong><br/>
@@ -2535,13 +2535,13 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
             </div>
           </div>
           <div style={{background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:8,padding:'14px 18px',marginBottom:22}}>
-            <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',color:'#62c484',marginBottom:8,fontWeight:600}}>The app will be restored to:</div>
+            <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',color:'#62c484',marginBottom:8,fontWeight:600}}>The app will be restored to:</div>
             <div style={{fontFamily:FB,fontSize:14,color:'#7ab890',lineHeight:1.9}}>
               KJV + RVG versions &nbsp;&#xB7;&nbsp; 2 default sections &nbsp;&#xB7;&nbsp; Genesis 1:1 and John 3:16 sample entries &nbsp;&#xB7;&nbsp; Dark mode
             </div>
           </div>
           <div style={{marginBottom:6}}>
-            <div style={{fontFamily:FS,fontSize:12,color:'#c09090',letterSpacing:'0.1em',marginBottom:8,fontWeight:500}}>
+            <div style={{fontFamily:FS,fontSize:9.5,color:'#c09090',letterSpacing:'0.1em',marginBottom:8,fontWeight:500}}>
               Type <strong style={{color:'#f08080',letterSpacing:'0.16em'}}>RESET</strong> to confirm:
             </div>
             <input
@@ -2559,7 +2559,7 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
           <button
             onClick={()=>{if(ready)onConfirm();}}
             disabled={!ready}
-            style={{background:ready?'#8a1010':'#2a0808',border:`1px solid ${ready?'#c83030':'#4a1414'}`,borderRadius:6,color:ready?'#f08080':'#5a2020',fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 20px',fontWeight:700,cursor:ready?'pointer':'default',opacity:ready?1:.5,transition:'all .2s'}}>
+            style={{background:ready?'#8a1010':'#2a0808',border:`1px solid ${ready?'#c83030':'#4a1414'}`,borderRadius:6,color:ready?'#f08080':'#5a2020',fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 20px',fontWeight:700,cursor:ready?'pointer':'default',opacity:ready?1:.5,transition:'all .2s'}}>
             &#9888; Reset Everything
           </button>
         </div>
@@ -2596,7 +2596,7 @@ function MapLightboxGrid({maps,BASE,T}){
             <div style={{aspectRatio:'3/4',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <img src={`${BASE}maps/${m.file}`} alt={m.title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} loading="lazy"/>
             </div>
-            <div style={{fontFamily:'Georgia,serif',fontSize:11,color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
           </div>
         ))}
       </div>
@@ -2604,7 +2604,7 @@ function MapLightboxGrid({maps,BASE,T}){
         <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={mapOnTouchStart} onTouchEnd={mapOnTouchEnd} onClick={()=>{if(mapSwiped.current){mapSwiped.current=false;return;}setLightbox(null);}}>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
-            <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
             <button onClick={()=>setLightbox(null)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
           </div>
           <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',padding:'12px'}} onClick={e=>e.stopPropagation()}>
@@ -2648,7 +2648,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       {/* Top bar */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
-        <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
         <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
       </div>
       {/* Image */}
@@ -2660,7 +2660,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
           style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
-        <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Tap image to zoom</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:9,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Tap image to zoom</div>
         <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
           style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
       </div>
@@ -2676,7 +2676,7 @@ function LarkinSection({title,imgs,BASE,T,allImgs}){
       <div onClick={()=>setOpen(v=>!v)} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderBottom:`1px solid ${T.bdS}`}}>
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
         <span style={{fontFamily:'Georgia,serif',fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1}}>{title}</span>
-        <span style={{fontFamily:'Georgia,serif',fontSize:11,color:T.dim,flexShrink:0}}>{imgs.length}</span>
+        <span style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,flexShrink:0}}>{imgs.length}</span>
       </div>
       {open&&(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:6,padding:'8px 0 10px'}}>
@@ -4365,7 +4365,7 @@ function App(){
   const anySheetOpen=!!(readMobileSheet||mobileSheet||modal||parallelMobileSheet);
 
   return(
-    <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:17,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <style>{CSS}</style>
 
       {/* ═══ EMAIL VERIFIED WELCOME OVERLAY ═══ */}
@@ -4471,7 +4471,7 @@ function App(){
           {/* Read controls (desktop only) - removed; now in 6-button nav */}
           {false&&<div className="hide-mobile" style={{display:'none'}}>
             <select className="s-btn" value={readVid||''} onChange={e=>setReadVid(e.target.value)}
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.04em',padding:'0 6px',outline:'none',fontWeight:600,flexShrink:0}}>
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.04em',padding:'0 6px',outline:'none',fontWeight:600,flexShrink:0}}>
               {(data?.versions||[]).map(v=><option key={v.id} value={v.id}>{v.label}</option>)}
             </select>
             {/* Book */}
@@ -4500,10 +4500,10 @@ function App(){
             {(()=>{const act=searchOpts.scope!=='all'||searchOpts.mode!=='any'||searchOpts.caseSensitive||searchOpts.partial;return(
               <button type="button" title="Search options" onClick={()=>setReadSearchPopover(v=>!v)}
                 style={{height:33.33,boxSizing:'border-box',background:readSearchPopover||act?T.gF:'none',border:`1px solid ${readSearchPopover||act?T.gD:T.bd}`,borderRadius:6,color:readSearchPopover||act?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:11,fontFamily:FS,letterSpacing:'0.05em',display:'flex',alignItems:'center',gap:3,cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}>
-                ⊟{act&&<span style={{fontSize:11,background:T.gM,color:'#fff',borderRadius:3,padding:'1px 3px',lineHeight:1}}>●</span>}
+                ⊟{act&&<span style={{fontSize:9,background:T.gM,color:'#fff',borderRadius:3,padding:'1px 3px',lineHeight:1}}>●</span>}
               </button>
             );})()}
-            {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadSearchResultsOpen(false);}} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
+            {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadSearchResultsOpen(false);}} style={{background:'none',border:'none',color:T.dim,fontSize:13,cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
             {/* Settings button + popover */}
             <button type="button" title="Reading settings" onClick={()=>setReadSettingsOpen(v=>!v)}
               style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:14,display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}>⚙</button>
@@ -4513,7 +4513,7 @@ function App(){
                 <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.16em',color:T.gM,marginBottom:12,textTransform:'uppercase',fontWeight:600}}>Reading Settings</div>
                 {/* Dark/light */}
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
+                  <span style={{fontFamily:FB,fontSize:9,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
                   <button type="button" onClick={()=>setDark(d=>!d)}
                     style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600}}>
                     {dark?'☀ Light':'☾ Dark'}
@@ -4521,7 +4521,7 @@ function App(){
                 </div>
                 {/* Strong's */}
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Strong's Concordance</span>
+                  <span style={{fontFamily:FB,fontSize:9,color:T.mut}}>Strong's Concordance</span>
                   <button type="button" onClick={()=>setStrongsMode(v=>!v)}
                     style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s'}}>
                     {strongsMode?'On':'Off'}
@@ -4568,7 +4568,7 @@ function App(){
                   <div style={{display:'flex',gap:4}}>
                     {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,mode:v}))}
-                        style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                        style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                         {l}
                       </button>
                     ))}
@@ -4578,7 +4578,7 @@ function App(){
                 <div style={{display:'flex',gap:6,marginBottom:recentSearches.length>0?14:0}}>
                   {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>(
                     <button key={k} type="button" onClick={()=>setSearchOpts(o=>({...o,[k]:!o[k]}))}
-                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
+                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
                       {l}
                     </button>
                   ))}
@@ -4633,7 +4633,7 @@ function App(){
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
+            <div style={{fontFamily:FS,fontSize:18,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
           </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
@@ -4654,7 +4654,7 @@ function App(){
           </button>
           {!user?.guest&&!deleteAccountConfirm&&(
             <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
-              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:13,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
               Delete Account
             </button>
           )}
@@ -4692,7 +4692,7 @@ function App(){
           {/* Bookmarks + Recent Passages */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
             <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
+              <span style={{fontFamily:FS,fontSize:10,color:T.gT,flexShrink:0}}>✦</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>Bookmarks</div>
                 <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>Saved verses</div>
@@ -4757,7 +4757,7 @@ function App(){
             <div onClick={()=>readVid==='kjv'&&setStrongsMode(v=>!v)} title={readVid!=='kjv'?"Strong's numbers are only available for the KJV":undefined} style={{flex:1,padding:'9px 10px',background:strongsMode&&readVid==='kjv'?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid==='kjv'?T.gD:T.bd}`,borderRadius:10,cursor:readVid==='kjv'?'pointer':'not-allowed',opacity:readVid==='kjv'?1:0.45,userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s,opacity .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:18,color:strongsMode&&readVid==='kjv'?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
+                <div style={{fontFamily:FB,fontSize:10,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
                 <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
               </div>
               {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0,padding:'8px',margin:'-8px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>}
@@ -4767,7 +4767,7 @@ function App(){
               <span style={{fontFamily:FS,fontSize:18,color:readAutoFullscreen?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>⛶</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
-                <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>Auto on scroll</div>
+                <div style={{fontFamily:FB,fontSize:18,color:T.dim}}>Auto on scroll</div>
               </div>
             </div>
           </div>}
@@ -4777,7 +4777,7 @@ function App(){
           </div>}
           {/* ── Appearance (universal accordion) ── */}
           <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:14,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>Aa</span>
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
             <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
@@ -4806,7 +4806,7 @@ function App(){
                 }} style={{marginLeft:'auto',width:32,height:32,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',border:`2px solid ${accent==='custom'?T.gT:T.bd}`,boxShadow:accent==='custom'?`0 0 0 2px ${customAccentHex},0 2px 12px ${customAccentHex}66`:'0 1px 5px rgba(0,0,0,0.35)',transition:'box-shadow .2s,border-color .2s',padding:0,background:accent==='custom'?customAccentHex:'conic-gradient(hsl(0,100%,50%),hsl(30,100%,50%),hsl(60,100%,50%),hsl(90,100%,50%),hsl(120,100%,50%),hsl(150,100%,50%),hsl(180,100%,50%),hsl(210,100%,50%),hsl(240,100%,50%),hsl(270,100%,50%),hsl(300,100%,50%),hsl(330,100%,50%),hsl(360,100%,50%))'}}>
                   {accent==='custom'
                     ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{pointerEvents:'none',filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.7))',flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    : <span style={{fontSize:13,color:'rgba(255,255,255,0.95)',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,0.8)',lineHeight:1,pointerEvents:'none'}}>+</span>
+                    : <span style={{fontSize:9,color:'rgba(255,255,255,0.95)',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,0.8)',lineHeight:1,pointerEvents:'none'}}>+</span>
                   }
                 </button>
               </div>
@@ -4834,7 +4834,7 @@ function App(){
                 <span style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.1em'}}>{readLineHeight.toFixed(1)}</span>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FS,fontSize:12,color:T.dim}}>Tight</span>
+                <span style={{fontFamily:FS,fontSize:14,color:T.dim}}>Tight</span>
                 <input type="range" min="1.1" max="2.8" step="0.1" value={readLineHeight}
                   onChange={e=>{const v=Number(e.target.value);setReadLineHeight(v);try{localStorage.setItem('scrip:lineHeight',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
@@ -4874,7 +4874,7 @@ function App(){
               <div style={{display:'flex',gap:4}}>
                 {[['super','Superscript'],['inline','Inline'],['hidden','Hidden']].map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>{setReadVerseNums(k);try{localStorage.setItem('scrip:verseNums',k);}catch{}}}
-                    style={{flex:1,background:readVerseNums===k?T.gF:'transparent',border:`1px solid ${readVerseNums===k?T.gD:T.bd}`,borderRadius:6,color:readVerseNums===k?T.gT:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    style={{flex:1,background:readVerseNums===k?T.gF:'transparent',border:`1px solid ${readVerseNums===k?T.gD:T.bd}`,borderRadius:6,color:readVerseNums===k?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                     {l}
                   </button>
                 ))}
@@ -5019,7 +5019,7 @@ function App(){
                           ].map(({pack,label,installed,url})=>(
                             <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgCard,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:6,padding:'8px'}}>
                               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                                <span style={{fontFamily:FB,fontSize:11,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
+                                <span style={{fontFamily:FB,fontSize:10,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
                                 {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:11,cursor:'pointer',padding:0}}>✕</button>}
                               </div>
                               {!installed&&(
@@ -5116,9 +5116,9 @@ function App(){
                     return(
                       <div key={item.id} style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'9px 12px'}}>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <span style={{fontFamily:FS,fontSize:16,color:T.gT,width:22,textAlign:'center',flexShrink:0}}>{item.icon}</span>
+                          <span style={{fontFamily:FS,fontSize:9,color:T.gT,width:22,textAlign:'center',flexShrink:0}}>{item.icon}</span>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>{item.label}</div>
+                            <div style={{fontFamily:FB,fontSize:10,fontWeight:600,color:T.mut}}>{item.label}</div>
                             <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>{item.sub}</div>
                           </div>
                           {dl.downloading?(
@@ -5142,7 +5142,7 @@ function App(){
                 {/* Downloaded bible versions */}
                 {(data?.versions||[]).filter(v=>PUBLIC_VERSIONS.some(pv=>pv.id===v.id)).length>0&&(
                   <div style={{marginTop:8}}>
-                    <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:6,paddingLeft:2}}>BIBLE VERSIONS</div>
+                    <div style={{fontFamily:FS,fontSize:13,color:T.gM,letterSpacing:'0.14em',marginBottom:6,paddingLeft:2}}>BIBLE VERSIONS</div>
                     <div style={{display:'flex',flexDirection:'column',gap:6}}>
                       {(data?.versions||[]).filter(v=>PUBLIC_VERSIONS.some(pv=>pv.id===v.id)).map(v=>{
                         const dl=dlStates[v.id]||{};
@@ -5150,9 +5150,9 @@ function App(){
                         return(
                           <div key={v.id} style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'9px 12px'}}>
                             <div style={{display:'flex',alignItems:'center',gap:10}}>
-                              <span style={{fontFamily:FS,fontSize:11,fontWeight:700,color:T.gT,width:45,textAlign:'center',flexShrink:0,letterSpacing:'0.04em'}}>{v.label}</span>
+                              <span style={{fontFamily:FS,fontSize:9,fontWeight:700,color:T.gT,width:45,textAlign:'center',flexShrink:0,letterSpacing:'0.04em'}}>{v.label}</span>
                               <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>{v.label} Bible</div>
+                                <div style={{fontFamily:FB,fontSize:10,fontWeight:600,color:T.mut}}>{v.label} Bible</div>
                                 <div style={{fontFamily:FB,fontSize:11,color:T.dim}}>{v.lang} · {v.id.toUpperCase()}</div>
                               </div>
                               {dl.downloading?(
@@ -5183,17 +5183,17 @@ function App(){
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⋯</span>Help & Reference
           </button>
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'about'});}}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:11,padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>§</span>About & Legal
           </button>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>{user?.guest?'Log In':'Sign Out'}
           </button>
-          {user?.email&&<div style={{fontFamily:FB,fontSize:12,color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
+          {user?.email&&<div style={{fontFamily:FB,fontSize:11,color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
           {!user?.guest&&!deleteAccountConfirm&&(
             <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
-              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:13,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
               Delete Account
             </button>
           )}
@@ -5245,7 +5245,7 @@ function App(){
                     </button>
                   ):navStep==='chapter'?(
                     <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:20,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   ):(
@@ -5332,7 +5332,7 @@ function App(){
                   <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={closeReadSheet}
-                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:9,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                         ←
                       </button>
                     </div>
@@ -5347,7 +5347,7 @@ function App(){
                   ))}
                   <div style={{borderTop:`1px solid ${T.bd}`,marginTop:6,paddingTop:12}}>
                     <button type="button" onClick={openManageView}
-                      style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FB,fontSize:14,padding:'10px 14px',cursor:'pointer',boxSizing:'border-box'}}>
+                      style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FB,fontSize:12,padding:'10px 14px',cursor:'pointer',boxSizing:'border-box'}}>
                       <span style={{color:T.gM,display:'flex',alignItems:'center'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Manage Bible Versions
                     </button>
                   </div>
@@ -5364,7 +5364,7 @@ function App(){
                     <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Bible Versions</div>
                   </div>
                   {/* Current versions list */}
-                  {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:15,color:T.dim}}>No versions added yet.</div>}
+                  {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:16,color:T.dim}}>No versions added yet.</div>}
                   {manageVers.map((v,i)=>{
                     const dl=dlStates[v.id]||{};
                     const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
@@ -5374,8 +5374,8 @@ function App(){
                       <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
                         <div style={{display:'flex',alignItems:'center',gap:12}}>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                            <div style={{fontFamily:FS,fontSize:11,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
+                            <div style={{fontFamily:FB,fontSize:9,color:T.body,fontWeight:500}}>{v.label}</div>
+                            <div style={{fontFamily:FS,fontSize:9,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
                           </div>
                           {isBuiltin&&startDownload&&(
                             dl.downloading?<span style={{fontFamily:FS,fontSize:12,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
@@ -5398,17 +5398,17 @@ function App(){
                             <div style={{height:'100%',width:`${Math.round((dl.progress/dl.total)*100)}%`,background:T.gT,borderRadius:1,transition:'width .2s'}}/>
                           </div>
                         )}
-                        {dl.err&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:4}}>{dl.err}</div>}
+                        {dl.err&&<div style={{fontFamily:FB,fontSize:15,color:T.redTxt,marginTop:4}}>{dl.err}</div>}
                       </div>
                     );
                   })}
                   {/* Add built-in versions */}
                   {PUBLIC_VERSIONS.filter(pv=>!manageVers.find(v=>v.id===pv.id)).length>0&&(
                     <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-                      <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
+                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
                       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                         {PUBLIC_VERSIONS.filter(pv=>!manageVers.find(v=>v.id===pv.id)).map(pv=>(
-                          <button key={pv.id} onClick={()=>manageAddBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:15,padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
+                          <button key={pv.id} onClick={()=>manageAddBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:14,padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
                         ))}
                       </div>
                     </div>
@@ -5481,7 +5481,7 @@ function App(){
                   placeholder="Search all verses in this version…"
                   style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 12px',outline:'none',minWidth:0}}/>
                 <button type="button" className="s-btn s-ghost" onClick={()=>doReadSearch()} disabled={readSearching}
-                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,padding:'9px 14px',fontWeight:600,flexShrink:0,fontSize:16}}>
+                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,padding:'9px 14px',fontWeight:600,flexShrink:0,fontSize:9.5}}>
                   {readSearching?<Spinner/>:'⌕'}
                 </button>
               </div>
@@ -5509,7 +5509,7 @@ function App(){
                   <div style={{width:38,flexShrink:0}}/>
                   {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>(
                     <button key={k} type="button" onClick={()=>{const o={...searchOpts,[k]:!searchOpts[k]};setSearchOpts(o);}}
-                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                       {l}
                     </button>
                   ))}
@@ -5608,7 +5608,7 @@ function App(){
               <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,380px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.7)'}}>
                 <div style={{height:3,background:T.accentLine}}/>
                 <div style={{padding:'24px 28px'}}>
-                  <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:14,textAlign:'center'}}>KJV Audio</div>
+                  <div style={{fontFamily:FS,fontSize:10,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:14,textAlign:'center'}}>KJV Audio</div>
                   <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7,marginBottom:20}}>
                     Currently using your device's built-in voice. For a professional audio Bible reading, download the free KJV MP3 pack in <span style={{color:T.gT,fontWeight:500}}>Settings → Audio Playback → KJV Audio</span>.
                   </div>
@@ -5674,7 +5674,7 @@ function App(){
               <div>
                 {readSearchRes.length===0&&(
                   <div>
-                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15,marginBottom:10}}>No verses found.</div>
+                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:12,marginBottom:10}}>No verses found.</div>
                     {searchOpts.caseSensitive&&(
                       <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
@@ -5849,7 +5849,7 @@ function App(){
                     React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
                     totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`×${totalCount}`)
                   ),
-                  React.createElement('button',{onClick:closeStrongsPopup,style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}},'✕')
+                  React.createElement('button',{onClick:closeStrongsPopup,style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:10}},'✕')
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
@@ -6115,7 +6115,7 @@ function App(){
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeMobileSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:14,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     ←
                   </button>
                 </div>
@@ -6291,7 +6291,7 @@ function App(){
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2}}>
                     <span style={{fontFamily:FS,fontSize:12,color:T.gT,fontWeight:600,letterSpacing:'0.06em'}}>{r.strongs_number}</span>
-                    <span style={{fontFamily:'serif',fontSize:16,color:T.body}}>{r.original_word}</span>
+                    <span style={{fontFamily:'serif',fontSize:14,color:T.body}}>{r.original_word}</span>
                     <span style={{fontFamily:FB,fontSize:13,color:T.mut,fontStyle:'italic'}}>{r.transliteration}</span>
                   </div>
                   <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.short_def}</div>
@@ -6321,7 +6321,7 @@ function App(){
                           <span style={{fontFamily:FB,fontSize:13,color:T.gT,fontWeight:600}}>{activeLexData.title}</span>
                           <span style={{fontFamily:FS,fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'1px 5px'}}>{(activeLexData.entryCount||chapters.length).toLocaleString()} entries</span>
                         </div>
-                        <button onClick={()=>{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>Restore Built-in</button>
+                        <button onClick={()=>{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:18,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>Restore Built-in</button>
                       </div>
                       <input value={lexSearchQ} onChange={e=>setLexSearchQ(e.target.value)} placeholder={`Search ${activeLexData.title}…`}
                         style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box',marginBottom:10}}/>
@@ -6353,7 +6353,7 @@ function App(){
                     <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7,marginBottom:24}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
                     {userLexicons.length>0&&(
                       <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
-                        <div style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED LEXICONS</div>
+                        <div style={{fontFamily:FS,fontSize:15,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED LEXICONS</div>
                         {userLexicons.map(lex=>(
                           <div key={lex.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
                             <div style={{flex:1,minWidth:0}}>
@@ -6437,7 +6437,7 @@ function App(){
                   <button onClick={()=>{setActiveDictId(null);try{localStorage.removeItem('scrip:activeDictId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap'}}>Restore Webster's 1828</button>
                 </div>
                 <input value={lexSearchQ} onChange={e=>{setLexSearchQ(e.target.value);setLexOpenEntry(null);}} placeholder={`Search ${activeDictData.title}…`}
-                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:18,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
                 <div style={{fontFamily:FS,fontSize:11,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
                   {dq.length>=2?`${filtered.length} RESULT${filtered.length!==1?'S':''}`:dq.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeDictData.entryCount||chapters.length).toLocaleString()} ENTRIES`}
                 </div>
@@ -6545,12 +6545,12 @@ function App(){
               <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
                 {/* Scrollable content: message + uploaded dict list */}
                 <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'24px 18px 16px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
+                  <div style={{fontFamily:FB,fontSize:8.5,color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
                     {!q?<>Search for any English word in Webster&rsquo;s 1828 Dictionary. Words not found there (e.g. &ldquo;internet&rdquo;) are automatically looked up via the Free Dictionary API, sourced from Wiktionary.</>:q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
                   </div>
                   {userDicts.length>0&&(
                     <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
-                      <div style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED DICTIONARIES</div>
+                      <div style={{fontFamily:FS,fontSize:15,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED DICTIONARIES</div>
                       {userDicts.map(d=>(
                         <div key={d.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
                           <div style={{flex:1,minWidth:0}}>
@@ -6560,7 +6560,7 @@ function App(){
                           <button onClick={()=>{setActiveDictId(d.id);setLexSearchQ('');setLexOpenEntry(null);try{localStorage.setItem('scrip:activeDictId',d.id);}catch{}}}
                             style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
                           <button onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${d.title}"?`))return;await idbDeleteResource(d.id);setUserDicts(prev=>prev.filter(x=>x.id!==d.id));}}
-                            style={{background:'none',border:'none',color:T.dim,fontSize:15,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
+                            style={{background:'none',border:'none',color:T.dim,fontSize:8,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
                         </div>
                       ))}
                     </div>
@@ -6657,7 +6657,7 @@ function App(){
                 </div>
               )}
               {/* Built-in maps */}
-              <div style={{fontFamily:FS,fontSize:12,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
+              <div style={{fontFamily:FS,fontSize:11,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
               <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
             </div>
             {/* Import footer */}
@@ -6829,7 +6829,7 @@ function App(){
                     const full=await idbGetResourceWithChapters(res.id);
                     if(full){setOpenResData(full);setOpenResChapter(0);setOpenResId(res.id);}
                   }}>
-                  <div style={{fontSize:22,flexShrink:0}}>{kindIcon}</div>
+                  <div style={{fontSize:16,flexShrink:0}}>{kindIcon}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{res.title}</div>
                     <div style={{fontFamily:FS,fontSize:12,color:T.dim,letterSpacing:'0.08em',textTransform:'uppercase'}}>
@@ -6840,7 +6840,7 @@ function App(){
                     <button type="button"
                       onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${res.title}"?`))return;await idbDeleteResource(res.id);setResources(prev=>prev.filter(r=>r.id!==res.id));}}
                       style={{background:'none',border:'none',color:T.dim,fontSize:16,cursor:'pointer',padding:'4px 6px',lineHeight:1,opacity:0.6}}>✕</button>
-                    {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>}
+                    {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:8,opacity:0.5}}>›</div>}
                   </div>
                 </div>
                 );
