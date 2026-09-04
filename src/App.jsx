@@ -1025,7 +1025,7 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     if(/^\s+$/.test(w)){items.push({kind:'space',text:w});continue;}
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
     if(!wordText){items.push({kind:'punct',text:w});continue;} // punct-only: no wordIdx increment
-    const mapped=posMap[wordIdx+1];
+    const mapped=posMap[wordIdx];
     let sNum=null;
     if(mapped&&mapped.length>0){
       const wl=wordText.toLowerCase();
