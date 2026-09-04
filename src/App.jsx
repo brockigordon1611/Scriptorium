@@ -982,6 +982,14 @@ async function fcbhGetTimestamps(filesetId,bookUsfm,chapter){
   }));
 }
 
+// Cross-references inside lexicon definitions are sometimes zero-padded ("H02022"),
+// but strongs_lexicon keys them unpadded ("H2022"). Strip the padding so the links
+// resolve and read consistently with the numbering shown everywhere else.
+function normStrongsNum(n){
+  const m=/^([HG])0*(\d+)$/.exec(n||'');
+  return m?m[1]+m[2]:n;
+}
+
 // Module-level long-press state for Strong's word taps (only one word pressed at a time)
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
@@ -5821,9 +5829,9 @@ function App(){
               const re=/([HG]\d+)/g;let m;
               while((m=re.exec(text))!==null){
                 if(m.index>last)parts.push(text.slice(last,m.index));
-                const num=m[1];
+                const raw=m[1],num=normStrongsNum(raw);
                 parts.push(React.createElement('span',{key:m.index,onClick:e=>{e.stopPropagation();loadStrongsEntry(num);},style:{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}},num));
-                last=m.index+num.length;
+                last=m.index+raw.length;
               }
               if(last<text.length)parts.push(text.slice(last));
               return parts;
@@ -6207,7 +6215,7 @@ function App(){
               const re=/([HG]\d+)/g;let m;
               while((m=re.exec(text))!==null){
                 if(m.index>last)parts.push(text.slice(last,m.index));
-                const num=m[1];
+                const raw=m[1],num=normStrongsNum(raw);
                 parts.push(<span key={m.index} onClick={()=>{
                   setStrongsTabEntry({strongs_number:num,entry:null,verses:null});
                   Promise.all([dbGetStrongsEntry(num),dbGetStrongsVerses(num)]).then(([entry,vv])=>{
@@ -6215,7 +6223,7 @@ function App(){
                   });
                   setStrongsSearchQ(num);
                 }} style={{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}}>{num}</span>);
-                last=m.index+num.length;
+                last=m.index+raw.length;
               }
               if(last<text.length)parts.push(text.slice(last));
               return parts;
