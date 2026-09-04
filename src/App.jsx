@@ -3091,6 +3091,7 @@ function App(){
   const currentVerseRef=useRef(null); // mirror of currentVerse for use inside event handlers
   const autoAdvancePendingRef=useRef(false); // set before chapter change so new chapter auto-starts
   const loadChapterAudioRef=useRef(null); // always points to latest loadChapterAudio (avoids stale closures)
+  const handleNextChapterRef=useRef(null); // same, for the 'ended' listener bound once per audio settings change
   const msBookRef=useRef(readBook);
   const msChRef=useRef(readCh);
   useEffect(()=>{msBookRef.current=readBook;},[readBook]);
@@ -3266,6 +3267,7 @@ function App(){
     autoAdvancePendingRef.current=true;
     setReadCh(readCh+1);
   };
+  handleNextChapterRef.current=handleNextChapter;
   const handlePlayPause=async()=>{
     if(audioPlaying){
       audioElRef.current?.pause();
@@ -3432,7 +3434,7 @@ function App(){
     if(!el)return;
     const onPlay=()=>setAudioPlaying(true);
     const onPause=()=>setAudioPlaying(false);
-    const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapter();};
+    const onEnded=()=>{setAudioPlaying(false);if(audioAutoAdvance)handleNextChapterRef.current?.();};
     const onError=()=>{
       if(audioModeRef.current==='speech')return;
       if(!el.src||el.src===window.location.href)return;
