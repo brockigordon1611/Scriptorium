@@ -29,3 +29,18 @@ public/timestamps/
 # Android/iOS Capacitor builds — generated, not source
 android/
 # ios/
+
+# macOS junk
+.DS_Store
+**/.DS_Store
+
+# iCloud conflict copies — the project lives on an iCloud-synced Desktop,
+# so Finder drops "<name> 2.ext" duplicates next to files it can't merge.
+# Matches the exact convention: a space, then digits, before the extension.
+* [0-9].*
+* [0-9][0-9].*
+* [0-9]/
+* [0-9][0-9]/
+
+# Claude Code worktrees
+.claude/worktrees/
