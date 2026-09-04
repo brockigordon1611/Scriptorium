@@ -1303,6 +1303,17 @@ function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s
 function PBtn({ch,onClick,T,sm,danger,disabled}){const bg=danger?T.red:T.gF;const bc=danger?T.redTxt+'55':T.gD;const tc=danger?T.redTxt:T.gT;return <button className="s-btn" onClick={onClick} disabled={disabled} style={{background:bg,border:`1px solid ${bc}`,borderRadius:6,color:tc,fontFamily:FS,fontSize:sm?9:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:sm?'6px 13px':'8px 18px',whiteSpace:'nowrap',fontWeight:600,opacity:disabled?.45:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
 function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={onClick} style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'8px 18px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
 function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
+// Shared close / back control. Several of these were bare glyphs with little or no
+// padding — a ~18px target against Apple's 44pt minimum, and with border:none they
+// did not read as buttons. Fixed 40px box with a visible border fixes both.
+function NavIconBtn({ch,onClick,T,title,label,size=40}){
+  return <button type="button" className="s-btn s-ghost" onClick={onClick} title={title||label} aria-label={title||label}
+    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.gT,
+      width:label?'auto':size,height:size,minWidth:size,padding:label?'0 13px':0,
+      display:'inline-flex',alignItems:'center',justifyContent:'center',gap:5,
+      fontFamily:label?FS:FB,fontSize:label?12:17,fontWeight:600,letterSpacing:label?'0.06em':undefined,
+      lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'}}>{ch}{label}</button>;
+}
 function Spinner(){return <span className="spinner"/>;}
 
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
@@ -1342,7 +1353,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
         {topSheet?(
           <div style={{background:T.bgCard,padding:'14px 16px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <div style={{position:'absolute',left:16,top:0,bottom:0,display:'flex',alignItems:'center'}}>
-              <button onClick={onBack||onClose} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1}}>←</button>
+              <NavIconBtn ch="←" onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
             </div>
             <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
           </div>
@@ -1351,7 +1362,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
             <div style={{height:3,background:T.accentLine}}/>
             <div style={{background:T.bgCH,borderBottom:`1px solid ${T.bdA}`,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
               <span style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{title}</span>
-              <button className="s-btn s-ghost" onClick={onClose} style={{background:'none',border:'none',color:T.dim,fontSize:16,padding:'2px 8px'}}>✕</button>
+              <NavIconBtn ch="✕" onClick={onClose} T={T} title="Close"/>
             </div>
           </>
         )}
@@ -1607,7 +1618,7 @@ function AuthPanel({onAuth}){
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
                 <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
-                <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
+                <NavIconBtn ch="✕" onClick={closeSignup} T={D} title="Close"/>
               </div>
               {suMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{suMsg}</div>}
               {suErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{suErr}</div>}
@@ -1637,7 +1648,7 @@ function AuthPanel({onAuth}){
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                 <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Reset Password</div>
-                <button type="button" onClick={closeForgot} style={{background:'none',border:'none',color:D.gM,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
+                <NavIconBtn ch="✕" onClick={closeForgot} T={D} title="Close"/>
               </div>
               <div style={{fontFamily:FB,fontSize:13,color:D.mut,marginBottom:20,lineHeight:1.6}}>Enter your email and we'll send you a link to reset your password.</div>
               {forgotMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{forgotMsg}</div>}
@@ -2613,7 +2624,7 @@ function MapLightboxGrid({maps,BASE,T}){
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
             <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
-            <button onClick={()=>setLightbox(null)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
+            <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
           </div>
           <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',padding:'12px'}} onClick={e=>e.stopPropagation()}>
             <img src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block'}}/>
@@ -2657,7 +2668,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
         <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
-        <button onClick={onClose} style={{background:'none',border:'none',color:'rgba(255,255,255,0.5)',fontSize:20,cursor:'pointer',padding:'0 4px',lineHeight:1}}>✕</button>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
       </div>
       {/* Image */}
       <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:zoomed?'auto':'hidden',padding:zoomed?0:'12px'}} onClick={e=>{e.stopPropagation();setZoomed(z=>!z);}}>
@@ -5855,11 +5866,11 @@ function App(){
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
-                    (strongsPopup.history||[]).length>0&&React.createElement('button',{onClick:e=>{e.stopPropagation();goBackStrongs();},style:{background:'none',border:'none',color:T.gT,cursor:'pointer',fontSize:16,padding:'0 4px 0 0',fontFamily:FB,fontWeight:600}},'‹ Back'),
+                    (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',onClick:e=>{e.stopPropagation();goBackStrongs();}}),
                     React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
                     totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`×${totalCount}`)
                   ),
-                  React.createElement('button',{onClick:closeStrongsPopup,style:{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}},'✕')
+                  React.createElement(NavIconBtn,{ch:'✕',T,title:'Close',onClick:closeStrongsPopup})
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
@@ -5910,7 +5921,7 @@ function App(){
             <div onClick={()=>setStrongsVersePreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
               <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                  <button onClick={()=>setStrongsVersePreview(null)} style={{background:'none',border:'none',color:T.gT,cursor:'pointer',fontFamily:FB,fontSize:22,fontWeight:600,padding:'0 8px 0 0',lineHeight:1}}>‹</button>
+                  <NavIconBtn ch="‹" onClick={()=>setStrongsVersePreview(null)} T={T} title="Back"/>
                   <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
                   <button onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'4px 10px',fontWeight:600}}>Go</button>
                 </div>
@@ -6235,7 +6246,7 @@ function App(){
                     <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{te.strongs_number}</span>
                     {totalCount>0&&<span style={{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}}>×{totalCount}</span>}
                   </div>
-                  <button onClick={()=>{setStrongsTabEntry(null);}} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                  <NavIconBtn ch="✕" onClick={()=>{setStrongsTabEntry(null);}} T={T} title="Close"/>
                 </div>
                 {!e?(
                   <div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading…</div>
@@ -6341,7 +6352,7 @@ function App(){
                         <div>
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
                             <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.1),color:T.gT,fontWeight:600}}>{lexOpenEntry.title}</span>
-                            <button onClick={()=>setLexOpenEntry(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                            <NavIconBtn ch="✕" onClick={()=>setLexOpenEntry(null)} T={T} title="Close"/>
                           </div>
                           <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,whiteSpace:'pre-wrap'}}>{lexOpenEntry.body}</div>
                         </div>
@@ -6457,7 +6468,7 @@ function App(){
                   <div style={{padding:'16px 18px'}}>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                       <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.1),color:T.gT,fontWeight:600}}>{lexOpenEntry.title}</span>
-                      <button onClick={()=>setLexOpenEntry(null)} style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:18}}>✕</button>
+                      <NavIconBtn ch="✕" onClick={()=>setLexOpenEntry(null)} T={T} title="Close"/>
                     </div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,whiteSpace:'pre-wrap'}}>{lexOpenEntry.body}</div>
                   </div>
@@ -6849,7 +6860,8 @@ function App(){
                   <div style={{display:'flex',alignItems:'center',gap:10}}>
                     <button type="button"
                       onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${res.title}"?`))return;await idbDeleteResource(res.id);setResources(prev=>prev.filter(r=>r.id!==res.id));}}
-                      style={{background:'none',border:'none',color:T.dim,fontSize:16,cursor:'pointer',padding:'4px 6px',lineHeight:1,opacity:0.6}}>✕</button>
+                      title="Delete" aria-label="Delete"
+                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontSize:15,cursor:'pointer',width:36,height:36,minWidth:36,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
                     {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>}
                   </div>
                 </div>
@@ -6890,10 +6902,10 @@ function App(){
             <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
               {/* Top bar — back left, title absolutely centered, counter right */}
               <div style={{position:'relative',display:'flex',alignItems:'center',padding:'10px 14px',borderBottom:`1px solid ${T.bd}`,background:T.bgNav,flexShrink:0}}>
-                <button type="button" onClick={()=>{setOpenResId(null);setOpenResData(null);setOpenResChapter(0);}}
-                  style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',cursor:'pointer',padding:'4px 0',display:'flex',alignItems:'center',gap:4,flexShrink:0,zIndex:1}}>
-                  ‹ Library
-                </button>
+                <span style={{zIndex:1,display:'inline-flex'}}>
+                  <NavIconBtn ch="‹" label="Library" T={T} title="Back to library"
+                    onClick={()=>{setOpenResId(null);setOpenResData(null);setOpenResChapter(0);}}/>
+                </span>
                 {/* Absolutely centered title — unaffected by sibling widths */}
                 <div style={{position:'absolute',left:0,right:0,textAlign:'center',pointerEvents:'none'}}>
                   <span style={{fontFamily:FS,fontSize:12,color:T.gT,letterSpacing:'0.06em'}}>{openResData?.title}</span>
@@ -6948,7 +6960,7 @@ function App(){
         <div style={{position:'fixed',inset:0,zIndex:950,background:'rgba(0,0,0,0.92)',display:'flex',flexDirection:'column'}} onClick={e=>{if(e.target===e.currentTarget){URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}}}>
           {/* Header bar */}
           <div style={{display:'flex',alignItems:'center',gap:10,padding:`max(calc(var(--sat,0px) + 10px),var(--sat-min,20px)) 14px 10px`,background:'rgba(0,0,0,0.6)',flexShrink:0,backdropFilter:'blur(8px)'}}>
-            <button onClick={()=>{URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}} style={{background:'none',border:'none',color:'rgba(255,255,255,0.8)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'4px 8px',flexShrink:0}}>✕</button>
+            <button type="button" onClick={()=>{URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
             <div style={{flex:1,overflow:'hidden',textAlign:'center'}}>
               <div style={{fontFamily:'system-ui,sans-serif',fontSize:13,color:'rgba(255,255,255,0.9)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{viewingBlob.title}</div>
             </div>
@@ -7229,8 +7241,8 @@ function App(){
             {/* Header */}
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
               <span style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Custom Color</span>
-              <button type="button" onClick={()=>{setAccent(pickerOrigRef.current.accent);setCustomAccentHex(pickerOrigRef.current.hex);setCustomPickerOpen(false);}}
-                style={{background:'none',border:'none',color:T.dim,fontSize:18,cursor:'pointer',lineHeight:1,padding:4}}>✕</button>
+              <NavIconBtn ch="✕" T={T} title="Close"
+                onClick={()=>{setAccent(pickerOrigRef.current.accent);setCustomAccentHex(pickerOrigRef.current.hex);setCustomPickerOpen(false);}}/>
             </div>
 
             {/* Color preview swatch */}
