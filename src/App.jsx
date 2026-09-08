@@ -167,7 +167,7 @@ const Auth = {
 //  LOCAL-FIRST: IndexedDB Bible text cache
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
-const IDB_VER=4;
+const IDB_VER=5;
 let _idbInst=null;
 
 function idbOpen(){
@@ -198,6 +198,10 @@ function idbOpen(){
       // v4 stores — binary blobs for images, PDFs, SQLite chapter data
       if(!db.objectStoreNames.contains('resource_blobs')){
         db.createObjectStore('resource_blobs',{keyPath:'id'});
+      }
+      // v5 store — Strong's word mapping, keyed 'book|chapter'
+      if(!db.objectStoreNames.contains('strongs_map')){
+        db.createObjectStore('strongs_map',{keyPath:'pk'});
       }
     };
     req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
@@ -282,9 +286,26 @@ async function idbPutStrongsEntries(rows){
 }
 async function idbClearStrongs(){
   const db=await idbOpen();
-  const tx=db.transaction('strongs_lex','readwrite');
+  const tx=db.transaction(['strongs_lex','strongs_map'],'readwrite');
   tx.objectStore('strongs_lex').clear();
+  tx.objectStore('strongs_map').clear();
   return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+// Strong's word mapping is 785,856 rows. Storing one IndexedDB record per word
+// would be punishingly slow to write and read, so we group by chapter — 1,189
+// records — with compact tuples [verse, word_pos, word_text, strongs_num].
+async function idbPutStrongsMapChapters(records){
+  const db=await idbOpen();
+  const tx=db.transaction('strongs_map','readwrite');
+  const st=tx.objectStore('strongs_map');
+  for(const rec of records)st.put(rec);
+  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+async function idbGetStrongsMapChapter(bookNum,chapter){
+  const db=await idbOpen();
+  const rec=await _idbReq(db.transaction('strongs_map','readonly').objectStore('strongs_map').get(`${bookNum}|${chapter}`));
+  if(!rec||!Array.isArray(rec.rows))return null;
+  return rec.rows.map(([verse,word_pos,word_text,strongs_num])=>({verse,word_pos,word_text,strongs_num}));
 }
 
 // ── Webster's 1828 ────────────────────────────────────────
@@ -360,7 +381,9 @@ async function _batchDownload({table,select,filter,order,putFn,dlKey,total:initT
     await putFn(rows);
     offset+=rows.length;
     onProgress&&onProgress(offset,total);
-    if(rows.length<BATCH)break;
+    // Supabase caps responses at 1000 rows however large a Range we ask for, so a
+    // short batch only means "finished" once we have reached the reported total.
+    if(rows.length<BATCH&&(!total||offset>=total))break;
   }
   await idbPutMeta(`dl:${dlKey}`,true);
 }
@@ -414,10 +437,34 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
   return{id:versionId,label,lang:lang||'EN',isRef:false};
 }
 
+const STRONGS_LEX_ROWS=14197;
+const STRONGS_MAP_ROWS=785856;
 async function downloadStrongsLocally(onProgress,signal){
+  const TOTAL=STRONGS_LEX_ROWS+STRONGS_MAP_ROWS;
   await idbPutMeta('dl:strongs',false);
+  await idbPutMeta('dl:strongsmap',false);
   await idbClearStrongs();
-  await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:14197,onProgress,signal});
+  // Lexicon first. _batchDownload flags dl:strongs as soon as it lands, so
+  // definitions and search keep working offline even if the much longer
+  // mapping pass below is cancelled part way through.
+  await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:STRONGS_LEX_ROWS,onProgress:d=>onProgress&&onProgress(d,TOTAL),signal});
+  // Mapping streams in chapter order and is flushed a chapter at a time, so we
+  // never hold more than one chapter of rows in memory.
+  let curKey=null,curRows=[],pending=[];
+  const putMap=async rows=>{
+    for(const r of rows){
+      const k=`${r.book_num}|${r.chapter}`;
+      if(k!==curKey){if(curKey!==null)pending.push({pk:curKey,rows:curRows});curKey=k;curRows=[];}
+      curRows.push([r.verse,r.word_pos,r.word_text,r.strongs_num]);
+    }
+    if(pending.length>=64){const batch=pending;pending=[];await idbPutStrongsMapChapters(batch);}
+  };
+  await _batchDownload({table:'strongs_mapping',select:'book_num,chapter,verse,word_pos,word_text,strongs_num',order:'book_num.asc,chapter.asc,verse.asc,word_pos.asc',putFn:putMap,dlKey:'strongsmap',total:STRONGS_MAP_ROWS,onProgress:d=>onProgress&&onProgress(STRONGS_LEX_ROWS+d,TOTAL),signal});
+  // _batchDownload marks the key done, but the trailing chapter is still buffered.
+  await idbPutMeta('dl:strongsmap',false);
+  if(curKey!==null)pending.push({pk:curKey,rows:curRows});
+  if(pending.length)await idbPutStrongsMapChapters(pending);
+  await idbPutMeta('dl:strongsmap',true);
 }
 async function downloadWebsterLocally(onProgress,signal){
   await idbPutMeta('dl:webster',false);
@@ -1133,6 +1180,7 @@ async function dbGetChapter(versionId,bookNum,chapter){
   return Array.isArray(d)?d:[];
 }
 async function dbGetStrongsForChapter(bookNum,chapter){
+  try{if(await idbIsDownloaded('strongsmap')){const local=await idbGetStrongsMapChapter(bookNum,chapter);if(local)return local;}}catch{}
   const token=getToken();
   const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
   return Array.isArray(data)?data:[];
@@ -3059,7 +3107,7 @@ function App(){
     if(dlAbort.current[vid])dlAbort.current[vid].abort();
     const ctrl=new AbortController();
     dlAbort.current[vid]=ctrl;
-    const initTotal=vid==='strongs'?14197:vid==='webster'?107793:31102;
+    const initTotal=vid==='strongs'?800053:vid==='webster'?107793:31102;
     setDlState(vid,{downloading:true,downloaded:false,progress:0,total:initTotal,err:null});
     try{
       const progressCb=(done,total)=>setDlState(vid,{downloading:true,progress:done,total});
@@ -3074,7 +3122,7 @@ function App(){
   }
 
   async function deleteDownload(vid){
-    if(vid==='strongs'){await idbClearStrongs().catch(()=>{});await idbPutMeta('dl:strongs',false);}
+    if(vid==='strongs'){await idbClearStrongs().catch(()=>{});await idbPutMeta('dl:strongs',false);await idbPutMeta('dl:strongsmap',false);}
     else if(vid==='webster'){await idbClearWebster().catch(()=>{});await idbPutMeta('dl:webster',false);}
     else await idbDeleteVersionLocal(vid).catch(()=>{});
     setDlState(vid,{downloaded:false,downloading:false});
@@ -5133,7 +5181,7 @@ function App(){
           </button>
           {offlineDataOpen&&(()=>{
             const offlineItems=[
-              {id:'strongs',label:"Strong's Concordance",sub:'14,197 entries · Hebrew & Greek',icon:'ℍ'},
+              {id:'strongs',label:"Strong's Concordance",sub:'14,197 entries + word mapping · Hebrew & Greek',icon:'ℍ'},
               {id:'webster',label:"Webster's 1828",sub:'107,793 entries · ~50 MB',icon:'W'},
             ];
             return(
