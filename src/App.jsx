@@ -167,7 +167,7 @@ const Auth = {
 //  LOCAL-FIRST: IndexedDB Bible text cache
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
-const IDB_VER=5;
+const IDB_VER=6;
 let _idbInst=null;
 
 function idbOpen(){
@@ -202,6 +202,10 @@ function idbOpen(){
       // v5 store — Strong's word mapping, keyed 'book|chapter'
       if(!db.objectStoreNames.contains('strongs_map')){
         db.createObjectStore('strongs_map',{keyPath:'pk'});
+      }
+      // v6 store — KJV occurrences, keyed by Strong's number
+      if(!db.objectStoreNames.contains('strongs_occ')){
+        db.createObjectStore('strongs_occ',{keyPath:'sn'});
       }
     };
     req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
@@ -286,9 +290,10 @@ async function idbPutStrongsEntries(rows){
 }
 async function idbClearStrongs(){
   const db=await idbOpen();
-  const tx=db.transaction(['strongs_lex','strongs_map'],'readwrite');
+  const tx=db.transaction(['strongs_lex','strongs_map','strongs_occ'],'readwrite');
   tx.objectStore('strongs_lex').clear();
   tx.objectStore('strongs_map').clear();
+  tx.objectStore('strongs_occ').clear();
   return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
 }
 // Strong's word mapping is 785,856 rows. Storing one IndexedDB record per word
@@ -300,6 +305,22 @@ async function idbPutStrongsMapChapters(records){
   const st=tx.objectStore('strongs_map');
   for(const rec of records)st.put(rec);
   return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+async function idbPutStrongsOcc(records){
+  const db=await idbOpen();
+  const tx=db.transaction('strongs_occ','readwrite');
+  const st=tx.objectStore('strongs_occ');
+  for(const rec of records)st.put(rec);
+  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+// Expand back into the exact shape get_strongs_verses returns, so the popup and
+// the Strong's tab render identically whether the data came from here or the server.
+async function idbGetStrongsOccLocal(sn){
+  const db=await idbOpen();
+  const rec=await _idbReq(db.transaction('strongs_occ','readonly').objectStore('strongs_occ').get(sn));
+  if(!rec||!Array.isArray(rec.refs))return null;
+  const total=rec.total??rec.refs.length;
+  return rec.refs.map(([book_num,chapter,verse,word_text,verse_count])=>({book_num,chapter,verse,word_text,verse_count,total_count:total}));
 }
 async function idbGetStrongsMapChapter(bookNum,chapter){
   const db=await idbOpen();
@@ -439,15 +460,68 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
 
 const STRONGS_LEX_ROWS=14197;
 const STRONGS_MAP_ROWS=785856;
+// The occurrence index is built locally from the mapping already on disk rather
+// than downloaded again. Building it in one pass would hold ~360k refs in memory
+// at once, so it is built in buckets: each pass keeps only the Strong's numbers
+// that hash to it, trading a few extra local reads for a small memory ceiling.
+const STRONGS_OCC_BUCKETS=8;
+const STRONGS_OCC_UNITS=80000; // nominal progress weight for the build phase
+function _snBucket(sn){let h=0;for(let i=0;i<sn.length;i++)h=(h*31+sn.charCodeAt(i))|0;return((h%STRONGS_OCC_BUCKETS)+STRONGS_OCC_BUCKETS)%STRONGS_OCC_BUCKETS;}
+async function buildStrongsOccIndex(onProgress,signal){
+  const db=await idbOpen();
+  // Authoritative totals come from the lexicon, not from counting mapping rows.
+  const totals=new Map();
+  await new Promise((res,rej)=>{
+    const req=db.transaction('strongs_lex','readonly').objectStore('strongs_lex').openCursor();
+    req.onsuccess=e=>{const c=e.target.result;if(!c)return res();
+      const v=c.value;if(v&&v.occurrence_count!=null)totals.set(v.strongs_number,v.occurrence_count);
+      c.continue();};
+    req.onerror=e=>rej(e.target.error);
+  });
+  for(let b=0;b<STRONGS_OCC_BUCKETS;b++){
+    if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+    const acc=new Map();
+    await new Promise((res,rej)=>{
+      const req=db.transaction('strongs_map','readonly').objectStore('strongs_map').openCursor();
+      req.onsuccess=e=>{
+        const c=e.target.result;if(!c)return res();
+        const parts=String(c.value.pk).split('|');
+        const book=+parts[0],chap=+parts[1];
+        for(const row of c.value.rows){
+          const verse=row[0],word_text=row[2],sn=row[3];
+          if(_snBucket(sn)!==b)continue;
+          let m=acc.get(sn);if(!m){m=new Map();acc.set(sn,m);}
+          const k=book+'|'+chap+'|'+verse;
+          const cur=m.get(k);
+          // Rows are stored in ascending word_pos, so the last word_text seen for a
+          // verse is the highest position — matching the server's DISTINCT ON.
+          if(cur){cur[4]++;cur[3]=word_text;}
+          else m.set(k,[book,chap,verse,word_text,1]);
+        }
+        c.continue();
+      };
+      req.onerror=e=>rej(e.target.error);
+    });
+    const recs=[];
+    for(const [sn,m] of acc){
+      const refs=[...m.values()];
+      refs.sort((x,y)=>x[0]-y[0]||x[1]-y[1]||x[2]-y[2]);
+      recs.push({sn,total:totals.has(sn)?totals.get(sn):null,refs});
+    }
+    if(recs.length)await idbPutStrongsOcc(recs);
+    onProgress&&onProgress(b+1,STRONGS_OCC_BUCKETS);
+  }
+}
 async function downloadStrongsLocally(onProgress,signal){
-  const TOTAL=STRONGS_LEX_ROWS+STRONGS_MAP_ROWS;
+  const TOTAL=STRONGS_LEX_ROWS+STRONGS_MAP_ROWS+STRONGS_OCC_UNITS;
   await idbPutMeta('dl:strongs',false);
   await idbPutMeta('dl:strongsmap',false);
+  await idbPutMeta('dl:strongsocc',false);
   await idbClearStrongs();
   // Lexicon first. _batchDownload flags dl:strongs as soon as it lands, so
   // definitions and search keep working offline even if the much longer
   // mapping pass below is cancelled part way through.
-  await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:STRONGS_LEX_ROWS,onProgress:d=>onProgress&&onProgress(d,TOTAL),signal});
+  await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage,occurrence_count',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:STRONGS_LEX_ROWS,onProgress:d=>onProgress&&onProgress(d,TOTAL),signal});
   // Mapping streams in chapter order and is flushed a chapter at a time, so we
   // never hold more than one chapter of rows in memory.
   let curKey=null,curRows=[],pending=[];
@@ -465,6 +539,9 @@ async function downloadStrongsLocally(onProgress,signal){
   if(curKey!==null)pending.push({pk:curKey,rows:curRows});
   if(pending.length)await idbPutStrongsMapChapters(pending);
   await idbPutMeta('dl:strongsmap',true);
+  // Occurrences are derived from what we just stored — no second download.
+  await buildStrongsOccIndex((done,steps)=>onProgress&&onProgress(STRONGS_LEX_ROWS+STRONGS_MAP_ROWS+Math.round(done/steps*STRONGS_OCC_UNITS),TOTAL),signal);
+  await idbPutMeta('dl:strongsocc',true);
 }
 async function downloadWebsterLocally(onProgress,signal){
   await idbPutMeta('dl:webster',false);
@@ -1198,6 +1275,7 @@ async function dbSearchStrongs(query){
   return Array.isArray(data)?data:[];
 }
 async function dbGetStrongsVerses(strongsNum){
+  try{if(await idbIsDownloaded('strongsocc')){const local=await idbGetStrongsOccLocal(strongsNum);if(local)return local;}}catch{}
   const token=getToken();
   const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
   return Array.isArray(data)?data:[];
@@ -3107,7 +3185,7 @@ function App(){
     if(dlAbort.current[vid])dlAbort.current[vid].abort();
     const ctrl=new AbortController();
     dlAbort.current[vid]=ctrl;
-    const initTotal=vid==='strongs'?800053:vid==='webster'?107793:31102;
+    const initTotal=vid==='strongs'?880053:vid==='webster'?107793:31102;
     setDlState(vid,{downloading:true,downloaded:false,progress:0,total:initTotal,err:null});
     try{
       const progressCb=(done,total)=>setDlState(vid,{downloading:true,progress:done,total});
@@ -3122,7 +3200,7 @@ function App(){
   }
 
   async function deleteDownload(vid){
-    if(vid==='strongs'){await idbClearStrongs().catch(()=>{});await idbPutMeta('dl:strongs',false);await idbPutMeta('dl:strongsmap',false);}
+    if(vid==='strongs'){await idbClearStrongs().catch(()=>{});await idbPutMeta('dl:strongs',false);await idbPutMeta('dl:strongsmap',false);await idbPutMeta('dl:strongsocc',false);}
     else if(vid==='webster'){await idbClearWebster().catch(()=>{});await idbPutMeta('dl:webster',false);}
     else await idbDeleteVersionLocal(vid).catch(()=>{});
     setDlState(vid,{downloaded:false,downloading:false});
@@ -5181,7 +5259,7 @@ function App(){
           </button>
           {offlineDataOpen&&(()=>{
             const offlineItems=[
-              {id:'strongs',label:"Strong's Concordance",sub:'14,197 entries + word mapping · Hebrew & Greek',icon:'ℍ'},
+              {id:'strongs',label:"Strong's Concordance",sub:'Definitions, word mapping & KJV occurrences',icon:'ℍ'},
               {id:'webster',label:"Webster's 1828",sub:'107,793 entries · ~50 MB',icon:'W'},
             ];
             return(
