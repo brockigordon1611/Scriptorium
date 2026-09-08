@@ -388,9 +388,13 @@ async function idbDeleteVersionLocal(versionId){
 }
 
 // ── Generic batch downloader ──────────────────────────────
-async function _batchDownload({table,select,filter,order,putFn,dlKey,total:initTotal,onProgress,signal}){
+async function _batchDownload({table,select,filter,order,putFn,dlKey,total:initTotal,onProgress,signal,resumeKey}){
   const BATCH=1000;let offset=0;let total=initTotal||0;
-  onProgress&&onProgress(0,total);
+  // Pick up where an interrupted run stopped. putFn may return a "safe" offset —
+  // the start of a group it has not finished assembling — so we never resume in
+  // the middle of something only partially written to IndexedDB.
+  if(resumeKey){const saved=await idbGetMeta(resumeKey).catch(()=>null);if(typeof saved==='number'&&saved>0)offset=saved;}
+  onProgress&&onProgress(offset,total);
   while(true){
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
     const token=getToken();
@@ -404,13 +408,15 @@ async function _batchDownload({table,select,filter,order,putFn,dlKey,total:initT
     if(cr){const m=cr.match(/\/(\d+)/);if(m)total=parseInt(m[1]);}
     const rows=await r.json();
     if(!Array.isArray(rows)||rows.length===0)break;
-    await putFn(rows);
+    const safe=await putFn(rows,offset);
     offset+=rows.length;
+    if(resumeKey)await idbPutMeta(resumeKey,typeof safe==='number'?safe:offset);
     onProgress&&onProgress(offset,total);
     // Supabase caps responses at 1000 rows however large a Range we ask for, so a
     // short batch only means "finished" once we have reached the reported total.
     if(rows.length<BATCH&&(!total||offset>=total))break;
   }
+  if(resumeKey)await idbPutMeta(resumeKey,0);
   await idbPutMeta(`dl:${dlKey}`,true);
 }
 
@@ -470,6 +476,21 @@ const STRONGS_MAP_ROWS=785856;
 // at once, so it is built in buckets: each pass keeps only the Strong's numbers
 // that hash to it, trading a few extra local reads for a small memory ceiling.
 const STRONGS_OCC_ROWS=574013;
+// Bump whenever the offline Strong's payload changes shape. A device holding an
+// older download is cleared on next launch so it re-fetches rather than silently
+// serving data the current code no longer understands.
+const STRONGS_DL_VERSION=2;
+async function ensureStrongsDownloadFresh(){
+  const cur=await idbGetMeta('dlver:strongs').catch(()=>null);
+  if(cur===STRONGS_DL_VERSION)return false;
+  const had=(await idbGetMeta('dl:strongs').catch(()=>null))===true;
+  if(had){
+    await idbClearStrongs().catch(()=>{});
+    for(const k of ['dl:strongs','dl:strongsmap','dl:strongsocc','res:strongslex','res:strongsmap','res:strongsocc'])await idbPutMeta(k,k.startsWith('res:')?0:false).catch(()=>{});
+  }
+  await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION).catch(()=>{});
+  return had;
+}
 // Occurrence rows are authoritative for which verses contain a number and how
 // many times. strongs_mapping only supplies the English KJV word, and 126,063
 // of the 448,733 occurrence refs have no mapping row at all — for those the
@@ -524,31 +545,48 @@ async function buildKjvWordIndex(onProgress,signal){
 async function downloadStrongsLocally(onProgress,signal){
   const db2=await idbOpen();
   const TOTAL=STRONGS_LEX_ROWS+STRONGS_MAP_ROWS+STRONGS_KJVW_UNITS+STRONGS_OCC_ROWS;
-  await idbPutMeta('dl:strongs',false);
-  await idbPutMeta('dl:strongsmap',false);
+  // Read progress before touching any flags. An interrupted run leaves completed
+  // phases flagged and a saved offset inside the phase it was in, so resuming must
+  // not wipe the store those offsets point into.
+  const lexDone=(await idbGetMeta('dl:strongs').catch(()=>null))===true;
+  const mapDone=(await idbGetMeta('dl:strongsmap').catch(()=>null))===true;
+  let partial=lexDone||mapDone;
+  for(const k of ['res:strongslex','res:strongsmap','res:strongsocc']){
+    const v=await idbGetMeta(k).catch(()=>null);
+    if(typeof v==='number'&&v>0)partial=true;
+  }
   await idbPutMeta('dl:strongsocc',false);
-  await idbClearStrongs();
+  if(!partial){
+    await idbPutMeta('dl:strongs',false);
+    await idbPutMeta('dl:strongsmap',false);
+    await idbClearStrongs();
+  }
   // Lexicon first. _batchDownload flags dl:strongs as soon as it lands, so
   // definitions and search keep working offline even if the much longer
   // mapping pass below is cancelled part way through.
-  await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage,occurrence_count',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',total:STRONGS_LEX_ROWS,onProgress:d=>onProgress&&onProgress(d,TOTAL),signal});
+  if(!lexDone)await _batchDownload({table:'strongs_lexicon',select:'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage,occurrence_count',order:'strongs_number.asc',putFn:idbPutStrongsEntries,dlKey:'strongs',resumeKey:'res:strongslex',total:STRONGS_LEX_ROWS,onProgress:d=>onProgress&&onProgress(d,TOTAL),signal});
   // Mapping streams in chapter order and is flushed a chapter at a time, so we
   // never hold more than one chapter of rows in memory.
-  let curKey=null,curRows=[],pending=[];
-  const putMap=async rows=>{
+  let curKey=null,curRows=[],groupStart=0;
+  const putMap=async(rows,offsetBefore)=>{
+    let idx=offsetBefore;const done=[];
     for(const r of rows){
       const k=`${r.book_num}|${r.chapter}`;
-      if(k!==curKey){if(curKey!==null)pending.push({pk:curKey,rows:curRows});curKey=k;curRows=[];}
-      curRows.push([r.verse,r.word_pos,r.word_text,r.strongs_num]);
+      if(k!==curKey){if(curKey!==null)done.push({pk:curKey,rows:curRows});curKey=k;curRows=[];groupStart=idx;}
+      curRows.push([r.verse,r.word_pos,r.word_text,r.strongs_num]);idx++;
     }
-    if(pending.length>=64){const batch=pending;pending=[];await idbPutStrongsMapChapters(batch);}
+    // Written every batch rather than every 64 chapters so the resume offset below
+    // is always backed by data actually on disk.
+    if(done.length)await idbPutStrongsMapChapters(done);
+    return groupStart;
   };
-  await _batchDownload({table:'strongs_mapping',select:'book_num,chapter,verse,word_pos,word_text,strongs_num',order:'book_num.asc,chapter.asc,verse.asc,word_pos.asc',putFn:putMap,dlKey:'strongsmap',total:STRONGS_MAP_ROWS,onProgress:d=>onProgress&&onProgress(STRONGS_LEX_ROWS+d,TOTAL),signal});
-  // _batchDownload marks the key done, but the trailing chapter is still buffered.
-  await idbPutMeta('dl:strongsmap',false);
-  if(curKey!==null)pending.push({pk:curKey,rows:curRows});
-  if(pending.length)await idbPutStrongsMapChapters(pending);
-  await idbPutMeta('dl:strongsmap',true);
+  if(!mapDone){
+    await _batchDownload({table:'strongs_mapping',select:'book_num,chapter,verse,word_pos,word_text,strongs_num',order:'book_num.asc,chapter.asc,verse.asc,word_pos.asc',putFn:putMap,dlKey:'strongsmap',resumeKey:'res:strongsmap',total:STRONGS_MAP_ROWS,onProgress:d=>onProgress&&onProgress(STRONGS_LEX_ROWS+d,TOTAL),signal});
+    // _batchDownload marks the key done, but the trailing chapter is still buffered.
+    await idbPutMeta('dl:strongsmap',false);
+    if(curKey!==null)await idbPutStrongsMapChapters([{pk:curKey,rows:curRows}]);
+    await idbPutMeta('dl:strongsmap',true);
+  }
   // KJV word lookup, derived from the mapping just stored.
   const BASE=STRONGS_LEX_ROWS+STRONGS_MAP_ROWS;
   await buildKjvWordIndex((done,steps)=>onProgress&&onProgress(BASE+Math.round(done/steps*STRONGS_KJVW_UNITS),TOTAL),signal);
@@ -563,36 +601,38 @@ async function downloadStrongsLocally(onProgress,signal){
     req.onerror=e=>rej(e.target.error);
   });
   const OBASE=BASE+STRONGS_KJVW_UNITS;
-  let oSn=null,oVerses=null,oPending=[];
-  const flushGroup=async()=>{
-    if(oSn===null)return;
-    const kj=await _idbReq((await idbOpen()).transaction('strongs_kjvw','readonly').objectStore('strongs_kjvw').get(oSn));
+  let oSn=null,oVerses=null,oGroupStart=0;
+  const buildOccRec=async(sn,verses)=>{
+    const kj=await _idbReq((await idbOpen()).transaction('strongs_kjvw','readonly').objectStore('strongs_kjvw').get(sn));
     const w=(kj&&kj.w)||{};
     const refs=[];
-    for(const [k,v] of oVerses){
+    for(const [k,v] of verses){
       const kw=w[k];
       refs.push([v[0],v[1],v[2],(kw!==undefined&&kw!==null)?kw:v[4],v[3]]);
     }
     refs.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]);
-    oPending.push({sn:oSn,total:totals.has(oSn)?totals.get(oSn):null,refs});
-    if(oPending.length>=200){const b=oPending;oPending=[];await idbPutStrongsOcc(b);}
+    return{sn,total:totals.has(sn)?totals.get(sn):null,refs};
   };
-  const putOcc=async rows=>{
+  const putOcc=async(rows,offsetBefore)=>{
+    let idx=offsetBefore;const done=[];
     for(const r of rows){
-      if(r.strongs_num!==oSn){await flushGroup();oSn=r.strongs_num;oVerses=new Map();}
+      if(r.strongs_num!==oSn){if(oSn!==null)done.push([oSn,oVerses]);oSn=r.strongs_num;oVerses=new Map();oGroupStart=idx;}
       const k=r.book_num+'|'+r.chapter+'|'+r.verse;
       const cur=oVerses.get(k);
-      // count occurrences per verse; keep the longest gloss, mirroring MAX(gloss)
+      // count occurrences per verse; keep the greatest gloss, mirroring MAX(gloss)
       if(cur){cur[3]++;if(r.gloss&&(!cur[4]||r.gloss>cur[4]))cur[4]=r.gloss;}
       else oVerses.set(k,[r.book_num,r.chapter,r.verse,1,r.gloss||null]);
+      idx++;
     }
+    if(done.length){const recs=[];for(const [sn,vs] of done)recs.push(await buildOccRec(sn,vs));await idbPutStrongsOcc(recs);}
+    return oGroupStart;
   };
-  await _batchDownload({table:'strongs_word_occurrences',select:'strongs_num,book_num,chapter,verse,gloss',order:'strongs_num.asc,book_num.asc,chapter.asc,verse.asc',putFn:putOcc,dlKey:'strongsocc',total:STRONGS_OCC_ROWS,onProgress:d=>onProgress&&onProgress(OBASE+d,TOTAL),signal});
+  await _batchDownload({table:'strongs_word_occurrences',select:'strongs_num,book_num,chapter,verse,gloss',order:'strongs_num.asc,book_num.asc,chapter.asc,verse.asc',putFn:putOcc,dlKey:'strongsocc',resumeKey:'res:strongsocc',total:STRONGS_OCC_ROWS,onProgress:d=>onProgress&&onProgress(OBASE+d,TOTAL),signal});
   await idbPutMeta('dl:strongsocc',false);
-  await flushGroup();
-  if(oPending.length)await idbPutStrongsOcc(oPending);
+  if(oSn!==null)await idbPutStrongsOcc([await buildOccRec(oSn,oVerses)]);
   // Scratch lookup is only needed while building.
   await idbClearStore('strongs_kjvw').catch(()=>{});
+  await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION);
   await idbPutMeta('dl:strongsocc',true);
 }
 async function downloadWebsterLocally(onProgress,signal){
@@ -3226,14 +3266,30 @@ function App(){
   useEffect(()=>{
     // Check which versions + datasets are already in IndexedDB
     (async()=>{
+      await ensureStrongsDownloadFresh().catch(()=>{});
       const ids=[...PUBLIC_VERSIONS.map(pv=>pv.id),'strongs','webster'];
-      const checks=await Promise.all(ids.map(async id=>({id,downloaded:await idbIsDownloaded(id).catch(()=>false)})));
+      // Strong's counts as downloaded only once every phase is in. Keying off the
+      // lexicon flag alone showed a complete tick while mapping and occurrences
+      // were still missing, and offered to delete instead of resume.
+      const checks=await Promise.all(ids.map(async id=>({id,downloaded:await idbIsDownloaded(id==='strongs'?'strongsocc':id).catch(()=>false)})));
       const map={};for(const c of checks)map[c.id]={downloaded:c.downloaded};
       setDlStates(map);
     })();
   },[]);
 
   function setDlState(vid,patch){setDlStates(prev=>({...prev,[vid]:{...(prev[vid]||{}), ...patch}}));}
+  // iOS suspends the WebView shortly after the screen locks, which stops a download
+  // mid-flight. Hold a screen wake lock for as long as one is running.
+  const anyDownloading=Object.values(dlStates).some(s=>s&&s.downloading);
+  useEffect(()=>{
+    if(!anyDownloading||!('wakeLock' in navigator))return;
+    let lock=null;
+    const acquire=async()=>{try{lock=await navigator.wakeLock.request('screen');}catch{}};
+    const onVis=()=>{if(document.visibilityState==='visible')acquire();};
+    acquire();
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{document.removeEventListener('visibilitychange',onVis);lock?.release().catch(()=>{});};
+  },[anyDownloading]);
 
   async function startDownload(vid){
     if(dlAbort.current[vid])dlAbort.current[vid].abort();
@@ -3253,7 +3309,17 @@ function App(){
     }finally{delete dlAbort.current[vid];}
   }
 
-  async function deleteDownload(vid){
+  const[confirmDeleteDl,setConfirmDeleteDl]=useState(null);
+  function dlDisplayName(vid){
+    if(vid==='strongs')return "Strong's Concordance";
+    if(vid==='webster')return "Webster's 1828 Dictionary";
+    const pv=PUBLIC_VERSIONS.find(p=>p.id===vid);
+    return (pv&&pv.label)||String(vid).toUpperCase();
+  }
+  // Re-downloading Strong's is a long job, so deletion asks first rather than
+  // firing on a single stray tap.
+  function deleteDownload(vid){setConfirmDeleteDl(vid);}
+  async function doDeleteDownload(vid){
     if(vid==='strongs'){await idbClearStrongs().catch(()=>{});await idbPutMeta('dl:strongs',false);await idbPutMeta('dl:strongsmap',false);await idbPutMeta('dl:strongsocc',false);}
     else if(vid==='webster'){await idbClearWebster().catch(()=>{});await idbPutMeta('dl:webster',false);}
     else await idbDeleteVersionLocal(vid).catch(()=>{});
@@ -7186,6 +7252,12 @@ function App(){
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
+      {confirmDeleteDl&&<ConfirmDialog T={T} danger
+        title="Remove offline download?"
+        message={`${dlDisplayName(confirmDeleteDl)} will be removed from this device. It keeps working while you have a connection, and you can download it again at any time.${confirmDeleteDl==='strongs'?' Strong\'s takes several minutes to download again.':''}`}
+        confirmLabel="Remove" cancelLabel="Keep"
+        onConfirm={()=>{const v=confirmDeleteDl;setConfirmDeleteDl(null);doDeleteDownload(v);}}
+        onCancel={()=>setConfirmDeleteDl(null)}/>}
       {modal?.type==='help'&&(
         <Modal title="Help & Reference" onClose={closeModal} wide T={T} topSheet={navH} isClosing={modalClosing} footer={<><PBtn ch="⚠ Reset to Defaults" onClick={()=>setModal({type:'reset'})} T={T} danger sm/><SBtn ch="Close" onClick={closeModal} T={T}/></>}>
           {(()=>{
