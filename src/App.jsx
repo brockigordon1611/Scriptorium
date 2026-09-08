@@ -3804,9 +3804,18 @@ function App(){
   const strongsCache=useRef({});
   async function fetchStrongsData(strongsNum){
     if(strongsCache.current[strongsNum])return strongsCache.current[strongsNum];
-    const[entry,verses]=await Promise.all([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
-    strongsCache.current[strongsNum]={entry,verses};
-    return{entry,verses};
+    // The definition is in IndexedDB once Strong's is downloaded, but occurrences
+    // are server-only. Settle the two independently — with Promise.all a failed
+    // network call rejected the pair, threw away a definition we already had
+    // locally, and left the caller's spinner running forever.
+    const[e,v]=await Promise.allSettled([dbGetStrongsEntry(strongsNum),dbGetStrongsVerses(strongsNum)]);
+    const entry=e.status==='fulfilled'?e.value:null;
+    const versesOffline=v.status!=='fulfilled';
+    const res={entry,verses:versesOffline?[]:v.value,versesOffline};
+    // Never cache a half result, or a lookup made offline would keep returning
+    // empty occurrences once the connection is back.
+    if(!versesOffline)strongsCache.current[strongsNum]=res;
+    return res;
   }
   async function handleStrongsWordTap(strongsNum,wordText){
     setStrongsExpandedWords(new Set());
@@ -3816,8 +3825,8 @@ function App(){
       return;
     }
     setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true,history:[]});
-    const{entry,verses}=await fetchStrongsData(strongsNum);
-    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+    const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
+    setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
   }
   async function loadStrongsEntry(strongsNum){
     setStrongsExpandedWords(new Set());
@@ -3831,8 +3840,8 @@ function App(){
       return{...next,entry:null,verses:null,versesLoading:true};
     });
     if(!cached){
-      const{entry,verses}=await fetchStrongsData(strongsNum);
-      setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesLoading:false}:prev);
+      const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
+      setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
     }
   }
   function goBackStrongs(){
@@ -5904,6 +5913,7 @@ function App(){
                       })
                     ),
                     groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}},'Loading verses…'),
+                    groupList.length===0&&!strongsPopup.versesLoading&&strongsPopup.versesOffline&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8,lineHeight:1.5}},'KJV occurrences need a connection. The definition above is saved on your device.'),
                     React.createElement('div',{style:{textAlign:'center',paddingTop:24,paddingBottom:8,borderTop:`1px solid ${T.bd}`,marginTop:16}},
                       React.createElement('div',{style:{fontSize:24,color:T.gM,marginBottom:6}},'·'),
                       React.createElement('div',{style:{fontFamily:FB,fontSize:11,color:T.dim,letterSpacing:'0.06em'}},'End of entry')
@@ -6289,6 +6299,7 @@ function App(){
                       </div>
                     )}
                     {groupList.length===0&&te.versesLoading&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}}>Loading verses…</div>}
+                    {groupList.length===0&&!te.versesLoading&&te.versesOffline&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8,lineHeight:1.5}}>KJV occurrences need a connection. The definition above is saved on your device.</div>}
                   </>
                 )}
               </div>
@@ -6303,8 +6314,8 @@ function App(){
                   const sn=r.strongs_number;
                   setStrongsTabEntry({strongs_number:sn,entry:null,verses:null,versesLoading:true});
                   setStrongsExpandedWords(new Set());
-                  Promise.all([dbGetStrongsEntry(sn),dbGetStrongsVerses(sn)]).then(([entry,verses])=>{
-                    setStrongsTabEntry(prev=>prev&&prev.strongs_number===sn?{strongs_number:sn,entry,verses,versesLoading:false}:prev);
+                  fetchStrongsData(sn).then(({entry,verses,versesOffline})=>{
+                    setStrongsTabEntry(prev=>prev&&prev.strongs_number===sn?{strongs_number:sn,entry,verses,versesOffline,versesLoading:false}:prev);
                   });
                 }}
                   style={{padding:'10px 18px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`,transition:'background .1s'}}
