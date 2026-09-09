@@ -4688,6 +4688,21 @@ function App(){
   }
 
   // ── Auth gate ──
+  // Ahead of the auth gates on purpose: the install runs before sign-in, so
+  // anything rendered after those early returns is never reached while it matters.
+  if(bundledInstall&&bundledInstall.total>0){
+    const pct=Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100));
+    return(
+      <div style={{position:'fixed',inset:0,zIndex:600,background:D.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 32px',gap:18}}>
+        <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:D.gT,letterSpacing:'0.1em'}}>Scriptorium</div>
+        <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Preparing your offline library…<br/>This happens once.</div>
+        <div style={{width:'min(320px,80vw)',height:4,background:D.bgSec,borderRadius:2,overflow:'hidden'}}>
+          <div style={{width:`${pct}%`,height:'100%',background:D.gD,transition:'width .2s'}}/>
+        </div>
+        <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em'}}>{pct}%</div>
+      </div>
+    );
+  }
   if(!authChecked)return(<div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg}}><style>{CSS}</style><Spinner/></div>);
   if(!user)return <AuthPanel onAuth={u=>setUser(u)}/>;
   if(recoveryMode)return <RecoveryPanel T={D} onDone={()=>setRecoveryMode(false)}/>;
@@ -7323,16 +7338,6 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
-      {bundledInstall&&bundledInstall.total>0&&(
-        <div style={{position:'fixed',inset:0,zIndex:600,background:D.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 32px',gap:18}}>
-          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:D.gT,letterSpacing:'0.1em'}}>Scriptorium</div>
-          <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Preparing your offline library…<br/>This happens once.</div>
-          <div style={{width:'min(320px,80vw)',height:4,background:D.bgSec,borderRadius:2,overflow:'hidden'}}>
-            <div style={{width:`${Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100))}%`,height:'100%',background:D.gD,transition:'width .2s'}}/>
-          </div>
-          <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em'}}>{Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100))}%</div>
-        </div>
-      )}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
       {confirmDeleteDl&&<ConfirmDialog T={T} danger
         title="Remove offline download?"
