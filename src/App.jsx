@@ -1708,6 +1708,9 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
     const t0=setTimeout(update,80);   // a body that scrolls itself on open
     return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);};
   },[fade]);
+  // A short linear ramp reads as a hard band rather than a fade, so this one is
+  // long and eased. The hex suffix is the alpha channel on T.bgCard.
+  const fadeRamp=d=>`linear-gradient(to ${d}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
   React.useEffect(()=>{
     if(!topSheet)return;
     const el=modalOverlayRef.current;
@@ -1759,8 +1762,8 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={bodyRef} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
           {fade&&(<>
-            <div style={{position:'absolute',top:0,left:0,right:0,height:30,pointerEvents:'none',opacity:fadeTop?1:0,transition:'opacity .18s ease',background:`linear-gradient(to bottom, ${T.bgCard}, ${T.bgCard}00)`}}/>
-            <div style={{position:'absolute',bottom:0,left:0,right:0,height:30,pointerEvents:'none',opacity:fadeBot?1:0,transition:'opacity .18s ease',background:`linear-gradient(to top, ${T.bgCard}, ${T.bgCard}00)`}}/>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:96,pointerEvents:'none',opacity:fadeTop?1:0,transition:'opacity .18s ease',background:fadeRamp('bottom')}}/>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,height:96,pointerEvents:'none',opacity:fadeBot?1:0,transition:'opacity .18s ease',background:fadeRamp('top')}}/>
           </>)}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
