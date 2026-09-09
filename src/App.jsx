@@ -3336,13 +3336,26 @@ function App(){
   // Walkthrough clip is optional: only offer it if public/help/fcbh-audio.mp4 exists.
   const[audioHelpVideo,setAudioHelpVideo]=useState(null);
   useEffect(()=>{
-    const url=`${BUNDLED_BASE}help/fcbh-audio.mp4`;
-    // Must check the content type: a dev server and some static hosts answer an
-    // unknown path with the SPA index.html at 200, so r.ok alone would advertise
-    // a walkthrough that isn't there and render an empty player.
-    fetch(url,{method:'HEAD'}).then(r=>{
-      if(r.ok&&/^video\//i.test(r.headers.get('content-type')||''))setAudioHelpVideo(url);
-    }).catch(()=>{});
+    let stop=false;
+    // .mov as well as .mp4: QuickTime's Export As is the no-install way to make
+    // one of these on a Mac and it writes .mov. Both are H.264 and play fine here.
+    (async()=>{
+      for(const ext of ['mp4','mov']){
+        if(stop)return;
+        const url=`${BUNDLED_BASE}help/fcbh-audio.${ext}`;
+        try{
+          const r=await fetch(url,{method:'HEAD'});
+          // Content type, not just r.ok: a dev server and some static hosts answer
+          // an unknown path with the SPA index.html at 200, which would advertise
+          // a walkthrough that isn't there and render an empty player.
+          if(r.ok&&/^video\//i.test(r.headers.get('content-type')||'')){
+            if(!stop)setAudioHelpVideo(url);
+            return;
+          }
+        }catch{}
+      }
+    })();
+    return()=>{stop=true;};
   },[]);
   const dlAbort=useRef({});
 
