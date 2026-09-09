@@ -1857,12 +1857,12 @@ function AuthPanel({onAuth}){
       {/* Login card */}
       <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:D.accentLine}}/>
-        <div style={{padding:'28px 32px'}}>
-          <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:22,textAlign:'center'}}>Sign In</div>
+        <div style={{padding:'22px 22px 20px'}}>
+          <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:18,textAlign:'center'}}>Sign In</div>
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
           {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
-          <div style={{marginBottom:14}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
-          <div style={{marginBottom:9}}>
+          <div style={{marginBottom:12}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
+          <div style={{marginBottom:18}}>
             <Lbl c="Password" T={D}/>
             <div style={{position:'relative'}}>
               <input className="s-btn" type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)}
@@ -1870,13 +1870,10 @@ function AuthPanel({onAuth}){
               <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'} aria-label={showPw?'Hide password':'Show password'}><PwEye shown={showPw}/></button>
             </div>
           </div>
-          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}>
-            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FB,fontSize:13,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3}}>Forgot password?</button>
-          </div>
           <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'13px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
-          <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${D.bd}`,textAlign:'center'}}>
-            <span style={{fontFamily:FB,fontSize:13,color:D.dim}}>No account? </span>
-            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gT,fontFamily:FB,fontSize:13,fontWeight:600,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3}}>Create one</button>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:16}}>
+            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gT,fontFamily:FB,fontSize:13,fontWeight:600,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Create an account</button>
+            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FB,fontSize:13,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Forgot password?</button>
           </div>
         </div>
       </div>
