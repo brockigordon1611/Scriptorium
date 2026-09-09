@@ -1048,6 +1048,11 @@ function planRanges(chs,lang){
     return {b:r.b,c:r.from,label:r.from===r.to?`${nm} ${r.from}`:`${nm} ${r.from}\u2013${r.to}`};
   });
 }
+const _planLabels={};
+function planYearLabels(lang){
+  if(!_planLabels[lang])_planLabels[lang]=buildYearPlan().map(e=>[...planRanges(e.ot,lang),...planRanges(e.nt,lang)]);
+  return _planLabels[lang];
+}
 function planDayOfYear(d=new Date()){
   return Math.max(1,Math.min(PLAN_DAYS,Math.floor((d-new Date(d.getFullYear(),0,0))/86400000)));
 }
@@ -3495,7 +3500,7 @@ function App(){
 
   const[confirmDeleteDl,setConfirmDeleteDl]=useState(null);
   const[planState,setPlanState]=useState(()=>planLoad());
-  const[planShowAll,setPlanShowAll]=useState(false);
+  const planTodayRef=useRef(null);
   function planToggleDay(day){
     setPlanState(prev=>{
       const set=new Set(prev.done);
@@ -3505,6 +3510,20 @@ function App(){
       return next;
     });
   }
+  // Open the plan with today mid-screen, so the days behind you are a scroll up
+  // and the days ahead a scroll down.
+  useEffect(()=>{
+    if(modal?.type!=='plan')return;
+    // Not requestAnimationFrame: it does not fire while the page is hidden or
+    // backgrounded, and the centring would silently never happen.
+    const t=setTimeout(()=>{
+      const el=planTodayRef.current;if(!el)return;
+      const sc=el.closest('.modal-body');if(!sc)return;
+      const r=el.getBoundingClientRect(),sr=sc.getBoundingClientRect();
+      sc.scrollTop+=(r.top-sr.top)-(sc.clientHeight-r.height)/2;
+    },40);
+    return()=>clearTimeout(t);
+  },[modal]);
   // The narration is the single biggest upgrade to the app and nobody finds it on
   // their own, buried three levels into settings. Offer it once, then never again.
   const[audioPrompt,setAudioPrompt]=useState(false);
@@ -4953,7 +4972,7 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:studyIsActive?'calc(50% + 1px)':3,width:'calc(50% - 4px)',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){setPlanShowAll(false);setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
@@ -7543,12 +7562,13 @@ function App(){
         const plan=buildYearPlan();
         const today=planDayOfYear();
         const lang=versionLang(readVid);
+        const labels=planYearLabels(lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
         const open=(b,c)=>{setReadBook(b);setReadCh(c);setTab('read');closeModal();};
-        const Passages=({entry})=>(
+        const Passages=({day})=>(
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
-            {[...planRanges(entry.ot,lang),...planRanges(entry.nt,lang)].map((r,i)=>(
+            {labels[day-1].map((r,i)=>(
               <button key={i} type="button" onClick={()=>open(r.b,r.c)}
                 style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
                 {r.label}
@@ -7564,10 +7584,8 @@ function App(){
             {done.has(day)?'✓':''}
           </button>
         );
-        // Today first, then back through the year so missed days can be caught up.
-        const earliest=planShowAll?1:Math.max(1,today-29);
-        const past=[];for(let d=today-1;d>=earliest;d--)past.push(plan[d-1]);
-        const todayEntry=plan[today-1];
+        // The whole year in order, today in the middle: days behind you are a
+        // scroll up, days ahead a scroll down.
         return (
           <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing}
             footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
@@ -7581,43 +7599,30 @@ function App(){
               </div>
             </div>
 
-            <div style={{background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 13px',marginBottom:20}}>
-              <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
-                <Tick day={today}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
-                    Today · {planDateLabel(today,planState.year)}
+            {plan.map(entry=>entry.day===today?(
+              <div key={entry.day} ref={planTodayRef}
+                style={{background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 13px',margin:'14px 0'}}>
+                <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
+                  <Tick day={today}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
+                      Today · {planDateLabel(today,planState.year)}
+                    </div>
+                    <Passages day={entry.day}/>
                   </div>
-                  <Passages entry={todayEntry}/>
                 </div>
               </div>
-            </div>
-
-            {past.length>0&&(
-              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:9}}>Earlier days</div>
-            )}
-            {past.map(entry=>(
+            ):(
               <div key={entry.day} style={{display:'flex',alignItems:'flex-start',gap:11,padding:'9px 2px',borderTop:`1px solid ${T.bd}`}}>
                 <Tick day={entry.day}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:FB,fontSize:12,color:done.has(entry.day)?T.dim:T.mut}}>
                     {planDateLabel(entry.day,planState.year)}
                   </div>
-                  <Passages entry={entry}/>
+                  <Passages day={entry.day}/>
                 </div>
               </div>
             ))}
-            {!planShowAll&&today-1>29&&(
-              <button type="button" onClick={()=>setPlanShowAll(true)}
-                style={{width:'100%',marginTop:14,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
-                Show all {today-1} earlier days
-              </button>
-            )}
-            {today===1&&(
-              <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.6}}>
-                The plan follows the calendar, so it begins again each January.
-              </div>
-            )}
           </Modal>
         );
       })()}
