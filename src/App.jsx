@@ -1242,6 +1242,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   .form-row{grid-template-columns:1fr!important;}
   /* Tighter modal padding on mobile */
   .modal-body{padding:16px!important;}
+  .modal-subhead{padding:0 16px 14px!important;}
 }
 @media(max-width:1199px){
 }
@@ -1686,7 +1687,7 @@ function PwEye({shown}){
     : <svg {...p}><path d="M3 12s3.8-7 9-7 9 7 9 7-3.8 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.7"/></svg>;
 }
 
-function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade}){
+function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const[dragY,setDragY]=React.useState(0);
   const modalStartY=React.useRef(null);
   const modalOverlayRef=React.useRef(null);
@@ -1758,6 +1759,9 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
               <NavIconBtn ch="✕" onClick={onClose} T={T} title="Close"/>
             </div>
           </>
+        )}
+        {subHeader&&(
+          <div className="modal-subhead" style={{flexShrink:0,padding:'0 24px 16px'}}>{subHeader}</div>
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={bodyRef} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
@@ -5004,7 +5008,7 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:studyIsActive?'calc(50% + 1px)':3,width:'calc(50% - 4px)',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
@@ -7619,8 +7623,8 @@ function App(){
         // The whole year in order, today in the middle: days behind you are a
         // scroll up, days ahead a scroll down.
         return (
-          <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} hideBack fade>
-            <div style={{marginBottom:18}}>
+          <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} hideBack fade
+            subHeader={<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7}}>
                 <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
                 <span style={{fontFamily:FB,fontSize:13,color:T.dim}}>{done.size} of {PLAN_DAYS} days</span>
@@ -7628,8 +7632,7 @@ function App(){
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
               </div>
-            </div>
-
+            </>}>
             {plan.map(entry=>entry.day===today?(
               <div key={entry.day} ref={planTodayRef}
                 style={{background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 13px',margin:'14px 0'}}>
@@ -7737,7 +7740,7 @@ function App(){
         onConfirm={()=>{const v=confirmDeleteDl;setConfirmDeleteDl(null);doDeleteDownload(v);}}
         onCancel={()=>setConfirmDeleteDl(null)}/>}
       {modal?.type==='help'&&(
-        <Modal title="Help & Reference" onClose={closeModal} wide T={T} topSheet={navH} isClosing={modalClosing} footer={<><PBtn ch="⚠ Reset to Defaults" onClick={()=>setModal({type:'reset'})} T={T} danger sm/><SBtn ch="Close" onClick={closeModal} T={T}/></>}>
+        <Modal title="Help & Reference" onClose={closeModal} wide T={T} topSheet={navH} isClosing={modalClosing} footer={<><PBtn ch="Reset to Defaults" onClick={()=>setModal({type:'reset'})} T={T} danger sm/><SBtn ch="Close" onClick={closeModal} T={T}/></>}>
           {(()=>{
             const rdFont=fontFamilyMap[readFontFamily];
             const rdLH=Math.max(1.5,Math.min(readLineHeight,2.2));
@@ -7764,10 +7767,10 @@ function App(){
                 <Row icon="✦">
                   <strong style={{color:T.gT}}>Navigate</strong> using the bar at the bottom of the screen — tap the <strong style={{color:T.gT}}>book name</strong> (e.g. Genesis 1) to jump to any book and chapter, or tap <strong style={{color:T.gT}}>CH 2 ›</strong> to move to the next chapter.
                 </Row>
-                <Row icon="📖">
+                <Row icon="▤">
                   Tap the <strong style={{color:T.gT}}>version label</strong> (e.g. KJV) in the top bar to switch Bible translations.
                 </Row>
-                <Row icon="👆">
+                <Row icon="⊙">
                   <strong style={{color:T.gT}}>Tap any verse</strong> to select it — it highlights and a toolbar appears at the bottom. Tap again to deselect. You can select multiple verses at once.
                 </Row>
                 <Row icon="⛶">
@@ -7776,13 +7779,13 @@ function App(){
                 <Row icon="¶">
                   <strong style={{color:T.gT}}>Paragraph Mode</strong> flows verses into continuous paragraphs instead of numbered lines — useful for narrative reading. Enable in <em>Settings → Reading Appearance</em>.
                 </Row>
-                <Row icon="🔴">
+                <Row icon="●">
                   <strong style={{color:T.gT}}>Red Letter</strong> highlights words spoken by Jesus. Enable in <em>Settings → Reading Appearance → Red Letter</em>. Only available on versions with red-letter data.
                 </Row>
 
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
-                <Row icon="🔍">
+                <Row icon="⌕">
                   Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Type a word or phrase and results are grouped by book.
                 </Row>
                 <Row icon="≡">
@@ -7809,13 +7812,13 @@ function App(){
                 <Row icon="▶">
                   Tap the <strong style={{color:T.gT}}>play button</strong> (bottom-right corner in the Read tab) to start audio for the current chapter. The button expands to show the current verse number as it plays.
                 </Row>
-                <Row icon="🎙">
+                <Row icon="♪">
                   Audio uses <strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> streaming where available — professional narration matched to the text. Falls back to your device's built-in text-to-speech when FCBH isn't available for a version.
                 </Row>
                 <Row icon="⚙">
                   Change the audio source, voice, and playback speed in <em>Settings → Audio Playback</em>. Voice selection only applies when using text-to-speech.
                 </Row>
-                <Row icon="📥">
+                <Row icon="↓">
                   Import local KJV MP3 audio files (Old or New Testament) in <em>Settings → Audio Playback → KJV Local Audio</em> for fully offline playback.
                 </Row>
 
@@ -7830,7 +7833,7 @@ function App(){
                 <Row icon="⚑">
                   Each entry version can be marked with a <strong style={{color:T.gT}}>status</strong> — Reference, Faithful, Questionable, or Mistranslation — to track translation accuracy at a glance.
                 </Row>
-                <Row icon="📖">
+                <Row icon="▤">
                   Tap <strong style={{color:T.gT}}>Read</strong> on any entry to jump directly to that passage in the reading view.
                 </Row>
 
@@ -7842,10 +7845,10 @@ function App(){
                 <Row icon="﹏">
                   Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word.
                 </Row>
-                <Row icon="👆">
+                <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
                 </Row>
-                <Row icon="⬇">
+                <Row icon="✓">
                   The full concordance is included with the app, so lookups work with no connection from the moment you install it — 14,197 Hebrew and Greek entries, plus the word-by-word mapping behind the underlines and every KJV occurrence.
                 </Row>
 
@@ -7854,13 +7857,13 @@ function App(){
                 <Row icon="W">
                   Access the full <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> from the Study tab. Search any English word for its historical definition — written in the same era as many classic Bible translations.
                 </Row>
-                <Row icon="⬇">
+                <Row icon="✓">
                   All 107,793 entries are included with the app and work with no connection.
                 </Row>
 
                 {/* ── OFFLINE DATA ── */}
                 <Hdg label="Offline Data"/>
-                <Row icon="📖">
+                <Row icon="▤">
                   <strong style={{color:T.gT}}>Bible versions</strong> can be downloaded for fully offline use. Go to <em>Settings → Offline Data → Manage Bible Versions</em> and tap the download arrow next to any version.
                 </Row>
                 <Row icon="✓">

@@ -86,6 +86,7 @@ textarea::placeholder{color:var(--ac-dim);opacity:1;}
   .modal-topsheet-panel.slide-down-sheet-out{animation:slideDownSheetOut .25s ease-in both!important;}
   .form-row{grid-template-columns:1fr!important;}
   .modal-body{padding:16px!important;}
+  .modal-subhead{padding:0 16px 14px!important;}
 }
 @media(min-width:916px){
   .show-mobile{display:none!important;}
