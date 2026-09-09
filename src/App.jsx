@@ -7399,17 +7399,37 @@ function App(){
               style={{width:'100%',borderRadius:9,display:'block',background:'#000',marginBottom:18,border:`1px solid ${T.bd}`}}/>
           )}
           <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
-            <p style={{margin:'0 0 14px'}}>
+            <p style={{margin:'0 0 12px'}}>
               The KJV audio is free from Faith Comes By Hearing. You download it from their
-              site once, then bring the file into Scriptorium. The Old and New Testaments are
-              separate downloads.
+              website, then bring the file back into Scriptorium. The Old and New Testaments
+              are two separate downloads — do the whole process once for each.
+            </p>
+            <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 12px',marginBottom:18}}>
+              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>The two files</div>
+              {[['ENGKJVO1DA.zip','Old Testament','1.7 GB','929 chapters'],
+                ['ENGKJVN1DA.zip','New Testament','488 MB','260 chapters']].map(([f,t,sz,ch])=>(
+                <div key={f} style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:4,flexWrap:'wrap'}}>
+                  <code style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:12,color:T.gT}}>{f}</code>
+                  <span style={{fontFamily:FB,fontSize:12,color:T.mut}}>{t}</span>
+                  <span style={{fontFamily:FB,fontSize:12,color:T.dim}}>· {sz} · {ch}</span>
+                </div>
+              ))}
+              <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.5,marginTop:7}}>
+                The <strong style={{color:T.mut}}>O</strong> and <strong style={{color:T.mut}}>N</strong> in the
+                filename are the only difference — O for Old, N for New.
+              </div>
+            </div>
+            <p style={{margin:'0 0 16px',fontSize:13,color:T.dim,lineHeight:1.6}}>
+              Use Wi-Fi, and check you have space free. The Old Testament alone is 1.7 GB,
+              and you need room for both the download and the audio it unpacks into.
             </p>
             {[
-              ['Tap Download OT File','Their website opens in your browser. The New Testament is a separate button.'],
-              ['Start the MP3 download','Choose the MP3 option. It arrives as a single .zip file — you do not need to open or unzip it.'],
-              ['Let it finish','It is a large file, so use Wi-Fi. Your browser saves it to Files, usually in Downloads.'],
-              ['Come back and tap Import','Pick the .zip you just downloaded. Scriptorium unpacks it for you.'],
-              ['Repeat for the other Testament','Once both show a green tick, audio plays with no connection needed.'],
+              ['Tap "Download OT File" above','Faith Comes By Hearing opens in your browser. Check the Version box reads "King James Version audio Old Testament" before going on.'],
+              ['Fill in the short form','They ask for a first name, last name and email address before the download will start. This is their requirement, not ours.'],
+              ['Tick "I\'m not a robot", then tap DOWNLOAD','The tick box sits just above the red DOWNLOAD button, and the button will not work until it is ticked.'],
+              ['Wait for it to finish','Leave the browser open. The Old Testament takes a while at 1.7 GB. Your browser saves it into Files, normally under Downloads. Do not unzip it — Scriptorium needs the .zip as it is.'],
+              ['Come back here and tap "Import OT File"','In the picker that opens, tap Browse, then Downloads, then ENGKJVO1DA.zip. Scriptorium unpacks the 929 chapters itself; this takes a few minutes.'],
+              ['Now do the same for the New Testament','Use the NT buttons and ENGKJVN1DA.zip. Once both show a green tick, audio plays with no connection at all.'],
             ].map(([t,d],i)=>(
               <div key={i} style={{display:'flex',gap:11,marginBottom:13}}>
                 <div style={{flexShrink:0,width:23,height:23,borderRadius:12,border:`1px solid ${T.gD}`,color:T.gT,fontFamily:FS,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',marginTop:1}}>{i+1}</div>
@@ -7419,9 +7439,9 @@ function App(){
                 </div>
               </div>
             ))}
-            <p style={{margin:'16px 0 0',fontSize:13,color:T.dim,lineHeight:1.6}}>
-              Can't find the file when importing? In the file picker tap <strong style={{color:T.mut}}>Browse</strong>,
-              then <strong style={{color:T.mut}}>Downloads</strong>.
+            <p style={{margin:'14px 0 0',fontSize:13,color:T.dim,lineHeight:1.6}}>
+              Once a Testament shows its green tick you can delete that .zip from the Files
+              app to get the space back — Scriptorium has already copied what it needs.
             </p>
           </div>
         </Modal>
