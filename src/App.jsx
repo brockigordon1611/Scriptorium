@@ -3413,6 +3413,27 @@ function App(){
   }
 
   const[confirmDeleteDl,setConfirmDeleteDl]=useState(null);
+  // The narration is the single biggest upgrade to the app and nobody finds it on
+  // their own, buried three levels into settings. Offer it once, then never again.
+  const[audioPrompt,setAudioPrompt]=useState(false);
+  useEffect(()=>{
+    if(!ready)return;
+    if(!Capacitor.isNativePlatform())return;   // the import flow only exists on device
+    if(otInstalled&&ntInstalled)return;        // already has it
+    try{if(localStorage.getItem('scrip:audioPromptSeen')==='true')return;}catch{}
+    const t=setTimeout(()=>setAudioPrompt(true),1600);
+    return()=>clearTimeout(t);
+  },[ready,otInstalled,ntInstalled]);
+  function dismissAudioPrompt(showSteps){
+    try{localStorage.setItem('scrip:audioPromptSeen','true');}catch{}
+    setAudioPrompt(false);
+    if(!showSteps)return;
+    // Land them in the panel the steps refer to, not just on the steps.
+    setAudioSource('local');
+    setAudioSettingsOpen(true);
+    setReadMobileSheet('settings');
+    setTimeout(()=>setModal({type:'audiohelp'}),380);
+  }
   function dlDisplayName(vid){
     if(vid==='strongs')return "Strong's Concordance";
     if(vid==='webster')return "Webster's 1828 Dictionary";
@@ -7429,14 +7450,14 @@ function App(){
               </div>
             </div>
             <p style={{margin:'0 0 16px',fontSize:13,color:T.dim,lineHeight:1.6}}>
-              Use Wi-Fi, and check you have space free. The Old Testament alone is 1.7 GB,
+              Check you have storage free before you start — the Old Testament is 1.7 GB,
               and you need room for both the download and the audio it unpacks into.
             </p>
             {[
               ['Tap "Download OT File" above','Faith Comes By Hearing opens in your browser. Check the Version box reads "King James Version audio Old Testament" before going on.'],
               ['Fill in the short form','They ask for a first name, last name and email address before the download will start. This is their requirement, not ours.'],
               ['Tick "I\'m not a robot", then tap DOWNLOAD','The tick box sits just above the red DOWNLOAD button, and the button will not work until it is ticked.'],
-              ['Wait for it to finish','Leave the browser open. The Old Testament takes a while at 1.7 GB. Your browser saves it into Files, normally under Downloads. Do not unzip it — Scriptorium needs the .zip as it is.'],
+              ['Wait for it to finish','Leave the browser open while it downloads. Your browser saves it into Files, normally under Downloads. Do not unzip it — Scriptorium needs the .zip exactly as it arrives.'],
               ['Come back here and tap "Import OT File"','In the picker that opens, tap Browse, then Downloads, then ENGKJVO1DA.zip. Scriptorium unpacks the 929 chapters itself; this takes a few minutes.'],
               ['Now do the same for the New Testament','Use the NT buttons and ENGKJVN1DA.zip. Once both show a green tick, audio plays with no connection at all.'],
             ].map(([t,d],i)=>(
@@ -7456,6 +7477,12 @@ function App(){
         </Modal>
       )}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
+      {audioPrompt&&<ConfirmDialog T={T}
+        title="Add the KJV audio?"
+        message="Scriptorium is at its best with the spoken Word alongside the text. The full King James narration is free from Faith Comes By Hearing, and once it is on your device every chapter plays with no connection at all. Setting it up takes a few minutes and only has to be done once."
+        confirmLabel="Show me how" cancelLabel="Not now"
+        onConfirm={()=>dismissAudioPrompt(true)}
+        onCancel={()=>dismissAudioPrompt(false)}/>}
       {confirmDeleteDl&&<ConfirmDialog T={T} danger
         title="Remove offline download?"
         message={`${dlDisplayName(confirmDeleteDl)} will be removed from this device. It keeps working while you have a connection, and you can download it again at any time.${confirmDeleteDl==='strongs'?' Strong\'s takes several minutes to download again.':''}`}
