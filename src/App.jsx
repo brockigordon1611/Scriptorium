@@ -1713,8 +1713,8 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
     <div ref={modalOverlayRef} className={topSheet?"modal-overlay modal-topsheet-overlay":"modal-overlay"} onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',...(topSheet?{top:topSheet,right:0,bottom:0,left:0,zIndex:185,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)','--ts-h':topSheet+'px'}:{inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',backdropFilter:'blur(4px)'}),display:'flex',alignItems:'center',justifyContent:'center',padding:20,...(isClosing&&topSheet?{opacity:0,transition:'opacity .25s ease-in'}:{})}}>
       <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',transform:(topSheet&&!isClosing&&dragY!==0)?`translateY(${dragY}px)`:undefined,transition:(topSheet&&!isClosing&&dragY===0)?'transform .2s ease-out':undefined}}>
         {topSheet?(
-          <div style={{background:T.bgCard,padding:'14px 16px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <div style={{position:'absolute',left:16,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+          <div style={{background:T.bgCard,padding:'20px 18px 14px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <div style={{position:'absolute',left:18,top:20,bottom:14,display:'flex',alignItems:'center'}}>
               <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
             </div>
             <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
@@ -3127,8 +3127,8 @@ function App(){
   function closeModal(then){
     if(_topSheetTypes.includes(modal?.type)){
       setModalClosing(true);
-      setTimeout(()=>{setModal(null);setModalClosing(false);if(then)then();},260);
-    }else{setModal(null);if(then)then();}
+      setTimeout(()=>{setModal(null);setModalClosing(false);if(typeof then==='function')then();},260);
+    }else{setModal(null);if(typeof then==='function')then();}
   }
   const[undo,setUndo]=useState(null);
   const[pulseId,setPulseId]=useState(null);
@@ -6375,8 +6375,8 @@ function App(){
             const groupList=Object.entries(groups).filter(([k])=>!_FUNC.has(k)).sort((a,b)=>[...b[1].refs.values()].reduce((s,c)=>s+c,0)-[...a[1].refs.values()].reduce((s,c)=>s+c,0));
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:navH+100,animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,height:`max(260px, calc(100vh - ${navH+bottomBarH+120}px))`,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',marginBottom:bottomBarH+20,willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:bottomBarH+20,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:16,borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
