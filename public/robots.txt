@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://brockigordon1611.github.io/Scriptorium/sitemap.xml
