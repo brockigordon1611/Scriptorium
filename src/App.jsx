@@ -1101,7 +1101,8 @@ const FB="'Cormorant Garamond','EB Garamond',Georgia,serif";
 const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
 
 const CSS=`
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Cinzel:wght@400;500;600;700&display=swap');
+/* Fonts are bundled and loaded from public/fonts/fonts.css via index.html.
+   Fetching them from Google here meant a first offline launch fell back to Georgia. */
 *{box-sizing:border-box;margin:0;padding:0;}
 ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--ac-scrollbar,#3a3020);border-radius:10px;}
 mark.sch{background:var(--ac-mark,rgba(200,168,78,0.22));color:inherit;border-radius:2px;padding:0 2px;}
