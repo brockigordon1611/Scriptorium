@@ -4779,11 +4779,11 @@ function App(){
     return(
       <div style={{position:'fixed',inset:0,zIndex:600,background:D.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 32px',gap:18}}>
         <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:D.gT,letterSpacing:'0.1em'}}>Scriptorium</div>
-        <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Preparing your offline library…<br/>This happens once.</div>
         <div style={{width:'min(320px,80vw)',height:4,background:D.bgSec,borderRadius:2,overflow:'hidden'}}>
           <div style={{width:`${pct}%`,height:'100%',background:D.gD,transition:'width .2s'}}/>
         </div>
-        <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em'}}>{pct}%</div>
+        <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Finalizing initial set-up</div>
+        <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em',marginTop:-8}}>{pct}%</div>
       </div>
     );
   }
@@ -5068,26 +5068,6 @@ function App(){
           </div>
           {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
-        {/* Audio suggestion. Inside the nav on purpose: navH is measured off this
-            element by a ResizeObserver and everything below is offset from it, so
-            adding a row here makes the whole layout adjust on its own. Placed
-            outside, it landed at top 0 behind the fixed header and was invisible. */}
-        {audioPrompt&&(
-          <div className="no-print" style={{display:'flex',alignItems:'center',gap:10,padding:'9px 2px 2px',marginTop:8,borderTop:`1px solid ${T.bdA}`}}>
-            <span style={{color:T.gT,flexShrink:0,display:'inline-flex',alignItems:'center'}}><PlayMark size={14}/></span>
-            <div style={{flex:1,minWidth:0,fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.45}}>
-              Free KJV narration is available, and plays offline once added.
-            </div>
-            <button type="button" onClick={()=>dismissAudioPrompt(true)}
-              style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,fontWeight:600,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
-              Show me how
-            </button>
-            <button type="button" onClick={()=>dismissAudioPrompt(false)} title="Dismiss" aria-label="Dismiss"
-              style={{flexShrink:0,background:'none',border:'none',color:T.dim,cursor:'pointer',width:30,height:30,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:15,lineHeight:1}}>
-              ✕
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Mobile menu sheet */}
@@ -5476,14 +5456,20 @@ function App(){
                       </>
                     ):(
                       <>
-                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
-                          Download the free KJV MP3 packs from faithcomesbyhearing.com, then import each ZIP file below.
-                        </div>
-                        <button type="button" onClick={()=>setModal({type:'audiohelp'})}
-                          style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
-                          {audioHelpVideo&&<span style={{flexShrink:0,color:T.gT,display:'inline-flex',alignItems:'center'}}><PlayMark/></span>}
-                          <span>{audioHelpVideo?'Watch how to do this':'Step-by-step instructions'}</span>
-                        </button>
+                        {/* Both packs installed: the instructions and the walkthrough
+                            have nothing left to say, so leave just the status cards. */}
+                        {!(otInstalled&&ntInstalled)&&(
+                          <>
+                            <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
+                              Download the free KJV MP3 packs from faithcomesbyhearing.com, then import each ZIP file below.
+                            </div>
+                            <button type="button" onClick={()=>setModal({type:'audiohelp'})}
+                              style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
+                              {audioHelpVideo&&<span style={{flexShrink:0,color:T.gT,display:'inline-flex',alignItems:'center'}}><PlayMark/></span>}
+                              <span>{audioHelpVideo?'Watch how to do this':'Step-by-step instructions'}</span>
+                            </button>
+                          </>
+                        )}
                         <div style={{display:'flex',gap:6,marginBottom:8}}>
                           {[
                             {pack:'OT',label:'Old Testament',installed:otInstalled,url:'https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA'},
@@ -6444,7 +6430,23 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div ref={bottomBarRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
+          <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`}}>
+            {audioPrompt&&(
+              <div className="no-print" style={{display:'flex',alignItems:'center',gap:9,padding:'9px 12px',borderBottom:`1px solid ${T.bdS}`}}>
+                <div style={{flex:1,minWidth:0,fontFamily:FB,fontSize:12.5,color:T.mut,lineHeight:1.4}}>
+                  We highly recommend downloading the free KJV audio for the best experience
+                </div>
+                <button type="button" onClick={()=>dismissAudioPrompt(true)}
+                  style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,fontWeight:600,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  Download now
+                </button>
+                <button type="button" onClick={()=>dismissAudioPrompt(false)} title="Dismiss" aria-label="Dismiss"
+                  style={{flexShrink:0,background:'none',border:'none',color:T.dim,cursor:'pointer',width:28,height:28,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:14,lineHeight:1}}>
+                  ✕
+                </button>
+              </div>
+            )}
+            <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
@@ -6456,6 +6458,7 @@ function App(){
               <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
+            </div>
             </div>
         </div>
       )}
@@ -7506,10 +7509,15 @@ function App(){
           </div>
           {audioHelpVideo&&(
             <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.bd}`}}>
-              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:9}}>Watch it done</div>
+              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:4}}>Watch it done</div>
+              <div style={{fontFamily:FB,fontSize:12,color:T.dim,marginBottom:9,lineHeight:1.5}}>
+                It is a phone recording, so it shows narrow here — use the expand control to fill the screen.
+              </div>
+              {/* A portrait clip can be tall or wide, not both. Capped so the whole
+                  thing is visible at once; fullscreen is there for reading detail. */}
               <video src={audioHelpVideo} controls playsInline preload="metadata"
                 onError={()=>setAudioHelpVideo(null)}
-                style={{width:'100%',borderRadius:9,display:'block',background:'#000',border:`1px solid ${T.bd}`}}/>
+                style={{maxHeight:'46vh',maxWidth:'100%',width:'auto',margin:'0 auto',borderRadius:9,display:'block',background:'#000',border:`1px solid ${T.bd}`}}/>
             </div>
           )}
         </Modal>
