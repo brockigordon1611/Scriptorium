@@ -1019,6 +1019,52 @@ const BIBLE = [
 ];
 function bookName(b,lang){if(!b)return'';if(lang==='ES'&&b.nameES)return b.nameES;return b.name;}
 function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN';}
+
+// ── Reading plan ──────────────────────────────────────────────────────────
+// Built by dividing the canon evenly across the year from the book data already
+// here, rather than reproducing a published plan. Old and New Testament advance
+// in parallel — 929 and 260 chapters, so roughly 2-3 OT and 0-1 NT a day — which
+// avoids leaving the Gospels until October the way a straight run through does.
+const PLAN_DAYS=365;
+let _yearPlan=null;
+function buildYearPlan(){
+  if(_yearPlan)return _yearPlan;
+  const flat=(from,to)=>{const out=[];for(const b of BIBLE){if(b.n<from||b.n>to)continue;for(let c=1;c<=b.v.length;c++)out.push({b:b.n,c});}return out;};
+  const ot=flat(1,39),nt=flat(40,66);
+  const slice=(arr,d)=>arr.slice(Math.round((d-1)*arr.length/PLAN_DAYS),Math.round(d*arr.length/PLAN_DAYS));
+  _yearPlan=Array.from({length:PLAN_DAYS},(_,i)=>({day:i+1,ot:slice(ot,i+1),nt:slice(nt,i+1)}));
+  return _yearPlan;
+}
+// Collapse runs within a book: Genesis 1,2,3 -> "Genesis 1–3"
+function planRanges(chs,lang){
+  const runs=[];
+  for(const {b,c} of chs){
+    const last=runs[runs.length-1];
+    if(last&&last.b===b&&c===last.to+1){last.to=c;continue;}
+    runs.push({b,from:c,to:c});
+  }
+  return runs.map(r=>{
+    const nm=bookName(BIBLE.find(x=>x.n===r.b),lang);
+    return {b:r.b,c:r.from,label:r.from===r.to?`${nm} ${r.from}`:`${nm} ${r.from}\u2013${r.to}`};
+  });
+}
+function planDayOfYear(d=new Date()){
+  return Math.max(1,Math.min(PLAN_DAYS,Math.floor((d-new Date(d.getFullYear(),0,0))/86400000)));
+}
+function planDateLabel(day,year){
+  const dt=new Date(year,0,1); dt.setDate(day);
+  return dt.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+const PLAN_KEY='scrip:plan:v1';
+function planLoad(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(PLAN_KEY)||'null');
+    // A new year is a fresh run through, so old ticks do not carry over.
+    if(!raw||raw.year!==new Date().getFullYear())return{year:new Date().getFullYear(),done:[]};
+    return{year:raw.year,done:Array.isArray(raw.done)?raw.done:[]};
+  }catch{return{year:new Date().getFullYear(),done:[]};}
+}
+function planSave(state){try{localStorage.setItem(PLAN_KEY,JSON.stringify(state));}catch{}}
 // ── Words of Jesus (Red Letter) — compact ranges per book:chapter ──
 // Format: {bookNum:{chapter:"v1-v2,v3,v4-v5",...}}
 const WOJ_RAW={
@@ -3440,6 +3486,17 @@ function App(){
   }
 
   const[confirmDeleteDl,setConfirmDeleteDl]=useState(null);
+  const[planState,setPlanState]=useState(()=>planLoad());
+  const[planShowAll,setPlanShowAll]=useState(false);
+  function planToggleDay(day){
+    setPlanState(prev=>{
+      const set=new Set(prev.done);
+      set.has(day)?set.delete(day):set.add(day);
+      const next={...prev,done:[...set].sort((a,b)=>a-b)};
+      planSave(next);
+      return next;
+    });
+  }
   // The narration is the single biggest upgrade to the app and nobody finds it on
   // their own, buried three levels into settings. Offer it once, then never again.
   const[audioPrompt,setAudioPrompt]=useState(false);
@@ -4888,7 +4945,7 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:studyIsActive?'calc(50% + 1px)':3,width:'calc(50% - 4px)',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){setPlanShowAll(false);setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
@@ -6373,10 +6430,14 @@ function App(){
           {strongsVersePreview&&(
             <div onClick={()=>setStrongsVersePreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
               <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                  <NavIconBtn ch="‹" onClick={()=>setStrongsVersePreview(null)} T={T} title="Back"/>
-                  <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
-                  <button onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'4px 10px',fontWeight:600}}>Go</button>
+                {/* Back matches the arrow used by every modal header. The action moved
+                    out of this row: a full label plus the reference plus a button did not
+                    fit across a phone, and squeezing it made the reference the smallest
+                    thing on screen when it is what identifies the verse. */}
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
+                  <NavIconBtn ch="←" size={34} onClick={()=>setStrongsVersePreview(null)} T={T} title="Back"/>
+                  <span style={{fontFamily:FS,fontSize:15,letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
+                  <span style={{width:34,flexShrink:0}}/>
                 </div>
                 {strongsVersePreview.loading
                   ?<div style={{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}}>Loading…</div>
@@ -6385,6 +6446,11 @@ function App(){
                     <span dangerouslySetInnerHTML={{__html:processRedLetter(strongsVersePreview.text,readRedLetter,dark)}}/>
                   </div>
                 }
+                <button type="button"
+                  onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}}
+                  style={{width:'100%',marginTop:18,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
+                  Go to passage
+                </button>
               </div>
             </div>
           )}
@@ -7465,6 +7531,88 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {modal?.type==='plan'&&(()=>{
+        const plan=buildYearPlan();
+        const today=planDayOfYear();
+        const lang=versionLang(readVid);
+        const done=new Set(planState.done);
+        const pct=Math.round(done.size/PLAN_DAYS*100);
+        const open=(b,c)=>{setReadBook(b);setReadCh(c);setTab('read');closeModal();};
+        const Passages=({entry})=>(
+          <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
+            {[...planRanges(entry.ot,lang),...planRanges(entry.nt,lang)].map((r,i)=>(
+              <button key={i} type="button" onClick={()=>open(r.b,r.c)}
+                style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+        );
+        const Tick=({day})=>(
+          <button type="button" onClick={()=>planToggleDay(day)}
+            title={done.has(day)?'Mark as not read':'Mark as read'} aria-label={done.has(day)?'Mark as not read':'Mark as read'}
+            style={{flexShrink:0,width:26,height:26,marginTop:1,borderRadius:7,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',
+              background:done.has(day)?T.gF:'transparent',border:`1.5px solid ${done.has(day)?T.gD:T.bd}`,color:T.gT,fontSize:13,lineHeight:1,padding:0}}>
+            {done.has(day)?'✓':''}
+          </button>
+        );
+        // Today first, then back through the year so missed days can be caught up.
+        const earliest=planShowAll?1:Math.max(1,today-29);
+        const past=[];for(let d=today-1;d>=earliest;d--)past.push(plan[d-1]);
+        const todayEntry=plan[today-1];
+        return (
+          <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing}
+            footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
+            <div style={{marginBottom:18}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7}}>
+                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
+                <span style={{fontFamily:FB,fontSize:13,color:T.dim}}>{done.size} of {PLAN_DAYS} days</span>
+              </div>
+              <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
+                <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
+              </div>
+            </div>
+
+            <div style={{background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 13px',marginBottom:20}}>
+              <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
+                <Tick day={today}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
+                    Today · {planDateLabel(today,planState.year)}
+                  </div>
+                  <Passages entry={todayEntry}/>
+                </div>
+              </div>
+            </div>
+
+            {past.length>0&&(
+              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:9}}>Earlier days</div>
+            )}
+            {past.map(entry=>(
+              <div key={entry.day} style={{display:'flex',alignItems:'flex-start',gap:11,padding:'9px 2px',borderTop:`1px solid ${T.bd}`}}>
+                <Tick day={entry.day}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:FB,fontSize:12,color:done.has(entry.day)?T.dim:T.mut}}>
+                    {planDateLabel(entry.day,planState.year)}
+                  </div>
+                  <Passages entry={entry}/>
+                </div>
+              </div>
+            ))}
+            {!planShowAll&&today-1>29&&(
+              <button type="button" onClick={()=>setPlanShowAll(true)}
+                style={{width:'100%',marginTop:14,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
+                Show all {today-1} earlier days
+              </button>
+            )}
+            {today===1&&(
+              <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.6}}>
+                The plan follows the calendar, so it begins again each January.
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
       {modal?.type==='audiohelp'&&(
         <Modal title="Adding KJV Audio" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
           <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
