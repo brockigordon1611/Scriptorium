@@ -2236,7 +2236,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
   return(
     <Modal title="✦ Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
-        <span style={{fontSize:16,flexShrink:0}}>⚠</span>
+        <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
           <div style={{fontFamily:FS,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:T.gT,marginBottom:4}}>SIGN IN REQUIRED</div>
           <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>Bookmarks are saved to your account. Sign in to save and view bookmarks.</div>
@@ -2424,7 +2424,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
                   ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
                   :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                   :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                    ⚠ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
+                    ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
                   </label>
                   :<span style={{fontFamily:FS,fontSize:9,color:T.dim}}>…</span>
               )}
@@ -2515,7 +2515,7 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
         <span dangerouslySetInnerHTML={{__html:hl(displayRef,q)}} style={{fontFamily:FS,fontSize:14.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}/>
         {entry.issueLabel&&<Badge type={entry.issueType} label={entry.issueLabel} dark={dark}/>}
         <div style={{marginLeft:'auto',display:'flex',gap:5}}>
-          {parsed&&onRead&&<button className="s-btn s-ghost" onClick={()=>onRead(parsed)} title="Read this chapter" style={{background:'none',border:`1px solid ${T.bd+'40'}`,borderRadius:5,color:T.dim,padding:'3px 8px',fontSize:12,fontFamily:FB}}>📖</button>}
+          {parsed&&onRead&&<button className="s-btn s-ghost" onClick={()=>onRead(parsed)} title="Read this chapter" style={{background:'none',border:`1px solid ${T.bd+'40'}`,borderRadius:5,color:T.dim,padding:'3px 8px',fontSize:12,fontFamily:FB}}>▤</button>}
           <IBtn T={T} ch="✎" onClick={()=>onEdit(entry.id)} title="Edit"/>
           <IBtn T={T} ch="⧉" onClick={()=>onDup(entry.id)} title="Duplicate"/>
           <IBtn T={T} ch="✕" onClick={()=>onDel(entry.id)} danger title="Delete"/>
@@ -2639,7 +2639,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
         <div>
           <Lbl c="Reference" T={T} req/>
           <RefDD bkN={bkN} setBkN={setBkN} ch={ch} setCh={setCh} vs={vs} setVs={setVs} T={T} err={refErr}/>
-          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'⚡ Auto-fill verse text for all versions'}</button>
+          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'Auto-fill verse text for all versions'}</button>
         </div>
         <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}><option value="" disabled>— Select a section —</option>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
       </div>
@@ -2838,7 +2838,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
     <div style={{display:'flex',alignItems:'center',gap:14,padding:'13px 18px'}}>
       <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.g,flexShrink:0,fontWeight:600}}>Deleted</span>
       <span style={{fontFamily:FB,fontSize:15,color:T.mut,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ud.label}</span>
-      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↩ Undo</button>
+      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↺ Undo</button>
       <button className="s-btn s-ghost" onClick={onDismiss} style={{background:'none',border:'none',color:T.dim,fontSize:14,padding:'2px 6px',flexShrink:0}}>✕</button>
     </div>
     <div style={{height:3,background:T.bd}}><div style={{height:'100%',width:`${ud.pct}%`,background:T.g,transition:'width 0.1s linear'}}/></div>
@@ -3128,7 +3128,7 @@ function UserBlobThumb({id,mime,title,T}){
     }).catch(()=>{});
     return()=>{if(url)URL.revokeObjectURL(url);};
   },[id,mime]);
-  if(!src)return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:12,width:'100%',height:'100%'}}><div style={{fontSize:28,marginBottom:6}}>🖼</div><div style={{fontFamily:'system-ui',fontSize:11,color:T.body,lineHeight:1.3,textAlign:'center',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',maxWidth:'100%'}}>{title}</div></div>;
+  if(!src)return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:12,width:'100%',height:'100%'}}><div style={{fontSize:28,marginBottom:6}}>▣</div><div style={{fontFamily:'system-ui',fontSize:11,color:T.body,lineHeight:1.3,textAlign:'center',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',maxWidth:'100%'}}>{title}</div></div>;
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
@@ -5086,7 +5086,7 @@ function App(){
             {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadSearchResultsOpen(false);}} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
             {/* Settings button + popover */}
             <button type="button" title="Reading settings" onClick={()=>setReadSettingsOpen(v=>!v)}
-              style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:14,display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}>⚙</button>
+              style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:14,display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
             {readSettingsOpen&&<>
               <div onClick={()=>setReadSettingsOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
               <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'16px 18px',width:260,boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
@@ -5096,7 +5096,7 @@ function App(){
                   <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
                   <button type="button" onClick={()=>setDark(d=>!d)}
                     style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600}}>
-                    {dark?'☀ Light':'☾ Dark'}
+                    {dark?'☀︎ Light':'☾ Dark'}
                   </button>
                 </div>
                 {/* Strong's */}
@@ -5191,7 +5191,7 @@ function App(){
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2}}>
               <GhostBtn T={T} ch="✦ Bookmarks" onClick={()=>setModal({type:'bookmarks'})}/>
               <GhostBtn T={T} ch="↺ Recents" onClick={()=>setModal({type:'recents'})}/>
-              <GhostBtn T={T} ch={dark?'☀':'☾'} onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'}/>
+              <GhostBtn T={T} ch={dark?'☀︎':'☾'} onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'}/>
               <GhostBtn T={T} ch="⋯" onClick={()=>setModal({type:'help'})} title="Help & more"/>
               <GhostBtn T={T} ch="§" onClick={()=>setModal({type:'about'})} title="About & Legal"/>
             </div>
@@ -5218,7 +5218,7 @@ function App(){
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
             {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
-            {icon:dark?'☀':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
+            {icon:dark?'☀︎':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
             {icon:'⋯',label:'Help & Reference',fn:()=>{closeMobileSheet();setModal({type:'help'});}},
             {icon:'§',label:'About & Legal',fn:()=>{closeMobileSheet();setModal({type:'about'});}},
           ].map(item=>(
@@ -5978,7 +5978,7 @@ function App(){
                               ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
                               :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                               :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                ⚠ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
+                                ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
                               </label>
                               :null
                           )}
@@ -6268,19 +6268,19 @@ function App(){
                     <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15,marginBottom:10}}>No verses found.</div>
                     {searchOpts.caseSensitive&&(
                       <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
+                        ⚠︎ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
                         <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Disable it →</button>
                       </div>
                     )}
                     {searchOpts.partial===false&&(
                       <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠ Whole Word mode — partial matches excluded.{' '}
+                        ⚠︎ Whole Word mode — partial matches excluded.{' '}
                         <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Enable Partial Match →</button>
                       </div>
                     )}
                     {searchOpts.scope!=='all'&&(
                       <div style={{fontSize:12,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
+                        ⚠︎ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
                         <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Search All Scripture →</button>
                       </div>
                     )}
@@ -7264,7 +7264,7 @@ function App(){
                           <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
                         ):(
                           <div style={{textAlign:'center',padding:12}}>
-                            <div style={{fontSize:28,marginBottom:6}}>📄</div>
+                            <div style={{fontSize:28,marginBottom:6}}>▤</div>
                             <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
                             <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
                           </div>
@@ -7371,7 +7371,7 @@ function App(){
                           <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
                         ):(
                           <div style={{textAlign:'center',padding:12}}>
-                            <div style={{fontSize:28,marginBottom:6}}>📄</div>
+                            <div style={{fontSize:28,marginBottom:6}}>▤</div>
                             <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
                             <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
                           </div>
@@ -7431,13 +7431,13 @@ function App(){
               </div>
               {resources.length===0&&!resImporting&&(
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',minHeight:'55vh',padding:'24px'}}>
-                  <div style={{fontSize:36,marginBottom:16,opacity:0.4}}>📚</div>
+                  <div style={{fontSize:36,marginBottom:16,opacity:0.4}}>▤</div>
                   <div style={{fontFamily:FS,fontSize:13,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>No Resources Yet</div>
                   <div style={{fontFamily:FB,fontSize:14,color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import books, commentaries, devotionals, cross-references, PDFs, and more.</div>
                 </div>
               )}
               {resources.map(res=>{
-                const kindIcon=res.kind==='pdf'?'📄':res.kind==='image'?'🖼':res.kind==='sqlite'?'🗃':'📖';
+                const kindIcon=res.kind==='pdf'?'▤':res.kind==='image'?'▣':res.kind==='sqlite'?'▦':'▥';
                 const kindLabel=res.kind==='pdf'?'PDF':res.kind==='image'?res.ext?.toUpperCase()||'Image':res.kind==='sqlite'?`${(res.entryCount||res.chapters?.length||0).toLocaleString()} entries`:(`${(res.chapters?.length||1)} ${(res.chapters?.length||1)===1?'section':'chapters'}`);
                 return(
                 <div key={res.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'14px 16px',marginBottom:10,cursor:'pointer',gap:12}}
