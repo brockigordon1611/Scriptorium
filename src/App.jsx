@@ -1602,6 +1602,18 @@ function NavIconBtn({ch,onClick,T,title,label,size=40}){
       lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'}}>{ch}{label}</button>;
 }
 function Spinner(){return <span className="spinner"/>;}
+// One triangle, rotated when open, so the two states cannot differ in size.
+// These were text glyphs before — and no reading font contains them, so the OS
+// substituted its own, in which the up and down arrows are not a matched pair.
+// The mismatch therefore varied by platform and was worst on device.
+function Caret({open,size=12}){
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true"
+      style={{display:'block',flexShrink:0,transition:'transform .2s',transform:open?'rotate(180deg)':'none'}}>
+      <path d="M2.5 4.5 L6 8.5 L9.5 4.5 Z" fill="currentColor"/>
+    </svg>
+  );
+}
 function PlayMark({size=13}){
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>;
 }
@@ -2178,7 +2190,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
                     style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
-                    ▾ Expand All
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={11}/> Expand All</span>
                   </button>
                   <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
                     style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
@@ -2610,8 +2622,8 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
             </button>);})}
             {(onExpand||onCollapse)&&<>
               <div style={{width:1,height:14,background:T.bd,marginLeft:1}}/>
-              <button type="button" title="Expand all" onClick={onExpand} style={{background:'transparent',border:'none',color:T.dim,fontSize:12,padding:'2px 4px',cursor:'pointer',lineHeight:1}}>▾</button>
-              <button type="button" title="Collapse all" onClick={onCollapse} style={{background:'transparent',border:'none',color:T.dim,fontSize:12,padding:'2px 4px',cursor:'pointer',lineHeight:1}}>▴</button>
+              <button type="button" title="Expand all" onClick={onExpand} style={{background:'transparent',border:'none',color:T.dim,padding:'4px 5px',cursor:'pointer',lineHeight:1,display:'inline-flex',alignItems:'center'}}><Caret open={false} size={12}/></button>
+              <button type="button" title="Collapse all" onClick={onCollapse} style={{background:'transparent',border:'none',color:T.dim,padding:'4px 5px',cursor:'pointer',lineHeight:1,display:'inline-flex',alignItems:'center'}}><Caret open={true} size={12}/></button>
             </>}
           </div>
         )}
@@ -5228,7 +5240,7 @@ function App(){
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>Aa</span>
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
-            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:settingsAppOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={settingsAppOpen}/></span>
           </button>
           {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
 
@@ -5377,7 +5389,7 @@ function App(){
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♪</span>
             <span style={{flex:1,textAlign:'left'}}>Audio Playback</span>
-            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:audioSettingsOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={audioSettingsOpen}/></span>
           </button>
           )}
 
@@ -5558,7 +5570,7 @@ function App(){
               </svg>
             </span>
             <span style={{flex:1,textAlign:'left'}}>Offline Data</span>
-            <span style={{fontSize:12,color:T.gM,transition:'transform .2s',display:'inline-block',transform:offlineDataOpen?'rotate(180deg)':'rotate(0deg)'}}>▾</span>
+            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={offlineDataOpen}/></span>
           </button>
           {offlineDataOpen&&(()=>{
             const offlineItems=[
@@ -6304,11 +6316,13 @@ function App(){
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px 32px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
-                    (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',onClick:e=>{e.stopPropagation();goBackStrongs();}}),
-                    React.createElement('span',{style:{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
-                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}},`×${totalCount}`)
+                    (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
+                    // The number is the heading of this panel — it was set smaller than
+                    // the body text beneath it while the close button outweighed it.
+                    React.createElement('span',{style:{fontFamily:FS,fontSize:19,letterSpacing:'0.1em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
+                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:13,color:T.dim,background:T.bgCH,borderRadius:11,padding:'3px 9px'}},`×${totalCount}`)
                   ),
-                  React.createElement(NavIconBtn,{ch:'✕',T,title:'Close',onClick:closeStrongsPopup})
+                  React.createElement(NavIconBtn,{ch:'✕',T,title:'Close',size:34,onClick:closeStrongsPopup})
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
@@ -6329,7 +6343,7 @@ function App(){
                             style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}},
                             React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,fontWeight:600}},word),
                             React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim}},`(×${[...refs.values()].reduce((s,c)=>s+c,0)})`),
-                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.76),color:T.dim,marginLeft:'auto'}},isExpanded?'▴':'▾')
+                            React.createElement('span',{style:{marginLeft:'auto',color:T.dim,display:'inline-flex',alignItems:'center',flexShrink:0}},React.createElement(Caret,{open:isExpanded,size:13}))
                           ),
                           isExpanded&&React.createElement('div',{style:{paddingLeft:8,paddingBottom:4}},
                             refArr.map(({bn,ch,vs,cnt})=>
@@ -6564,8 +6578,8 @@ function App(){
               <div style={{width:1,height:18,background:T.bd,flexShrink:0,margin:'0 2px'}}/>
               <TBtn T={T} ch="＋ Verse" onClick={openAdd} primary/>
               <TBtn T={T} ch="＋ Section" onClick={openAddSec}/>
-              <TBtn T={T} ch="▾" onClick={()=>setSecToggle({action:'expand',tick:Date.now()})} title="Expand all"/>
-              <TBtn T={T} ch="▴" onClick={()=>setSecToggle({action:'collapse',tick:Date.now()})} title="Collapse all"/>
+              <TBtn T={T} ch={<Caret open={false} size={12}/>} onClick={()=>setSecToggle({action:'expand',tick:Date.now()})} title="Expand all"/>
+              <TBtn T={T} ch={<Caret open={true} size={12}/>} onClick={()=>setSecToggle({action:'collapse',tick:Date.now()})} title="Collapse all"/>
             </div>
 
             {/* Mobile action row */}
@@ -6727,7 +6741,7 @@ function App(){
                                 style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}}>
                                 <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,fontWeight:600}}>{word}</span>
                                 <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim}}>(×{[...refs.values()].reduce((s,c)=>s+c,0)})</span>
-                                <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.76),color:T.dim,marginLeft:'auto'}}>{isExpanded?'▴':'▾'}</span>
+                                <span style={{marginLeft:'auto',color:T.dim,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={isExpanded} size={13}/></span>
                               </div>
                               {isExpanded&&(
                                 <div style={{paddingLeft:8,paddingBottom:4}}>
