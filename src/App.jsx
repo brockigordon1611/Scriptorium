@@ -1660,6 +1660,14 @@ function Caret({open,size=12}){
     </svg>
   );
 }
+function SheetBackBtn({onClick,T,title='Back'}){
+  return (
+    <button type="button" onClick={onClick} title={title} aria-label={title}
+      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      ←
+    </button>
+  );
+}
 function PlayMark({size=13}){
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>;
 }
@@ -1707,7 +1715,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
         {topSheet?(
           <div style={{background:T.bgCard,padding:'14px 16px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             <div style={{position:'absolute',left:16,top:0,bottom:0,display:'flex',alignItems:'center'}}>
-              <NavIconBtn ch="←" onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
+              <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
             </div>
             <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
           </div>
@@ -6435,9 +6443,9 @@ function App(){
                     fit across a phone, and squeezing it made the reference the smallest
                     thing on screen when it is what identifies the verse. */}
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-                  <NavIconBtn ch="←" size={34} onClick={()=>setStrongsVersePreview(null)} T={T} title="Back"/>
+                  <SheetBackBtn onClick={()=>setStrongsVersePreview(null)} T={T}/>
                   <span style={{fontFamily:FS,fontSize:15,letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
-                  <span style={{width:34,flexShrink:0}}/>
+                  <span style={{width:27,flexShrink:0}}/>
                 </div>
                 {strongsVersePreview.loading
                   ?<div style={{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}}>Loading…</div>
