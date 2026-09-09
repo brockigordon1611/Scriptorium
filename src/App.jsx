@@ -7404,6 +7404,15 @@ function App(){
               website, then bring the file back into Scriptorium. The Old and New Testaments
               are two separate downloads — do the whole process once for each.
             </p>
+            <div style={{borderLeft:`2px solid ${T.gD}`,paddingLeft:12,margin:'0 0 16px'}}>
+              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:5}}>Why the extra steps</div>
+              <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.6}}>
+                Faith Comes By Hearing give these recordings away freely for your own
+                listening, but passing them on to others needs a licence Scriptorium
+                doesn't hold. So the audio can't be built into the app — the copy has to
+                come from them, to you.
+              </div>
+            </div>
             <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 12px',marginBottom:18}}>
               <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>The two files</div>
               {[['ENGKJVO1DA.zip','Old Testament','1.7 GB','929 chapters'],
