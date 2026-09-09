@@ -1098,7 +1098,7 @@ const ACCENTS={
 };
 const FS="'Cinzel',Georgia,serif";
 const FB="'Cormorant Garamond','EB Garamond',Georgia,serif";
-const fontFamilyMap={serif:FB,sans:"'Inter','Segoe UI',system-ui,sans-serif",mono:"'JetBrains Mono','Fira Code','Courier New',monospace"};
+const fontFamilyMap={serif:FB,sans:"'Source Sans 3','Segoe UI',system-ui,sans-serif",mono:"'Inconsolata','SFMono-Regular','Courier New',monospace"};
 
 const CSS=`
 /* Fonts are bundled and loaded from public/fonts/fonts.css via index.html.
@@ -7667,7 +7667,7 @@ function App(){
                   ['Accent Color','Changes the highlight color throughout the app — underlines, active borders, selected verse glow, and buttons.'],
                   ['Text Size','Adjust the reading font size. Drag the slider from small to large.'],
                   ['Line Spacing','Controls vertical space between lines of text (Tight → Wide).'],
-                  ['Font','Serif (Cormorant Garamond), Sans-Serif (Inter), or Monospace (JetBrains Mono).'],
+                  ['Font','Serif (Cormorant Garamond), Sans-Serif (Source Sans 3), or Monospace (Inconsolata).'],
                   ['Alignment','Left-aligned or fully justified text.'],
                   ['Verse Numbers','Superscript (small raised), Inline (same size as body text), or Hidden.'],
                   ['Paragraph Mode','Removes verse-by-verse line breaks and flows text as continuous paragraphs.'],

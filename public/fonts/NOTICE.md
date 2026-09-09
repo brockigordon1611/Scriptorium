@@ -21,8 +21,8 @@ that it travel with the fonts, so the upstream license files are included here:
 
 - `OFL-cinzel.txt` — Cinzel, © The Cinzel Project Authors
 - `OFL-cormorantgaramond.txt` — Cormorant Garamond, © The Cormorant Project Authors
-- `OFL-inter.txt` — Inter, © The Inter Project Authors
-- `OFL-jetbrainsmono.txt` — JetBrains Mono, © The JetBrains Mono Project Authors
+- `OFL-sourcesans3.txt` — Source Sans 3, © The Source Sans Project Authors
+- `OFL-inconsolata.txt` — Inconsolata, © The Inconsolata Project Authors
 
 ## What is here
 
@@ -34,12 +34,17 @@ Four families:
 
 - **Cinzel** — headings and interface labels
 - **Cormorant Garamond** — the Serif reading option, and most body text
-- **Inter** — the Sans-Serif reading option
-- **JetBrains Mono** — the Monospace reading option
+- **Source Sans 3** — the Sans-Serif reading option
+- **Inconsolata** — the Monospace reading option
 
-Inter and JetBrains Mono are named in the settings help text but were never
-actually loaded before this, so choosing either silently fell back to whatever
-the system happened to provide.
+Source Sans 3 and Inconsolata replaced Inter and JetBrains Mono, which rendered
+about 42% larger than Cormorant Garamond at the same setting — changing font
+appeared to change size. These sit around 20% above the serif instead.
+
+Their Light cuts are declared as `font-weight: 400` and Semibold as `700`.
+Reading text is rendered without an explicit weight in roughly 45 places, so
+remapping in the `@font-face` descriptor gives a light body and a sensible bold
+without touching any of them.
 
 Only the `latin` and `latin-ext` subsets are included — enough for the English
 and Spanish texts. The cyrillic, greek and vietnamese subsets Google also offers
