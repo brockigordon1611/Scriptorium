@@ -3333,6 +3333,17 @@ function App(){
 
   // ── Local download state per version {downloaded,downloading,progress,total,err} ──
   const[dlStates,setDlStates]=useState({});
+  // Walkthrough clip is optional: only offer it if public/help/fcbh-audio.mp4 exists.
+  const[audioHelpVideo,setAudioHelpVideo]=useState(null);
+  useEffect(()=>{
+    const url=`${BUNDLED_BASE}help/fcbh-audio.mp4`;
+    // Must check the content type: a dev server and some static hosts answer an
+    // unknown path with the SPA index.html at 200, so r.ok alone would advertise
+    // a walkthrough that isn't there and render an empty player.
+    fetch(url,{method:'HEAD'}).then(r=>{
+      if(r.ok&&/^video\//i.test(r.headers.get('content-type')||''))setAudioHelpVideo(url);
+    }).catch(()=>{});
+  },[]);
   const dlAbort=useRef({});
 
   // Reads what is actually in IndexedDB. Called on mount and again once the
@@ -5397,9 +5408,14 @@ function App(){
                       </>
                     ):(
                       <>
-                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:10}}>
+                        <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
                           Download the free KJV MP3 packs from faithcomesbyhearing.com, then import each ZIP file below.
                         </div>
+                        <button type="button" onClick={()=>setModal({type:'audiohelp'})}
+                          style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
+                          <span style={{fontSize:13,flexShrink:0}}>{audioHelpVideo?'▶':'?'}</span>
+                          <span>{audioHelpVideo?'Watch how to do this':'Step-by-step instructions'}</span>
+                        </button>
                         <div style={{display:'flex',gap:6,marginBottom:8}}>
                           {[
                             {pack:'OT',label:'Old Testament',installed:otInstalled,url:'https://www.faithcomesbyhearing.com/audio-bible-resources/mp3-downloads?language=English&version=ENGKJVO1DA'},
@@ -7363,6 +7379,40 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {modal?.type==='audiohelp'&&(
+        <Modal title="Adding KJV Audio" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
+          {audioHelpVideo&&(
+            <video src={audioHelpVideo} controls playsInline preload="metadata"
+              style={{width:'100%',borderRadius:9,display:'block',background:'#000',marginBottom:18,border:`1px solid ${T.bd}`}}/>
+          )}
+          <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
+            <p style={{margin:'0 0 14px'}}>
+              The KJV audio is free from Faith Comes By Hearing. You download it from their
+              site once, then bring the file into Scriptorium. The Old and New Testaments are
+              separate downloads.
+            </p>
+            {[
+              ['Tap Download OT File','Their website opens in your browser. The New Testament is a separate button.'],
+              ['Start the MP3 download','Choose the MP3 option. It arrives as a single .zip file — you do not need to open or unzip it.'],
+              ['Let it finish','It is a large file, so use Wi-Fi. Your browser saves it to Files, usually in Downloads.'],
+              ['Come back and tap Import','Pick the .zip you just downloaded. Scriptorium unpacks it for you.'],
+              ['Repeat for the other Testament','Once both show a green tick, audio plays with no connection needed.'],
+            ].map(([t,d],i)=>(
+              <div key={i} style={{display:'flex',gap:11,marginBottom:13}}>
+                <div style={{flexShrink:0,width:23,height:23,borderRadius:12,border:`1px solid ${T.gD}`,color:T.gT,fontFamily:FS,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',marginTop:1}}>{i+1}</div>
+                <div style={{minWidth:0}}>
+                  <div style={{color:T.gT,fontWeight:600,marginBottom:2}}>{t}</div>
+                  <div style={{fontSize:13,color:T.dim,lineHeight:1.6}}>{d}</div>
+                </div>
+              </div>
+            ))}
+            <p style={{margin:'16px 0 0',fontSize:13,color:T.dim,lineHeight:1.6}}>
+              Can't find the file when importing? In the file picker tap <strong style={{color:T.mut}}>Browse</strong>,
+              then <strong style={{color:T.mut}}>Downloads</strong>.
+            </p>
+          </div>
+        </Modal>
+      )}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
       {confirmDeleteDl&&<ConfirmDialog T={T} danger
         title="Remove offline download?"
