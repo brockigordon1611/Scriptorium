@@ -7607,10 +7607,10 @@ function App(){
                   Audio uses <strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> streaming where available — professional narration matched to the text. Falls back to your device's built-in text-to-speech when FCBH isn't available for a version.
                 </Row>
                 <Row icon="⚙">
-                  Change the audio source, voice, and playback speed in <em>Settings → Audio Settings</em>. Voice selection only applies when using text-to-speech.
+                  Change the audio source, voice, and playback speed in <em>Settings → Audio Playback</em>. Voice selection only applies when using text-to-speech.
                 </Row>
                 <Row icon="📥">
-                  Import local KJV MP3 audio files (Old or New Testament) in <em>Settings → Audio Settings → KJV Local Audio</em> for fully offline playback.
+                  Import local KJV MP3 audio files (Old or New Testament) in <em>Settings → Audio Playback → KJV Local Audio</em> for fully offline playback.
                 </Row>
 
                 {/* ── STUDY / COMPARE ── */}
@@ -7629,18 +7629,18 @@ function App(){
                 </Row>
 
                 {/* ── STRONG'S NUMBERS ── */}
-                <Hdg label="Strong's Numbers (KJV+ only)"/>
+                <Hdg label="Strong's Numbers (KJV only)"/>
                 <Row icon="ℍ">
-                  Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV+</strong> version to be selected.
+                  Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
                   Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word.
                 </Row>
                 <Row icon="👆">
-                  <strong style={{color:T.gT}}>Double-tap</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
+                  <strong style={{color:T.gT}}>Press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
                 </Row>
                 <Row icon="⬇">
-                  Download the <strong style={{color:T.gT}}>Strong's Concordance</strong> offline in <em>Settings → Offline Data</em> for instant lookups without an internet connection. 14,197 Hebrew & Greek entries, ~8 MB.
+                  The full concordance is included with the app, so lookups work with no connection from the moment you install it — 14,197 Hebrew and Greek entries, plus the word-by-word mapping behind the underlines and every KJV occurrence.
                 </Row>
 
                 {/* ── WEBSTER'S 1828 ── */}
@@ -7649,7 +7649,7 @@ function App(){
                   Access the full <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> from the Study tab. Search any English word for its historical definition — written in the same era as many classic Bible translations.
                 </Row>
                 <Row icon="⬇">
-                  Download Webster's offline in <em>Settings → Offline Data</em> for 107,793 entries without internet. ~50 MB.
+                  All 107,793 entries are included with the app and work with no connection.
                 </Row>
 
                 {/* ── OFFLINE DATA ── */}
@@ -7672,7 +7672,7 @@ function App(){
                   ['Verse Numbers','Superscript (small raised), Inline (same size as body text), or Hidden.'],
                   ['Paragraph Mode','Removes verse-by-verse line breaks and flows text as continuous paragraphs.'],
                   ['Red Letter','Colors words of Jesus red. Only on versions that include red-letter data.'],
-                  ["Strong's",'Activates Hebrew/Greek root underlines on every word. KJV+ only.'],
+                  ["Strong's",'Activates Hebrew/Greek root underlines on every word. KJV only.'],
                   ['Fullscreen','Auto-hides the top navigation bar when scrolling down.'],
                   ['Theme','Light or Dark mode. Follows your system setting by default.'],
                 ].map(([k,v])=>(
@@ -7686,7 +7686,6 @@ function App(){
                 <Hdg label="Gestures & Shortcuts"/>
                 <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:rdFont,fontSize:rdSz,color:T.mut}}>
                   <Chip>Swipe down</Chip><span style={{marginRight:16}}>Dismiss any bottom sheet or modal</span>
-                  <Chip>Esc</Chip><span style={{marginRight:16}}>Close any panel or modal</span>
                   <Chip>Tap verse</Chip><span style={{marginRight:16}}>Select / deselect a verse</span>
                   <Chip>Tap + hold</Chip><span>Select verse range</span>
                 </div>
@@ -7740,7 +7739,7 @@ function App(){
 
                 {/* AUDIO */}
                 <Hdg label="Audio Attribution"/>
-                <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streaming audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT}}>www.faithcomesbyhearing.com</span> for more information.</Li>
+                <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streamed and downloadable audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT}}>www.faithcomesbyhearing.com</span> for more information.</Li>
                 <Li><strong style={{color:T.gT}}>Browser Text-to-Speech</strong> — Synthesized audio is generated by your device's built-in speech engine and is not derived from any recorded performance.</Li>
 
                 {/* ATTRIBUTION */}
