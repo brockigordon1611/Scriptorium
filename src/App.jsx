@@ -7803,19 +7803,19 @@ function App(){
                 <Row icon="✦">
                   Tap <strong style={{color:T.gT}}>Bookmark</strong> to save the selected passage. View and manage all bookmarks in <em>Settings → Bookmarks</em>.
                 </Row>
-                <Row icon="▶">
+                <Row icon="▸">
                   Tap <strong style={{color:T.gT}}>Play</strong> from the verse toolbar to start audio from that verse instead of the chapter beginning.
                 </Row>
 
                 {/* ── AUDIO ── */}
                 <Hdg label="Audio"/>
-                <Row icon="▶">
+                <Row icon="▸">
                   Tap the <strong style={{color:T.gT}}>play button</strong> (bottom-right corner in the Read tab) to start audio for the current chapter. The button expands to show the current verse number as it plays.
                 </Row>
                 <Row icon="♪">
                   Audio uses <strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> streaming where available — professional narration matched to the text. Falls back to your device's built-in text-to-speech when FCBH isn't available for a version.
                 </Row>
-                <Row icon="⚙">
+                <Row icon="⋯">
                   Change the audio source, voice, and playback speed in <em>Settings → Audio Playback</em>. Voice selection only applies when using text-to-speech.
                 </Row>
                 <Row icon="↓">
