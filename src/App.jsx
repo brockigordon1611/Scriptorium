@@ -3337,18 +3337,27 @@ function App(){
   const[audioHelpVideo,setAudioHelpVideo]=useState(null);
   useEffect(()=>{
     let stop=false;
-    // .mov as well as .mp4: QuickTime's Export As is the no-install way to make
-    // one of these on a Mac and it writes .mov. Both are H.264 and play fine here.
+    // Content type rather than response.ok: a dev server, and some static hosts,
+    // answer an unknown path with the SPA index.html at 200, which would advertise
+    // a walkthrough that isn't there.
+    const looksLikeVideo=r=>r&&r.ok&&/^video\//i.test(r.headers.get('content-type')||'');
+    // .mov as well as .mp4 — QuickTime's Export As writes .mov, and it is the
+    // no-install way to produce one of these on a Mac.
     (async()=>{
       for(const ext of ['mp4','mov']){
         if(stop)return;
         const url=`${BUNDLED_BASE}help/fcbh-audio.${ext}`;
         try{
-          const r=await fetch(url,{method:'HEAD'});
-          // Content type, not just r.ok: a dev server and some static hosts answer
-          // an unknown path with the SPA index.html at 200, which would advertise
-          // a walkthrough that isn't there and render an empty player.
-          if(r.ok&&/^video\//i.test(r.headers.get('content-type')||'')){
+          if(looksLikeVideo(await fetch(url,{method:'HEAD'}))){
+            if(!stop)setAudioHelpVideo(url);
+            return;
+          }
+        }catch{}
+        // Capacitor serves the web layer through its own URL scheme handler, which
+        // is built around GET; a HEAD can come back missing the headers above. Ask
+        // for one byte instead — enough to identify the file, cheap either way.
+        try{
+          if(looksLikeVideo(await fetch(url,{headers:{Range:'bytes=0-0'}}))){
             if(!stop)setAudioHelpVideo(url);
             return;
           }
@@ -3421,7 +3430,7 @@ function App(){
     if(!Capacitor.isNativePlatform())return;   // the import flow only exists on device
     if(otInstalled&&ntInstalled)return;        // already has it
     try{if(localStorage.getItem('scrip:audioPromptSeen')==='true')return;}catch{}
-    const t=setTimeout(()=>setAudioPrompt(true),1600);
+    const t=setTimeout(()=>setAudioPrompt(true),6500);
     return()=>clearTimeout(t);
   },[ready,otInstalled,ntInstalled]);
   function dismissAudioPrompt(showSteps){
@@ -7417,6 +7426,7 @@ function App(){
         <Modal title="Adding KJV Audio" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
           {audioHelpVideo&&(
             <video src={audioHelpVideo} controls playsInline preload="metadata"
+              onError={()=>setAudioHelpVideo(null)}
               style={{width:'100%',borderRadius:9,display:'block',background:'#000',marginBottom:18,border:`1px solid ${T.bd}`}}/>
           )}
           <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
