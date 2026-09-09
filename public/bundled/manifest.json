@@ -1,0 +1,45 @@
+{
+  "generated": "2026-09-09T00:06:55.345Z",
+  "datasets": {
+    "kjv": {
+      "version": 1,
+      "rows": 31102,
+      "files": [
+        "kjv.json"
+      ]
+    },
+    "strongs_lex": {
+      "version": 1,
+      "rows": 14271,
+      "files": [
+        "strongs_lex.json"
+      ]
+    },
+    "strongs_map": {
+      "version": 1,
+      "rows": 1189,
+      "files": [
+        "strongs_map.json"
+      ]
+    },
+    "strongs_occ": {
+      "version": 1,
+      "rows": 13626,
+      "files": [
+        "strongs_occ.json"
+      ]
+    },
+    "webster": {
+      "version": 1,
+      "rows": 107793,
+      "files": [
+        "webster-0.json",
+        "webster-1.json",
+        "webster-2.json",
+        "webster-3.json",
+        "webster-4.json",
+        "webster-5.json"
+      ]
+    }
+  }
+}

@@ -469,6 +469,63 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
   return{id:versionId,label,lang:lang||'EN',isRef:false};
 }
 
+// ── Data shipped inside the app ───────────────────────────────────────────
+// public/bundled holds each dataset pre-shaped for the store it lands in, so a
+// first launch is a bulk write with no network and no transformation. Built by
+// scripts/export-bundled-data.mjs.
+// BASE_URL matters: the Pages build is served from /Scriptorium/, so a leading
+// slash would escape the app entirely.
+const BUNDLED_BASE=(typeof import.meta!=='undefined'&&import.meta.env&&import.meta.env.BASE_URL)||'/';
+async function _bundledJson(name){
+  const r=await fetch(`${BUNDLED_BASE}bundled/${name}`);
+  if(!r.ok)throw new Error(`bundled/${name} HTTP ${r.status}`);
+  return r.json();
+}
+const BUNDLED_DATASETS={
+  kjv:{clear:()=>idbDeleteVersionLocal('kjv'),flags:['dl:kjv'],
+    load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutVerses('kjv',rows.slice(i,i+2000));return rows.length;}},
+  strongs_lex:{clear:()=>idbClearStore('strongs_lex'),flags:['dl:strongs'],strongs:true,
+    load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutStrongsEntries(rows.slice(i,i+2000));return rows.length;}},
+  strongs_map:{clear:()=>idbClearStore('strongs_map'),flags:['dl:strongsmap'],strongs:true,
+    load:async f=>{const recs=await _bundledJson(f);for(let i=0;i<recs.length;i+=200)await idbPutStrongsMapChapters(recs.slice(i,i+200));return recs.length;}},
+  strongs_occ:{clear:()=>idbClearStore('strongs_occ'),flags:['dl:strongsocc'],strongs:true,
+    load:async f=>{const recs=await _bundledJson(f);for(let i=0;i<recs.length;i+=500)await idbPutStrongsOcc(recs.slice(i,i+500));return recs.length;}},
+  webster:{clear:()=>idbClearStore('webster'),flags:['dl:webster'],
+    load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutWebsterEntries(rows.slice(i,i+2000));return rows.length;}},
+};
+// Installs any bundled dataset the device doesn't already hold at the shipped
+// version. Returns true if it wrote anything.
+async function installBundledDatasets(onProgress){
+  let man;
+  try{man=await _bundledJson('manifest.json');}catch{return false;}
+  const ds=(man&&man.datasets)||null;
+  if(!ds)return false;
+  const jobs=[];
+  for(const name of Object.keys(BUNDLED_DATASETS)){
+    const d=ds[name];
+    if(!d||!Array.isArray(d.files))continue;
+    const have=await idbGetMeta(`bundled:${name}`).catch(()=>null);
+    if(have===d.version)continue;
+    jobs.push([name,d]);
+  }
+  if(!jobs.length)return false;
+  const total=jobs.reduce((s,[,d])=>s+(d.rows||1),0);
+  let done=0,touchedStrongs=false;
+  onProgress&&onProgress(0,total);
+  for(const [name,d] of jobs){
+    const inst=BUNDLED_DATASETS[name];
+    // Webster uses an auto-incrementing key, so a reinstall must clear first or
+    // it silently doubles every entry.
+    await inst.clear().catch(()=>{});
+    for(const f of d.files){done+=await inst.load(f);onProgress&&onProgress(done,total);}
+    for(const k of inst.flags)await idbPutMeta(k,true);
+    await idbPutMeta(`bundled:${name}`,d.version);
+    if(inst.strongs)touchedStrongs=true;
+  }
+  // Stamp the payload version, or the freshness check would clear what we just wrote.
+  if(touchedStrongs)await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION);
+  return true;
+}
 const STRONGS_LEX_ROWS=14197;
 const STRONGS_MAP_ROWS=785856;
 // The occurrence index is built locally from the mapping already on disk rather
@@ -3957,6 +4014,21 @@ function App(){
     })();
   },[user]);
 
+  // ── Install the datasets shipped inside the app (once per device) ──
+  // Runs before anything needs them, so a first launch is offline-ready without
+  // the user ever visiting the download screen.
+  const[bundledInstall,setBundledInstall]=useState(null); // {done,total}
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        await installBundledDatasets((done,total)=>{if(!cancelled)setBundledInstall({done,total});});
+      }catch(e){console.warn('Bundled data install failed:',e);}
+      if(!cancelled)setBundledInstall(null);
+    })();
+    return()=>{cancelled=true;};
+  },[]);
+
   // ── Install bundled default resources (once per device, regardless of login) ──
   useEffect(()=>{
     const FOXES_ID='bundled-foxes-book-of-martyrs';
@@ -3964,7 +4036,7 @@ function App(){
       const already=await idbGetMeta('bundled:foxes').catch(()=>null);
       if(already)return;
       try{
-        const resp=await fetch('/defaults/foxes_book_of_martyrs.refi');
+        const resp=await fetch(`${BUNDLED_BASE}defaults/foxes_book_of_martyrs.refi`);
         if(!resp.ok)return;
         const buf=await resp.arrayBuffer();
         const file=new File([buf],'foxes_book_of_martyrs.refi',{type:'application/octet-stream'});
@@ -7251,6 +7323,16 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {bundledInstall&&bundledInstall.total>0&&(
+        <div style={{position:'fixed',inset:0,zIndex:600,background:D.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 32px',gap:18}}>
+          <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:D.gT,letterSpacing:'0.1em'}}>Scriptorium</div>
+          <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Preparing your offline library…<br/>This happens once.</div>
+          <div style={{width:'min(320px,80vw)',height:4,background:D.bgSec,borderRadius:2,overflow:'hidden'}}>
+            <div style={{width:`${Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100))}%`,height:'100%',background:D.gD,transition:'width .2s'}}/>
+          </div>
+          <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em'}}>{Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100))}%</div>
+        </div>
+      )}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
       {confirmDeleteDl&&<ConfirmDialog T={T} danger
         title="Remove offline download?"
