@@ -21,6 +21,8 @@ that it travel with the fonts, so the upstream license files are included here:
 
 - `OFL-cinzel.txt` — Cinzel, © The Cinzel Project Authors
 - `OFL-cormorantgaramond.txt` — Cormorant Garamond, © The Cormorant Project Authors
+- `OFL-inter.txt` — Inter, © The Inter Project Authors
+- `OFL-jetbrainsmono.txt` — JetBrains Mono, © The JetBrains Mono Project Authors
 
 ## What is here
 
@@ -28,9 +30,20 @@ that it travel with the fonts, so the upstream license files are included here:
 correctly both in the native build (served from `/`) and on GitHub Pages
 (served from `/Scriptorium/`).
 
+Four families:
+
+- **Cinzel** — headings and interface labels
+- **Cormorant Garamond** — the Serif reading option, and most body text
+- **Inter** — the Sans-Serif reading option
+- **JetBrains Mono** — the Monospace reading option
+
+Inter and JetBrains Mono are named in the settings help text but were never
+actually loaded before this, so choosing either silently fell back to whatever
+the system happened to provide.
+
 Only the `latin` and `latin-ext` subsets are included — enough for the English
-and Spanish texts. The cyrillic and vietnamese subsets Google also offers are
-not used and were left out, which roughly halved the size. Total: about 650 KB.
+and Spanish texts. The cyrillic, greek and vietnamese subsets Google also offers
+are not used by verse text and were left out. Total: about 1.4 MB.
 
 ## Regenerating
 

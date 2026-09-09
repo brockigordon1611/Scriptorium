@@ -7637,7 +7637,7 @@ function App(){
                   Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word.
                 </Row>
                 <Row icon="👆">
-                  <strong style={{color:T.gT}}>Press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
+                  <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
                 </Row>
                 <Row icon="⬇">
                   The full concordance is included with the app, so lookups work with no connection from the moment you install it — 14,197 Hebrew and Greek entries, plus the word-by-word mapping behind the underlines and every KJV occurrence.
