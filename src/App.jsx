@@ -1601,6 +1601,9 @@ function NavIconBtn({ch,onClick,T,title,label,size=40}){
       lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'}}>{ch}{label}</button>;
 }
 function Spinner(){return <span className="spinner"/>;}
+function PlayMark({size=13}){
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>;
+}
 function PwEye({shown}){
   const p={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'};
   return shown
@@ -1670,14 +1673,16 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
 function ConfirmDialog({title,message,confirmLabel,cancelLabel,onConfirm,onCancel,danger,T,children}){
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onCancel();}} style={{position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(5px)'}}>
-      <div className="modal-in" style={{background:danger?'#180606':T.bgCard,border:`2px solid ${danger?'#8a2020':T.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:danger?'0 32px 80px rgba(140,10,10,0.4)':'0 32px 80px rgba(0,0,0,0.7)'}}>
-        <div style={{height:3,background:danger?'linear-gradient(90deg,#5a1010,#c83030,#5a1010)':T.accentLine}}/>
-        <div style={{padding:'22px 26px 16px'}}>
+      <div className="modal-in" style={{background:danger?'#180606':T.bgCard,border:`2px solid ${danger?'#8a2020':T.bdA}`,borderRadius:14,width:'min(92vw,480px)',maxHeight:'86vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:danger?'0 32px 80px rgba(140,10,10,0.4)':'0 32px 80px rgba(0,0,0,0.7)'}}>
+        <div style={{height:3,background:danger?'linear-gradient(90deg,#5a1010,#c83030,#5a1010)':T.accentLine,flexShrink:0}}/>
+        {/* Scrolls rather than growing: a long message used to push the buttons
+            off the bottom of the screen where they could not be reached. */}
+        <div style={{padding:'22px 26px 16px',overflowY:'auto',flex:1,minHeight:0}}>
           <div style={{fontFamily:FS,fontSize:14,fontWeight:600,letterSpacing:'0.06em',color:danger?'#f08080':T.gT,marginBottom:12}}>{title}</div>
           <div style={{fontFamily:FB,fontSize:17,color:danger?'#c09090':T.mut,lineHeight:1.7}}>{message}</div>
           {children}
         </div>
-        <div style={{display:'flex',justifyContent:'flex-end',gap:10,padding:'16px 26px',background:'rgba(0,0,0,0.2)',borderTop:`1px solid ${danger?'#4a1212':T.bdA}`}}>
+        <div style={{display:'flex',justifyContent:'flex-end',gap:10,padding:'16px 26px',background:'rgba(0,0,0,0.2)',borderTop:`1px solid ${danger?'#4a1212':T.bdA}`,flexShrink:0}}>
           <SBtn ch={cancelLabel||'Cancel'} onClick={onCancel} T={T}/>
           {confirmLabel&&<PBtn ch={confirmLabel} onClick={onConfirm} T={T} danger={danger}/>}
         </div>
@@ -5063,6 +5068,26 @@ function App(){
           </div>
           {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
+        {/* Audio suggestion. Inside the nav on purpose: navH is measured off this
+            element by a ResizeObserver and everything below is offset from it, so
+            adding a row here makes the whole layout adjust on its own. Placed
+            outside, it landed at top 0 behind the fixed header and was invisible. */}
+        {audioPrompt&&(
+          <div className="no-print" style={{display:'flex',alignItems:'center',gap:10,padding:'9px 2px 2px',marginTop:8,borderTop:`1px solid ${T.bdA}`}}>
+            <span style={{color:T.gT,flexShrink:0,display:'inline-flex',alignItems:'center'}}><PlayMark size={14}/></span>
+            <div style={{flex:1,minWidth:0,fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.45}}>
+              Free KJV narration is available, and plays offline once added.
+            </div>
+            <button type="button" onClick={()=>dismissAudioPrompt(true)}
+              style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,fontWeight:600,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
+              Show me how
+            </button>
+            <button type="button" onClick={()=>dismissAudioPrompt(false)} title="Dismiss" aria-label="Dismiss"
+              style={{flexShrink:0,background:'none',border:'none',color:T.dim,cursor:'pointer',width:30,height:30,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:15,lineHeight:1}}>
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Mobile menu sheet */}
@@ -5456,7 +5481,7 @@ function App(){
                         </div>
                         <button type="button" onClick={()=>setModal({type:'audiohelp'})}
                           style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
-                          <span style={{fontSize:13,flexShrink:0}}>{audioHelpVideo?'▶':'?'}</span>
+                          {audioHelpVideo&&<span style={{flexShrink:0,color:T.gT,display:'inline-flex',alignItems:'center'}}><PlayMark/></span>}
                           <span>{audioHelpVideo?'Watch how to do this':'Step-by-step instructions'}</span>
                         </button>
                         <div style={{display:'flex',gap:6,marginBottom:8}}>
@@ -7424,11 +7449,6 @@ function App(){
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='audiohelp'&&(
         <Modal title="Adding KJV Audio" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
-          {audioHelpVideo&&(
-            <video src={audioHelpVideo} controls playsInline preload="metadata"
-              onError={()=>setAudioHelpVideo(null)}
-              style={{width:'100%',borderRadius:9,display:'block',background:'#000',marginBottom:18,border:`1px solid ${T.bd}`}}/>
-          )}
           <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
             <p style={{margin:'0 0 12px'}}>
               The KJV audio is free from Faith Comes By Hearing. You download it from their
@@ -7484,15 +7504,17 @@ function App(){
               app to get the space back — Scriptorium has already copied what it needs.
             </p>
           </div>
+          {audioHelpVideo&&(
+            <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.bd}`}}>
+              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:9}}>Watch it done</div>
+              <video src={audioHelpVideo} controls playsInline preload="metadata"
+                onError={()=>setAudioHelpVideo(null)}
+                style={{width:'100%',borderRadius:9,display:'block',background:'#000',border:`1px solid ${T.bd}`}}/>
+            </div>
+          )}
         </Modal>
       )}
       {modal?.type==='reset'&&<ResetConfirmModal T={T} onConfirm={doReset} onCancel={()=>setModal(null)} entryCount={data.entries.length} sectionCount={data.sections.length}/>}
-      {audioPrompt&&<ConfirmDialog T={T}
-        title="Add the KJV audio?"
-        message="Scriptorium is at its best with the spoken Word alongside the text. The full King James narration is free from Faith Comes By Hearing, and once it is on your device every chapter plays with no connection at all. Setting it up takes a few minutes and only has to be done once."
-        confirmLabel="Show me how" cancelLabel="Not now"
-        onConfirm={()=>dismissAudioPrompt(true)}
-        onCancel={()=>dismissAudioPrompt(false)}/>}
       {confirmDeleteDl&&<ConfirmDialog T={T} danger
         title="Remove offline download?"
         message={`${dlDisplayName(confirmDeleteDl)} will be removed from this device. It keeps working while you have a connection, and you can download it again at any time.${confirmDeleteDl==='strongs'?' Strong\'s takes several minutes to download again.':''}`}
