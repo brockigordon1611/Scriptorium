@@ -6,11 +6,17 @@ html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;over
 ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--ac-scrollbar,#3a3020);border-radius:10px;}
 mark.sch{background:var(--ac-mark,rgba(200,168,78,0.22));color:inherit;border-radius:2px;padding:0 2px;}
 .hov-card{transition:border-color .3s,box-shadow .3s,transform .3s;}
-.hov-card:hover{border-color:var(--ac-bd,#38332a)!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}
+@media (hover:hover){.hov-card:hover{border-color:var(--ac-bd,#38332a)!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}}
 .s-btn{transition:all .2s;cursor:pointer;}
-.s-ghost:hover{background:var(--ac-ghost-bg,rgba(200,168,78,0.09))!important;border-color:var(--ac-ghost-bd,rgba(200,168,78,0.3))!important;}
-.s-tbtn:hover{border-color:var(--ac-tbtn-bd,rgba(200,168,78,0.5))!important;background:var(--ac-tbtn-bg,rgba(200,168,78,0.06))!important;}
-.s-danger:hover{border-color:#aa2828!important;color:#e05555!important;background:rgba(180,30,30,0.12)!important;}
+/* Touch devices keep :hover after a tap, so a tapped button stayed lit until
+   something else was tapped. Hover is for pointers only. :active sticks the
+   same way on iOS, so there is no CSS press state here either — the chapter
+   changing is the feedback. */
+@media (hover:hover){
+  .s-ghost:hover{background:var(--ac-ghost-bg,rgba(200,168,78,0.09))!important;border-color:var(--ac-ghost-bd,rgba(200,168,78,0.3))!important;}
+}
+@media (hover:hover){.s-tbtn:hover{border-color:var(--ac-tbtn-bd,rgba(200,168,78,0.5))!important;background:var(--ac-tbtn-bg,rgba(200,168,78,0.06))!important;}}
+@media (hover:hover){.s-danger:hover{border-color:#aa2828!important;color:#e05555!important;background:rgba(180,30,30,0.12)!important;}}
 button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outline-offset:1px;}
 .pulse{animation:pulse-glow .6s ease-in-out 3;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -58,7 +64,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
-.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}
+@media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 textarea::placeholder{color:var(--ac-dim);opacity:1;}
 /* ── Mobile overrides (≤915px) ── */

@@ -1157,12 +1157,15 @@ const CSS=`
 *{box-sizing:border-box;margin:0;padding:0;}
 ::-webkit-scrollbar{width:5px;height:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--ac-scrollbar,#3a3020);border-radius:10px;}
 mark.sch{background:var(--ac-mark,rgba(200,168,78,0.22));color:inherit;border-radius:2px;padding:0 2px;}
+/* Touch devices keep :hover after a tap, so a tapped control stayed lit until
+   something else was tapped. Every :hover below is pointer-only. This sheet is
+   injected at runtime and shadows src/index.css — change both together. */
 .hov-card{transition:border-color .3s,box-shadow .3s,transform .3s;}
-.hov-card:hover{border-color:var(--ac-bd,#38332a)!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}
+@media (hover:hover){.hov-card:hover{border-color:var(--ac-bd,#38332a)!important;box-shadow:0 6px 28px rgba(0,0,0,0.3)!important;transform:translateY(-1px);}}
 .s-btn{transition:all .2s;cursor:pointer;}
-.s-ghost:hover{background:var(--ac-ghost-bg,rgba(200,168,78,0.09))!important;border-color:var(--ac-ghost-bd,rgba(200,168,78,0.3))!important;}
-.s-tbtn:hover{border-color:var(--ac-tbtn-bd,rgba(200,168,78,0.5))!important;background:var(--ac-tbtn-bg,rgba(200,168,78,0.06))!important;}
-.s-danger:hover{border-color:#aa2828!important;color:#e05555!important;background:rgba(180,30,30,0.12)!important;}
+@media (hover:hover){.s-ghost:hover{background:var(--ac-ghost-bg,rgba(200,168,78,0.09))!important;border-color:var(--ac-ghost-bd,rgba(200,168,78,0.3))!important;}}
+@media (hover:hover){.s-tbtn:hover{border-color:var(--ac-tbtn-bd,rgba(200,168,78,0.5))!important;background:var(--ac-tbtn-bg,rgba(200,168,78,0.06))!important;}}
+@media (hover:hover){.s-danger:hover{border-color:#aa2828!important;color:#e05555!important;background:rgba(180,30,30,0.12)!important;}}
 button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outline-offset:1px;}
 .pulse{animation:pulse-glow .6s ease-in-out 3;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -1210,7 +1213,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
-.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}
+@media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile/tablet overrides (≤1199px) ── */
 @media(max-width:1199px){
@@ -1683,10 +1686,28 @@ function PwEye({shown}){
     : <svg {...p}><path d="M3 12s3.8-7 9-7 9 7 9 7-3.8 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.7"/></svg>;
 }
 
-function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
+function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade}){
   const[dragY,setDragY]=React.useState(0);
   const modalStartY=React.useRef(null);
   const modalOverlayRef=React.useRef(null);
+  // `fade` softens the top and bottom edges of the body so a long list reads as
+  // scrollable. Each edge only shows when there is content past it.
+  const bodyRef=React.useRef(null);
+  const[fadeTop,setFadeTop]=React.useState(false);
+  const[fadeBot,setFadeBot]=React.useState(false);
+  React.useEffect(()=>{
+    if(!fade)return;
+    const el=bodyRef.current;
+    if(!el)return;
+    const update=()=>{
+      const t=el.scrollTop>8,b=el.scrollTop+el.clientHeight<el.scrollHeight-8;
+      setFadeTop(p=>p===t?p:t);setFadeBot(p=>p===b?p:b);
+    };
+    update();
+    el.addEventListener('scroll',update,{passive:true});
+    const t0=setTimeout(update,80);   // a body that scrolls itself on open
+    return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);};
+  },[fade]);
   React.useEffect(()=>{
     if(!topSheet)return;
     const el=modalOverlayRef.current;
@@ -1719,9 +1740,11 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
       <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',transform:(topSheet&&!isClosing&&dragY!==0)?`translateY(${dragY}px)`:undefined,transition:(topSheet&&!isClosing&&dragY===0)?'transform .2s ease-out':undefined}}>
         {topSheet?(
           <div style={{background:T.bgCard,padding:'20px 18px 14px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <div style={{position:'absolute',left:18,top:20,bottom:14,display:'flex',alignItems:'center'}}>
-              <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
-            </div>
+            {!hideBack&&(
+              <div style={{position:'absolute',left:18,top:20,bottom:14,display:'flex',alignItems:'center'}}>
+                <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
+              </div>
+            )}
             <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
           </div>
         ):(
@@ -1733,7 +1756,13 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing})
             </div>
           </>
         )}
-        <div className="modal-body" style={{overflowY:'auto',flex:1,padding:'22px 24px'}}>{children}</div>
+        <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+          <div ref={bodyRef} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
+          {fade&&(<>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:30,pointerEvents:'none',opacity:fadeTop?1:0,transition:'opacity .18s ease',background:`linear-gradient(to bottom, ${T.bgCard}, ${T.bgCard}00)`}}/>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,height:30,pointerEvents:'none',opacity:fadeBot?1:0,transition:'opacity .18s ease',background:`linear-gradient(to top, ${T.bgCard}, ${T.bgCard}00)`}}/>
+          </>)}
+        </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
@@ -7587,8 +7616,7 @@ function App(){
         // The whole year in order, today in the middle: days behind you are a
         // scroll up, days ahead a scroll down.
         return (
-          <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing}
-            footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
+          <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} hideBack fade>
             <div style={{marginBottom:18}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7}}>
                 <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
