@@ -3327,7 +3327,6 @@ function App(){
 
   // ── Local download state per version {downloaded,downloading,progress,total,err} ──
   const[dlStates,setDlStates]=useState({});
-  const[bundledStatus,setBundledStatus]=useState(null); // what the shipped-data install did, for the Offline Data panel
   const dlAbort=useRef({});
 
   // Reads what is actually in IndexedDB. Called on mount and again once the
@@ -3336,7 +3335,6 @@ function App(){
   // and tapping one starts a pointless network download.
   async function refreshDownloadStates(){
       await ensureStrongsDownloadFresh().catch(()=>{});
-      idbGetMeta('bundled:status').then(s=>setBundledStatus(s||null)).catch(()=>{});
       const ids=[...PUBLIC_VERSIONS.map(pv=>pv.id),'strongs','webster'];
       // Strong's counts as downloaded only once every phase is in. Keying off the
       // lexicon flag alone showed a complete tick while mapping and occurrences
@@ -5492,20 +5490,6 @@ function App(){
             ];
             return(
               <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'10px 12px 12px',marginBottom:0}}>
-                {/* Says whether the copy shipped inside the app was used, so a
-                    device can report for itself rather than needing a debugger. */}
-                {bundledStatus&&(
-                  <div style={{marginBottom:8,padding:'7px 10px',background:T.bg,border:`1px solid ${bundledStatus.ok?T.bd:T.redTxt+'55'}`,borderRadius:7}}>
-                    <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:3}}>Included with app</div>
-                    <div style={{fontFamily:FB,fontSize:11,color:bundledStatus.ok?T.dim:T.redTxt,lineHeight:1.5}}>
-                      {bundledStatus.ok
-                        ? (bundledStatus.stage==='already-installed'
-                            ? 'Installed — nothing further to download.'
-                            : `Installed: ${(bundledStatus.installed||[]).join(', ')||'none'}`)
-                        : `Failed at ${bundledStatus.stage}: ${bundledStatus.error}`}
-                    </div>
-                  </div>
-                )}
                 {/* Strong's + Webster download rows */}
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {offlineItems.map(item=>{
