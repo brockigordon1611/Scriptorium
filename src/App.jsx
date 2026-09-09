@@ -497,9 +497,10 @@ const BUNDLED_DATASETS={
 // version. Returns true if it wrote anything.
 async function installBundledDatasets(onProgress){
   let man;
-  try{man=await _bundledJson('manifest.json');}catch{return false;}
+  try{man=await _bundledJson('manifest.json');}
+  catch(e){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:String(e&&e.message||e),at:Date.now()}).catch(()=>{});return false;}
   const ds=(man&&man.datasets)||null;
-  if(!ds)return false;
+  if(!ds){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:'no datasets in manifest',at:Date.now()}).catch(()=>{});return false;}
   const jobs=[];
   for(const name of Object.keys(BUNDLED_DATASETS)){
     const d=ds[name];
@@ -508,20 +509,28 @@ async function installBundledDatasets(onProgress){
     if(have===d.version)continue;
     jobs.push([name,d]);
   }
-  if(!jobs.length)return false;
+  if(!jobs.length){await idbPutMeta('bundled:status',{ok:true,stage:'already-installed',installed:[],at:Date.now()}).catch(()=>{});return false;}
   const total=jobs.reduce((s,[,d])=>s+(d.rows||1),0);
   let done=0,touchedStrongs=false;
+  const installed=[];
   onProgress&&onProgress(0,total);
   for(const [name,d] of jobs){
     const inst=BUNDLED_DATASETS[name];
+    try{
     // Webster uses an auto-incrementing key, so a reinstall must clear first or
     // it silently doubles every entry.
     await inst.clear().catch(()=>{});
     for(const f of d.files){done+=await inst.load(f);onProgress&&onProgress(done,total);}
     for(const k of inst.flags)await idbPutMeta(k,true);
     await idbPutMeta(`bundled:${name}`,d.version);
+    installed.push(name);
     if(inst.strongs)touchedStrongs=true;
+    }catch(e){
+      await idbPutMeta('bundled:status',{ok:false,stage:name,error:String(e&&e.message||e),installed,at:Date.now()}).catch(()=>{});
+      throw e;
+    }
   }
+  await idbPutMeta('bundled:status',{ok:true,stage:'installed',installed,at:Date.now()}).catch(()=>{});
   // Stamp the payload version, or the freshness check would clear what we just wrote.
   if(touchedStrongs)await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION);
   return true;
@@ -3318,21 +3327,30 @@ function App(){
 
   // ── Local download state per version {downloaded,downloading,progress,total,err} ──
   const[dlStates,setDlStates]=useState({});
+  const[bundledStatus,setBundledStatus]=useState(null); // what the shipped-data install did, for the Offline Data panel
   const dlAbort=useRef({});
 
-  useEffect(()=>{
-    // Check which versions + datasets are already in IndexedDB
-    (async()=>{
+  // Reads what is actually in IndexedDB. Called on mount and again once the
+  // shipped-data install finishes — that install takes ~10s, so a mount-time
+  // read alone leaves every row showing "Download" for data already present,
+  // and tapping one starts a pointless network download.
+  async function refreshDownloadStates(){
       await ensureStrongsDownloadFresh().catch(()=>{});
+      idbGetMeta('bundled:status').then(s=>setBundledStatus(s||null)).catch(()=>{});
       const ids=[...PUBLIC_VERSIONS.map(pv=>pv.id),'strongs','webster'];
       // Strong's counts as downloaded only once every phase is in. Keying off the
       // lexicon flag alone showed a complete tick while mapping and occurrences
       // were still missing, and offered to delete instead of resume.
       const checks=await Promise.all(ids.map(async id=>({id,downloaded:await idbIsDownloaded(id==='strongs'?'strongsocc':id).catch(()=>false)})));
       const map={};for(const c of checks)map[c.id]={downloaded:c.downloaded};
-      setDlStates(map);
-    })();
-  },[]);
+      setDlStates(prev=>{
+        // Don't clobber a download that is running right now.
+        const next={...map};
+        for(const k of Object.keys(prev||{}))if(prev[k]&&prev[k].downloading)next[k]={...next[k],...prev[k]};
+        return next;
+      });
+  }
+  useEffect(()=>{refreshDownloadStates();},[]);
 
   function setDlState(vid,patch){setDlStates(prev=>({...prev,[vid]:{...(prev[vid]||{}), ...patch}}));}
   // iOS suspends the WebView shortly after the screen locks, which stops a download
@@ -4025,6 +4043,9 @@ function App(){
         await installBundledDatasets((done,total)=>{if(!cancelled)setBundledInstall({done,total});});
       }catch(e){console.warn('Bundled data install failed:',e);}
       if(!cancelled)setBundledInstall(null);
+      // Re-read now that the install has written its flags, or the Offline Data
+      // panel keeps showing everything as not downloaded.
+      if(!cancelled)refreshDownloadStates().catch(()=>{});
     })();
     return()=>{cancelled=true;};
   },[]);
@@ -5471,6 +5492,20 @@ function App(){
             ];
             return(
               <div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'10px 12px 12px',marginBottom:0}}>
+                {/* Says whether the copy shipped inside the app was used, so a
+                    device can report for itself rather than needing a debugger. */}
+                {bundledStatus&&(
+                  <div style={{marginBottom:8,padding:'7px 10px',background:T.bg,border:`1px solid ${bundledStatus.ok?T.bd:T.redTxt+'55'}`,borderRadius:7}}>
+                    <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:3}}>Included with app</div>
+                    <div style={{fontFamily:FB,fontSize:11,color:bundledStatus.ok?T.dim:T.redTxt,lineHeight:1.5}}>
+                      {bundledStatus.ok
+                        ? (bundledStatus.stage==='already-installed'
+                            ? 'Installed — nothing further to download.'
+                            : `Installed: ${(bundledStatus.installed||[]).join(', ')||'none'}`)
+                        : `Failed at ${bundledStatus.stage}: ${bundledStatus.error}`}
+                    </div>
+                  </div>
+                )}
                 {/* Strong's + Webster download rows */}
                 <div style={{display:'flex',flexDirection:'column',gap:6}}>
                   {offlineItems.map(item=>{
