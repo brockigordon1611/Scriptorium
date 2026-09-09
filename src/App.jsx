@@ -1601,6 +1601,12 @@ function NavIconBtn({ch,onClick,T,title,label,size=40}){
       lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'}}>{ch}{label}</button>;
 }
 function Spinner(){return <span className="spinner"/>;}
+function PwEye({shown}){
+  const p={width:17,height:17,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round'};
+  return shown
+    ? <svg {...p}><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.5 5.2A9.6 9.6 0 0112 5c5.2 0 9 4.7 9 7 0 1-.7 2.3-1.9 3.5M6.2 6.8C4 8.3 3 10.3 3 12c0 2.3 3.8 7 9 7 1.1 0 2.2-.2 3.1-.6"/></svg>
+    : <svg {...p}><path d="M3 12s3.8-7 9-7 9 7 9 7-3.8 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.7"/></svg>;
+}
 
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing}){
   const[dragY,setDragY]=React.useState(0);
@@ -1724,7 +1730,7 @@ function RecoveryPanel({T,onDone}){
   const[showPw,setShowPw]=useState(false);
   const[err,setErr]=useState('');const[msg,setMsg]=useState('');const[busy,setBusy]=useState(false);
   const pwInputStyle={width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 42px 9px 13px',outline:'none',boxSizing:'border-box'};
-  const eyeStyle={position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:T.gM,cursor:'pointer',fontSize:15,padding:4,lineHeight:1};
+  const eyeStyle={position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:T.gM,cursor:'pointer',padding:0,width:34,height:34,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1};
   async function doUpdate(){
     if(!pw){setErr('Please enter a new password.');return;}
     if(pw!==pw2){setErr('Passwords do not match.');return;}
@@ -1757,7 +1763,7 @@ function RecoveryPanel({T,onDone}){
               <Lbl c="New Password" T={T}/>
               <div style={{position:'relative'}}>
                 <input className="s-btn" type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={pwInputStyle}/>
-                <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle}>{showPw?'🙈':'👁'}</button>
+                <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'} aria-label={showPw?'Hide password':'Show password'}><PwEye shown={showPw}/></button>
               </div>
             </div>
             <div style={{marginBottom:22}}>
@@ -1799,7 +1805,7 @@ function AuthPanel({onAuth}){
   },[]);
 
   const pwInputStyle={width:'100%',background:D.bgIn,border:`1px solid ${D.bd}`,borderRadius:6,color:D.body,fontFamily:FB,fontSize:16,padding:'9px 42px 9px 13px',outline:'none',boxSizing:'border-box'};
-  const eyeStyle={position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:D.gM,cursor:'pointer',fontSize:15,padding:4,lineHeight:1};
+  const eyeStyle={position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:D.gM,cursor:'pointer',padding:0,width:34,height:34,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1};
 
   async function doSignIn(){
     if(!email.trim()||!pw){setErr('Email and password required.');return;}
@@ -1856,18 +1862,21 @@ function AuthPanel({onAuth}){
           {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
           {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
           <div style={{marginBottom:14}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
-          <div style={{marginBottom:22}}>
+          <div style={{marginBottom:9}}>
             <Lbl c="Password" T={D}/>
             <div style={{position:'relative'}}>
               <input className="s-btn" type={showPw?'text':'password'} value={pw} onChange={e=>setPw(e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&doSignIn()} placeholder="••••••••" style={pwInputStyle}/>
-              <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'}>{showPw?'🙈':'👁'}</button>
+              <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'} aria-label={showPw?'Hide password':'Show password'}><PwEye shown={showPw}/></button>
             </div>
           </div>
-          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:18}}>
-            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Forgot password?</button>
-            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline',padding:0}}>No account? Create one</button>
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:20}}>
+            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FB,fontSize:13,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3}}>Forgot password?</button>
+          </div>
+          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'13px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
+          <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${D.bd}`,textAlign:'center'}}>
+            <span style={{fontFamily:FB,fontSize:13,color:D.dim}}>No account? </span>
+            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gT,fontFamily:FB,fontSize:13,fontWeight:600,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3}}>Create one</button>
           </div>
         </div>
       </div>
@@ -1914,7 +1923,7 @@ function AuthPanel({onAuth}){
                 <div style={{position:'relative'}}>
                   <input className="s-btn" type={showSuPw?'text':'password'} value={suPw} onChange={e=>setSuPw(e.target.value)}
                     onKeyDown={e=>e.key==='Enter'&&doSignUp()} placeholder="••••••••" style={pwInputStyle}/>
-                  <button type="button" onClick={()=>setShowSuPw(v=>!v)} style={eyeStyle} title={showSuPw?'Hide password':'Show password'}>{showSuPw?'🙈':'👁'}</button>
+                  <button type="button" onClick={()=>setShowSuPw(v=>!v)} style={eyeStyle} title={showSuPw?'Hide password':'Show password'} aria-label={showSuPw?'Hide password':'Show password'}><PwEye shown={showSuPw}/></button>
                 </div>
               </div>
               <button type="button" onClick={doSignUp} disabled={suBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:suBusy?'default':'pointer',opacity:suBusy?.6:1}}>{suBusy?'…':'Create Account'}</button>
