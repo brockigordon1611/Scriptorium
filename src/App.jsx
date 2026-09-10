@@ -1026,14 +1026,23 @@ function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN'
 // in parallel — 929 and 260 chapters, so roughly 2-3 OT and 0-1 NT a day — which
 // avoids leaving the Gospels until October the way a straight run through does.
 const PLAN_DAYS=365;
-let _yearPlan=null;
-function buildYearPlan(){
-  if(_yearPlan)return _yearPlan;
-  const flat=(from,to)=>{const out=[];for(const b of BIBLE){if(b.n<from||b.n>to)continue;for(let c=1;c<=b.v.length;c++)out.push({b:b.n,c});}return out;};
-  const ot=flat(1,39),nt=flat(40,66);
-  const slice=(arr,d)=>arr.slice(Math.round((d-1)*arr.length/PLAN_DAYS),Math.round(d*arr.length/PLAN_DAYS));
-  _yearPlan=Array.from({length:PLAN_DAYS},(_,i)=>({day:i+1,ot:slice(ot,i+1),nt:slice(nt,i+1)}));
-  return _yearPlan;
+const PLAN_PSALMS=19;   // book number
+// Sundays are given to the Psalms; the other six days pair an Old Testament
+// reading with a New Testament one. Which day numbers fall on a Sunday moves
+// with the year, so the plan is built per year rather than once.
+const _yearPlans={};
+function buildYearPlan(year){
+  if(_yearPlans[year])return _yearPlans[year];
+  const flat=(from,to,skip)=>{const out=[];for(const b of BIBLE){if(b.n<from||b.n>to||b.n===skip)continue;for(let c=1;c<=b.v.length;c++)out.push({b:b.n,c});}return out;};
+  const ot=flat(1,39,PLAN_PSALMS),nt=flat(40,66),ps=flat(PLAN_PSALMS,PLAN_PSALMS);
+  const sundays=[],weekdays=[];
+  for(let d=1;d<=PLAN_DAYS;d++)(new Date(year,0,d).getDay()===0?sundays:weekdays).push(d);
+  const slice=(arr,i,n)=>arr.slice(Math.round(i*arr.length/n),Math.round((i+1)*arr.length/n));
+  const out=Array.from({length:PLAN_DAYS},(_,i)=>({day:i+1,ot:[],nt:[]}));
+  sundays.forEach((d,i)=>{out[d-1].ot=slice(ps,i,sundays.length);});
+  weekdays.forEach((d,i)=>{out[d-1].ot=slice(ot,i,weekdays.length);out[d-1].nt=slice(nt,i,weekdays.length);});
+  _yearPlans[year]=out;
+  return out;
 }
 // Collapse runs within a book: Genesis 1,2,3 -> "Genesis 1–3"
 function planRanges(chs,lang){
@@ -1049,9 +1058,10 @@ function planRanges(chs,lang){
   });
 }
 const _planLabels={};
-function planYearLabels(lang){
-  if(!_planLabels[lang])_planLabels[lang]=buildYearPlan().map(e=>[...planRanges(e.ot,lang),...planRanges(e.nt,lang)]);
-  return _planLabels[lang];
+function planYearLabels(year,lang){
+  const k=year+':'+lang;
+  if(!_planLabels[k])_planLabels[k]=buildYearPlan(year).map(e=>[...planRanges(e.ot,lang),...planRanges(e.nt,lang)]);
+  return _planLabels[k];
 }
 function planDayOfYear(d=new Date()){
   return Math.max(1,Math.min(PLAN_DAYS,Math.floor((d-new Date(d.getFullYear(),0,0))/86400000)));
@@ -1060,7 +1070,7 @@ function planDateLabel(day,year){
   const dt=new Date(year,0,1); dt.setDate(day);
   return dt.toLocaleDateString(undefined,{month:'short',day:'numeric'});
 }
-const PLAN_KEY='scrip:plan:v1';
+const PLAN_KEY='scrip:plan:v2';
 function planLoad(){
   try{
     const raw=JSON.parse(localStorage.getItem(PLAN_KEY)||'null');
@@ -7595,10 +7605,10 @@ function App(){
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='plan'&&(()=>{
-        const plan=buildYearPlan();
+        const plan=buildYearPlan(planState.year);
         const today=planDayOfYear();
         const lang=versionLang(readVid);
-        const labels=planYearLabels(lang);
+        const labels=planYearLabels(planState.year,lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
         const open=(b,c)=>{setReadBook(b);setReadCh(c);setTab('read');closeModal();};
