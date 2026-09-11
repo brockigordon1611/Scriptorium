@@ -3652,10 +3652,13 @@ function App(){
   const strongsDragRef=useRef(0);
   const strongsDragStart=useRef(null);
   const strongsDragT=useRef(0);
+  const[strongsDragOut,setStrongsDragOut]=useState(false); // carrying a dismissing drag off the bottom
   const closeStrongsPopup=React.useCallback(()=>{
-    setStrongsDragMode(false);setStrongsDrag(0);
     setStrongsClosing(true);
-    setTimeout(()=>{setStrongsPopup(null);setStrongsVersePreview(null);setStrongsClosing(false);},260);
+    setTimeout(()=>{
+      setStrongsPopup(null);setStrongsVersePreview(null);setStrongsClosing(false);
+      setStrongsDragMode(false);setStrongsDrag(0);setStrongsDragOut(false);
+    },260);
   },[]);
   function strongsTouchStart(e){
     strongsDragStart.current=e.touches[0].clientY;strongsDragT.current=Date.now();
@@ -3670,7 +3673,11 @@ function App(){
     const dist=strongsDragRef.current;
     const velocity=dist/Math.max(1,Date.now()-strongsDragT.current);
     strongsDragStart.current=null;strongsDragRef.current=0;
-    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX)){closeStrongsPopup();return;}
+    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX)){
+      // Keep driving the panel rather than handing back to the close animation,
+      // which starts at the top and so snapped there first — the stutter.
+      setStrongsDragOut(true);closeStrongsPopup();return;
+    }
     setStrongsDrag(0); // drag mode stays on so the transition below eases it back
   }
   const[strongsLoading,setStrongsLoading]=useState(false);
@@ -6779,18 +6786,21 @@ function App(){
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both',
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both',
                 // A finished animation with fill:both outranks an inline transform,
                 // so dragging has to switch the animation off and drive the panel
                 // itself. Releasing short of the threshold eases it back.
-                ...(strongsDragMode?{animation:'none',transform:`translateY(${strongsDrag}px)`,transition:strongsDrag>0?'none':'transform .2s ease-out'}:{})}},
+                ...(strongsDragMode?{animation:'none',
+                  transform:strongsDragOut?'translateY(100%)':`translateY(${strongsDrag}px)`,
+                  transition:strongsDragOut?'transform .26s cubic-bezier(0.4,0,1,1)':(strongsDrag>0?'none':'transform .2s ease-out')}:{})}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
-              // The grab strip takes its height back out of the padding below, so
-              // nothing on the panel moves to make room for it.
+              // Floated over the top of the content rather than placed above it, so
+              // it takes no height and leaves no band of its own — only the pill
+              // shows, sitting in padding the header already had.
               React.createElement('div',{onTouchStart:strongsTouchStart,onTouchMove:strongsTouchMove,onTouchEnd:strongsTouchEnd,
-                style:{display:'flex',justifyContent:'center',padding:'7px 0 3px',flexShrink:0,touchAction:'none',cursor:'grab'}},
+                style:{position:'absolute',top:3,left:0,right:0,zIndex:2,display:'flex',justifyContent:'center',padding:'7px 0 3px',touchAction:'none',cursor:'grab'}},
                 React.createElement('div',{style:{width:36,height:4,background:T.bdA,borderRadius:2}})),
-              React.createElement('div',{style:{overflow:'auto',padding:'6px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
