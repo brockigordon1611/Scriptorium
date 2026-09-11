@@ -2,6 +2,18 @@ import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 're
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
+// Some in-app browsers ship no speech synthesis at all — Facebook's and
+// Instagram's on Android among them. A bare `TTS` reference is a
+// ReferenceError when the global is missing, not undefined, so it threw during
+// the first render and took the whole app down with a startup error. Every use
+// goes through these instead, which degrade to doing nothing.
+const TTS_OK=typeof window!=='undefined'&&!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function';
+const TTS=(typeof window!=='undefined'&&window.speechSynthesis)||{
+  getVoices:()=>[],cancel(){},pause(){},resume(){},speak(){},
+  addEventListener(){},removeEventListener(){},paused:false,speaking:false,pending:false,
+};
+const SpeechUtter=(typeof window!=='undefined'&&window.SpeechSynthesisUtterance)||function(text){this.text=text;};
+
 
 
 /* ══════════════════════════════════════════════════════════════
@@ -3359,7 +3371,7 @@ function App(){
   const[lexOpenEntry,setLexOpenEntry]=useState(null);
   const[dictImporting,setDictImporting]=useState(false);
   const[dictImportErr,setDictImportErr]=useState('');
-  const[availableVoices,setAvailableVoices]=useState(()=>speechSynthesis.getVoices());
+  const[availableVoices,setAvailableVoices]=useState(()=>TTS.getVoices());
   const readFullScreen=useRef(false);
   const fsTransitioning=useRef(false);
   const[fsActive,setFsActive]=useState(false);
@@ -3689,7 +3701,7 @@ function App(){
   const stopAudio=()=>{
     audioModeRef.current=null;currentVerseRef.current=null;
     setAudioLoaded(false);setCurrentVerse(null);
-    speechSynthesis.cancel();audioUtterRef.current=[];
+    TTS.cancel();audioUtterRef.current=[];
     if(audioElRef.current){audioElRef.current.pause();audioElRef.current.removeAttribute('src');}
     setAudioPlaying(false);
   };
@@ -3705,7 +3717,7 @@ function App(){
   const loadChapterAudio=async(srcOverride=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
-    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();audioUtterRef.current=[];
+    if(TTS.paused)TTS.resume();TTS.cancel();audioUtterRef.current=[];
     if(audioElRef.current){audioElRef.current.pause();}
     // Only seek if the user explicitly selected a verse; otherwise play from 0 to include chapter intro
     const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
@@ -3776,20 +3788,23 @@ function App(){
         audioElRef.current.play().catch(()=>{});
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else if(src==='speech'){
+        // No speech engine in this browser: say nothing rather than show a
+        // playing state over silence.
+        if(!TTS_OK){setAudioLoaded(false);setAudioPlaying(false);return;}
         audioModeRef.current='speech';
-        const voices=speechSynthesis.getVoices();
+        const voices=TTS.getVoices();
         const lang=['rvg','p1602'].includes(readVid)?'es':'en';
         const _saved=voicesByVersion[readVid];
         const _pref=lang==='es'?'Paulina':'Daniel';
         const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
         const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
         audioUtterRef.current=[];
-        speechSynthesis.cancel();
+        TTS.cancel();
         const startIdx=startVerse?Math.max(0,readVerses.findIndex(v=>v.verse>=startVerse)):0;
         const versesToSpeak=readVerses.slice(startIdx);
         const lastVerse=readVerses[readVerses.length-1]?.verse;
         versesToSpeak.forEach(({verse,text})=>{
-          const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+          const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
           u.voice=voice;u.rate=audioRate;
           u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
           u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
@@ -3797,7 +3812,7 @@ function App(){
         });
         setAudioLoaded(true);
         updateMediaSession(readBook,readCh);
-        audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+        audioUtterRef.current.forEach(u=>TTS.speak(u));
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else throw new Error('No audio source available');
     }catch(e){
@@ -3817,7 +3832,7 @@ function App(){
   const handlePlayPause=async()=>{
     if(audioPlaying){
       audioElRef.current?.pause();
-      speechSynthesis.pause();
+      TTS.pause();
       setAudioPlaying(false);
       if(stripOpen)dismissStrip();
       return;
@@ -3843,14 +3858,14 @@ function App(){
       }
     }else if(audioLoaded&&mode==='speech'){
       const selVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
-      if(speechSynthesis.paused){
+      if(TTS.paused){
         if(selVerse){
           setReadSelVerses(new Set());
           if(stripOpen)dismissStrip();
           seekWebSpeechToVerse(selVerse);
           setAudioPlaying(true);
         }else{
-          speechSynthesis.resume();
+          TTS.resume();
           setAudioPlaying(true);
         }
       }else{
@@ -3865,9 +3880,9 @@ function App(){
     const startIdx=readVerses.findIndex(v=>v.verse===targetVerse);
     if(startIdx<0)return;
     audioModeRef.current='speech';
-    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();
+    if(TTS.paused)TTS.resume();TTS.cancel();
     audioUtterRef.current=[];
-    const voices=speechSynthesis.getVoices();
+    const voices=TTS.getVoices();
     const lang=['rvg','p1602'].includes(readVid)?'es':'en';
     const _saved=voicesByVersion[readVid];
     const _pref=lang==='es'?'Paulina':'Daniel';
@@ -3876,13 +3891,13 @@ function App(){
     const lastVerse=readVerses[readVerses.length-1]?.verse;
     for(let i=startIdx;i<readVerses.length;i++){
       const {verse,text}=readVerses[i];
-      const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+      const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
       u.voice=voice;u.rate=audioRate;
       u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
       audioUtterRef.current.push(u);
     }
-    audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+    audioUtterRef.current.forEach(u=>TTS.speak(u));
     currentVerseRef.current=targetVerse;setCurrentVerse(targetVerse);
     if(audioAutoScroll)scrollToVerse(targetVerse);
   };
@@ -3892,20 +3907,20 @@ function App(){
     if(!readVerses||!readVerses.length)return;
     audioModeRef.current='speech';
     if(audioElRef.current){audioElRef.current.pause();audioElRef.current.removeAttribute('src');}
-    const voices=speechSynthesis.getVoices();
+    const voices=TTS.getVoices();
     const lang=['rvg','p1602'].includes(readVid)?'es':'en';
     const _saved=voicesByVersion[readVid];
     const _pref=lang==='es'?'Paulina':'Daniel';
     const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
     const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
     audioUtterRef.current=[];
-    if(speechSynthesis.paused)speechSynthesis.resume();speechSynthesis.cancel();
+    if(TTS.paused)TTS.resume();TTS.cancel();
     const sv=startVerse||(readVerses[0]?.verse||1);
     const startIdx=Math.max(0,readVerses.findIndex(v=>v.verse>=sv));
     const lastVerse=readVerses[readVerses.length-1]?.verse;
     for(let i=startIdx;i<readVerses.length;i++){
       const {verse,text}=readVerses[i];
-      const u=new SpeechSynthesisUtterance(text.replace(/<[^>]+>/g,''));
+      const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
       u.voice=voice;u.rate=audioRate;
       u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
@@ -3913,7 +3928,7 @@ function App(){
     }
     setAudioLoaded(true);
     updateMediaSession(readBook,readCh);
-    audioUtterRef.current.forEach(u=>speechSynthesis.speak(u));
+    audioUtterRef.current.forEach(u=>TTS.speak(u));
     currentVerseRef.current=sv;setAudioPlaying(true);setCurrentVerse(sv);
   };
 
@@ -3963,7 +3978,7 @@ function App(){
   useEffect(()=>{
     if(!('mediaSession' in navigator))return;
     navigator.mediaSession.setActionHandler('play',()=>{audioElRef.current?.play().catch(()=>{});setAudioPlaying(true);});
-    navigator.mediaSession.setActionHandler('pause',()=>{audioElRef.current?.pause();speechSynthesis.pause();setAudioPlaying(false);});
+    navigator.mediaSession.setActionHandler('pause',()=>{audioElRef.current?.pause();TTS.pause();setAudioPlaying(false);});
   },[]);
   useEffect(()=>{
     if(!('mediaSession' in navigator))return;
@@ -4028,12 +4043,12 @@ function App(){
   },[audioRate]);
   // ── Populate voice list when browser finishes loading voices ──
   useEffect(()=>{
-    const onVoicesChanged=()=>setAvailableVoices(speechSynthesis.getVoices());
-    speechSynthesis.addEventListener('voiceschanged',onVoicesChanged);
+    const onVoicesChanged=()=>setAvailableVoices(TTS.getVoices());
+    TTS.addEventListener('voiceschanged',onVoicesChanged);
     // Populate immediately in case voices are already available (Firefox/Safari)
-    const v=speechSynthesis.getVoices();
+    const v=TTS.getVoices();
     if(v.length)setAvailableVoices(v);
-    return()=>speechSynthesis.removeEventListener('voiceschanged',onVoicesChanged);
+    return()=>TTS.removeEventListener('voiceschanged',onVoicesChanged);
   },[]);
   // ── Restart speech from current verse when voice changes while playing ──
   useEffect(()=>{
@@ -6175,13 +6190,13 @@ function App(){
               onClick={()=>{
                 const packInstalled=readBook<=39?otInstalled:ntInstalled;
                 if(readVid==='kjv'&&!packInstalled&&!kjvPromptShownRef.current&&!localStorage.getItem('scrip:audio:kjvPromptDismissed')){kjvPromptShownRef.current=true;setKjvPromptNoShow(false);setShowKjvAudioPrompt(true);return;}
-                if(audioPlaying){audioElRef.current?.pause();speechSynthesis.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
+                if(audioPlaying){audioElRef.current?.pause();TTS.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
                 const src=audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
                 if(src==='speech'||audioModeRef.current==='speech'){
                   const hasSelection=readSelVerses.size>0;
                   const sv=hasSelection?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
-                  if(audioLoaded&&speechSynthesis.paused&&!hasSelection){speechSynthesis.resume();setAudioPlaying(true);}
+                  if(audioLoaded&&TTS.paused&&!hasSelection){TTS.resume();setAudioPlaying(true);}
                   else if(audioLoaded){doStartSpeech(sv);}
                   else{loadChapterAudio('speech');}
                   return;
