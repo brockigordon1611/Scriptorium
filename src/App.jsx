@@ -1858,6 +1858,62 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
   };
 }
 
+// The iOS wheel is unmistakably iOS, and sat oddly in a page of bordered
+// serif controls. This asks the same question in the app's own vocabulary.
+// Minutes go in fives: for a daily reading reminder that is as fine as anyone
+// needs, and it keeps the whole choice on one screen without scrolling.
+function TimePicker({value,onSet,onCancel,T}){
+  const[h24,m0]=String(value||PLAN_REMIND_TIME).split(':').map(Number);
+  const[h,setH]=React.useState(()=>((h24||0)%12)||12);
+  const[m,setM]=React.useState(()=>(Math.round((m0||0)/5)*5)%60);
+  const[pm,setPm]=React.useState(()=>(h24||0)>=12);
+  // 12 AM is hour 0 and 12 PM is hour 12, which is the one case the obvious
+  // arithmetic gets wrong.
+  const asValue=()=>String((h%12)+(pm?12:0)).padStart(2,'0')+':'+String(m).padStart(2,'0');
+  const Cell=({on,onClick,children})=>(
+    <button type="button" onClick={onClick}
+      style={{background:on?T.gF:'transparent',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:7,color:on?T.gT:T.dim,
+        fontFamily:FB,fontSize:14,padding:'9px 0',cursor:'pointer',minWidth:0,transition:'background .12s,border-color .12s,color .12s'}}>
+      {children}
+    </button>
+  );
+  const Label=({children})=>(
+    <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>{children}</div>
+  );
+  return (
+    <div onClick={e=>{if(e.target===e.currentTarget)onCancel();}}
+      style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:320,padding:20}}>
+      <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,340px)',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 32px 80px rgba(0,0,0,0.7)'}}>
+        <div style={{height:3,background:T.accentLine}}/>
+        <div style={{padding:'16px 18px 18px'}}>
+          <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,textAlign:'center'}}>Daily reminder</div>
+          <div style={{fontFamily:FS,fontSize:29,fontWeight:700,color:T.gT,letterSpacing:'0.06em',textAlign:'center',margin:'5px 0 16px'}}>
+            {h}:{String(m).padStart(2,'0')} {pm?'PM':'AM'}
+          </div>
+          <Label>Hour</Label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:14}}>
+            {Array.from({length:12},(_,i)=>i+1).map(n=><Cell key={n} on={h===n} onClick={()=>setH(n)}>{n}</Cell>)}
+          </div>
+          <Label>Minute</Label>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:14}}>
+            {Array.from({length:12},(_,i)=>i*5).map(n=><Cell key={n} on={m===n} onClick={()=>setM(n)}>{':'+String(n).padStart(2,'0')}</Cell>)}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:18}}>
+            <Cell on={!pm} onClick={()=>setPm(false)}>AM</Cell>
+            <Cell on={pm} onClick={()=>setPm(true)}>PM</Cell>
+          </div>
+          <div style={{display:'flex',gap:10}}>
+            <button type="button" onClick={onCancel}
+              style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'11px 0',cursor:'pointer'}}>Cancel</button>
+            <button type="button" onClick={()=>onSet(asValue())}
+              style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',fontWeight:600,padding:'11px 0',cursor:'pointer'}}>Set</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // The pill is 4px in a strip not much taller, which is a small thing to aim a
 // thumb at. This reaches further out from the strip without taking any layout
 // space — making the strip itself taller is what pushed everyone's buttons
@@ -3812,12 +3868,8 @@ function App(){
   const[planRemind,setPlanRemind]=useState(()=>planRemindLoad());
   const[planRemindBusy,setPlanRemindBusy]=useState(false);
   const[planRemindMsg,setPlanRemindMsg]=useState('');
-  // Holds whatever the wheel is sitting on until it closes. showPicker() is
-  // accepted and then quietly ignored in WKWebView — only a real touch on the
-  // input raises the wheel — so switching the reminder on can't open it. The
-  // switch's own tap lands on the picker instead, and the reminder comes on
-  // when the wheel closes.
-  const planPendRef=useRef(null);
+  // {value,onSet} while the time picker is up.
+  const[timePicker,setTimePicker]=useState(null);
   // The language the reader is actually in. versionLang only knows the built-in
   // versions, so anything imported came back as English however it was tagged.
   const readLang=useMemo(()=>String((data?.versions||[]).find(v=>v.id===readVid)?.lang||versionLang(readVid)||'EN'),[data,readVid]);
@@ -7984,6 +8036,13 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {/* Alongside the plan rather than inside the reading tab, since it belongs
+          to the reminder rather than to whatever tab happens to be showing. */}
+      {timePicker&&(
+        <TimePicker T={T} value={timePicker.value}
+          onCancel={()=>setTimePicker(null)}
+          onSet={t=>{const f=timePicker.onSet;setTimePicker(null);f(t);}}/>
+      )}
       {modal?.type==='plan'&&(()=>{
         // planState is read once at mount, so its year goes stale if the app is
         // left open across New Year. The day number always comes from today's
@@ -8052,29 +8111,27 @@ function App(){
                     bottom padding, well clear of the centred title above it. */}
                 <div style={{position:'relative',display:'inline-flex'}}>
                   {Capacitor.isNativePlatform()&&(<>
+                    {/* Switching on asks for the time first, and only switches on if
+                        a time is actually chosen. The invisible native picker this
+                        replaces had to guess at that, since accepting its wheel
+                        unchanged fires no event at all. */}
                     <button type="button" disabled={planRemindBusy}
-                      onClick={()=>{planRemind.on?planRemindOff():planRemindOn(planRemind.time);}}
+                      onClick={()=>{
+                        if(planRemind.on){planRemindOff();return;}
+                        setTimePicker({value:planRemind.time,onSet:planRemindOn});
+                      }}
                       style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
                       <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
                       Reminder
                     </button>
-                    {planRemind.on?(
-                      /* The picker itself, stripped of its chrome, so the time reads as
-                         a plain note above the switch and still opens the wheel. */
-                      <input type="time" value={planRemind.time} aria-label="Reminder time"
-                        onChange={e=>{if(e.target.value)planRemindOn(e.target.value);}}
-                        style={{position:'absolute',left:2,bottom:'100%',marginBottom:1,appearance:'none',WebkitAppearance:'none',background:'transparent',border:'none',outline:'none',padding:0,margin:0,
-                          fontFamily:FS,fontSize:10.5,lineHeight:1,letterSpacing:'0.1em',color:T.gM,width:'auto',minWidth:0}}/>
-                    ):(
-                      /* Switching on asks for the time: this invisible picker covers
-                         the switch, so the tap that turns the reminder on is the same
-                         tap that raises the wheel. Committing on close rather than on
-                         change catches the case where the wheel is accepted as-is,
-                         which fires no change event. */
-                      <input type="time" defaultValue={planRemind.time} aria-label="Set reminder time"
-                        onChange={e=>{planPendRef.current=e.target.value;}}
-                        onBlur={()=>{const t=planPendRef.current;planPendRef.current=null;planRemindOn(t||planRemind.time);}}
-                        style={{position:'absolute',inset:0,opacity:0,border:'none',padding:0,margin:0,background:'transparent'}}/>
+                    {planRemind.on&&(
+                      /* The time reads as a plain note above the switch, and opens the
+                         picker again to change it. */
+                      <button type="button" onClick={()=>setTimePicker({value:planRemind.time,onSet:planRemindOn})}
+                        style={{position:'absolute',left:2,bottom:'100%',marginBottom:1,background:'none',border:'none',outline:'none',padding:0,margin:0,cursor:'pointer',
+                          fontFamily:FS,fontSize:10.5,lineHeight:1,letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap'}}>
+                        {planTimeLabel(planRemind.time)}
+                      </button>
                     )}
                   </>)}
                 </div>
