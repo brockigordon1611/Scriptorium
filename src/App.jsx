@@ -1880,7 +1880,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           </>)}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
-        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:44,padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:44,height:5,background:T.bdA,borderRadius:3}}/></div>}
+        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
@@ -3023,17 +3023,17 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
 
         {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
         {!fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:44,padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
-          <div style={{width:44,height:5,background:T.bdA,borderRadius:3,marginBottom:6}}/>
+          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
         <div style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:44,padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
-          <div style={{width:44,height:5,background:T.bdA,borderRadius:3}}/>
+          <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
         </div>}
         {fromTop&&<div style={{height:3,background:T.accentLine}}/>}
       </div>
