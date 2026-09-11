@@ -3,6 +3,8 @@ import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Browser } from '@capacitor/browser';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App as CapApp } from '@capacitor/app';
+import { Network } from '@capacitor/network';
 import { MEEK_WEEKS } from './meekPlan.js';
 
 // Opens a link without leaving the app. On device this is an in-app Safari
@@ -4184,6 +4186,25 @@ function App(){
     if(!Capacitor.isNativePlatform())return;
     StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
   },[dark]);
+  // iOS can drop the status bar style when the app returns from the background,
+  // so re-assert it on resume rather than waiting for the next theme change.
+  useEffect(()=>{
+    if(!Capacitor.isNativePlatform())return;
+    let h;
+    CapApp.addListener('appStateChange',({isActive})=>{
+      if(isActive)StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+    }).then(x=>{h=x;}).catch(()=>{});
+    return()=>{if(h)h.remove();};
+  },[dark]);
+  // Offline is a first-class state here, so say so rather than letting requests
+  // fail quietly and leaving people wondering what is missing.
+  const[online,setOnline]=useState(true);
+  useEffect(()=>{
+    let h;
+    Network.getStatus().then(st=>setOnline(st.connected)).catch(()=>setOnline(true));
+    Network.addListener('networkStatusChange',st=>setOnline(st.connected)).then(x=>{h=x;}).catch(()=>{});
+    return()=>{if(h)h.remove();};
+  },[]);
   useEffect(()=>{
     const measure=()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);};
     measure();
@@ -5104,6 +5125,11 @@ function App(){
       {/* ═══ HEADER ═══ */}
       <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0}}/>
+        {!online&&(
+          <div style={{position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0,display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
+            <span style={{background:T.amb,border:`1px solid ${T.ambTxt}55`,borderTop:'none',borderRadius:'0 0 7px 7px',color:T.ambTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',padding:'2px 10px 3px'}}>Offline</span>
+          </div>
+        )}
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
