@@ -1858,6 +1858,16 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
   };
 }
 
+// The pill is 4px in a strip not much taller, which is a small thing to aim a
+// thumb at. This reaches further out from the strip without taking any layout
+// space — making the strip itself taller is what pushed everyone's buttons
+// around last time. It goes on the side the panel's own edge is not, since
+// anything past that edge is clipped away.
+const GRIP_REACH=18;
+function GripReach({up}){
+  return <div aria-hidden style={{position:'absolute',left:0,right:0,height:GRIP_REACH,zIndex:1,touchAction:'none',...(up?{bottom:'100%'}:{top:'100%'})}}/>;
+}
+
 // How far a sheet has to be dragged before it dismisses. 80px was a long,
 // deliberate haul with no reward for speed, so a flick — the thing anyone
 // actually does — did nothing at all. A short fast one counts now, on the same
@@ -1937,7 +1947,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           </>)}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
-        {topSheet&&<div {...dragHandlers} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
+        {topSheet&&<div {...dragHandlers} style={{position:'relative',display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><GripReach up/><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
@@ -3059,7 +3069,8 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
 
         {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
         {!fromTop&&<div {...dragHandlers}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          <GripReach/>
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
@@ -3067,7 +3078,8 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           {children}
         </div>
         {fromTop&&<div {...dragHandlers}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          <GripReach up/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
         </div>}
@@ -6817,7 +6829,7 @@ function App(){
               // it takes no height and leaves no band of its own — only the pill
               // shows, sitting in padding the header already had.
               React.createElement('div',{...strongsDragHandlers,
-                style:{position:'absolute',top:3,left:0,right:0,zIndex:2,display:'flex',justifyContent:'center',padding:'7px 0 3px',touchAction:'none',cursor:'grab'}},
+                style:{position:'absolute',top:0,left:0,right:0,zIndex:2,display:'flex',justifyContent:'center',alignItems:'flex-start',height:22,paddingTop:10,boxSizing:'border-box',touchAction:'none',cursor:'grab'}},
                 React.createElement('div',{style:{width:36,height:4,background:T.bdA,borderRadius:2}})),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
