@@ -3806,12 +3806,24 @@ function App(){
   // switch's own tap lands on the picker instead, and the reminder comes on
   // when the wheel closes.
   const planPendRef=useRef(null);
+  // The language the reader is actually in. versionLang only knows the built-in
+  // versions, so anything imported came back as English however it was tagged.
+  const readLang=useMemo(()=>String((data?.versions||[]).find(v=>v.id===readVid)?.lang||versionLang(readVid)||'EN'),[data,readVid]);
   // Top up the month's worth of reminders each time the plan is opened, so they
-  // never run dry and always carry the right passages.
+  // never run dry and always carry the right passages. The book names are baked
+  // into each notification when it is scheduled, so a change of version has to
+  // rewrite them — otherwise tomorrow's reminder arrives in the language the
+  // reader happened to be in when the reminder was first switched on.
+  const planSyncedRef=useRef('');
   useEffect(()=>{
-    if(modal?.type!=='plan'||!planRemind.on)return;
-    planSyncReminders(true,planRemind.time,new Date().getFullYear(),versionLang(readVid));
-  },[modal]);
+    if(!planRemind.on)return;
+    const key=planRemind.time+'|'+readLang;
+    // Opening the plan always tops the window up; otherwise only a change of
+    // language is worth rewriting thirty notifications for.
+    if(modal?.type!=='plan'&&planSyncedRef.current===key)return;
+    planSyncedRef.current=key;
+    planSyncReminders(true,planRemind.time,new Date().getFullYear(),readLang);
+  },[modal,readLang]);
   function planToggleDay(day){
     setPlanState(prev=>{
       const set=new Set(prev.done);
@@ -3991,7 +4003,7 @@ function App(){
   //    than no choice at all, so nothing is chosen and u.lang steers the engine.
   function speechVoiceFor(){
     const voices=TTS.getVoices();
-    const code=String((data?.versions||[]).find(v=>v.id===readVid)?.lang||versionLang(readVid)||'EN').toLowerCase().slice(0,2);
+    const code=readLang.toLowerCase().slice(0,2);
     const saved=voicesByVersion[readVid];
     if(saved){
       const s=voices.find(v=>v.name===saved);
@@ -6433,7 +6445,6 @@ function App(){
               <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
                 <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
                   onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-                  autoFocus
                   placeholder="Search all verses in this version…"
                   style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 12px',outline:'none',minWidth:0}}/>
                 <button type="button" className="s-btn s-ghost" onClick={()=>doReadSearch()} disabled={readSearching}
@@ -7109,7 +7120,7 @@ function App(){
                 <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                <input autoFocus value={q} onChange={e=>setQ(e.target.value)}
+                <input value={q} onChange={e=>setQ(e.target.value)}
                   placeholder="Search passages, text, notes…"
                   style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 10px',outline:'none'}}/>
                 {q&&<button type="button" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,padding:'4px'}}>✕</button>}
@@ -7969,7 +7980,7 @@ function App(){
         const planYear=new Date().getFullYear();
         const plan=buildYearPlan(planYear);
         const today=planDayOfYear();
-        const lang=versionLang(readVid);
+        const lang=readLang;
         const labels=planYearLabels(planYear,lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
