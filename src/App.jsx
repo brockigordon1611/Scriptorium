@@ -1782,6 +1782,82 @@ function PwEye({shown}){
     : <svg {...p}><path d="M3 12s3.8-7 9-7 9 7 9 7-3.8 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.7"/></svg>;
 }
 
+// Dragging a sheet ran through React state, re-rendering the whole panel on
+// every touchmove — on the Strong's panel that is its entire usage list, which
+// is why it dragged heavily. The transform goes straight to the node now and
+// React never sees it.
+//
+// Two things have to be overridden to move a panel at all. Every open and close
+// here is a CSS animation with fill:both, and a finished animation outranks an
+// inline transform — which is why the sheets' drag handlers have always run
+// without the panel following. And one of those rules is !important, so the
+// override has to be important too; an important inline declaration outranks
+// any author rule, whatever its specificity.
+//
+// dir is 1 for a panel that leaves downwards, -1 for one that leaves upwards.
+function useSheetDrag(dir,onDismiss,onStart,onSettled){
+  const ref=React.useRef(null);
+  const startY=React.useRef(null);
+  const dist=React.useRef(0);
+  const t0=React.useRef(0);
+  const settle=React.useRef(0);
+  function put(y,ease){
+    const el=ref.current;if(!el)return;
+    el.style.setProperty('animation','none','important');
+    el.style.setProperty('transition',ease?('transform '+ease):'none','important');
+    el.style.setProperty('transform','translateY('+y+')','important');
+  }
+  function release(){
+    // Hand the panel back to its stylesheet once it has settled, so a later
+    // close still animates instead of being pinned by animation:none.
+    const tok=++settle.current;
+    setTimeout(()=>{
+      if(settle.current!==tok)return;
+      const el=ref.current;
+      if(el){
+        el.style.removeProperty('transform');
+        el.style.removeProperty('transition');
+        el.style.removeProperty('animation');
+      }
+      if(onSettled)onSettled();
+    },220);
+  }
+  return{
+    ref,
+    handlers:{
+      onTouchStart(e){
+        settle.current++; // cancel any pending hand-back
+        startY.current=e.touches[0].clientY;t0.current=Date.now();dist.current=0;
+        if(onStart)onStart();
+      },
+      onTouchMove(e){
+        if(startY.current===null)return;
+        const raw=e.touches[0].clientY-startY.current;
+        const y=dir>0?Math.max(0,raw):Math.min(0,raw);
+        dist.current=Math.abs(y);
+        put(y+'px');
+      },
+      onTouchEnd(){
+        if(startY.current===null)return;
+        const d=dist.current,v=d/Math.max(1,Date.now()-t0.current);
+        startY.current=null;dist.current=0;
+        // A tap on the handle is not a drag: leave the panel entirely alone, or
+        // an opening sheet would be snapped to its end state mid-animation.
+        if(d===0){if(onSettled)onSettled();return;}
+        if(d>SHEET_DISMISS_PX||(v>SHEET_FLICK_V&&d>SHEET_FLICK_PX)){
+          // Carry it the rest of the way from where the finger left off, rather
+          // than handing back to a close animation that starts at the top.
+          put(dir>0?'110%':'-110%','.24s cubic-bezier(0.4,0,1,1)');
+          onDismiss();
+          return;
+        }
+        put('0px','.2s ease-out');
+        release();
+      },
+    },
+  };
+}
+
 // How far a sheet has to be dragged before it dismisses. 80px was a long,
 // deliberate haul with no reward for speed, so a flick — the thing anyone
 // actually does — did nothing at all. A short fast one counts now, on the same
@@ -1790,10 +1866,7 @@ const SHEET_DISMISS_PX=55;
 const SHEET_FLICK_V=0.35; // px per ms
 const SHEET_FLICK_PX=18;
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
-  const[dragY,setDragY]=React.useState(0);
-  const modalStartY=React.useRef(null);
-  const modalDrag=React.useRef(0); // live distance — touchend must not wait on a state flush
-  const modalDragT=React.useRef(0);
+  const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(-1,onClose); // top sheet: leaves upwards
   const modalOverlayRef=React.useRef(null);
   // `fade` softens the top and bottom edges of the body so a long list reads as
   // scrollable. Each edge only shows when there is content past it.
@@ -1832,25 +1905,9 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
     el.addEventListener('touchmove',prevent,{passive:false});
     return()=>el.removeEventListener('touchmove',prevent);
   },[topSheet]);
-  function modalTouchStart(e){modalStartY.current=e.touches[0].clientY;modalDragT.current=Date.now();modalDrag.current=0;}
-  function modalTouchMove(e){
-    if(modalStartY.current===null)return;
-    const dy=Math.min(0,e.touches[0].clientY-modalStartY.current); // upward only: it collapses back to the top
-    modalDrag.current=dy;setDragY(dy);
-  }
-  function modalTouchEnd(){
-    // Judged on the ref, not on dragY. A quick flick can end before React has
-    // flushed the last move, so the gesture was being measured against a stale
-    // distance — which is why flicking so often did nothing.
-    const dist=Math.abs(modalDrag.current);
-    const velocity=dist/Math.max(1,Date.now()-modalDragT.current);
-    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX))onClose();
-    else setDragY(0);
-    modalStartY.current=null;modalDrag.current=0;
-  }
   return(
     <div ref={modalOverlayRef} className={topSheet?"modal-overlay modal-topsheet-overlay":"modal-overlay"} onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',...(topSheet?{top:topSheet,right:0,bottom:0,left:0,zIndex:185,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)','--ts-h':topSheet+'px'}:{inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',backdropFilter:'blur(4px)'}),display:'flex',alignItems:'center',justifyContent:'center',padding:20,...(isClosing&&topSheet?{opacity:0,transition:'opacity .25s ease-in'}:{})}}>
-      <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',transform:(topSheet&&!isClosing&&dragY!==0)?`translateY(${dragY}px)`:undefined,transition:(topSheet&&!isClosing&&dragY===0)?'transform .2s ease-out':undefined}}>
+      <div className={topSheet?(isClosing?'modal-in modal-panel modal-topsheet-panel slide-down-sheet-out':'modal-in modal-panel modal-topsheet-panel'):'modal-in modal-panel'} style={{background:T.bgCard,...(topSheet?{borderBottom:`2px solid ${T.bdA}`}:{border:`1px solid ${T.bdA}`}),borderRadius:topSheet?'0 0 18px 18px':14,width:`min(95vw,${wide?840:700}px)`,maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.5)',}} ref={panelRef}>
         {topSheet?(
           <div style={{background:T.bgCard,padding:'20px 18px 14px',position:'relative',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
             {!hideBack&&(
@@ -1880,7 +1937,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           </>)}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
-        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
+        {topSheet&&<div {...dragHandlers} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
@@ -2959,12 +3016,8 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
 function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad}){
-  const[dragY,setDragY]=React.useState(0);
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
-  const startY=React.useRef(null);
-  const dragRef=React.useRef(0); // as in modalTouchEnd: touchend cannot wait on a state flush
-  const dragT=React.useRef(0);
   const overlayRef=React.useRef(null);
 
   // Prevent background scroll-through on iOS WKWebView.
@@ -2989,24 +3042,8 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
   },[]);
 
   function dismiss(){setInternalClosing(true);onClose();}
+  const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(fromTop?-1:1,dismiss);
 
-  function onTouchStart(e){startY.current=e.touches[0].clientY;dragT.current=Date.now();dragRef.current=0;}
-  function onTouchMove(e){
-    if(startY.current===null)return;
-    const raw=e.touches[0].clientY-startY.current;
-    const dy=fromTop?Math.min(0,raw):Math.max(0,raw);
-    dragRef.current=dy;setDragY(dy);
-  }
-  function onTouchEnd(){
-    const dist=Math.abs(dragRef.current);
-    const velocity=dist/Math.max(1,Date.now()-dragT.current);
-    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX))dismiss();
-    else setDragY(0);
-    startY.current=null;dragRef.current=0;
-  }
-
-  const closeTx=fromTop?'translateY(-100%)':'translateY(100%)';
-  const dragTx=`translateY(${dragY}px)`;
 
   return(
     <div ref={overlayRef} onClick={e=>{if(e.target===e.currentTarget)dismiss();}}
@@ -3018,11 +3055,10 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           ...(fromTop?{borderBottom:`2px solid ${T.bdA}`}:{borderTop:`2px solid ${T.bdA}`}),
           maxHeight:sheetHeight||maxSheetHeight||(fullScreen?'100vh':fromTop?`calc(100vh - ${topOffset}px - 50px)`:'82vh'),height:sheetHeight||(fullScreen?'100vh':undefined),display:'flex',flexDirection:'column',overflow:'hidden',
           boxShadow:fromTop?'0 20px 60px rgba(0,0,0,0.5)':'0 -20px 60px rgba(0,0,0,0.5)',
-          transform:(!closing&&dragY!==0)?dragTx:undefined,
-          transition:(!closing&&dragY===0)?'transform .2s ease-out, max-height .12s cubic-bezier(0.4,0,0.2,1), height .12s cubic-bezier(0.4,0,0.2,1)':'none'}}>
+          transition:closing?'none':'max-height .12s cubic-bezier(0.4,0,0.2,1), height .12s cubic-bezier(0.4,0,0.2,1)'}} ref={panelRef}>
 
         {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
-        {!fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        {!fromTop&&<div {...dragHandlers}
           style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
@@ -3030,7 +3066,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
         <div style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
-        {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        {fromTop&&<div {...dragHandlers}
           style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
@@ -3645,41 +3681,18 @@ function App(){
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsClosing,setStrongsClosing]=useState(false);
-  // Drag-to-dismiss, on the same terms as the sheets: distance from a ref so a
-  // flick is not judged on a stale render, and a short fast one counts.
-  const[strongsDrag,setStrongsDrag]=useState(0);
-  const[strongsDragMode,setStrongsDragMode]=useState(false); // inline transform takes over from the open animation
-  const strongsDragRef=useRef(0);
-  const strongsDragStart=useRef(null);
-  const strongsDragT=useRef(0);
-  const[strongsDragOut,setStrongsDragOut]=useState(false); // carrying a dismissing drag off the bottom
+  // This panel keeps its animation in a style prop rather than a class, so React
+  // would write over the hook's override on the next render. One flag, set as the
+  // drag begins, keeps the two agreeing.
+  const[strongsDragMode,setStrongsDragMode]=useState(false);
   const closeStrongsPopup=React.useCallback(()=>{
     setStrongsClosing(true);
     setTimeout(()=>{
       setStrongsPopup(null);setStrongsVersePreview(null);setStrongsClosing(false);
-      setStrongsDragMode(false);setStrongsDrag(0);setStrongsDragOut(false);
+      setStrongsDragMode(false);
     },260);
   },[]);
-  function strongsTouchStart(e){
-    strongsDragStart.current=e.touches[0].clientY;strongsDragT.current=Date.now();
-    strongsDragRef.current=0;setStrongsDragMode(true);
-  }
-  function strongsTouchMove(e){
-    if(strongsDragStart.current===null)return;
-    const dy=Math.max(0,e.touches[0].clientY-strongsDragStart.current); // downward only
-    strongsDragRef.current=dy;setStrongsDrag(dy);
-  }
-  function strongsTouchEnd(){
-    const dist=strongsDragRef.current;
-    const velocity=dist/Math.max(1,Date.now()-strongsDragT.current);
-    strongsDragStart.current=null;strongsDragRef.current=0;
-    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX)){
-      // Keep driving the panel rather than handing back to the close animation,
-      // which starts at the top and so snapped there first — the stutter.
-      setStrongsDragOut(true);closeStrongsPopup();return;
-    }
-    setStrongsDrag(0); // drag mode stays on so the transition below eases it back
-  }
+  const{ref:strongsPanelRef,handlers:strongsDragHandlers}=useSheetDrag(1,closeStrongsPopup,()=>setStrongsDragMode(true),()=>setStrongsDragMode(false));
   const[strongsLoading,setStrongsLoading]=useState(false);
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
   const[strongsVersePreview,setStrongsVersePreview]=useState(null); // {bn,ch,vs,label,text,loading}
@@ -6786,18 +6799,13 @@ function App(){
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both',
-                // A finished animation with fill:both outranks an inline transform,
-                // so dragging has to switch the animation off and drive the panel
-                // itself. Releasing short of the threshold eases it back.
-                ...(strongsDragMode?{animation:'none',
-                  transform:strongsDragOut?'translateY(100%)':`translateY(${strongsDrag}px)`,
-                  transition:strongsDragOut?'transform .26s cubic-bezier(0.4,0,1,1)':(strongsDrag>0?'none':'transform .2s ease-out')}:{})}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
+                animation:strongsDragMode?'none':(strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both')},ref:strongsPanelRef},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
               // Floated over the top of the content rather than placed above it, so
               // it takes no height and leaves no band of its own — only the pill
               // shows, sitting in padding the header already had.
-              React.createElement('div',{onTouchStart:strongsTouchStart,onTouchMove:strongsTouchMove,onTouchEnd:strongsTouchEnd,
+              React.createElement('div',{...strongsDragHandlers,
                 style:{position:'absolute',top:3,left:0,right:0,zIndex:2,display:'flex',justifyContent:'center',padding:'7px 0 3px',touchAction:'none',cursor:'grab'}},
                 React.createElement('div',{style:{width:36,height:4,background:T.bdA,borderRadius:2}})),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
