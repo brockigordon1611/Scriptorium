@@ -1,7 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Browser } from '@capacitor/browser';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { MEEK_WEEKS } from './meekPlan.js';
+
+// Opens a link without leaving the app. On device this is an in-app Safari
+// sheet with a Done button that returns to the exact spot; the FCBH download
+// used to hand the user to Safari and leave them to find their own way back.
+// On the web it stays an ordinary new tab.
+function openExternal(url){
+  if(Capacitor.isNativePlatform())Browser.open({url,presentationStyle:'popover'}).catch(()=>{window.open(url,'_blank','noreferrer');});
+  else window.open(url,'_blank','noreferrer');
+}
 
 // Some in-app browsers ship no speech synthesis at all — Facebook's and
 // Instagram's on Android among them. A bare `TTS` reference is a
@@ -4166,6 +4177,13 @@ function App(){
   },[audioPlaying,audioSource]);
   // ── Sync body background with theme ──
   useEffect(()=>{document.body.style.background=T.bg;},[T.bg]);
+  // iOS picks the status bar style from the *device* appearance, not ours, so a
+  // light theme on a dark-mode phone drew white text on a cream background and
+  // the clock vanished. Style.Light means dark glyphs for a light background.
+  useEffect(()=>{
+    if(!Capacitor.isNativePlatform())return;
+    StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+  },[dark]);
   useEffect(()=>{
     const measure=()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);};
     measure();
@@ -5731,7 +5749,7 @@ function App(){
                               {!installed&&(
                                 <>
                                   <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>1. Download</div>
-                                  <a href={url} target="_blank" rel="noreferrer"
+                                  <a href={url} target="_blank" rel="noreferrer" onClick={e=>{e.preventDefault();openExternal(url);}}
                                     style={{display:'block',width:'100%',boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
                                     Download {pack} File
                                   </a>
