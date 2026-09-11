@@ -7903,36 +7903,37 @@ function App(){
               {/* The title is centred on the row itself, so the reminder on one
                   side and the day count on the other never pull it off centre. */}
               <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
-                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3}}>
-                  {Capacitor.isNativePlatform()&&planRemind.on&&(
-                    /* The picker itself, stripped of its chrome, so the time reads as
-                       a plain note above the switch and still opens the wheel. */
-                    <input type="time" value={planRemind.time} aria-label="Reminder time"
-                      onChange={e=>{if(e.target.value)planRemindOn(e.target.value);}}
-                      style={{appearance:'none',WebkitAppearance:'none',background:'transparent',border:'none',outline:'none',padding:0,margin:0,
-                        fontFamily:FS,fontSize:10.5,letterSpacing:'0.1em',color:T.gM,display:'inline-block',width:'auto',minWidth:0}}/>
-                  )}
-                  {Capacitor.isNativePlatform()&&(
-                    <div style={{position:'relative',display:'inline-flex'}}>
-                      <button type="button" disabled={planRemindBusy}
-                        onClick={()=>{planRemind.on?planRemindOff():planRemindOn(planRemind.time);}}
-                        style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
-                        <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
-                        Reminder
-                      </button>
-                      {!planRemind.on&&(
-                        /* Switching on asks for the time: this invisible picker covers
-                           the switch, so the tap that turns the reminder on is the same
-                           tap that raises the wheel. Committing on close rather than on
-                           change catches the case where the wheel is accepted as-is,
-                           which fires no change event. */
-                        <input type="time" defaultValue={planRemind.time} aria-label="Set reminder time"
-                          onChange={e=>{planPendRef.current=e.target.value;}}
-                          onBlur={()=>{const t=planPendRef.current;planPendRef.current=null;planRemindOn(t||planRemind.time);}}
-                          style={{position:'absolute',inset:0,opacity:0,border:'none',padding:0,margin:0,background:'transparent'}}/>
-                      )}
-                    </div>
-                  )}
+                {/* Everything but the switch is out of flow, so the row's height is
+                    the switch's height whether the time is showing or not — turning
+                    the reminder on moves nothing. The time sits in the header's own
+                    bottom padding, well clear of the centred title above it. */}
+                <div style={{position:'relative',display:'inline-flex'}}>
+                  {Capacitor.isNativePlatform()&&(<>
+                    <button type="button" disabled={planRemindBusy}
+                      onClick={()=>{planRemind.on?planRemindOff():planRemindOn(planRemind.time);}}
+                      style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
+                      <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
+                      Reminder
+                    </button>
+                    {planRemind.on?(
+                      /* The picker itself, stripped of its chrome, so the time reads as
+                         a plain note above the switch and still opens the wheel. */
+                      <input type="time" value={planRemind.time} aria-label="Reminder time"
+                        onChange={e=>{if(e.target.value)planRemindOn(e.target.value);}}
+                        style={{position:'absolute',left:2,bottom:'100%',marginBottom:1,appearance:'none',WebkitAppearance:'none',background:'transparent',border:'none',outline:'none',padding:0,margin:0,
+                          fontFamily:FS,fontSize:10.5,lineHeight:1,letterSpacing:'0.1em',color:T.gM,width:'auto',minWidth:0}}/>
+                    ):(
+                      /* Switching on asks for the time: this invisible picker covers
+                         the switch, so the tap that turns the reminder on is the same
+                         tap that raises the wheel. Committing on close rather than on
+                         change catches the case where the wheel is accepted as-is,
+                         which fires no change event. */
+                      <input type="time" defaultValue={planRemind.time} aria-label="Set reminder time"
+                        onChange={e=>{planPendRef.current=e.target.value;}}
+                        onBlur={()=>{const t=planPendRef.current;planPendRef.current=null;planRemindOn(t||planRemind.time);}}
+                        style={{position:'absolute',inset:0,opacity:0,border:'none',padding:0,margin:0,background:'transparent'}}/>
+                    )}
+                  </>)}
                 </div>
                 <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:11.5,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
                 <span style={{fontFamily:FB,fontSize:13,color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
