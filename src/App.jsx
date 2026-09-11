@@ -3172,6 +3172,7 @@ function MapLightboxGrid({maps,BASE,T}){
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
               style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
+            <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
             <button onClick={()=>setLightbox(i=>Math.min(i+1,maps.length-1))} disabled={lightbox===maps.length-1}
               style={{background:'none',border:`1px solid ${lightbox===maps.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===maps.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===maps.length-1?'default':'pointer'}}>Next ›</button>
           </div>
@@ -3216,7 +3217,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
           style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
-        <div style={{fontFamily:'Georgia,serif',fontSize:9,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
         <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
           style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
       </div>
