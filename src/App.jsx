@@ -1985,10 +1985,10 @@ function useEdgeFade(enabled,T,key){
   const ramp=dir=>`linear-gradient(to ${dir}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
   return{ref,top,bot,ramp};
 }
-function FadeScroll({children,T,fadeKey,height=36,className,style}){
+function FadeScroll({children,T,fadeKey,height=36,className,style,wrapStyle}){
   const edge=useEdgeFade(true,T,fadeKey);
   return(
-    <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+    <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column',...wrapStyle}}>
       <div ref={edge.ref} className={className} style={{overflowY:'auto',flex:1,minHeight:0,...style}}>{children}</div>
       <EdgeFades fade={edge} height={height}/>
     </div>
@@ -6389,7 +6389,12 @@ function App(){
                   <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
                     Select Chapter
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
+                  {/* Scrolls within the sheet like the book columns, so the header
+                      above it never moves. Only as tall as it needs to be: a book
+                      of one chapter still opens a short sheet. */}
+                  <FadeScroll T={T} className="sheet-scroll" fadeKey={navPickedBk}
+                    wrapStyle={{flex:'0 1 auto',maxHeight:`calc(100dvh - ${navH}px - 210px)`}}
+                    style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,alignContent:'start'}}>
                     {Array.from({length:pickedBkData.v.length},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         setNavPickedCh(i+1);
@@ -6399,7 +6404,7 @@ function App(){
                         setTimeout(()=>{const el=document.querySelector('.slide-down-sheet>div');if(el)el.scrollTop=0;},0);
                       }} style={gridBtn}>{i+1}</button>
                     ))}
-                  </div>
+                  </FadeScroll>
                 </div>}
 
                 {/* Verse grid */}
@@ -6407,7 +6412,9 @@ function App(){
                   <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
                     Select Verse
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5}}>
+                  <FadeScroll T={T} className="sheet-scroll" fadeKey={navPickedCh}
+                    wrapStyle={{flex:'0 1 auto',maxHeight:`calc(100dvh - ${navH}px - 210px)`}}
+                    style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:5,alignContent:'start'}}>
                     {Array.from({length:pickedBkData.v[navPickedCh-1]||0},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
@@ -6415,7 +6422,7 @@ function App(){
                         closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
                     ))}
-                  </div>
+                  </FadeScroll>
                 </div>}
               </div>
             </MobileSheet>);
