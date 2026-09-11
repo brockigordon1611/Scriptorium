@@ -1116,12 +1116,13 @@ function planDateLabel(day,year){
 // today's reading is without opening anything. iOS caps pending notifications
 // at 64, so this books a month ahead and tops up whenever the plan is opened.
 const PLAN_REMIND_KEY='scrip:plan:remind:v1';
+const PLAN_REMIND_TIME='07:00'; // where the picker starts, and what switching off resets to
 const PLAN_NOTIF_BASE=9000;
 const PLAN_NOTIF_SPAN=30;
 function planRemindLoad(){
   try{const r=JSON.parse(localStorage.getItem(PLAN_REMIND_KEY)||'null');
-      return r&&typeof r.time==='string'?{on:!!r.on,time:r.time}:{on:false,time:'07:00'};}
-  catch{return{on:false,time:'07:00'};}
+      return r&&typeof r.time==='string'?{on:!!r.on,time:r.time}:{on:false,time:PLAN_REMIND_TIME};}
+  catch{return{on:false,time:PLAN_REMIND_TIME};}
 }
 function planRemindSave(v){try{localStorage.setItem(PLAN_REMIND_KEY,JSON.stringify(v));}catch{}}
 function planTimeLabel(t){
@@ -3730,6 +3731,12 @@ function App(){
   const[planRemind,setPlanRemind]=useState(()=>planRemindLoad());
   const[planRemindBusy,setPlanRemindBusy]=useState(false);
   const[planRemindMsg,setPlanRemindMsg]=useState('');
+  // Holds whatever the wheel is sitting on until it closes. showPicker() is
+  // accepted and then quietly ignored in WKWebView — only a real touch on the
+  // input raises the wheel — so switching the reminder on can't open it. The
+  // switch's own tap lands on the picker instead, and the reminder comes on
+  // when the wheel closes.
+  const planPendRef=useRef(null);
   // Top up the month's worth of reminders each time the plan is opened, so they
   // never run dry and always carry the right passages.
   useEffect(()=>{
@@ -7847,6 +7854,29 @@ function App(){
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
         const open=(b,c,v)=>{setReadBook(b);setReadCh(c);if(v>1)readScrollToVerse.current=v;setTab('read');closeModal();};
+        const planRemindOn=(time)=>{
+          const v={on:true,time};
+          setPlanRemind(v);
+          setPlanRemindBusy(true);
+          planSyncReminders(true,time,planYear,lang).then(r=>{
+            setPlanRemindBusy(false);
+            if(!r.ok){
+              // Denied at the system level: saying so beats a switch that
+              // silently refuses to stay on.
+              setPlanRemind({on:false,time:PLAN_REMIND_TIME});
+              setPlanRemindMsg(r.denied?'Allow notifications for Scriptorium in iOS Settings, then try again.':'Could not set the reminder.');
+              return;
+            }
+            setPlanRemindMsg('');
+            planRemindSave(v);
+          });
+        };
+        const planRemindOff=()=>{
+          // Off forgets the time too, so switching back on starts by asking.
+          const v={on:false,time:PLAN_REMIND_TIME};
+          setPlanRemind(v);planRemindSave(v);setPlanRemindMsg('');
+          planSyncReminders(false,v.time,planYear,lang);
+        };
         const Passages=({day})=>(
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
             {labels[day-1].map((r,i)=>(
@@ -7875,40 +7905,33 @@ function App(){
               <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
                 <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3}}>
                   {Capacitor.isNativePlatform()&&planRemind.on&&(
-                    <div style={{position:'relative',display:'inline-flex'}}>
-                      <span style={{fontFamily:FS,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap'}}>{planTimeLabel(planRemind.time)}</span>
-                      {/* An invisible picker sits over the label: the time reads as a
-                          plain note but still opens the time wheel when tapped. */}
-                      <input type="time" value={planRemind.time} aria-label="Reminder time"
-                        onChange={async e=>{
-                          const v={...planRemind,time:e.target.value};
-                          setPlanRemind(v);planRemindSave(v);
-                          await planSyncReminders(true,v.time,planYear,lang);
-                        }}
-                        style={{position:'absolute',inset:'-8px -12px',opacity:0,border:'none',padding:0,margin:0,background:'transparent',fontSize:16}}/>
-                    </div>
+                    /* The picker itself, stripped of its chrome, so the time reads as
+                       a plain note above the switch and still opens the wheel. */
+                    <input type="time" value={planRemind.time} aria-label="Reminder time"
+                      onChange={e=>{if(e.target.value)planRemindOn(e.target.value);}}
+                      style={{appearance:'none',WebkitAppearance:'none',background:'transparent',border:'none',outline:'none',padding:0,margin:0,
+                        fontFamily:FS,fontSize:10.5,letterSpacing:'0.1em',color:T.gM,display:'inline-block',width:'auto',minWidth:0}}/>
                   )}
                   {Capacitor.isNativePlatform()&&(
-                    <button type="button" disabled={planRemindBusy}
-                      onClick={async()=>{
-                        const next=!planRemind.on;
-                        setPlanRemindBusy(true);
-                        const r=await planSyncReminders(next,planRemind.time,planYear,lang);
-                        setPlanRemindBusy(false);
-                        if(next&&!r.ok){
-                          // Denied at the system level: saying so beats a switch that
-                          // silently refuses to stay on.
-                          setPlanRemindMsg(r.denied?'Allow notifications for Scriptorium in iOS Settings, then try again.':'Could not set the reminder.');
-                          return;
-                        }
-                        setPlanRemindMsg('');
-                        const v={...planRemind,on:next};
-                        setPlanRemind(v);planRemindSave(v);
-                      }}
-                      style={{display:'flex',alignItems:'center',gap:7,background:planRemind.on?T.gF:'transparent',border:`1px solid ${planRemind.on?T.gD:T.bd}`,borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 9px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
-                      <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
-                      Reminder
-                    </button>
+                    <div style={{position:'relative',display:'inline-flex'}}>
+                      <button type="button" disabled={planRemindBusy}
+                        onClick={()=>{planRemind.on?planRemindOff():planRemindOn(planRemind.time);}}
+                        style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
+                        <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
+                        Reminder
+                      </button>
+                      {!planRemind.on&&(
+                        /* Switching on asks for the time: this invisible picker covers
+                           the switch, so the tap that turns the reminder on is the same
+                           tap that raises the wheel. Committing on close rather than on
+                           change catches the case where the wheel is accepted as-is,
+                           which fires no change event. */
+                        <input type="time" defaultValue={planRemind.time} aria-label="Set reminder time"
+                          onChange={e=>{planPendRef.current=e.target.value;}}
+                          onBlur={()=>{const t=planPendRef.current;planPendRef.current=null;planRemindOn(t||planRemind.time);}}
+                          style={{position:'absolute',inset:0,opacity:0,border:'none',padding:0,margin:0,background:'transparent'}}/>
+                      )}
+                    </div>
                   )}
                 </div>
                 <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:11.5,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
