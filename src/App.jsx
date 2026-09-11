@@ -3889,6 +3889,29 @@ function App(){
     });
     }catch{}
   };
+  // Which voice reads this version, in one place — the three speech paths each
+  // carried their own copy of this, so every fault below existed in triplicate.
+  //  - The language came from a hardcoded pair of version ids, so any Bible the
+  //    user imported was read in English whatever language it was actually in.
+  //    It comes from the version's own lang now.
+  //  - Failing to find a voice for the language fell back to voices[0], which is
+  //    all but always an English one. An English voice reading Spanish is worse
+  //    than no choice at all, so nothing is chosen and u.lang steers the engine.
+  function speechVoiceFor(){
+    const voices=TTS.getVoices();
+    const code=String((data?.versions||[]).find(v=>v.id===readVid)?.lang||versionLang(readVid)||'EN').toLowerCase().slice(0,2);
+    const saved=voicesByVersion[readVid];
+    if(saved){
+      const s=voices.find(v=>v.name===saved);
+      if(s)return{voice:s,lang:s.lang||code};
+    }
+    const spoken=v=>v.lang&&v.lang.toLowerCase().replace('_','-').startsWith(code);
+    const pref=code==='es'?'Paulina':code==='en'?'Daniel':null;
+    const match=(pref?voices.find(v=>(v.name===pref||v.name.startsWith(pref+' '))&&spoken(v)):null)
+      ||voices.find(v=>spoken(v)&&v.default)
+      ||voices.find(spoken);
+    return{voice:match||null,lang:match?.lang||code};
+  }
   const loadChapterAudio=async(srcOverride=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
@@ -3970,12 +3993,7 @@ function App(){
         // No speech engine in this browser: say so rather than go quiet.
         if(!TTS_OK){setAudioError('This device has no built-in voice');setAudioLoaded(false);setAudioPlaying(false);return;}
         audioModeRef.current='speech';
-        const voices=TTS.getVoices();
-        const lang=['rvg','p1602'].includes(readVid)?'es':'en';
-        const _saved=voicesByVersion[readVid];
-        const _pref=lang==='es'?'Paulina':'Daniel';
-        const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
-        const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+        const{voice,lang:uttLang}=speechVoiceFor();
         audioUtterRef.current=[];
         TTS.cancel();
         const startIdx=startVerse?Math.max(0,readVerses.findIndex(v=>v.verse>=startVerse)):0;
@@ -3983,7 +4001,7 @@ function App(){
         const lastVerse=readVerses[readVerses.length-1]?.verse;
         versesToSpeak.forEach(({verse,text})=>{
           const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
-          u.voice=voice;u.rate=audioRate;
+          u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
           u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
           u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
           audioUtterRef.current.push(u);
@@ -4060,17 +4078,12 @@ function App(){
     audioModeRef.current='speech';
     if(TTS.paused)TTS.resume();TTS.cancel();
     audioUtterRef.current=[];
-    const voices=TTS.getVoices();
-    const lang=['rvg','p1602'].includes(readVid)?'es':'en';
-    const _saved=voicesByVersion[readVid];
-    const _pref=lang==='es'?'Paulina':'Daniel';
-    const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
-    const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+    const{voice,lang:uttLang}=speechVoiceFor();
     const lastVerse=readVerses[readVerses.length-1]?.verse;
     for(let i=startIdx;i<readVerses.length;i++){
       const {verse,text}=readVerses[i];
       const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
-      u.voice=voice;u.rate=audioRate;
+      u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
       u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
       audioUtterRef.current.push(u);
@@ -4085,12 +4098,7 @@ function App(){
     if(!readVerses||!readVerses.length)return;
     audioModeRef.current='speech';
     if(audioElRef.current){audioElRef.current.pause();audioElRef.current.removeAttribute('src');}
-    const voices=TTS.getVoices();
-    const lang=['rvg','p1602'].includes(readVid)?'es':'en';
-    const _saved=voicesByVersion[readVid];
-    const _pref=lang==='es'?'Paulina':'Daniel';
-    const _prefVoice=voices.find(v=>v.name===_pref||v.name.startsWith(_pref+' '));
-    const voice=_saved?voices.find(v=>v.name===_saved)||voices.find(v=>v.lang.startsWith(lang))||voices[0]:_prefVoice||voices.find(v=>v.lang.startsWith(lang)&&v.default)||voices.find(v=>v.lang.startsWith(lang))||voices[0];
+    const{voice,lang:uttLang}=speechVoiceFor();
     audioUtterRef.current=[];
     if(TTS.paused)TTS.resume();TTS.cancel();
     const sv=startVerse||(readVerses[0]?.verse||1);
@@ -4099,7 +4107,7 @@ function App(){
     for(let i=startIdx;i<readVerses.length;i++){
       const {verse,text}=readVerses[i];
       const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
-      u.voice=voice;u.rate=audioRate;
+      u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
       u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
       audioUtterRef.current.push(u);
