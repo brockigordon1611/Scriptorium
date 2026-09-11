@@ -1124,6 +1124,11 @@ function planRemindLoad(){
   catch{return{on:false,time:'07:00'};}
 }
 function planRemindSave(v){try{localStorage.setItem(PLAN_REMIND_KEY,JSON.stringify(v));}catch{}}
+function planTimeLabel(t){
+  const[h,m]=String(t||'07:00').split(':').map(Number);
+  if(!Number.isFinite(h)||!Number.isFinite(m))return t;
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
+}
 async function planSyncReminders(on,time,year,lang){
   if(!Capacitor.isNativePlatform())return{ok:!on};
   try{
@@ -3865,13 +3870,17 @@ function App(){
     setAudioPlaying(false);
   };
   const updateMediaSession=(bookNum,ch)=>{
-    if(!('mediaSession' in navigator))return;
+    // Lock-screen metadata is a nicety; a WebView without MediaMetadata used to
+    // throw here and take the speak() call on the next line down with it.
+    if(!('mediaSession' in navigator)||typeof MediaMetadata!=='function')return;
     const bk=BIBLE[bookNum-1];
+    try{
     navigator.mediaSession.metadata=new MediaMetadata({
       title:bk?`${bk.name} ${ch}`:'Scriptorium',
       artist:'Scriptorium',
       album:'The Bible',
     });
+    }catch{}
   };
   const loadChapterAudio=async(srcOverride=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
@@ -3951,9 +3960,8 @@ function App(){
         audioElRef.current.play().catch(()=>{});
         currentVerseRef.current=startVerse;setAudioPlaying(true);setCurrentVerse(startVerse);
       }else if(src==='speech'){
-        // No speech engine in this browser: say nothing rather than show a
-        // playing state over silence.
-        if(!TTS_OK){setAudioLoaded(false);setAudioPlaying(false);return;}
+        // No speech engine in this browser: say so rather than go quiet.
+        if(!TTS_OK){setAudioError('This device has no built-in voice');setAudioLoaded(false);setAudioPlaying(false);return;}
         audioModeRef.current='speech';
         const voices=TTS.getVoices();
         const lang=['rvg','p1602'].includes(readVid)?'es':'en';
@@ -6401,7 +6409,10 @@ function App(){
             <button type="button" disabled={audioLoading}
               onClick={()=>{
                 const packInstalled=readBook<=39?otInstalled:ntInstalled;
-                if(readVid==='kjv'&&!packInstalled&&!kjvPromptShownRef.current&&!localStorage.getItem('scrip:audio:kjvPromptDismissed')){kjvPromptShownRef.current=true;setKjvPromptNoShow(false);setShowKjvAudioPrompt(true);return;}
+                // Only worth mentioning the pack when the pack is what we'd play;
+                // it used to interrupt Browser Voice too, and Go to Settings then
+                // quietly switched the source back to KJV audio.
+                if(readVid==='kjv'&&!packInstalled&&(audioSource==='auto'||audioSource==='local')&&!kjvPromptShownRef.current&&!localStorage.getItem('scrip:audio:kjvPromptDismissed')){kjvPromptShownRef.current=true;setKjvPromptNoShow(false);setShowKjvAudioPrompt(true);return;}
                 if(audioPlaying){audioElRef.current?.pause();TTS.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
                 const src=audioSrcFor(audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource));
@@ -6812,7 +6823,7 @@ function App(){
 
           {/* Bottom nav */}
           <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`}}>
-            <div className={online?"bottom-nav-safe":undefined} style={{padding:online?'5px 12px 0 12px':'5px 12px 6px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
+            <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
@@ -6825,9 +6836,11 @@ function App(){
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
             </div>
+            {/* Drawn over the bar's safe-area strip rather than added to it, so
+                going offline never shifts the nav buttons. */}
             {!online&&(
-              <div style={{display:'flex',justifyContent:'center',padding:`3px 12px calc(env(safe-area-inset-bottom,0px) + 6px)`,borderTop:`1px solid ${T.bdS}`}}>
-                <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline &middot; reading from your local copy</span>
+              <div style={{position:'absolute',left:0,right:0,bottom:'max(2px, calc(env(safe-area-inset-bottom, 0px) / 2 - 5px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+                <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline</span>
               </div>
             )}
             </div>
@@ -7857,46 +7870,53 @@ function App(){
         return (
           <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} hideBack fade
             subHeader={<>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7}}>
-                <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
-                <span style={{fontFamily:FB,fontSize:14,color:T.dim}}>{done.size} of {PLAN_DAYS} days</span>
+              {/* The title is centred on the row itself, so the reminder on one
+                  side and the day count on the other never pull it off centre. */}
+              <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
+                <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:3}}>
+                  {Capacitor.isNativePlatform()&&planRemind.on&&(
+                    <div style={{position:'relative',display:'inline-flex'}}>
+                      <span style={{fontFamily:FS,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap'}}>{planTimeLabel(planRemind.time)}</span>
+                      {/* An invisible picker sits over the label: the time reads as a
+                          plain note but still opens the time wheel when tapped. */}
+                      <input type="time" value={planRemind.time} aria-label="Reminder time"
+                        onChange={async e=>{
+                          const v={...planRemind,time:e.target.value};
+                          setPlanRemind(v);planRemindSave(v);
+                          await planSyncReminders(true,v.time,planYear,lang);
+                        }}
+                        style={{position:'absolute',inset:'-8px -12px',opacity:0,border:'none',padding:0,margin:0,background:'transparent',fontSize:16}}/>
+                    </div>
+                  )}
+                  {Capacitor.isNativePlatform()&&(
+                    <button type="button" disabled={planRemindBusy}
+                      onClick={async()=>{
+                        const next=!planRemind.on;
+                        setPlanRemindBusy(true);
+                        const r=await planSyncReminders(next,planRemind.time,planYear,lang);
+                        setPlanRemindBusy(false);
+                        if(next&&!r.ok){
+                          // Denied at the system level: saying so beats a switch that
+                          // silently refuses to stay on.
+                          setPlanRemindMsg(r.denied?'Allow notifications for Scriptorium in iOS Settings, then try again.':'Could not set the reminder.');
+                          return;
+                        }
+                        setPlanRemindMsg('');
+                        const v={...planRemind,on:next};
+                        setPlanRemind(v);planRemindSave(v);
+                      }}
+                      style={{display:'flex',alignItems:'center',gap:7,background:planRemind.on?T.gF:'transparent',border:`1px solid ${planRemind.on?T.gD:T.bd}`,borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 9px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
+                      <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
+                      Reminder
+                    </button>
+                  )}
+                </div>
+                <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:11.5,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
+                <span style={{fontFamily:FB,fontSize:13,color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
               </div>
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
               </div>
-              {Capacitor.isNativePlatform()&&(
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginTop:11}}>
-                  <button type="button" disabled={planRemindBusy}
-                    onClick={async()=>{
-                      const next=!planRemind.on;
-                      setPlanRemindBusy(true);
-                      const r=await planSyncReminders(next,planRemind.time,planYear,lang);
-                      setPlanRemindBusy(false);
-                      if(next&&!r.ok){
-                        // Denied at the system level: saying so beats a switch that
-                        // silently refuses to stay on.
-                        setPlanRemindMsg(r.denied?'Allow notifications for Scriptorium in iOS Settings, then try again.':'Could not set the reminder.');
-                        return;
-                      }
-                      setPlanRemindMsg('');
-                      const v={...planRemind,on:next};
-                      setPlanRemind(v);planRemindSave(v);
-                    }}
-                    style={{display:'flex',alignItems:'center',gap:8,background:planRemind.on?T.gF:'transparent',border:`1px solid ${planRemind.on?T.gD:T.bd}`,borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:13,padding:'6px 11px',cursor:'pointer',opacity:planRemindBusy?0.5:1}}>
-                    <span style={{width:15,height:15,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:10,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
-                    Daily reminder
-                  </button>
-                  {planRemind.on&&(
-                    <input type="time" value={planRemind.time}
-                      onChange={async e=>{
-                        const v={...planRemind,time:e.target.value};
-                        setPlanRemind(v);planRemindSave(v);
-                        await planSyncReminders(true,v.time,planYear,lang);
-                      }}
-                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 8px'}}/>
-                  )}
-                </div>
-              )}
               {planRemindMsg&&(
                 <div style={{fontFamily:FB,fontSize:12,color:T.ambTxt,marginTop:7,lineHeight:1.5}}>{planRemindMsg}</div>
               )}
