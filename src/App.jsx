@@ -3597,27 +3597,6 @@ function App(){
     },40);
     return()=>clearTimeout(t);
   },[modal]);
-  // The narration is the single biggest upgrade to the app and nobody finds it on
-  // their own, buried three levels into settings. Offer it once, then never again.
-  const[audioPrompt,setAudioPrompt]=useState(false);
-  useEffect(()=>{
-    if(!ready)return;
-    if(!Capacitor.isNativePlatform())return;   // the import flow only exists on device
-    if(otInstalled&&ntInstalled)return;        // already has it
-    try{if(localStorage.getItem('scrip:audioPromptSeen')==='true')return;}catch{}
-    const t=setTimeout(()=>setAudioPrompt(true),6500);
-    return()=>clearTimeout(t);
-  },[ready,otInstalled,ntInstalled]);
-  function dismissAudioPrompt(showSteps){
-    try{localStorage.setItem('scrip:audioPromptSeen','true');}catch{}
-    setAudioPrompt(false);
-    if(!showSteps)return;
-    // Land them in the panel the steps refer to, not just on the steps.
-    setAudioSource('local');
-    setAudioSettingsOpen(true);
-    setReadMobileSheet('settings');
-    setTimeout(()=>setModal({type:'audiohelp'}),380);
-  }
   function dlDisplayName(vid){
     if(vid==='strongs')return "Strong's Concordance";
     if(vid==='webster')return "Webster's 1828 Dictionary";
@@ -6248,7 +6227,7 @@ function App(){
                     <span style={{fontFamily:FB,fontSize:13,color:T.dim}}>Don't show this again</span>
                   </label>
                   <div style={{display:'flex',gap:10}}>
-                    <button type="button" onClick={()=>{if(kjvPromptNoShow)localStorage.setItem('scrip:audio:kjvPromptDismissed','true');setShowKjvAudioPrompt(false);setReadMobileSheet('settings');setAudioSettingsOpen(true);}}
+                    <button type="button" onClick={()=>{if(kjvPromptNoShow)localStorage.setItem('scrip:audio:kjvPromptDismissed','true');setShowKjvAudioPrompt(false);setAudioSource('local');try{localStorage.setItem('scrip:audio:source','local');}catch{}setAudioSettingsOpen(true);setReadMobileSheet('settings');}}
                       style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>
                       Go to Settings
                     </button>
@@ -6615,21 +6594,6 @@ function App(){
 
           {/* Bottom nav */}
           <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`}}>
-            {audioPrompt&&(
-              <div className="no-print" style={{display:'flex',alignItems:'center',gap:9,padding:'9px 12px',borderBottom:`1px solid ${T.bdS}`}}>
-                <div style={{flex:1,minWidth:0,fontFamily:FB,fontSize:12.5,color:T.mut,lineHeight:1.4}}>
-                  We highly recommend downloading the free KJV audio for the best experience
-                </div>
-                <button type="button" onClick={()=>dismissAudioPrompt(true)}
-                  style={{flexShrink:0,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,fontWeight:600,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                  Download now
-                </button>
-                <button type="button" onClick={()=>dismissAudioPrompt(false)} title="Dismiss" aria-label="Dismiss"
-                  style={{flexShrink:0,background:'none',border:'none',color:T.dim,cursor:'pointer',width:28,height:28,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:14,lineHeight:1}}>
-                  ✕
-                </button>
-              </div>
-            )}
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
