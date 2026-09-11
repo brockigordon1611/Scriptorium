@@ -7638,7 +7638,7 @@ function App(){
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
             {labels[day-1].map((r,i)=>(
               <button key={i} type="button" onClick={()=>open(r.b,r.c,r.v)}
-                style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:15,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
                 {r.label}
               </button>
             ))}
@@ -7648,7 +7648,7 @@ function App(){
           <button type="button" onClick={()=>planToggleDay(day)}
             title={done.has(day)?'Mark as not read':'Mark as read'} aria-label={done.has(day)?'Mark as not read':'Mark as read'}
             style={{flexShrink:0,width:26,height:26,marginTop:1,borderRadius:7,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',
-              background:done.has(day)?T.gF:'transparent',border:`1.5px solid ${done.has(day)?T.gD:T.bd}`,color:T.gT,fontSize:13,lineHeight:1,padding:0}}>
+              background:done.has(day)?T.gF:'transparent',border:`1.5px solid ${done.has(day)?T.gD:T.bd}`,color:T.gT,fontSize:14,lineHeight:1,padding:0}}>
             {done.has(day)?'✓':''}
           </button>
         );
@@ -7658,8 +7658,8 @@ function App(){
           <Modal title="Reading Plan" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} hideBack fade
             subHeader={<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:7}}>
-                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
-                <span style={{fontFamily:FB,fontSize:13,color:T.dim}}>{done.size} of {PLAN_DAYS} days</span>
+                <span style={{fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM}}>The Bible in a year</span>
+                <span style={{fontFamily:FB,fontSize:14,color:T.dim}}>{done.size} of {PLAN_DAYS} days</span>
               </div>
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
@@ -7671,7 +7671,7 @@ function App(){
                 <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
                   <Tick day={today}/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
+                    <div style={{fontFamily:FS,fontSize:13.5,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
                       Today · {planDateLabel(today,planState.year)}
                     </div>
                     <Passages day={entry.day}/>
@@ -7679,10 +7679,10 @@ function App(){
                 </div>
               </div>
             ):(
-              <div key={entry.day} style={{display:'flex',alignItems:'flex-start',gap:11,padding:'9px 2px',borderTop:`1px solid ${T.bd}`}}>
+              <div key={entry.day} style={{display:'flex',alignItems:'flex-start',gap:11,padding:'11px 2px',borderTop:`1px solid ${T.bd}`}}>
                 <Tick day={entry.day}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:FB,fontSize:12,color:done.has(entry.day)?T.dim:T.mut}}>
+                  <div style={{fontFamily:FB,fontSize:14,color:done.has(entry.day)?T.dim:T.mut}}>
                     {planDateLabel(entry.day,planState.year)}
                   </div>
                   <Passages day={entry.day}/>
