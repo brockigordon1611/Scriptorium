@@ -3,6 +3,7 @@
   "appName": "Scriptorium",
   "webDir": "dist",
   "ios": {
-    "webContentsDebuggingEnabled": false
+    "webContentsDebuggingEnabled": false,
+    "scheme": "Scriptorium TR"
   }
 }
