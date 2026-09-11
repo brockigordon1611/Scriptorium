@@ -1985,6 +1985,15 @@ function useEdgeFade(enabled,T,key){
   const ramp=dir=>`linear-gradient(to ${dir}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
   return{ref,top,bot,ramp};
 }
+function FadeScroll({children,T,fadeKey,height=36,className,style}){
+  const edge=useEdgeFade(true,T,fadeKey);
+  return(
+    <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+      <div ref={edge.ref} className={className} style={{overflowY:'auto',flex:1,minHeight:0,...style}}>{children}</div>
+      <EdgeFades fade={edge} height={height}/>
+    </div>
+  );
+}
 function EdgeFades({fade,height=96,top=true,bottom=true}){
   return(<>
     {top&&<div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?1:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>}
@@ -6316,13 +6325,12 @@ function App(){
             return(
             <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} fade="bottom" fadeKey={navStep}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
-                {/* Header row — back button + title — consistent across all steps.
-                    Pinned rather than scrolled away, so the book and chapter stay
-                    readable while the list runs underneath, and the gold rule is
-                    the edge it disappears behind. */}
-                <div style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,paddingBottom:9,marginBottom:8,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <div aria-hidden style={{position:'absolute',left:0,right:0,bottom:0,height:2,background:T.accentLine}}/>
-                  <div style={{position:'absolute',left:0,top:0,bottom:9,display:'flex',alignItems:'center'}}>
+                {/* Header row and the gold rule under it are pinned together, so the
+                    book and chapter stay readable while the list runs on behind
+                    them — the rule is the edge it disappears behind. */}
+                <div style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,marginBottom:10}}>
+                <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
                     <button type="button" onClick={closeReadSheet}
                       style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -6344,7 +6352,7 @@ function App(){
                     {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
                   {navStep==='verse'&&(
-                    <div style={{position:'absolute',right:0,top:0,bottom:9,display:'flex',alignItems:'center'}}>
+                    <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={()=>{if(isP){setParallelVs(1);}closeReadSheet();}}
                         style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
                         Ch {navPickedCh} →
@@ -6352,7 +6360,8 @@ function App(){
                     </div>
                   )}
                 </div>
-                <div style={{height:1,background:T.accentLine,marginBottom:10}}/>
+                <div style={{height:1,background:T.accentLine}}/>
+                </div>
 
                 {/* Book grid — two independent scrollable columns */}
                 {navStep==='book'&&(
@@ -6360,14 +6369,16 @@ function App(){
                     {[{label:'Old Testament',filter:b=>b.n<=39},{label:'New Testament',filter:b=>b.n>=40}].map(({label,filter})=>(
                       <div key={label} style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
                         <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.28em',color:T.gM,textTransform:'uppercase',fontWeight:600,textAlign:'center',marginBottom:6,flexShrink:0,width:'100%',wordSpacing:'0.4em'}}>{label}</div>
-                        <div style={{overflowY:'auto',flex:1,display:'flex',flexDirection:'column',gap:4}}>
+                        {/* These columns scroll inside the sheet rather than
+                            scrolling it, so they carry their own edges. */}
+                        <FadeScroll T={T} className="sheet-scroll" style={{display:'flex',flexDirection:'column',gap:4}}>
                           {BIBLE.filter(filter).map(b=>(
                             <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
                               style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
                               {bookName(b,versionLang(readVid))}
                             </button>
                           ))}
-                        </div>
+                        </FadeScroll>
                       </div>
                     ))}
                   </div>
