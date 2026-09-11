@@ -3645,10 +3645,34 @@ function App(){
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsClosing,setStrongsClosing]=useState(false);
+  // Drag-to-dismiss, on the same terms as the sheets: distance from a ref so a
+  // flick is not judged on a stale render, and a short fast one counts.
+  const[strongsDrag,setStrongsDrag]=useState(0);
+  const[strongsDragMode,setStrongsDragMode]=useState(false); // inline transform takes over from the open animation
+  const strongsDragRef=useRef(0);
+  const strongsDragStart=useRef(null);
+  const strongsDragT=useRef(0);
   const closeStrongsPopup=React.useCallback(()=>{
+    setStrongsDragMode(false);setStrongsDrag(0);
     setStrongsClosing(true);
     setTimeout(()=>{setStrongsPopup(null);setStrongsVersePreview(null);setStrongsClosing(false);},260);
   },[]);
+  function strongsTouchStart(e){
+    strongsDragStart.current=e.touches[0].clientY;strongsDragT.current=Date.now();
+    strongsDragRef.current=0;setStrongsDragMode(true);
+  }
+  function strongsTouchMove(e){
+    if(strongsDragStart.current===null)return;
+    const dy=Math.max(0,e.touches[0].clientY-strongsDragStart.current); // downward only
+    strongsDragRef.current=dy;setStrongsDrag(dy);
+  }
+  function strongsTouchEnd(){
+    const dist=strongsDragRef.current;
+    const velocity=dist/Math.max(1,Date.now()-strongsDragT.current);
+    strongsDragStart.current=null;strongsDragRef.current=0;
+    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX)){closeStrongsPopup();return;}
+    setStrongsDrag(0); // drag mode stays on so the transition below eases it back
+  }
   const[strongsLoading,setStrongsLoading]=useState(false);
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
   const[strongsVersePreview,setStrongsVersePreview]=useState(null); // {bn,ch,vs,label,text,loading}
@@ -6755,9 +6779,18 @@ function App(){
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
-              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both'}},
+              React.createElement('div',{onClick:e=>e.stopPropagation(),style:{background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',animation:strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both',
+                // A finished animation with fill:both outranks an inline transform,
+                // so dragging has to switch the animation off and drive the panel
+                // itself. Releasing short of the threshold eases it back.
+                ...(strongsDragMode?{animation:'none',transform:`translateY(${strongsDrag}px)`,transition:strongsDrag>0?'none':'transform .2s ease-out'}:{})}},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
-              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              // The grab strip takes its height back out of the padding below, so
+              // nothing on the panel moves to make room for it.
+              React.createElement('div',{onTouchStart:strongsTouchStart,onTouchMove:strongsTouchMove,onTouchEnd:strongsTouchEnd,
+                style:{display:'flex',justifyContent:'center',padding:'7px 0 3px',flexShrink:0,touchAction:'none',cursor:'grab'}},
+                React.createElement('div',{style:{width:36,height:4,background:T.bdA,borderRadius:2}})),
+              React.createElement('div',{style:{overflow:'auto',padding:'6px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
