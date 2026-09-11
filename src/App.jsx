@@ -3579,12 +3579,18 @@ function App(){
   const searchResultScrollRef=useRef(0); // saved scroll pos of results list
   const readViewScrollRef=useRef(0);    // saved scroll pos of reading view
   const scrollRafPending=useRef(false);
+  const autoScrollUntil=useRef(0); // reading along scrolls the pane itself; ignore those events
   const scrollPendingState=useRef(null);
   function handleReadScroll(e){
     if(readSearchRes&&readSearchResultsOpen){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
     // Fullscreen logic runs immediately (no RAF needed — it doesn't touch layout)
-    if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;}
+    // Scrolling to keep up with the voice fires the same events a finger does,
+    // and a smooth scroll fires a stream of them in both directions as it
+    // settles. They were accumulating into the threshold below and hiding the
+    // top bar on their own, mid-chapter and often mid-Settings.
+    if(Date.now()<autoScrollUntil.current){scrollDelta.current=0;}
+    else if(sy<=5){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;}
     else{
       if(Math.sign(dy)!==Math.sign(scrollDelta.current))scrollDelta.current=0;
       scrollDelta.current+=dy;
@@ -3839,6 +3845,17 @@ function App(){
   const[parallelChapters,setParallelChapters]=useState({});
   const[parallelLoading,setParallelLoading]=useState(false);
   const[parallelMobileSheet,setParallelMobileSheet]=useState(null);
+  // The utterance callbacks are built once per chapter, so they would otherwise
+  // go on seeing whatever was open at the moment playback started. A ref read at
+  // call time sees what is open now.
+  const anySheetOpenRef=useRef(false);
+  anySheetOpenRef.current=!!(readMobileSheet||mobileSheet||modal||parallelMobileSheet);
+  // Catch up once the sheet closes, so the reader is where the voice is.
+  useEffect(()=>{
+    if(anySheetOpenRef.current||!audioPlaying||!audioAutoScroll)return;
+    const v=currentVerseRef.current;
+    if(v!=null)scrollToVerse(v);
+  },[readMobileSheet,mobileSheet,modal,parallelMobileSheet]);
 
   // ── Dictionary state ──
   const[dictSearchQ,setDictSearchQ]=useState('');
@@ -3872,8 +3889,15 @@ function App(){
   const scrollToVerse=(v)=>{
     if(!readRef.current)return;
     const el=readRef.current.querySelector(`[data-verse="${v}"]`);
-    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+    if(!el)return;
+    // Held open past the smooth scroll's own settling, and pushed forward by
+    // each new verse, so the run of events it emits is never read as a gesture.
+    autoScrollUntil.current=Date.now()+900;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
   };
+  // Reading along behind an open sheet scrolls a page nobody can see, and it
+  // was that scroll that pulled the top bar out from under whatever was open.
+  const audioScrollTo=(v)=>{if(!anySheetOpenRef.current)scrollToVerse(v);};
   const stopAudio=()=>{
     audioModeRef.current=null;currentVerseRef.current=null;
     setAudioLoaded(false);setCurrentVerse(null);
@@ -4007,7 +4031,7 @@ function App(){
         versesToSpeak.forEach(({verse,text})=>{
           const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
           u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
-          u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+          u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)audioScrollTo(verse);};
           u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
           audioUtterRef.current.push(u);
         });
@@ -4089,13 +4113,13 @@ function App(){
       const {verse,text}=readVerses[i];
       const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
       u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
-      u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+      u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)audioScrollTo(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
       audioUtterRef.current.push(u);
     }
     audioUtterRef.current.forEach(u=>TTS.speak(u));
     currentVerseRef.current=targetVerse;setCurrentVerse(targetVerse);
-    if(audioAutoScroll)scrollToVerse(targetVerse);
+    if(audioAutoScroll)audioScrollTo(targetVerse);
   };
 
   // Called directly from onClick handlers so iOS WKWebView recognises the user gesture
@@ -4113,7 +4137,7 @@ function App(){
       const {verse,text}=readVerses[i];
       const u=new SpeechUtter(text.replace(/<[^>]+>/g,''));
       u.lang=uttLang;u.rate=audioRate;if(voice)u.voice=voice;
-      u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)scrollToVerse(verse);};
+      u.onstart=()=>{currentVerseRef.current=verse;setCurrentVerse(verse);if(audioAutoScroll)audioScrollTo(verse);};
       u.onend=()=>{if(verse===lastVerse){audioModeRef.current=null;setAudioPlaying(false);setCurrentVerse(null);if(audioAutoAdvance)handleNextChapter();}};
       audioUtterRef.current.push(u);
     }
@@ -4220,7 +4244,7 @@ function App(){
           if(currentVerseRef.current!==vNum){
             currentVerseRef.current=vNum;
             setCurrentVerse(vNum);
-            if(audioAutoScroll)scrollToVerse(vNum);
+            if(audioAutoScroll)audioScrollTo(vNum);
           }
           break;
         }
