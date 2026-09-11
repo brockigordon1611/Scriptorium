@@ -3826,7 +3826,7 @@ function App(){
     const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
     const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
     const src=srcOverride||(audioSource==='auto'
-      ?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
+      ?(readVid==='kjv'?((readBook<=39?otInstalled:ntInstalled)?'local':'speech'):DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
       :(audioSource==='off'?null:audioSource));
     try{
       if(src==='fcbh'){
@@ -3861,8 +3861,12 @@ function App(){
             const result=await Filesystem.getUri({directory:Directory.Documents,path:nativePath});
             audioElRef.current.src=Capacitor.convertFileSrc(result.uri);
           }catch{
-            setAudioError('Audio file not found. Import the KJV audio ZIP in Settings → Audio Playback.');
-            setAudioLoading(false);return;
+            // getUri builds a path without checking it exists, so a missing pack
+            // used to sail through to a src that silently never plays. Fall back
+            // to speech rather than leaving the button dead.
+            setAudioLoading(false);
+            loadChapterAudioRef.current?.('speech');
+            return;
           }
         }else{
           audioElRef.current.src=localAudioUrl(readBook,readCh);
@@ -4200,10 +4204,26 @@ function App(){
   // fail quietly and leaving people wondering what is missing.
   const[online,setOnline]=useState(true);
   useEffect(()=>{
-    let h;
-    Network.getStatus().then(st=>setOnline(st.connected)).catch(()=>setOnline(true));
-    Network.addListener('networkStatusChange',st=>setOnline(st.connected)).then(x=>{h=x;}).catch(()=>{});
-    return()=>{if(h)h.remove();};
+    let h,killed=false;
+    // networkStatusChange reported going offline but never coming back, so the
+    // marker stuck. Re-read the real status from several angles instead of
+    // trusting one event: the browser's own online/offline events, every
+    // foreground, and a slow poll as the backstop.
+    const check=()=>Network.getStatus().then(st=>{if(!killed)setOnline(st.connected);}).catch(()=>{if(!killed)setOnline(true);});
+    check();
+    Network.addListener('networkStatusChange',st=>{if(!killed)setOnline(st.connected);}).then(x=>{h=x;}).catch(()=>{});
+    window.addEventListener('online',check);
+    window.addEventListener('offline',check);
+    document.addEventListener('visibilitychange',check);
+    const poll=setInterval(check,15000);
+    return()=>{
+      killed=true;
+      if(h)h.remove();
+      window.removeEventListener('online',check);
+      window.removeEventListener('offline',check);
+      document.removeEventListener('visibilitychange',check);
+      clearInterval(poll);
+    };
   },[]);
   useEffect(()=>{
     const measure=()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);};
@@ -5132,11 +5152,6 @@ function App(){
       {/* ═══ HEADER ═══ */}
       <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0}}/>
-        {!online&&(
-          <div style={{position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0,display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
-            <span style={{background:T.amb,border:`1px solid ${T.ambTxt}55`,borderTop:'none',borderRadius:'0 0 7px 7px',color:T.ambTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.12em',textTransform:'uppercase',padding:'2px 10px 3px'}}>Offline</span>
-          </div>
-        )}
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
@@ -6333,7 +6348,7 @@ function App(){
                 if(readVid==='kjv'&&!packInstalled&&!kjvPromptShownRef.current&&!localStorage.getItem('scrip:audio:kjvPromptDismissed')){kjvPromptShownRef.current=true;setKjvPromptNoShow(false);setShowKjvAudioPrompt(true);return;}
                 if(audioPlaying){audioElRef.current?.pause();TTS.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
-                const src=audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+                const src=audioSource==='auto'?(readVid==='kjv'?((readBook<=39?otInstalled:ntInstalled)?'local':'speech'):DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
                 if(src==='speech'||audioModeRef.current==='speech'){
                   const hasSelection=readSelVerses.size>0;
                   const sv=hasSelection?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
@@ -6741,7 +6756,7 @@ function App(){
 
           {/* Bottom nav */}
           <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`}}>
-            <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
+            <div className={online?"bottom-nav-safe":undefined} style={{padding:online?'5px 12px 0 12px':'5px 12px 6px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
@@ -6754,6 +6769,11 @@ function App(){
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
             </div>
+            {!online&&(
+              <div style={{display:'flex',justifyContent:'center',padding:`3px 12px calc(env(safe-area-inset-bottom,0px) + 6px)`,borderTop:`1px solid ${T.bdS}`}}>
+                <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline &middot; reading from your local copy</span>
+              </div>
+            )}
             </div>
         </div>
       )}

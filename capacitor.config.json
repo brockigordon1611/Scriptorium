@@ -5,5 +5,14 @@
   "ios": {
     "webContentsDebuggingEnabled": false,
     "scheme": "Scriptorium TR"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 1600,
+      "backgroundColor": "#0e0d0b",
+      "showSpinner": false,
+      "useDialog": false
+    }
   }
 }
