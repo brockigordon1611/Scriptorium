@@ -5074,12 +5074,10 @@ function App(){
       </div>
     );
   }
-  if(!authChecked)return(<div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg}}><style>{CSS}</style><Spinner/></div>);
-  if(!user)return <AuthPanel onAuth={u=>setUser(u)}/>;
-  if(recoveryMode)return <RecoveryPanel T={D} onDone={()=>setRecoveryMode(false)}/>;
-
-  // ── Loading ──
-  if(!ready||!data)return(
+  // One screen for both waits — while auth resolves and while study data loads.
+  // The auth phase used to be a bare spinner on black, so opening the app meant
+  // staring at an empty screen before the real one appeared.
+  const LoadingScreen=({msg})=>(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg}}>
       <style>{CSS}</style>
       <div className="fade-up" style={{textAlign:'center'}}>
@@ -5088,9 +5086,18 @@ function App(){
       </div>
       <div className="fade-up stagger-2" style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginTop:12}}>
         <div style={{width:160,height:2,overflow:'hidden',background:D.bd,borderRadius:1}}><div style={{width:'100%',height:'100%',background:'linear-gradient(90deg,transparent,#c8a84e,transparent)',backgroundSize:'200% 100%',animation:'goldLine 1.5s ease-in-out infinite'}}/></div>
-        <div className="breathe" style={{fontFamily:FB,fontStyle:'italic',fontSize:15,color:D.gM}}>{loadMsg||'Loading…'}</div>
+        <div className="breathe" style={{fontFamily:FB,fontStyle:'italic',fontSize:15,color:D.gM}}>{msg}</div>
       </div>
     </div>
+  );
+
+  if(!authChecked)return <LoadingScreen msg="Loading…"/>;
+  if(!user)return <AuthPanel onAuth={u=>setUser(u)}/>;
+  if(recoveryMode)return <RecoveryPanel T={D} onDone={()=>setRecoveryMode(false)}/>;
+
+  // ── Loading ──
+  if(!ready||!data)return(
+    <LoadingScreen msg={loadMsg||'Loading study data…'}/>
   );
 
   const filtered=getFiltered();
