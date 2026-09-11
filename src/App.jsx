@@ -3646,7 +3646,12 @@ function App(){
     if(readMobileSheet!=='nav')return;
     requestAnimationFrame(()=>{
       if(navContentRef.current){
-        const h=navContentRef.current.scrollHeight+8+32; // content + top/bottom padding
+        // Everything the panel holds besides the content: the body's own padding
+        // (20 above, 32 below), the grab strip at the foot of it, and the gold
+        // rule under that. This counted 40 against an actual 71, so the sheet was
+        // always ~30px shorter than what it held — which left the body forever a
+        // little bit scrollable, and its bottom fade forever switched on.
+        const h=navContentRef.current.scrollHeight+20+32+16+3;
         const maxH=window.innerHeight-navH-50;
         setNavSheetH(Math.min(h,maxH));
       }
@@ -6323,7 +6328,7 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} fade="bottom" fadeKey={navStep}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row and the gold rule under it are pinned together, so the
                     book and chapter stay readable while the list runs on behind
