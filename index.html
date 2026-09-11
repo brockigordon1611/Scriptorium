@@ -106,6 +106,27 @@
   </div>
   <style>@keyframes bootLine{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
   <script>
+    /* The native splash is torn down on a timer that knows nothing about the
+       WebView, so whatever sits between the two — black — shows through until
+       this screen paints. Hide it the moment the boot screen is on the glass
+       instead. Hiding early is always allowed, so this only ever shortens the
+       splash; launchAutoHide stays on as the backstop, and a JS failure here
+       can strand nobody. */
+    (function(){
+      var done=false;
+      window.__hideSplash=function(){
+        if(done)return;
+        try{
+          var C=window.Capacitor,p=C&&C.Plugins&&C.Plugins.SplashScreen;
+          /* Only count it as done once the call actually went out, or a bridge
+             that was not ready yet would silently cancel the retry below. */
+          if(p&&p.hide){p.hide({fadeOutDuration:250});done=true;}
+        }catch(e){}
+      };
+      requestAnimationFrame(function(){requestAnimationFrame(window.__hideSplash);});
+    })();
+  </script>
+  <script>
     var _startupErrorShown = false;
     window.addEventListener('error', function(e) {
       var root = document.getElementById('root');
