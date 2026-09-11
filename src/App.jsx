@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { MEEK_WEEKS } from './meekPlan.js';
 
 // Some in-app browsers ship no speech synthesis at all — Facebook's and
 // Instagram's on Android among them. A bare `TTS` reference is a
@@ -1032,47 +1033,53 @@ const BIBLE = [
 function bookName(b,lang){if(!b)return'';if(lang==='ES'&&b.nameES)return b.nameES;return b.name;}
 function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN';}
 
-// ── Reading plan ──────────────────────────────────────────────────────────
-// Built by dividing the canon evenly across the year from the book data already
-// here, rather than reproducing a published plan. Old and New Testament advance
-// in parallel — 929 and 260 chapters, so roughly 2-3 OT and 0-1 NT a day — which
-// avoids leaving the Gospels until October the way a straight run through does.
+// ── Reading plan ──────────────────────────────────────────────
+// Meek's Daily Bible Reading Plan: 52 weeks of a Psalm on Sunday and a paired
+// Old and New Testament reading the other six days.
+//
+// The printed plan is numbered by week and assumes you begin on a Sunday. This
+// anchors week 1 to the first Sunday of the year instead, so the Psalms always
+// fall on a real Sunday. 52 x 7 = 364 is a whole number of weeks, so wrapping
+// the few days before that first Sunday back onto the end of week 52 covers
+// them without knocking any weekday off its own row.
 const PLAN_DAYS=365;
-const PLAN_PSALMS=19;   // book number
-// Sundays are given to the Psalms; the other six days pair an Old Testament
-// reading with a New Testament one. Which day numbers fall on a Sunday moves
-// with the year, so the plan is built per year rather than once.
+const PLAN_CYCLE=MEEK_WEEKS.length*7;
+function planFirstSunday(year){
+  for(let d=1;d<=7;d++)if(new Date(year,0,d).getDay()===0)return d;
+  return 1;
+}
 const _yearPlans={};
 function buildYearPlan(year){
   if(_yearPlans[year])return _yearPlans[year];
-  const flat=(from,to,skip)=>{const out=[];for(const b of BIBLE){if(b.n<from||b.n>to||b.n===skip)continue;for(let c=1;c<=b.v.length;c++)out.push({b:b.n,c});}return out;};
-  const ot=flat(1,39,PLAN_PSALMS),nt=flat(40,66),ps=flat(PLAN_PSALMS,PLAN_PSALMS);
-  const sundays=[],weekdays=[];
-  for(let d=1;d<=PLAN_DAYS;d++)(new Date(year,0,d).getDay()===0?sundays:weekdays).push(d);
-  const slice=(arr,i,n)=>arr.slice(Math.round(i*arr.length/n),Math.round((i+1)*arr.length/n));
-  const out=Array.from({length:PLAN_DAYS},(_,i)=>({day:i+1,ot:[],nt:[]}));
-  sundays.forEach((d,i)=>{out[d-1].ot=slice(ps,i,sundays.length);});
-  weekdays.forEach((d,i)=>{out[d-1].ot=slice(ot,i,weekdays.length);out[d-1].nt=slice(nt,i,weekdays.length);});
+  const fs=planFirstSunday(year);
+  const out=Array.from({length:PLAN_DAYS},(_,i)=>{
+    const day=i+1;
+    const idx=((day-fs)%PLAN_CYCLE+PLAN_CYCLE)%PLAN_CYCLE;
+    const week=Math.floor(idx/7),row=idx%7;
+    const[ps,ot,nt]=MEEK_WEEKS[week];
+    return row===0?{day,week:week+1,ot:[ps],nt:[]}
+                  :{day,week:week+1,ot:[ot[row-1]],nt:[nt[row-1]]};
+  });
   _yearPlans[year]=out;
   return out;
 }
-// Collapse runs within a book: Genesis 1,2,3 -> "Genesis 1–3"
-function planRanges(chs,lang){
-  const runs=[];
-  for(const {b,c} of chs){
-    const last=runs[runs.length-1];
-    if(last&&last.b===b&&c===last.to+1){last.to=c;continue;}
-    runs.push({b,from:c,to:c});
-  }
-  return runs.map(r=>{
-    const nm=bookName(BIBLE.find(x=>x.n===r.b),lang);
-    return {b:r.b,c:r.from,label:r.from===r.to?`${nm} ${r.from}`:`${nm} ${r.from}\u2013${r.to}`};
-  });
+// A reading is [book, fromChapter, fromVerse, toChapter, toVerse]. Verse 0 means
+// the whole chapter; one that spans a whole book is shown as just its name.
+function planRefLabel(r,lang){
+  const[b,c1,v1,c2,v2]=r;
+  const bk=BIBLE.find(x=>x.n===b);
+  if(!bk)return'';
+  const nm=bookName(bk,lang),last=bk.v.length;
+  if(c1===1&&c2===last&&!v1&&!v2)return nm;
+  if(!v1&&!v2)return c1===c2?`${nm} ${c1}`:`${nm} ${c1}\u2013${c2}`;
+  if(c1===c2)return `${nm} ${c1}:${v1||1}\u2013${v2||bk.v[c2-1]}`;
+  return `${nm} ${c1}:${v1||1}\u2013${c2}:${v2||bk.v[c2-1]}`;
 }
 const _planLabels={};
 function planYearLabels(year,lang){
   const k=year+':'+lang;
-  if(!_planLabels[k])_planLabels[k]=buildYearPlan(year).map(e=>[...planRanges(e.ot,lang),...planRanges(e.nt,lang)]);
+  if(!_planLabels[k])_planLabels[k]=buildYearPlan(year).map(e=>
+    [...e.ot,...e.nt].map(r=>({b:r[0],c:r[1],v:r[2]||1,label:planRefLabel(r,lang)})));
   return _planLabels[k];
 }
 function planDayOfYear(d=new Date()){
@@ -1082,7 +1089,7 @@ function planDateLabel(day,year){
   const dt=new Date(year,0,1); dt.setDate(day);
   return dt.toLocaleDateString(undefined,{month:'short',day:'numeric'});
 }
-const PLAN_KEY='scrip:plan:v2';
+const PLAN_KEY='scrip:plan:v3';
 function planLoad(){
   try{
     const raw=JSON.parse(localStorage.getItem(PLAN_KEY)||'null');
@@ -7626,11 +7633,11 @@ function App(){
         const labels=planYearLabels(planState.year,lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
-        const open=(b,c)=>{setReadBook(b);setReadCh(c);setTab('read');closeModal();};
+        const open=(b,c,v)=>{setReadBook(b);setReadCh(c);if(v>1)readScrollToVerse.current=v;setTab('read');closeModal();};
         const Passages=({day})=>(
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
             {labels[day-1].map((r,i)=>(
-              <button key={i} type="button" onClick={()=>open(r.b,r.c)}
+              <button key={i} type="button" onClick={()=>open(r.b,r.c,r.v)}
                 style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 10px',cursor:'pointer',whiteSpace:'nowrap'}}>
                 {r.label}
               </button>
