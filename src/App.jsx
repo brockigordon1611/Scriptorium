@@ -1324,8 +1324,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   .read-area::-webkit-scrollbar{display:none;}
   .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:var(--ac-scrollbar-read,rgba(180,160,100,0.5));pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;}
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
-  .slide-down-sheet>div:first-child{scrollbar-width:none;-ms-overflow-style:none;}
-  .slide-down-sheet>div:first-child::-webkit-scrollbar{display:none;}
+  .sheet-scroll{scrollbar-width:none;-ms-overflow-style:none;}
+  .sheet-scroll::-webkit-scrollbar{display:none;}
   .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
@@ -1959,6 +1959,39 @@ function GripReach({up}){
   return <div aria-hidden style={{position:'absolute',left:0,right:0,height:GRIP_REACH,zIndex:1,touchAction:'none',...(up?{bottom:'100%'}:{top:'100%'})}}/>;
 }
 
+// Softens the top and bottom edges of a scrolling list so it reads as
+// scrollable. Each edge only shows when there is something past it. `key` is
+// whatever changes the content without scrolling it — the nav sheet swapping
+// between books, chapters and verses, for instance.
+function useEdgeFade(enabled,T,key){
+  const ref=React.useRef(null);
+  const[top,setTop]=React.useState(false);
+  const[bot,setBot]=React.useState(false);
+  React.useEffect(()=>{
+    if(!enabled)return;
+    const el=ref.current;
+    if(!el)return;
+    const update=()=>{
+      const t=el.scrollTop>8,b=el.scrollTop+el.clientHeight<el.scrollHeight-8;
+      setTop(p=>p===t?p:t);setBot(p=>p===b?p:b);
+    };
+    update();
+    el.addEventListener('scroll',update,{passive:true});
+    const t0=setTimeout(update,80);   // a body that scrolls itself on open
+    return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);};
+  },[enabled,key]);
+  // A short linear ramp reads as a hard band rather than a fade, so this one is
+  // long and eased. The hex suffix is the alpha channel on T.bgCard.
+  const ramp=dir=>`linear-gradient(to ${dir}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
+  return{ref,top,bot,ramp};
+}
+function EdgeFades({fade,height=96}){
+  return(<>
+    <div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?1:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>
+    <div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?1:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>
+  </>);
+}
+
 // How far a sheet has to be dragged before it dismisses. 80px was a long,
 // deliberate haul with no reward for speed, so a flick — the thing anyone
 // actually does — did nothing at all. A short fast one counts now, on the same
@@ -1969,27 +2002,7 @@ const SHEET_FLICK_PX=18;
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(-1,onClose); // top sheet: leaves upwards
   const modalOverlayRef=React.useRef(null);
-  // `fade` softens the top and bottom edges of the body so a long list reads as
-  // scrollable. Each edge only shows when there is content past it.
-  const bodyRef=React.useRef(null);
-  const[fadeTop,setFadeTop]=React.useState(false);
-  const[fadeBot,setFadeBot]=React.useState(false);
-  React.useEffect(()=>{
-    if(!fade)return;
-    const el=bodyRef.current;
-    if(!el)return;
-    const update=()=>{
-      const t=el.scrollTop>8,b=el.scrollTop+el.clientHeight<el.scrollHeight-8;
-      setFadeTop(p=>p===t?p:t);setFadeBot(p=>p===b?p:b);
-    };
-    update();
-    el.addEventListener('scroll',update,{passive:true});
-    const t0=setTimeout(update,80);   // a body that scrolls itself on open
-    return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);};
-  },[fade]);
-  // A short linear ramp reads as a hard band rather than a fade, so this one is
-  // long and eased. The hex suffix is the alpha channel on T.bgCard.
-  const fadeRamp=d=>`linear-gradient(to ${d}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
+  const edge=useEdgeFade(fade,T);
   React.useEffect(()=>{
     if(!topSheet)return;
     const el=modalOverlayRef.current;
@@ -2031,11 +2044,8 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           <div className="modal-subhead" style={{flexShrink:0,padding:'0 24px 16px'}}>{subHeader}</div>
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-          <div ref={bodyRef} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
-          {fade&&(<>
-            <div style={{position:'absolute',top:0,left:0,right:0,height:96,pointerEvents:'none',opacity:fadeTop?1:0,transition:'opacity .18s ease',background:fadeRamp('bottom')}}/>
-            <div style={{position:'absolute',bottom:0,left:0,right:0,height:96,pointerEvents:'none',opacity:fadeBot?1:0,transition:'opacity .18s ease',background:fadeRamp('top')}}/>
-          </>)}
+          <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
+          {fade&&<EdgeFades fade={edge}/>}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div {...dragHandlers} style={{position:'relative',display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><GripReach up/><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
@@ -3116,7 +3126,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad,fade,fadeKey}){
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
   const overlayRef=React.useRef(null);
@@ -3143,6 +3153,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
   },[]);
 
   function dismiss(){setInternalClosing(true);onClose();}
+  const edge=useEdgeFade(fade&&!noScroll,T,fadeKey);
   const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(fromTop?-1:1,dismiss);
 
 
@@ -3165,8 +3176,11 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
-        <div style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
-          {children}
+        <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+          <div ref={edge.ref} className="sheet-scroll" style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
+            {children}
+          </div>
+          {fade&&!noScroll&&<EdgeFades fade={edge} height={72}/>}
         </div>
         {fromTop&&<div {...dragHandlers}
           style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
@@ -6300,7 +6314,7 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} fade fadeKey={navStep}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
                 {/* Header row — back button + title — consistent across all steps */}
                 <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>

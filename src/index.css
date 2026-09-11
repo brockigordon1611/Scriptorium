@@ -79,8 +79,8 @@ textarea::placeholder{color:var(--ac-dim);opacity:1;}
   .read-area::-webkit-scrollbar{display:none;}
   .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:var(--ac-scrollbar-read,rgba(180,160,100,0.5));pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;}
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
-  .slide-down-sheet>div:first-child{scrollbar-width:none;-ms-overflow-style:none;}
-  .slide-down-sheet>div:first-child::-webkit-scrollbar{display:none;}
+  .sheet-scroll{scrollbar-width:none;-ms-overflow-style:none;}
+  .sheet-scroll::-webkit-scrollbar{display:none;}
   .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
   .cmp-area{padding:10px 8px 20px!important;}
   .modal-overlay{padding:0!important;align-items:flex-start!important;}
