@@ -48,8 +48,18 @@
        text shows in Georgia for an instant and then settles into Cinzel. -->
   <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all';this.onload=null">
   <noscript><link rel="stylesheet" href="fonts/fonts.css"></noscript>
+  <!-- The two faces the boot screen below uses, fetched at parse time. Without
+       these it painted in Georgia — the designed screen arriving as plain serif,
+       because fonts.css above deliberately does not block the first paint. -->
+  <link rel="preload" as="font" type="font/woff2" href="fonts/cinzel-700-latin.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="fonts/cormorant-garamond-400-italic-latin.woff2" crossorigin>
 
   <style>
+    /* Under their own names so they stay out of the app's font stack, and
+       font-display:block so the screen waits the few milliseconds a local file
+       takes instead of flashing the fallback and then swapping. */
+    @font-face{font-family:'CinzelBoot';font-style:normal;font-weight:700;font-display:block;src:url(fonts/cinzel-700-latin.woff2) format('woff2');}
+    @font-face{font-family:'CormorantBoot';font-style:italic;font-weight:400;font-display:block;src:url(fonts/cormorant-garamond-400-italic-latin.woff2) format('woff2');}
     html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;}
     #root{height:100%;display:flex;flex-direction:column;overflow:hidden;}
     /* Safe-area-inset-top CSS variable — refined by JS below */
@@ -96,12 +106,12 @@
        React replaces all of this the moment it mounts. -->
   <div id="root">
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#0e0d0b;text-align:center;padding:0 24px;box-sizing:border-box">
-      <div style="font-family:Cinzel,Georgia,serif;font-size:28px;font-weight:700;color:#e4cc78;letter-spacing:0.08em;margin-bottom:8px">Scriptorium</div>
-      <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#8a7a48;line-height:1.7;margin-bottom:24px">"The words of the LORD are pure words: as silver tried<br>in a furnace of earth, purified seven times." &mdash; Psalm 12:6</div>
+      <div style="font-family:CinzelBoot,Cinzel,Georgia,serif;font-size:28px;font-weight:700;color:#e4cc78;letter-spacing:0.08em;margin-bottom:8px">Scriptorium</div>
+      <div style="font-family:CormorantBoot,'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:14px;color:#8a7a48;line-height:1.7;margin-bottom:24px">"The words of the LORD are pure words: as silver tried<br>in a furnace of earth, purified seven times." &mdash; Psalm 12:6</div>
       <div style="width:160px;height:2px;overflow:hidden;background:#28251e;border-radius:1px;margin-bottom:14px">
         <div style="width:100%;height:100%;background:linear-gradient(90deg,transparent,#c8a84e,transparent);background-size:200% 100%;animation:bootLine 1.5s ease-in-out infinite"></div>
       </div>
-      <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:15px;color:#8a7a48">Loading&hellip;</div>
+      <div style="font-family:CormorantBoot,'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:15px;color:#8a7a48">Loading&hellip;</div>
     </div>
   </div>
   <style>@keyframes bootLine{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
