@@ -1985,10 +1985,10 @@ function useEdgeFade(enabled,T,key){
   const ramp=dir=>`linear-gradient(to ${dir}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
   return{ref,top,bot,ramp};
 }
-function EdgeFades({fade,height=96}){
+function EdgeFades({fade,height=96,top=true,bottom=true}){
   return(<>
-    <div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?1:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>
-    <div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?1:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>
+    {top&&<div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?1:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>}
+    {bottom&&<div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?1:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>}
   </>);
 }
 
@@ -3180,7 +3180,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           <div ref={edge.ref} className="sheet-scroll" style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
             {children}
           </div>
-          {fade&&!noScroll&&<EdgeFades fade={edge} height={72}/>}
+          {fade&&!noScroll&&<EdgeFades fade={edge} height={48} top={fade!=='bottom'}/>}
         </div>
         {fromTop&&<div {...dragHandlers}
           style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
@@ -6314,11 +6314,15 @@ function App(){
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
             return(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} fade fadeKey={navStep}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={navSheetH?navSheetH+'px':undefined} fade="bottom" fadeKey={navStep}>
               <div ref={navContentRef} style={{overflowX:'hidden',maxWidth:'100%',paddingBottom:12}}>
-                {/* Header row — back button + title — consistent across all steps */}
-                <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                {/* Header row — back button + title — consistent across all steps.
+                    Pinned rather than scrolled away, so the book and chapter stay
+                    readable while the list runs underneath, and the gold rule is
+                    the edge it disappears behind. */}
+                <div style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,paddingBottom:9,marginBottom:8,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <div aria-hidden style={{position:'absolute',left:0,right:0,bottom:0,height:2,background:T.accentLine}}/>
+                  <div style={{position:'absolute',left:0,top:0,bottom:9,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
                     <button type="button" onClick={closeReadSheet}
                       style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -6340,7 +6344,7 @@ function App(){
                     {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
                   {navStep==='verse'&&(
-                    <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
+                    <div style={{position:'absolute',right:0,top:0,bottom:9,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={()=>{if(isP){setParallelVs(1);}closeReadSheet();}}
                         style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
                         Ch {navPickedCh} →
