@@ -14,6 +14,10 @@ const TTS=(typeof window!=='undefined'&&window.speechSynthesis)||{
   addEventListener(){},removeEventListener(){},paused:false,speaking:false,pending:false,
 };
 const SpeechUtter=(typeof window!=='undefined'&&window.SpeechSynthesisUtterance)||function(text){this.text=text;};
+// Older WebViews have no ResizeObserver. Both uses are in mount effects, so a
+// bare reference would throw during startup exactly the way speechSynthesis did;
+// the window resize listener beside them already covers the common case.
+const RObserver=(typeof window!=='undefined'&&window.ResizeObserver)||class{observe(){}unobserve(){}disconnect(){}};
 
 
 
@@ -185,8 +189,12 @@ let _idbInst=null;
 
 function idbOpen(){
   if(_idbInst)return Promise.resolve(_idbInst);
+  // Private-browsing modes can leave this undefined; reject so callers take
+  // their existing error paths instead of throwing out of the promise.
+  const idb=typeof window!=='undefined'?window.indexedDB:null;
+  if(!idb)return Promise.reject(new Error('IndexedDB unavailable'));
   return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    const req=idb.open(IDB_NAME,IDB_VER);
     req.onupgradeneeded=e=>{
       const db=e.target.result;
       // v1 stores
@@ -4086,7 +4094,7 @@ function App(){
   useEffect(()=>{
     const measure=()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);};
     measure();
-    const ro=new ResizeObserver(measure);
+    const ro=new RObserver(measure);
     if(navRef.current)ro.observe(navRef.current);
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
@@ -4104,7 +4112,7 @@ function App(){
   useEffect(()=>{
     const measure=()=>{if(bottomBarRef.current)setBottomBarH(bottomBarRef.current.offsetHeight);};
     measure();
-    const ro=new ResizeObserver(measure);
+    const ro=new RObserver(measure);
     if(bottomBarRef.current)ro.observe(bottomBarRef.current);
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
@@ -7627,10 +7635,15 @@ function App(){
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {modal?.type==='plan'&&(()=>{
-        const plan=buildYearPlan(planState.year);
+        // planState is read once at mount, so its year goes stale if the app is
+        // left open across New Year. The day number always comes from today's
+        // date, so take the year from there too or the two disagree and the
+        // Psalms stop landing on Sundays until the app is restarted.
+        const planYear=new Date().getFullYear();
+        const plan=buildYearPlan(planYear);
         const today=planDayOfYear();
         const lang=versionLang(readVid);
-        const labels=planYearLabels(planState.year,lang);
+        const labels=planYearLabels(planYear,lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
         const open=(b,c,v)=>{setReadBook(b);setReadCh(c);if(v>1)readScrollToVerse.current=v;setTab('read');closeModal();};
@@ -7672,7 +7685,7 @@ function App(){
                   <Tick day={today}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontFamily:FS,fontSize:13.5,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
-                      Today · {planDateLabel(today,planState.year)}
+                      Today · {planDateLabel(today,planYear)}
                     </div>
                     <Passages day={entry.day}/>
                   </div>
@@ -7683,7 +7696,7 @@ function App(){
                 <Tick day={entry.day}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:FB,fontSize:14,color:done.has(entry.day)?T.dim:T.mut}}>
-                    {planDateLabel(entry.day,planState.year)}
+                    {planDateLabel(entry.day,planYear)}
                   </div>
                   <Passages day={entry.day}/>
                 </div>
