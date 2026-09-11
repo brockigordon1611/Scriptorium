@@ -42,7 +42,12 @@
   <link rel="manifest" href="manifest.json">
   <!-- Bundled Cinzel / Cormorant Garamond. Relative on purpose: resolves under
        both the native build (/) and GitHub Pages (/Scriptorium/). -->
-  <link rel="stylesheet" href="fonts/fonts.css">
+  <!-- Loaded without blocking the first paint. A plain stylesheet link holds the
+       whole page back until it is fetched and parsed, which is what left the boot
+       screen below staring at black. The faces already use font-display:swap, so
+       text shows in Georgia for an instant and then settles into Cinzel. -->
+  <link rel="stylesheet" href="fonts/fonts.css" media="print" onload="this.media='all';this.onload=null">
+  <noscript><link rel="stylesheet" href="fonts/fonts.css"></noscript>
 
   <style>
     html,body{margin:0;padding:0;background:#0e0d0b;overflow:hidden;height:100%;overscroll-behavior:none;}

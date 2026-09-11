@@ -3751,6 +3751,14 @@ function App(){
   const audioModeRef=useRef(null); // tracks what is actually playing: 'fcbh'|'local'|'speech'|null
   const currentVerseRef=useRef(null); // mirror of currentVerse for use inside event handlers
   const autoAdvancePendingRef=useRef(false); // set before chapter change so new chapter auto-starts
+  // Local playback needs the pack for the book actually in hand. Guarding only
+  // the "auto" branch was not enough — choosing KJV Audio explicitly (which the
+  // audio prompt's Go to Settings now does for you) walked straight past it, and
+  // playback died silently on a file that was never there.
+  function audioSrcFor(src){
+    if(src!=='local')return src;
+    return (readBook<=39?otInstalled:ntInstalled)?'local':'speech';
+  }
   const loadChapterAudioRef=useRef(null); // always points to latest loadChapterAudio (avoids stale closures)
   const handleNextChapterRef=useRef(null); // same, for the 'ended' listener bound once per audio settings change
   const msBookRef=useRef(readBook);
@@ -3825,9 +3833,9 @@ function App(){
     // Only seek if the user explicitly selected a verse; otherwise play from 0 to include chapter intro
     const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
     const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
-    const src=srcOverride||(audioSource==='auto'
-      ?(readVid==='kjv'?((readBook<=39?otInstalled:ntInstalled)?'local':'speech'):DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
-      :(audioSource==='off'?null:audioSource));
+    const src=audioSrcFor(srcOverride||(audioSource==='auto'
+      ?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
+      :(audioSource==='off'?null:audioSource)));
     try{
       if(src==='fcbh'){
         audioModeRef.current='fcbh';
@@ -6348,7 +6356,7 @@ function App(){
                 if(readVid==='kjv'&&!packInstalled&&!kjvPromptShownRef.current&&!localStorage.getItem('scrip:audio:kjvPromptDismissed')){kjvPromptShownRef.current=true;setKjvPromptNoShow(false);setShowKjvAudioPrompt(true);return;}
                 if(audioPlaying){audioElRef.current?.pause();TTS.pause();setAudioPlaying(false);if(stripOpen)dismissStrip();return;}
                 const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
-                const src=audioSource==='auto'?(readVid==='kjv'?((readBook<=39?otInstalled:ntInstalled)?'local':'speech'):DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource);
+                const src=audioSrcFor(audioSource==='auto'?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech'):(audioSource==='off'?null:audioSource));
                 if(src==='speech'||audioModeRef.current==='speech'){
                   const hasSelection=readSelVerses.size>0;
                   const sv=hasSelection?Math.min(...readSelVerses):(readVerses[0]?.verse||1);
