@@ -3817,6 +3817,11 @@ function App(){
   // playback died silently on a file that was never there.
   function audioSrcFor(src){
     if(src!=='local')return src;
+    // The pack is a reading of the KJV, so no other version may use it —
+    // picking KJV Audio and then switching Bible left it reading the wrong
+    // translation aloud. Auto already resolved this correctly; now the
+    // explicit choice does too.
+    if(readVid!=='kjv')return 'speech';
     return (readBook<=39?otInstalled:ntInstalled)?'local':'speech';
   }
   const loadChapterAudioRef=useRef(null); // always points to latest loadChapterAudio (avoids stale closures)
@@ -3912,13 +3917,13 @@ function App(){
       ||voices.find(spoken);
     return{voice:match||null,lang:match?.lang||code};
   }
-  const loadChapterAudio=async(srcOverride=null)=>{
+  const loadChapterAudio=async(srcOverride=null,startAt=null)=>{
     if(!readVerses||!readVerses.length){setAudioError('No verses loaded');return;}
     setAudioError(null);setAudioLoading(true);
     if(TTS.paused)TTS.resume();TTS.cancel();audioUtterRef.current=[];
     if(audioElRef.current){audioElRef.current.pause();}
     // Only seek if the user explicitly selected a verse; otherwise play from 0 to include chapter intro
-    const startVerse=readSelVerses.size>0?Math.min(...readSelVerses):null;
+    const startVerse=startAt??(readSelVerses.size>0?Math.min(...readSelVerses):null);
     const hasFcbhKey=!!(localStorage.getItem('scrip:audio:fcbhKey')||'').trim();
     const src=audioSrcFor(srcOverride||(audioSource==='auto'
       ?(readVid==='kjv'?'local':DEFAULT_FILESETS[readVid]&&hasFcbhKey?'fcbh':'speech')
@@ -4143,6 +4148,19 @@ function App(){
   },[audioPlaying,audioKeepAwake]);
   // ── Stop audio on chapter/version change ──
   useEffect(()=>{stopAudio();},[readVid,readBook,readCh]);
+  // Changing the source used to leave whatever was already going to play itself
+  // out — the switch only took hold at the next chapter, because that was the
+  // only thing that stopped the audio. Swap immediately instead, picking up at
+  // the verse being read so the change is a handover rather than a restart.
+  const audioSrcFirst=useRef(true);
+  useEffect(()=>{
+    if(audioSrcFirst.current){audioSrcFirst.current=false;return;}
+    const resumeAt=audioPlaying?currentVerseRef.current:null;
+    const wasPlaying=audioPlaying;
+    stopAudio();
+    if(!wasPlaying||audioSource==='off')return;
+    loadChapterAudioRef.current?.(null,resumeAt);
+  },[audioSource]);
   // ── Measure safe-area-inset-top (lazy — done on first scroll so WKWebView is settled) ──
   function measureSafeAreaTop(){
     const el=document.createElement('div');
