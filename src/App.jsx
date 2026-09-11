@@ -1308,6 +1308,9 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
+/* Time picker wheels: snap to the centred row, and no scrollbar over them. */
+.wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
+.wheel-col::-webkit-scrollbar{display:none;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile/tablet overrides (≤1199px) ── */
@@ -1858,49 +1861,81 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
   };
 }
 
-// The iOS wheel is unmistakably iOS, and sat oddly in a page of bordered
-// serif controls. This asks the same question in the app's own vocabulary.
-// Minutes go in fives: for a daily reading reminder that is as fine as anyone
-// needs, and it keeps the whole choice on one screen without scrolling.
+// The iOS wheel is unmistakably iOS, and sat oddly in a page of bordered serif
+// controls. This spins like one but in the app's own hand: Cinzel on the app's
+// own ground, the centred row picked out by a gold band, and the rows above and
+// below fading out the way the reading plan's list does.
+//
+// Snapping is left to CSS — scroll-snap does the physics far better than touch
+// handlers would — so all this has to do is read back which row it settled on.
+const WHEEL_ITEM=36;
+const WHEEL_ROWS=5; // odd, so one row is the middle
+function Wheel({items,value,onChange,render,T,width}){
+  const ref=React.useRef(null);
+  const settle=React.useRef(null);
+  const pad=WHEEL_ITEM*((WHEEL_ROWS-1)/2);
+  React.useEffect(()=>{
+    // Start on the current value. Assigning scrollTop rather than scrolling to
+    // it, so it is simply already there rather than animating on open.
+    const el=ref.current,i=items.indexOf(value);
+    if(el&&i>=0)el.scrollTop=i*WHEEL_ITEM;
+  },[]);
+  function onScroll(){
+    if(settle.current)clearTimeout(settle.current);
+    settle.current=setTimeout(()=>{
+      const el=ref.current;
+      if(!el)return;
+      const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/WHEEL_ITEM)));
+      if(items[i]!==value)onChange(items[i]);
+    },110);
+  }
+  return (
+    <div style={{position:'relative',flex:width||1,minWidth:0}}>
+      {/* Behind the numbers, so it marks the middle without painting over it. */}
+      <div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:WHEEL_ITEM,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>
+      <div ref={ref} className="wheel-col" onScroll={onScroll}
+        style={{position:'relative',zIndex:1,height:WHEEL_ITEM*WHEEL_ROWS}}>
+        {/* Spacers rather than padding: padding on a scroll container is part of
+            its own box, which would have made the column twice as tall as it
+            looks. These simply let the first and last rows reach the middle. */}
+        <div style={{height:pad}}/>
+        {items.map(it=>(
+          <div key={it} onClick={()=>{const el=ref.current;if(el)el.scrollTo({top:items.indexOf(it)*WHEEL_ITEM,behavior:'smooth'});}}
+            style={{height:WHEEL_ITEM,scrollSnapAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
+              fontFamily:FS,fontSize:it===value?19:16,fontWeight:it===value?600:400,
+              color:it===value?T.gT:T.dim,opacity:it===value?1:0.55,transition:'color .12s, opacity .12s'}}>
+            {render?render(it):it}
+          </div>
+        ))}
+        <div style={{height:pad}}/>
+      </div>
+      {/* Over the numbers, fading the rows either side of the middle out. */}
+      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,top:0,height:pad,background:`linear-gradient(${T.bgCard},${T.bgCard}00)`,pointerEvents:'none'}}/>
+      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,bottom:0,height:pad,background:`linear-gradient(${T.bgCard}00,${T.bgCard})`,pointerEvents:'none'}}/>
+    </div>
+  );
+}
+const WHEEL_HOURS=Array.from({length:12},(_,i)=>i+1);
+const WHEEL_MINUTES=Array.from({length:60},(_,i)=>i);
 function TimePicker({value,onSet,onCancel,T}){
   const[h24,m0]=String(value||PLAN_REMIND_TIME).split(':').map(Number);
   const[h,setH]=React.useState(()=>((h24||0)%12)||12);
-  const[m,setM]=React.useState(()=>(Math.round((m0||0)/5)*5)%60);
-  const[pm,setPm]=React.useState(()=>(h24||0)>=12);
+  const[m,setM]=React.useState(()=>m0||0);
+  const[ap,setAp]=React.useState(()=>(h24||0)>=12?'PM':'AM');
   // 12 AM is hour 0 and 12 PM is hour 12, which is the one case the obvious
   // arithmetic gets wrong.
-  const asValue=()=>String((h%12)+(pm?12:0)).padStart(2,'0')+':'+String(m).padStart(2,'0');
-  const Cell=({on,onClick,children})=>(
-    <button type="button" onClick={onClick}
-      style={{background:on?T.gF:'transparent',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:7,color:on?T.gT:T.dim,
-        fontFamily:FB,fontSize:14,padding:'9px 0',cursor:'pointer',minWidth:0,transition:'background .12s,border-color .12s,color .12s'}}>
-      {children}
-    </button>
-  );
-  const Label=({children})=>(
-    <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>{children}</div>
-  );
+  const asValue=()=>String((h%12)+(ap==='PM'?12:0)).padStart(2,'0')+':'+String(m).padStart(2,'0');
   return (
     <div onClick={e=>{if(e.target===e.currentTarget)onCancel();}}
       style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:320,padding:20}}>
-      <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,340px)',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 32px 80px rgba(0,0,0,0.7)'}}>
+      <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,330px)',boxShadow:'0 32px 80px rgba(0,0,0,0.7)',overflow:'hidden'}}>
         <div style={{height:3,background:T.accentLine}}/>
         <div style={{padding:'16px 18px 18px'}}>
-          <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,textAlign:'center'}}>Daily reminder</div>
-          <div style={{fontFamily:FS,fontSize:29,fontWeight:700,color:T.gT,letterSpacing:'0.06em',textAlign:'center',margin:'5px 0 16px'}}>
-            {h}:{String(m).padStart(2,'0')} {pm?'PM':'AM'}
-          </div>
-          <Label>Hour</Label>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:14}}>
-            {Array.from({length:12},(_,i)=>i+1).map(n=><Cell key={n} on={h===n} onClick={()=>setH(n)}>{n}</Cell>)}
-          </div>
-          <Label>Minute</Label>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:6,marginBottom:14}}>
-            {Array.from({length:12},(_,i)=>i*5).map(n=><Cell key={n} on={m===n} onClick={()=>setM(n)}>{':'+String(n).padStart(2,'0')}</Cell>)}
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:18}}>
-            <Cell on={!pm} onClick={()=>setPm(false)}>AM</Cell>
-            <Cell on={pm} onClick={()=>setPm(true)}>PM</Cell>
+          <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,textAlign:'center',marginBottom:10}}>Daily reminder</div>
+          <div style={{display:'flex',alignItems:'stretch',gap:4,marginBottom:16}}>
+            <Wheel items={WHEEL_HOURS} value={h} onChange={setH} T={T}/>
+            <Wheel items={WHEEL_MINUTES} value={m} onChange={setM} T={T} render={n=>String(n).padStart(2,'0')}/>
+            <Wheel items={['AM','PM']} value={ap} onChange={setAp} T={T}/>
           </div>
           <div style={{display:'flex',gap:10}}>
             <button type="button" onClick={onCancel}
