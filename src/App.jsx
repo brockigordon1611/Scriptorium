@@ -1782,9 +1782,18 @@ function PwEye({shown}){
     : <svg {...p}><path d="M3 12s3.8-7 9-7 9 7 9 7-3.8 7-9 7-9-7-9-7z"/><circle cx="12" cy="12" r="2.7"/></svg>;
 }
 
+// How far a sheet has to be dragged before it dismisses. 80px was a long,
+// deliberate haul with no reward for speed, so a flick — the thing anyone
+// actually does — did nothing at all. A short fast one counts now, on the same
+// terms the reading pane already uses for its page-turn swipe.
+const SHEET_DISMISS_PX=55;
+const SHEET_FLICK_V=0.35; // px per ms
+const SHEET_FLICK_PX=18;
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const[dragY,setDragY]=React.useState(0);
   const modalStartY=React.useRef(null);
+  const modalDrag=React.useRef(0); // live distance — touchend must not wait on a state flush
+  const modalDragT=React.useRef(0);
   const modalOverlayRef=React.useRef(null);
   // `fade` softens the top and bottom edges of the body so a long list reads as
   // scrollable. Each edge only shows when there is content past it.
@@ -1823,16 +1832,21 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
     el.addEventListener('touchmove',prevent,{passive:false});
     return()=>el.removeEventListener('touchmove',prevent);
   },[topSheet]);
-  function modalTouchStart(e){modalStartY.current=e.touches[0].clientY;}
+  function modalTouchStart(e){modalStartY.current=e.touches[0].clientY;modalDragT.current=Date.now();modalDrag.current=0;}
   function modalTouchMove(e){
     if(modalStartY.current===null)return;
-    const dy=e.touches[0].clientY-modalStartY.current;
-    if(dy<0)setDragY(dy); // only allow upward drag (collapses back to top)
+    const dy=Math.min(0,e.touches[0].clientY-modalStartY.current); // upward only: it collapses back to the top
+    modalDrag.current=dy;setDragY(dy);
   }
   function modalTouchEnd(){
-    if(Math.abs(dragY)>80){onClose();}
-    else{setDragY(0);}
-    modalStartY.current=null;
+    // Judged on the ref, not on dragY. A quick flick can end before React has
+    // flushed the last move, so the gesture was being measured against a stale
+    // distance — which is why flicking so often did nothing.
+    const dist=Math.abs(modalDrag.current);
+    const velocity=dist/Math.max(1,Date.now()-modalDragT.current);
+    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX))onClose();
+    else setDragY(0);
+    modalStartY.current=null;modalDrag.current=0;
   }
   return(
     <div ref={modalOverlayRef} className={topSheet?"modal-overlay modal-topsheet-overlay":"modal-overlay"} onClick={e=>{if(e.target===e.currentTarget)onClose();}} style={{position:'fixed',...(topSheet?{top:topSheet,right:0,bottom:0,left:0,zIndex:185,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)','--ts-h':topSheet+'px'}:{inset:0,zIndex:200,background:'rgba(0,0,0,0.72)',backdropFilter:'blur(4px)'}),display:'flex',alignItems:'center',justifyContent:'center',padding:20,...(isClosing&&topSheet?{opacity:0,transition:'opacity .25s ease-in'}:{})}}>
@@ -1866,7 +1880,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           </>)}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
-        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
+        {topSheet&&<div onTouchStart={modalTouchStart} onTouchMove={modalTouchMove} onTouchEnd={modalTouchEnd} style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:44,padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><div style={{width:44,height:5,background:T.bdA,borderRadius:3}}/></div>}
         {topSheet&&<div style={{height:3,background:T.accentLine,flexShrink:0}}/>}
       </div>
     </div>
@@ -2949,6 +2963,8 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
   const startY=React.useRef(null);
+  const dragRef=React.useRef(0); // as in modalTouchEnd: touchend cannot wait on a state flush
+  const dragT=React.useRef(0);
   const overlayRef=React.useRef(null);
 
   // Prevent background scroll-through on iOS WKWebView.
@@ -2974,16 +2990,19 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
 
   function dismiss(){setInternalClosing(true);onClose();}
 
-  function onTouchStart(e){startY.current=e.touches[0].clientY;}
+  function onTouchStart(e){startY.current=e.touches[0].clientY;dragT.current=Date.now();dragRef.current=0;}
   function onTouchMove(e){
     if(startY.current===null)return;
-    const dy=e.touches[0].clientY-startY.current;
-    if(fromTop){if(dy<0)setDragY(dy);}else{if(dy>0)setDragY(dy);}
+    const raw=e.touches[0].clientY-startY.current;
+    const dy=fromTop?Math.min(0,raw):Math.max(0,raw);
+    dragRef.current=dy;setDragY(dy);
   }
   function onTouchEnd(){
-    if(Math.abs(dragY)>80){dismiss();}
-    else{setDragY(0);}
-    startY.current=null;
+    const dist=Math.abs(dragRef.current);
+    const velocity=dist/Math.max(1,Date.now()-dragT.current);
+    if(dist>SHEET_DISMISS_PX||(velocity>SHEET_FLICK_V&&dist>SHEET_FLICK_PX))dismiss();
+    else setDragY(0);
+    startY.current=null;dragRef.current=0;
   }
 
   const closeTx=fromTop?'translateY(-100%)':'translateY(100%)';
@@ -3004,17 +3023,17 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
 
         {!fromTop&&<div style={{height:3,background:T.accentLine}}/>}
         {!fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
-          <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
+          style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:44,padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          <div style={{width:44,height:5,background:T.bdA,borderRadius:3,marginBottom:6}}/>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
         <div style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
           {children}
         </div>
         {fromTop&&<div onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
+          style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:44,padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
-          <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
+          <div style={{width:44,height:5,background:T.bdA,borderRadius:3}}/>
         </div>}
         {fromTop&&<div style={{height:3,background:T.accentLine}}/>}
       </div>
