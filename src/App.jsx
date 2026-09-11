@@ -3033,10 +3033,109 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
 // ══════════════════════════════════════════════════════════
 //  SCRIPTURE ATLAS MAPS
 // ══════════════════════════════════════════════════════════
+// Pinch to zoom, drag to pan, double-tap to toggle. The viewport is locked to
+// user-scalable=no so the browser never zooms on its own, which is right for the
+// reader but left maps with no way in at all and charts with a single fixed step.
+// Listeners are attached by hand because React registers touchmove as passive, so
+// preventDefault from a synthetic handler is ignored and the page scrolls instead.
+function PinchZoom({src,alt,onZoomChange}){
+  const wrapRef=React.useRef(null);
+  const imgRef=React.useRef(null);
+  const st=React.useRef({scale:1,tx:0,ty:0});
+  const gest=React.useRef(null);
+  const lastTap=React.useRef(0);
+  const MAX_SCALE=6;
+  React.useEffect(()=>{
+    const wrap=wrapRef.current;
+    if(!wrap)return;
+    const apply=()=>{
+      const el=imgRef.current;
+      if(el)el.style.transform=`translate(${st.current.tx}px,${st.current.ty}px) scale(${st.current.scale})`;
+    };
+    // Never let the image be dragged off its own frame, and pin it dead centre at 1x.
+    const clamp=()=>{
+      const el=imgRef.current;
+      if(!el)return;
+      const r=wrap.getBoundingClientRect();
+      const mx=Math.max(0,(el.offsetWidth*st.current.scale-r.width)/2);
+      const my=Math.max(0,(el.offsetHeight*st.current.scale-r.height)/2);
+      st.current.tx=Math.max(-mx,Math.min(mx,st.current.tx));
+      st.current.ty=Math.max(-my,Math.min(my,st.current.ty));
+    };
+    const commit=was=>{
+      clamp();apply();
+      if((was>1)!==(st.current.scale>1)&&onZoomChange)onZoomChange(st.current.scale>1);
+    };
+    const gap=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+    const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+    const onStart=e=>{
+      const t=e.touches;
+      if(t.length===2){
+        e.preventDefault();
+        gest.current={mode:'pinch',d0:gap(t),s0:st.current.scale,m0:mid(t),tx0:st.current.tx,ty0:st.current.ty};
+      }else if(t.length===1&&st.current.scale>1){
+        gest.current={mode:'pan',x0:t[0].clientX,y0:t[0].clientY,tx0:st.current.tx,ty0:st.current.ty};
+      }else gest.current=null;
+    };
+    const onMove=e=>{
+      const g=gest.current,t=e.touches;
+      if(!g)return;
+      if(g.mode==='pinch'&&t.length===2){
+        e.preventDefault();
+        const was=st.current.scale,m=mid(t);
+        st.current.scale=Math.max(1,Math.min(MAX_SCALE,g.s0*(gap(t)/g.d0)));
+        st.current.tx=g.tx0+(m.x-g.m0.x);
+        st.current.ty=g.ty0+(m.y-g.m0.y);
+        commit(was);
+      }else if(g.mode==='pan'&&t.length===1){
+        e.preventDefault();   // otherwise the swipe-to-next-image gesture steals it
+        st.current.tx=g.tx0+(t[0].clientX-g.x0);
+        st.current.ty=g.ty0+(t[0].clientY-g.y0);
+        clamp();apply();
+      }
+    };
+    const onEnd=e=>{
+      if(e.touches.length)return;
+      const wasPinch=gest.current&&gest.current.mode==='pinch';
+      gest.current=null;
+      // A pinch that ends near 1x should settle exactly there, not at 1.01.
+      if(st.current.scale<=1.02){const was=st.current.scale;st.current={scale:1,tx:0,ty:0};commit(was);}
+      if(wasPinch)return;
+      const now=Date.now();
+      if(now-lastTap.current<300){
+        const was=st.current.scale;
+        st.current=was>1?{scale:1,tx:0,ty:0}:{scale:2.5,tx:0,ty:0};
+        commit(was);
+        lastTap.current=0;
+      }else lastTap.current=now;
+    };
+    wrap.addEventListener('touchstart',onStart,{passive:false});
+    wrap.addEventListener('touchmove',onMove,{passive:false});
+    wrap.addEventListener('touchend',onEnd);
+    return()=>{
+      wrap.removeEventListener('touchstart',onStart);
+      wrap.removeEventListener('touchmove',onMove);
+      wrap.removeEventListener('touchend',onEnd);
+    };
+  },[onZoomChange]);
+  // A new image starts unzoomed.
+  React.useEffect(()=>{
+    st.current={scale:1,tx:0,ty:0};
+    if(imgRef.current)imgRef.current.style.transform='';
+    if(onZoomChange)onZoomChange(false);
+  },[src]);
+  return(
+    <div ref={wrapRef} style={{flex:1,minHeight:0,width:'100%',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',touchAction:'none'}}>
+      <img ref={imgRef} src={src} alt={alt} draggable={false}
+        style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block',transformOrigin:'center center',willChange:'transform',userSelect:'none',WebkitUserSelect:'none'}}/>
+    </div>
+  );
+}
 function MapLightboxGrid({maps,BASE,T}){
   const[lightbox,setLightbox]=useState(null);
   const mapTouchX=useRef(null);
   const mapSwiped=useRef(false);
+  const[mapZoomed,setMapZoomed]=useState(false);
   useEffect(()=>{
     if(lightbox===null)return;
     const fn=e=>{if(e.key==='ArrowRight')setLightbox(i=>Math.min(i+1,maps.length-1));else if(e.key==='ArrowLeft')setLightbox(i=>Math.max(i-1,0));else if(e.key==='Escape')setLightbox(null);};
@@ -3047,6 +3146,7 @@ function MapLightboxGrid({maps,BASE,T}){
     if(mapTouchX.current===null)return;
     const dx=e.changedTouches[0].clientX-mapTouchX.current;
     mapTouchX.current=null;
+    if(mapZoomed)return;   // a drag across a zoomed map is a pan, not a page turn
     if(Math.abs(dx)>40){mapSwiped.current=true;if(dx<0)setLightbox(i=>Math.min(i+1,maps.length-1));else setLightbox(i=>Math.max(i-1,0));}
   };
   return(
@@ -3068,9 +3168,7 @@ function MapLightboxGrid({maps,BASE,T}){
             <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
             <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
           </div>
-          <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',padding:'12px'}} onClick={e=>e.stopPropagation()}>
-            <img src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block'}}/>
-          </div>
+          <PinchZoom src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} onZoomChange={setMapZoomed}/>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
               style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
@@ -3113,15 +3211,12 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
         <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
       </div>
       {/* Image */}
-      <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:zoomed?'auto':'hidden',padding:zoomed?0:'12px'}} onClick={e=>{e.stopPropagation();setZoomed(z=>!z);}}>
-        <img src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section}
-          style={{maxWidth:zoomed?'none':'100%',maxHeight:zoomed?'none':'100%',objectFit:'contain',cursor:zoomed?'zoom-out':'zoom-in',display:'block'}}/>
-      </div>
+        <PinchZoom src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section} onZoomChange={setZoomed}/>
       {/* Prev / Next */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
           style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
-        <div style={{fontFamily:'Georgia,serif',fontSize:9,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Tap image to zoom</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:9,color:'rgba(255,255,255,0.25)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
         <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
           style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
       </div>
