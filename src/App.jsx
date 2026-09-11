@@ -5,6 +5,7 @@ import { Browser } from '@capacitor/browser';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { MEEK_WEEKS } from './meekPlan.js';
 
 // Opens a link without leaving the app. On device this is an in-app Safari
@@ -1109,6 +1110,44 @@ function planDayOfYear(d=new Date()){
 function planDateLabel(day,year){
   const dt=new Date(year,0,1); dt.setDate(day);
   return dt.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+// Reminders are scheduled one per day with that day's actual passages, rather
+// than one repeating notification with generic text — the point is to see what
+// today's reading is without opening anything. iOS caps pending notifications
+// at 64, so this books a month ahead and tops up whenever the plan is opened.
+const PLAN_REMIND_KEY='scrip:plan:remind:v1';
+const PLAN_NOTIF_BASE=9000;
+const PLAN_NOTIF_SPAN=30;
+function planRemindLoad(){
+  try{const r=JSON.parse(localStorage.getItem(PLAN_REMIND_KEY)||'null');
+      return r&&typeof r.time==='string'?{on:!!r.on,time:r.time}:{on:false,time:'07:00'};}
+  catch{return{on:false,time:'07:00'};}
+}
+function planRemindSave(v){try{localStorage.setItem(PLAN_REMIND_KEY,JSON.stringify(v));}catch{}}
+async function planSyncReminders(on,time,year,lang){
+  if(!Capacitor.isNativePlatform())return{ok:!on};
+  try{
+    const pending=await LocalNotifications.getPending();
+    const mine=(pending.notifications||[]).filter(n=>n.id>=PLAN_NOTIF_BASE&&n.id<PLAN_NOTIF_BASE+400);
+    if(mine.length)await LocalNotifications.cancel({notifications:mine.map(n=>({id:n.id}))});
+    if(!on)return{ok:true};
+    let perm=await LocalNotifications.checkPermissions();
+    if(perm.display!=='granted')perm=await LocalNotifications.requestPermissions();
+    if(perm.display!=='granted')return{ok:false,denied:true};
+    const[h,m]=String(time).split(':').map(Number);
+    const labels=planYearLabels(year,lang),today=planDayOfYear(),now=new Date(),list=[];
+    for(let i=0;i<PLAN_NOTIF_SPAN;i++){
+      const day=today+i;
+      if(day>PLAN_DAYS)break;
+      const at=new Date(year,0,day,h||0,m||0,0,0);
+      if(at<=now)continue;
+      list.push({id:PLAN_NOTIF_BASE+day,title:'Today\u2019s reading',
+        body:labels[day-1].map(r=>r.label).join(' \u00b7 '),
+        schedule:{at,allowWhileIdle:true}});
+    }
+    if(list.length)await LocalNotifications.schedule({notifications:list});
+    return{ok:true,count:list.length};
+  }catch{return{ok:false};}
 }
 const PLAN_KEY='scrip:plan:v3';
 function planLoad(){
@@ -3683,6 +3722,15 @@ function App(){
   const[confirmDeleteDl,setConfirmDeleteDl]=useState(null);
   const[planState,setPlanState]=useState(()=>planLoad());
   const planTodayRef=useRef(null);
+  const[planRemind,setPlanRemind]=useState(()=>planRemindLoad());
+  const[planRemindBusy,setPlanRemindBusy]=useState(false);
+  const[planRemindMsg,setPlanRemindMsg]=useState('');
+  // Top up the month's worth of reminders each time the plan is opened, so they
+  // never run dry and always carry the right passages.
+  useEffect(()=>{
+    if(modal?.type!=='plan'||!planRemind.on)return;
+    planSyncReminders(true,planRemind.time,new Date().getFullYear(),versionLang(readVid));
+  },[modal]);
   function planToggleDay(day){
     setPlanState(prev=>{
       const set=new Set(prev.done);
@@ -7816,6 +7864,42 @@ function App(){
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
               </div>
+              {Capacitor.isNativePlatform()&&(
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginTop:11}}>
+                  <button type="button" disabled={planRemindBusy}
+                    onClick={async()=>{
+                      const next=!planRemind.on;
+                      setPlanRemindBusy(true);
+                      const r=await planSyncReminders(next,planRemind.time,planYear,lang);
+                      setPlanRemindBusy(false);
+                      if(next&&!r.ok){
+                        // Denied at the system level: saying so beats a switch that
+                        // silently refuses to stay on.
+                        setPlanRemindMsg(r.denied?'Allow notifications for Scriptorium in iOS Settings, then try again.':'Could not set the reminder.');
+                        return;
+                      }
+                      setPlanRemindMsg('');
+                      const v={...planRemind,on:next};
+                      setPlanRemind(v);planRemindSave(v);
+                    }}
+                    style={{display:'flex',alignItems:'center',gap:8,background:planRemind.on?T.gF:'transparent',border:`1px solid ${planRemind.on?T.gD:T.bd}`,borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:13,padding:'6px 11px',cursor:'pointer',opacity:planRemindBusy?0.5:1}}>
+                    <span style={{width:15,height:15,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:10,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
+                    Daily reminder
+                  </button>
+                  {planRemind.on&&(
+                    <input type="time" value={planRemind.time}
+                      onChange={async e=>{
+                        const v={...planRemind,time:e.target.value};
+                        setPlanRemind(v);planRemindSave(v);
+                        await planSyncReminders(true,v.time,planYear,lang);
+                      }}
+                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:13,padding:'5px 8px'}}/>
+                  )}
+                </div>
+              )}
+              {planRemindMsg&&(
+                <div style={{fontFamily:FB,fontSize:12,color:T.ambTxt,marginTop:7,lineHeight:1.5}}>{planRemindMsg}</div>
+              )}
             </>}>
             {plan.map(entry=>entry.day===today?(
               <div key={entry.day} ref={planTodayRef}
