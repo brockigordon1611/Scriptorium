@@ -6923,7 +6923,7 @@ function App(){
             const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
             const optBtn=(active,label,onClick,red)=>(
               <button key={label} type="button" onClick={onClick}
-                style={{flex:1,background:active?(red?'rgba(210,60,60,0.13)':T.gF):'transparent',border:`1px solid ${active?(red?'rgba(210,60,60,0.4)':T.gD):T.bd}`,borderRadius:6,color:active?(red?(dark?'#e08888':'#bf4040'):T.gT):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                style={{flex:1,background:active?(red?'rgba(210,60,60,0.16)':T.gF):'var(--ac-ghost-bg)',border:`1px solid ${active?(red?'rgba(210,60,60,0.45)':T.gD):`${T.gD}66`}`,borderRadius:6,color:active?(red?(dark?'#e08888':'#bf4040'):T.gT):T.mut,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                 {label}
               </button>
             );
@@ -6931,9 +6931,10 @@ function App(){
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
-              background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
-              backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-              boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
+              background:`linear-gradient(rgba(200,168,78,0.05),rgba(200,168,78,0.05)), ${T.bgCard}d9`,
+              border:`1px solid ${T.gD}77`,borderRadius:8,
+              backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
+              boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
 
               <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
                 <button type="button" title={searchFieldOpen?'Hide search':'Search'} aria-label={searchFieldOpen?'Hide search':'Search'}
@@ -7011,7 +7012,7 @@ function App(){
               {/* Options, on the same scrim-and-panel footing as the rest of the app. */}
               {searchFiltersOpen&&(<>
                 <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
-                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'12px 14px',boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`linear-gradient(rgba(200,168,78,0.06),rgba(200,168,78,0.06)), ${T.bgCard}f2`,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
                   <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                     {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
@@ -7026,7 +7027,7 @@ function App(){
                   </div>
                   {searchOptsDirty&&(
                     <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-                      style={{width:'100%',marginTop:9,background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
+                      style={{width:'100%',marginTop:9,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}66`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
                       Reset to defaults
                     </button>
                   )}
