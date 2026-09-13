@@ -3621,6 +3621,13 @@ function App(){
   const[mngImportProg,setMngImportProg]=useState([0,0]);
   const[mngImportErr,setMngImportErr]=useState('');
   function closeReadSheet(){setReadSheetClosing(true);setTimeout(()=>{setReadMobileSheet(null);setReadSheetClosing(false);setVersionSheetView('list');},260);}
+  // Moving straight from one sheet to another never goes through closeReadSheet,
+  // so it would skip the reset that puts the version sheet back on its list and
+  // the sheet would reopen wherever it was last left.
+  function openReadSheet(name){
+    if(readMobileSheet&&readMobileSheet!==name)setVersionSheetView('list');
+    setReadMobileSheet(name);
+  }
   function openManageView(){
     setManageVers(clone(data.versions));
     setVersionSheetView('manage');
@@ -5587,10 +5594,15 @@ function App(){
             const studyIsActive=studyActive||studyModalOpen||((readMobileSheet==='studyTools')&&!readSheetClosing);
             const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen; // settings/search/version/nav, or search results visible
             const readIsActive=tab==='read'&&!studyIsActive;
-            // Right pill indicator state
-            const rSearch=(readMobileSheet==='search'&&!readSheetClosing)||readSearchResultsOpen;
-            const rVersion=readMobileSheet==='version'&&!readSheetClosing;
-            const rNav=readMobileSheet==='nav'&&!readSheetClosing;
+            // Right pill indicator state. Whichever of the three sheets is open
+            // wins: search used to light up for open search *results* as well, and
+            // since results stay open after a search, the marker stayed pinned to
+            // search however many other sheets were opened afterwards. Results
+            // still light it, but only when no sheet is open to speak for itself.
+            const rOpen=(!readSheetClosing&&(readMobileSheet==='search'||readMobileSheet==='nav'||readMobileSheet==='version'))?readMobileSheet:null;
+            const rSearch=rOpen?rOpen==='search':readSearchResultsOpen;
+            const rVersion=rOpen==='version';
+            const rNav=rOpen==='nav';
             const rAny=rSearch||rVersion||rNav; // any right-pill sheet open
             // indicator left: search=3, nav=49 (default), version=95
             const rIndLeft=rSearch?3:rVersion?95:49;
@@ -5616,10 +5628,10 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:rIndLeft,width:44,height:'calc(100% - 6px)',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():setReadMobileSheet('search');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'&&!readMobileSheet){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():openReadSheet('search');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);setReadMobileSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* left page */}
                     <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
@@ -5643,7 +5655,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():setReadMobileSheet('version')):undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" onClick={!studyActive?()=>(readMobileSheet==='version'?closeReadSheet():openReadSheet('version')):undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
