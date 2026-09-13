@@ -5364,9 +5364,11 @@ function App(){
       setReadSearchRes(results);
       setReadSearchResultsOpen(true);
       if(!live){
-        // A committed search gets the whole screen: the field folds away and
-        // the bar goes back to reporting what was found.
-        setSearchFieldOpen(false);setSearchFiltersOpen(false);
+        // The field stays. Taking it away on Enter made the full results look
+        // like a second screen, when they are the same list the live search was
+        // already showing — only complete. The options panel closes, since that
+        // question has been answered.
+        setSearchFiltersOpen(false);
         setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=0;},30);
         closeReadSheet();
       }
@@ -6941,7 +6943,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',background:searchFieldOpen?T.gF:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:13,lineHeight:1,padding:'5px 9px',cursor:'pointer',flexShrink:0}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:13,lineHeight:1,padding:'5px 9px',cursor:'pointer',flexShrink:0}}>
                   ⌕
                 </button>
 
@@ -6955,21 +6957,22 @@ function App(){
                         // Enter means "show me everything", so the capped preview
                         // gives way to the full set and the field gets out of the way.
                         if(ref&&!(readSearchRes&&readSearchRes.length))goRefFromBar(ref);
-                        else{doReadSearch();collapse();e.currentTarget.blur();}
+                        // Blur only: the keyboard has done its job, the field has not.
+                        else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'6px 30px 6px 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'6px 30px 6px 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
-                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
+                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
                         ✕
                       </button>
                     )}
                   </div>
                   <button type="button" title="Search options" aria-label="Search options"
                     onClick={()=>setSearchFiltersOpen(o=>!o)}
-                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',background:searchFiltersOpen||searchOptsDirty?T.gF:'transparent',border:`1px solid ${searchFiltersOpen||searchOptsDirty?T.gD:T.bd}`,borderRadius:6,color:searchFiltersOpen||searchOptsDirty?T.gT:T.dim,fontSize:12,lineHeight:1,padding:'6px 8px',cursor:'pointer',flexShrink:0}}>
+                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',background:searchFiltersOpen?T.gF:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:12,lineHeight:1,padding:'6px 8px',cursor:'pointer',flexShrink:0}}>
                     ⊟
                     {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
                   </button>
@@ -7153,7 +7156,7 @@ function App(){
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
                     {recentSearches.map(r=>(
-                      <button key={r} type="button" onClick={()=>{searchTypedRef.current=false;doReadSearch(r);setSearchFieldOpen(false);}}
+                      <button key={r} type="button" onClick={()=>{searchTypedRef.current=false;doReadSearch(r);}}
                         style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:13,padding:'6px 13px',cursor:'pointer'}}>
                         {r}
                       </button>
