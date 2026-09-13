@@ -3697,6 +3697,14 @@ function App(){
   const[readSearchResultsOpen,setReadSearchResultsOpen]=useState(false);
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
   const[readSearchLimit,setReadSearchLimit]=useState(50);
+  const[readSearchCapped,setReadSearchCapped]=useState(false); // a live set that stopped at a page boundary
+  const searchSeqRef=useRef(0);      // only the newest search may write results
+  const localVersesRef=useRef(null); // {key,rows} — the downloaded version, kept in memory between keystrokes
+  const readSearchTimer=useRef(null);
+  // Live results follow typing and nothing else. Set when the reader edits the
+  // field, cleared when they commit or clear it — so setting the query from a
+  // recent-search chip does not start a second search behind the one it ran.
+  const searchTypedRef=useRef(false);
   const[readSearching,setReadSearching]=useState(false);
   const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'all',caseSensitive:false,partial:false});
   const SEARCH_DEFAULTS={scope:'all',mode:'all',caseSensitive:false,partial:false};
@@ -5135,14 +5143,30 @@ function App(){
   }
   function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(r.version_id);setTab('read');}
 
-  async function doReadSearch(overrideQ,overrideOpts){
+  // `live` marks a search the reader did not ask for — one the debounce below
+  // fired while they were still typing. Those skip everything that only makes
+  // sense for a deliberate search, and stop after a single page: an exhaustive
+  // search of a common word is dozens of round-trips, which is fine once but
+  // ruinous per keystroke.
+  async function doReadSearch(overrideQ,overrideOpts,live=false){
     const query=(overrideQ!==undefined?overrideQ:readSearchQ).trim();
     if(!query)return;
+    // Nothing stopped two searches overlapping, and whichever finished last won
+    // — so a slow search for an early prefix could land on top of the results
+    // for what was actually typed. Every write below is now gated on this still
+    // being the most recent search.
+    const seq=++searchSeqRef.current;
+    const current=()=>seq===searchSeqRef.current;
+    if(!live)searchTypedRef.current=false;
     if(overrideQ!==undefined)setReadSearchQ(overrideQ);
-    setReadSearching(true);setReadSearchRes(null);setReadSearchResultsOpen(false);setReadSearchLimit(50);setReadSearchPopover(false);
-    const newRecent=[query,...recentSearches.filter(r=>r!==query)].slice(0,10);
-    setRecentSearches(newRecent);
-    try{localStorage.setItem('scrip_recent_searches',JSON.stringify(newRecent));}catch{}
+    setReadSearching(true);
+    if(!live){setReadSearchRes(null);setReadSearchResultsOpen(false);setReadSearchPopover(false);}
+    setReadSearchLimit(50);
+    if(!live){
+      const newRecent=[query,...recentSearches.filter(r=>r!==query)].slice(0,10);
+      setRecentSearches(newRecent);
+      try{localStorage.setItem('scrip_recent_searches',JSON.stringify(newRecent));}catch{}
+    }
     try{
       const opts=overrideOpts||searchOpts;
       const token=getToken();
@@ -5152,22 +5176,46 @@ function App(){
       const bookMin=opts.scope==='nt'?40:1;
       const bookMax=opts.scope==='ot'?39:66;
       const PAGE=900;
+      let capped=false; // set only if a live search stopped on a full page
       const baseParams=(q)=>({p_version_id:readVid,p_query:q,p_limit:PAGE,p_book_min:bookMin,p_book_max:bookMax,p_case_sensitive:cs,p_whole_word:ww});
+      // Scanning the downloaded copy, held in memory so a run of keystrokes does
+      // not pull 31,000 rows out of IndexedDB apiece.
+      async function localRows(){
+        if(localVersesRef.current&&localVersesRef.current.key===`${readVid}|${bookMin}|${bookMax}`)return localVersesRef.current.rows;
+        const rows=await idbSearchLocal(readVid,bookMin,bookMax);
+        localVersesRef.current={key:`${readVid}|${bookMin}|${bookMax}`,rows};
+        return rows;
+      }
+      function scanLocal(rows,q){
+        const ql=q.toLowerCase();
+        return rows.filter(r=>(r.text||'').toLowerCase().includes(ql));
+      }
       async function fetchAll(q){
+        // Local first when the version is on the device — the same order every
+        // other reader in this file uses, and it makes a downloaded version
+        // search without touching the network at all.
+        try{
+          if(await idbIsDownloaded(readVid))return scanLocal(await localRows(),q);
+        }catch{}
         try{
           let all=[];let offset=0;
           while(true){
-            const{data:res}=await sbRpc('search_verses',{...baseParams(q),p_offset:offset},token);
+            const{data:res,error}=await sbRpc('search_verses',{...baseParams(q),p_offset:offset},token);
+            // An error status does not throw, so this used to break out and
+            // report no verses found with a usable local copy sitting right
+            // there. Only a genuine absence of rows ends the loop quietly.
+            if(error)throw error;
             if(!Array.isArray(res)||res.length===0)break;
             all=all.concat(res);
             if(res.length<PAGE)break;
+            // Only reachable on a full page, since a short one breaks above —
+            // so this is the one case where there really may be more.
+            if(live){capped=true;break;}
             offset+=res.length;
           }
           return all;
         }catch{
-          const all=await idbSearchLocal(readVid,bookMin,bookMax);
-          const ql=q.toLowerCase();
-          return all.filter(r=>(r.text||'').toLowerCase().includes(ql));
+          return scanLocal(await localRows(),q);
         }
       }
       function matches(text){
@@ -5198,34 +5246,64 @@ function App(){
       } else {
         results=await fetchAll(query);
       }
+      if(!current())return;
       results=results.filter(r=>matches(r.text||''));
       results.sort((a,b)=>a.book_num-b.book_num||a.chapter-b.chapter||a.verse-b.verse);
-      // Count total occurrences across all matching verses
-      let occ=0;
-      const occWords=opts.mode==='phrase'?[query]:words;
-      results.forEach(r=>{
-        const txt=r.text||'';
-        occWords.forEach(w=>{
-          const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-          const bounded=opts.partial===false?`\\b${pat}\\b`:pat;
-          const rx=new RegExp(bounded,cs?'g':'gi');
-          const m=txt.match(rx);
-          if(m)occ+=m.length;
+      // Count total occurrences across all matching verses. Two regexes per
+      // verse per word over the whole set, so it is left to a search the reader
+      // actually asked for; while typing the count is simply not shown.
+      if(live){
+        setReadSearchOccurrences(null);
+      } else {
+        let occ=0;
+        const occWords=opts.mode==='phrase'?[query]:words;
+        results.forEach(r=>{
+          const txt=r.text||'';
+          occWords.forEach(w=>{
+            const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+            const bounded=opts.partial===false?`\\b${pat}\\b`:pat;
+            const rx=new RegExp(bounded,cs?'g':'gi');
+            const m=txt.match(rx);
+            if(m)occ+=m.length;
+          });
         });
-      });
-      setReadSearchOccurrences(occ);
+        setReadSearchOccurrences(occ);
+      }
+      if(!current())return;
+      setReadSearchCapped(capped);
       setReadSearchRes(results);
       setReadSearchResultsOpen(true);
-      setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=0;},30);
-      closeReadSheet();
+      if(!live){
+        setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=0;},30);
+        closeReadSheet();
+      }
     }catch(err){
+      if(!current())return;
       setReadSearchRes([]);
       setReadSearchResultsOpen(true);
-      closeReadSheet();
+      if(!live)closeReadSheet();
     }finally{
-      setReadSearching(false);
+      if(current())setReadSearching(false);
     }
   }
+  // The book scrubber needs the handful of books a result set touches, and was
+  // rebuilding a Map over every result on every render of the reading tab — with
+  // live search that would run on each keystroke as well as each scroll.
+  // Whether the search sheet should be showing results rather than recents.
+  const liveResults=readSearchQ.trim().length>=3&&(readSearching||!!readSearchRes);
+  const searchBooks=useMemo(()=>readSearchRes?[...new Set(readSearchRes.map(r=>r.book_num))]:[],[readSearchRes]);
+  // Results as you type. Three characters rather than the dictionary's two: a
+  // two-letter fragment matches a good part of the Bible and costs the most to
+  // find. A committed search — Enter, the magnifier, a recent chip — goes
+  // through doReadSearch directly and is unaffected by any of this.
+  useEffect(()=>{
+    if(readSearchTimer.current)clearTimeout(readSearchTimer.current);
+    if(!searchTypedRef.current)return;
+    const q=readSearchQ.trim();
+    if(q.length<3)return;
+    readSearchTimer.current=setTimeout(()=>{doReadSearch(undefined,undefined,true);},350);
+    return()=>{if(readSearchTimer.current)clearTimeout(readSearchTimer.current);};
+  },[readSearchQ,searchOpts,readVid]);
   async function doReadBookmark(){
     const sorted=[...readSelVerses].sort((a,b)=>a-b);
     const v=sorted[0];
@@ -5687,11 +5765,11 @@ function App(){
             <button type="button" className="s-btn s-ghost" title="Search" onClick={()=>doReadSearch()} disabled={readSearching}
               style={{height:33.33,boxSizing:'border-box',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,padding:'0 8px',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>{readSearching?<Spinner/>:'⌕'}</button>
             <div style={{position:'relative',display:'inline-flex',flexShrink:0}}>
-              <input value={readSearchQ} onChange={e=>{setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
+              <input value={readSearchQ} onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
                 placeholder="Search…"
                 style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 26px 0 8px',outline:'none',width:150}}/>
               {readSearchQ&&(
-                <button type="button" title="Clear" aria-label="Clear search" onClick={()=>setReadSearchQ('')}
+                <button type="button" title="Clear" aria-label="Clear search" onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
                   style={{position:'absolute',right:0,top:0,bottom:0,width:24,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',outline:'none',color:T.dim,fontSize:12,lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'}}>
                   ✕
                 </button>
@@ -6704,12 +6782,12 @@ function App(){
                     The button sits inside the field, where the padding makes room
                     for it, and shows only when there is something to clear. */}
                 <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
-                  <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
+                  <input value={readSearchQ} onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
                     onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
                     placeholder="Search all verses in this version…"
                     style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 36px 9px 12px',outline:'none',minWidth:0}}/>
                   {readSearchQ&&(
-                    <button type="button" title="Clear" aria-label="Clear search" onClick={()=>setReadSearchQ('')}
+                    <button type="button" title="Clear" aria-label="Clear search" onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
                       style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
                       ✕
                     </button>
@@ -6751,7 +6829,45 @@ function App(){
                 </div>
               </div>
               {/* Recent searches */}
-              {recentSearches.length>0&&(
+              {/* Results as the reader types. They have to live inside the sheet:
+                  it covers the reading view, so results rendered behind it would
+                  be dimmed, unreachable, and effectively invisible. Recents give
+                  way to them, since both answer "what am I looking for". */}
+              {liveResults&&(
+                <div style={{marginBottom:14}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8}}>
+                    {readSearching?'Searching…':`${(readSearchRes||[]).length}${readSearchCapped?'+':''} result${(readSearchRes||[]).length!==1?'s':''}`}
+                  </div>
+                  <div style={{maxHeight:'42vh',overflowY:'auto'}} className="sheet-scroll">
+                    {(readSearchRes||[]).slice(0,20).map(r=>{
+                      const b=BIBLE.find(x=>x.n===r.book_num);
+                      return (
+                        <div key={`${r.book_num}-${r.chapter}-${r.verse}`} className="reading-verse s-btn"
+                          onClick={()=>{
+                            // Same landing as a row in the full results list.
+                            searchTypedRef.current=false;
+                            setReadSearchResultsOpen(false);
+                            closeReadSheet();
+                            const sameChap=(r.book_num===readBook&&r.chapter===readCh);
+                            if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}
+                            else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}
+                          }}
+                          style={{padding:'8px 10px',marginBottom:5,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                          <div style={{fontFamily:FS,fontSize:9,color:T.gM,marginBottom:3,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
+                          <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:13.5,color:T.body,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
+                        </div>
+                      );
+                    })}
+                    {(readSearchRes||[]).length>20&&(
+                      <button type="button" onClick={()=>doReadSearch()}
+                        style={{width:'100%',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'9px 0',cursor:'pointer',marginTop:2}}>
+                        SEE ALL RESULTS
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {recentSearches.length>0&&!liveResults&&(
                 <div style={{marginBottom:14}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
@@ -6792,8 +6908,8 @@ function App(){
                 ← Back to Reading
               </button>
               <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>
-                <span>{readSearchRes.length} verse{readSearchRes.length!==1?'s':''}</span>
-                <span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>
+                <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
+                {readSearchOccurrences!==null&&<span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
                 <span style={{color:T.dim}}> for "{readSearchQ}"</span>
               </div>
             </div>
@@ -6934,7 +7050,7 @@ function App(){
                   </div>
                 )}
                 {readSearchRes.length>1&&!readMobileSheet&&(()=>{
-                  const booksInRes=[...new Map(readSearchRes.map(r=>[r.book_num,r])).keys()];
+                  const booksInRes=searchBooks;
                   if(booksInRes.length<2)return null;
                   function srchAbbr(name){
                     if(name==='Philippians')return'Php';
