@@ -4068,12 +4068,19 @@ function App(){
   // Create the audio element imperatively so it is always in the DOM regardless
   // of which tab is active. useLayoutEffect runs before passive useEffects, so
   // audioElRef.current is guaranteed non-null when the listener effect runs.
+  const audioRateRef=useRef(1); // read by the listener below, which outlives any render
   useLayoutEffect(()=>{
     const el=document.createElement('audio');
     el.style.display='none';
     document.body.appendChild(el);
     audioElRef.current=el;
-    return()=>{el.remove();};
+    // Loading a source resets playbackRate to defaultPlaybackRate — so the rate
+    // has to be put back on the element every time a chapter loads, not only
+    // when the reader moves the slider.
+    const reapply=()=>{const r=audioRateRef.current||1;el.defaultPlaybackRate=r;el.playbackRate=r;};
+    el.addEventListener('loadedmetadata',reapply);
+    el.addEventListener('play',reapply);
+    return()=>{el.removeEventListener('loadedmetadata',reapply);el.removeEventListener('play',reapply);el.remove();};
   },[]);
   const audioTimestampsRef=useRef(null);
   const audioUtterRef=useRef([]);
@@ -4527,10 +4534,32 @@ function App(){
     };
   },[audioAutoScroll,audioAutoAdvance]);
   // ── Sync rate with audio element ──
-  useEffect(()=>{if(audioElRef.current)audioElRef.current.playbackRate=audioRate;},[audioRate]);
-  // ── Sync rate with speech synthesis ──
+  // defaultPlaybackRate as well as playbackRate: the first is what a load
+  // restores the second to, so setting only playbackRate lasted until the next
+  // chapter and no further — and setting it while nothing was loaded was undone
+  // by the load that followed, which is why the change only appeared to take
+  // when it was made mid-playback.
   useEffect(()=>{
-    audioUtterRef.current.forEach(u=>{u.rate=audioRate;});
+    audioRateRef.current=audioRate;
+    const el=audioElRef.current;
+    if(el){el.defaultPlaybackRate=audioRate;el.playbackRate=audioRate;}
+  },[audioRate]);
+  // ── Sync rate with speech synthesis ──
+  // An utterance handed to speak() keeps the rate it was built with; setting
+  // .rate on it afterwards does nothing, so the spoken voice had the opposite
+  // fault to the recordings — a change took hold on the next chapter but never
+  // on the one being read. The remaining verses are queued again instead,
+  // picking up at the verse in progress. Debounced, because the slider fires on
+  // every step of a drag and each one would otherwise restart the verse.
+  const rateRequeue=useRef(null);
+  useEffect(()=>{
+    if(audioModeRef.current!=='speech'||!audioPlaying)return;
+    clearTimeout(rateRequeue.current);
+    rateRequeue.current=setTimeout(()=>{
+      if(audioModeRef.current!=='speech')return;
+      loadChapterAudioRef.current?.(null,currentVerseRef.current);
+    },400);
+    return()=>clearTimeout(rateRequeue.current);
   },[audioRate]);
   // ── Populate voice list when browser finishes loading voices ──
   useEffect(()=>{
