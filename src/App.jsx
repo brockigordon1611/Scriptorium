@@ -6930,8 +6930,8 @@ function App(){
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
-              background:`linear-gradient(rgba(200,168,78,0.05),rgba(200,168,78,0.05)), ${T.bgCard}d9`,
-              border:`1px solid ${T.gD}77`,borderRadius:8,
+              background:`${T.bgCard}d9`,
+              border:`1px solid ${T.gD}55`,borderRadius:8,
               backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
               boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
 
@@ -7018,7 +7018,7 @@ function App(){
               {/* Options, on the same scrim-and-panel footing as the rest of the app. */}
               {searchFiltersOpen&&(<>
                 <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
-                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`linear-gradient(rgba(200,168,78,0.06),rgba(200,168,78,0.06)), ${T.bgCard}f2`,border:`1px solid ${T.gD}`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`${T.bgCard}f2`,border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(14px)',WebkitBackdropFilter:'blur(14px)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
                   <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                     {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
