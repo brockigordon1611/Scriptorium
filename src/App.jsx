@@ -65,6 +65,33 @@ function saveSession(s) {
 // ── REST helpers ──────────────────────────────────────────
 function sbSignal(ms=8000){const ac=new AbortController();setTimeout(()=>ac.abort(),ms);return ac.signal;}
 
+// An access token lives an hour. Only Auth.getSession refreshes one, and that
+// runs once at startup, so every request made by an app left open past the hour
+// carried a dead token. PostgREST answers those with 401 and an error object
+// rather than rows, which the callers below then read as "no results" or, on an
+// insert, as a row — which is where bookmarks saved as undefined came from.
+//
+// So a 401 is taken here as what it almost always is — an expired token, not a
+// refused one — and the request is retried once on a fresh one. Refreshing on a
+// timer alone would not do: the app can sit backgrounded for days.
+async function sbFetch(url, init, token) {
+  let r = await fetch(url, init);
+  if (r.status === 401 && token) {
+    const fresh = await Auth.refresh();
+    if (fresh && fresh.access_token && fresh.access_token !== token) {
+      r = await fetch(url, {...init, headers:{...(init.headers||{}), Authorization:`Bearer ${fresh.access_token}`}, signal: sbSignal()});
+    }
+  }
+  return r;
+}
+// A failed request has no rows. Returning [] for a read and [error] for a write
+// is what let both failures pass for success.
+async function sbBody(r) {
+  let d = null;
+  try { d = await r.json(); } catch {}
+  if (!r.ok) return { data: [], error: d || {status:r.status} };
+  return { data: Array.isArray(d) ? d : (d==null ? [] : [d]), error: null };
+}
 async function sbFrom(table, token) {
   const hdrs = sbHeaders(token);
   const base = `${SUPA_URL}/rest/v1/${table}`;
@@ -74,49 +101,83 @@ async function sbFrom(table, token) {
       for (const [k,v] of Object.entries(filters)) url += `&${k}=eq.${encodeURIComponent(v)}`;
       if (opts.order) url += `&order=${opts.order}`;
       if (opts.limit) url += `&limit=${opts.limit}`;
-      const r = await fetch(url, { headers: hdrs, signal: sbSignal() });
-      const d = await r.json();
-      return { data: Array.isArray(d)?d:[], error: r.ok?null:d };
+      const r = await sbFetch(url, { headers: hdrs, signal: sbSignal() }, token);
+      return sbBody(r);
     },
     async insert(rows) {
       const body = Array.isArray(rows)?rows:[rows];
-      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(body), signal: sbSignal() });
-      const d = await r.json();
-      return { data: Array.isArray(d)?d:[d], error: r.ok?null:d };
+      const r = await sbFetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(body), signal: sbSignal() }, token);
+      return sbBody(r);
     },
     async upsert(rows) {
       const body = Array.isArray(rows)?rows:[rows];
-      const r = await fetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation,resolution=merge-duplicates'}, body:JSON.stringify(body), signal: sbSignal() });
-      const d = await r.json();
-      return { data: Array.isArray(d)?d:[d], error: r.ok?null:d };
+      const r = await sbFetch(base, { method:'POST', headers:{...hdrs,'Prefer':'return=representation,resolution=merge-duplicates'}, body:JSON.stringify(body), signal: sbSignal() }, token);
+      return sbBody(r);
     },
     async update(vals, filters={}) {
       let url = `${base}?`;
       for (const [k,v] of Object.entries(filters)) url += `${k}=eq.${encodeURIComponent(v)}&`;
-      const r = await fetch(url, { method:'PATCH', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(vals), signal: sbSignal() });
-      const d = await r.json();
-      return { data: Array.isArray(d)?d:[], error: r.ok?null:d };
+      const r = await sbFetch(url, { method:'PATCH', headers:{...hdrs,'Prefer':'return=representation'}, body:JSON.stringify(vals), signal: sbSignal() }, token);
+      return sbBody(r);
     },
     async delete(filters={}) {
       let url = `${base}?`;
       for (const [k,v] of Object.entries(filters)) url += `${k}=eq.${encodeURIComponent(v)}&`;
-      const r = await fetch(url, { method:'DELETE', headers:hdrs, signal: sbSignal() });
-      return { error: r.ok?null:await r.json() };
+      const r = await sbFetch(url, { method:'DELETE', headers:hdrs, signal: sbSignal() }, token);
+      return { error: r.ok?null:await r.json().catch(()=>({status:r.status})) };
     },
   };
 }
 
 async function sbRpc(func, params, token) {
-  const r = await fetch(`${SUPA_URL}/rest/v1/rpc/${func}`, {
+  const r = await sbFetch(`${SUPA_URL}/rest/v1/rpc/${func}`, {
     method:'POST', headers: sbHeaders(token), body: JSON.stringify(params), signal: sbSignal()
-  });
-  const d = await r.json();
-  return { data: d, error: r.ok?null:d };
+  }, token);
+  let d = null;
+  try { d = await r.json(); } catch {}
+  // The verse search runs through here: handing back the error as data is what
+  // turned an expired token into "no results found".
+  return { data: r.ok ? d : null, error: r.ok ? null : (d || {status:r.status}) };
 }
 
 // ── Auth ──────────────────────────────────────────────────
 const authListeners = [];
+let refreshInFlight = null;
 const Auth = {
+  // Forced, unlike getSession's, which only refreshes once the clock says the
+  // token has expired — a 401 means it is dead whatever the clock says. Shared
+  // between callers so a screen that fires six requests at once refreshes once,
+  // and so five of them do not race to spend a refresh token that can only be
+  // spent by one.
+  async refresh() {
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = (async () => {
+      try {
+        const raw = localStorage.getItem(SB_KEY);
+        const s = raw ? JSON.parse(raw) : null;
+        if (!s || !s.refresh_token) return null;
+        const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method:'POST', headers: sbHeaders(null),
+          body: JSON.stringify({ refresh_token: s.refresh_token }), signal: sbSignal(8000)
+        });
+        if (!r.ok) {
+          // A refused refresh token is a session that is genuinely over; keeping
+          // it would retry a dead token on every request from here on.
+          if (r.status === 400 || r.status === 401) { saveSession(null); authListeners.forEach(fn => fn(null)); }
+          return null;
+        }
+        const ns = await r.json();
+        if (!ns || !ns.access_token) return null;
+        saveSession(ns);
+        return ns;
+      } catch { return null; }
+      // Cleared as soon as it settles, not a tick later: everyone who asked
+      // while it was in flight already holds this promise, and anyone asking
+      // afterwards wants a real refresh rather than this one's answer.
+      finally { refreshInFlight = null; }
+    })();
+    return refreshInFlight;
+  },
   async getSession() {
     try {
       const raw = localStorage.getItem(SB_KEY);
@@ -4648,7 +4709,14 @@ function App(){
       }
     }
     Auth.getSession().then(s=>{setUser(s?.user||null);setAuthChecked(true);});
-    return Auth.onAuthChange(u=>{setUser(u||null);if(!u){setData(null);setReady(false);setProjectId(null);}});
+    // Coming back after a long spell in the background is the moment the token
+    // is most likely to be stale. The 401 retry would cover it either way; this
+    // just means the first thing the reader does is not the request that has to
+    // discover it.
+    const wake=()=>{if(document.visibilityState==='visible')Auth.getSession();};
+    document.addEventListener('visibilitychange',wake);
+    const off=Auth.onAuthChange(u=>{setUser(u||null);if(!u){setData(null);setReady(false);setProjectId(null);}});
+    return()=>{document.removeEventListener('visibilitychange',wake);off&&off();};
   },[]);
 
   // ── Load project on auth ──
