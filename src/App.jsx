@@ -5686,9 +5686,17 @@ function App(){
             {/* Search */}
             <button type="button" className="s-btn s-ghost" title="Search" onClick={()=>doReadSearch()} disabled={readSearching}
               style={{height:33.33,boxSizing:'border-box',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,padding:'0 8px',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>{readSearching?<Spinner/>:'⌕'}</button>
-            <input value={readSearchQ} onChange={e=>{setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-              placeholder="Search…"
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 8px',outline:'none',width:150}}/>
+            <div style={{position:'relative',display:'inline-flex',flexShrink:0}}>
+              <input value={readSearchQ} onChange={e=>{setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
+                placeholder="Search…"
+                style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 26px 0 8px',outline:'none',width:150}}/>
+              {readSearchQ&&(
+                <button type="button" title="Clear" aria-label="Clear search" onClick={()=>setReadSearchQ('')}
+                  style={{position:'absolute',right:0,top:0,bottom:0,width:24,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',outline:'none',color:T.dim,fontSize:12,lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'}}>
+                  ✕
+                </button>
+              )}
+            </div>
             {/* Options toggle */}
             {(()=>{const act=searchOpts.scope!=='all'||searchOpts.mode!=='any'||searchOpts.caseSensitive||searchOpts.partial;return(
               <button type="button" title="Search options" onClick={()=>setReadSearchPopover(v=>!v)}
@@ -6692,10 +6700,21 @@ function App(){
                 <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search Verses</div>
               </div>
               <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
-                <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-                  placeholder="Search all verses in this version…"
-                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 12px',outline:'none',minWidth:0}}/>
+                {/* Clearing a query meant selecting the lot and holding backspace.
+                    The button sits inside the field, where the padding makes room
+                    for it, and shows only when there is something to clear. */}
+                <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
+                  <input value={readSearchQ} onChange={e=>setReadSearchQ(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
+                    placeholder="Search all verses in this version…"
+                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 36px 9px 12px',outline:'none',minWidth:0}}/>
+                  {readSearchQ&&(
+                    <button type="button" title="Clear" aria-label="Clear search" onClick={()=>setReadSearchQ('')}
+                      style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
+                      ✕
+                    </button>
+                  )}
+                </div>
                 <button type="button" className="s-btn s-ghost" onClick={()=>doReadSearch()} disabled={readSearching}
                   style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,padding:'9px 14px',fontWeight:600,flexShrink:0,fontSize:16}}>
                   {readSearching?<Spinner/>:'⌕'}
