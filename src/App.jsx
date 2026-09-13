@@ -1116,6 +1116,55 @@ const BIBLE = [
 function bookName(b,lang){if(!b)return'';if(lang==='ES'&&b.nameES)return b.nameES;return b.name;}
 function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN';}
 
+// Reads a typed reference — "john 3:16", "1 cor 13", "gen 1:1-5", "Éxodo 2" —
+// so a reader who knows where they are going is not made to search for it. The
+// book is matched in whatever language the version is in, on any prefix long
+// enough to be unambiguous, which is what makes abbreviations work without a
+// table of them. Returns null for anything that is not a reference, and a text
+// search runs as normal.
+function parseReference(raw,lang){
+  if(!raw)return null;
+  const s=raw.trim().replace(/\s+/g,' ');
+  // An optional leading ordinal (1, 2, 3, I, II, III), the name, then numbers.
+  const m=s.match(/^([123]|i{1,3})?\s*([\p{L}\s.]+?)\s*(\d+)?\s*(?::\s*(\d+))?\s*(?:-\s*\d+)?$/iu);
+  if(!m)return null;
+  const ord=m[1]?(/^[123]$/.test(m[1])?m[1]:String(m[1].length)):'';
+  const namePart=(m[2]||'').replace(/\./g,'').trim();
+  if(namePart.length<2)return null;
+  const chapter=m[3]?parseInt(m[3],10):null;
+  const verse=m[4]?parseInt(m[4],10):null;
+  const norm=t=>String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+  const bare=norm(namePart);
+  const cands=BIBLE.map(b=>({b,full:norm(bookName(b,lang))}));
+  let hits;
+  if(ord){
+    hits=cands.filter(c=>c.full.startsWith(norm(ord+' '+namePart)));
+  }else{
+    // "john" names John, even though it also begins 1, 2 and 3 John — an exact
+    // name beats a prefix, or the most-typed reference in the Bible would be
+    // rejected as ambiguous.
+    const exact=cands.filter(c=>c.full===bare);
+    if(exact.length===1)hits=exact;
+    else{
+      const plain=cands.filter(c=>!/^[123] /.test(c.full)&&c.full.startsWith(bare));
+      hits=plain.length?plain:cands.filter(c=>c.full.startsWith(bare));
+    }
+  }
+  // Still ambiguous ("jo" could be Job, Joel, Jonah, Joshua, John) is not a
+  // reference yet — the reader may be typing a word.
+  if(hits.length!==1)return null;
+  const b=hits[0].b;
+  // A chapter that does not exist is a typo, not a destination. Saying nothing
+  // beats offering to jump somewhere they did not ask for.
+  if(chapter!==null&&(chapter<1||chapter>b.v.length))return null;
+  const ch=chapter||1;
+  const maxV=b.v[ch-1]||1;
+  // A verse out of range falls back to the chapter rather than to its last verse.
+  const vs=(verse!==null&&verse>=1&&verse<=maxV)?verse:null;
+  return{book:b,book_num:b.n,chapter:ch,verse:vs};
+}
+
+
 // ── Reading plan ──────────────────────────────────────────────
 // Meek's Daily Bible Reading Plan: 52 weeks of a Psalm on Sunday and a paired
 // Old and New Testament reading the other six days.
@@ -3705,6 +3754,9 @@ function App(){
   // field, cleared when they commit or clear it — so setting the query from a
   // recent-search chip does not start a second search behind the one it ran.
   const searchTypedRef=useRef(false);
+  const[searchPageOpen,setSearchPageOpen]=useState(false);
+  const[searchFiltersOpen,setSearchFiltersOpen]=useState(false);
+  const searchInputRef=useRef(null);
   const[readSearching,setReadSearching]=useState(false);
   const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'all',caseSensitive:false,partial:false});
   const SEARCH_DEFAULTS={scope:'all',mode:'all',caseSensitive:false,partial:false};
@@ -5274,6 +5326,9 @@ function App(){
       setReadSearchRes(results);
       setReadSearchResultsOpen(true);
       if(!live){
+        // Hand off to the full results view, which carries the book scrubber
+        // and the back-to-reading pill.
+        setSearchPageOpen(false);setSearchFiltersOpen(false);
         setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=0;},30);
         closeReadSheet();
       }
@@ -5281,7 +5336,7 @@ function App(){
       if(!current())return;
       setReadSearchRes([]);
       setReadSearchResultsOpen(true);
-      if(!live)closeReadSheet();
+      if(!live){setSearchPageOpen(false);closeReadSheet();}
     }finally{
       if(current())setReadSearching(false);
     }
@@ -5677,7 +5732,7 @@ function App(){
             // since results stay open after a search, the marker stayed pinned to
             // search however many other sheets were opened afterwards. Results
             // still light it, but only when no sheet is open to speak for itself.
-            const rOpen=(!readSheetClosing&&(readMobileSheet==='search'||readMobileSheet==='nav'||readMobileSheet==='version'))?readMobileSheet:null;
+            const rOpen=searchPageOpen?'search':((!readSheetClosing&&(readMobileSheet==='nav'||readMobileSheet==='version'))?readMobileSheet:null);
             const rSearch=rOpen?rOpen==='search':readSearchResultsOpen;
             const rVersion=rOpen==='version';
             const rNav=rOpen==='nav';
@@ -5706,7 +5761,7 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:rIndLeft,width:44,height:'calc(100% - 6px)',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'&&!readMobileSheet){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{readMobileSheet==='search'?closeReadSheet():openReadSheet('search');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(readSearchRes&&!readSearchResultsOpen&&tab==='read'&&!readMobileSheet){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}else{if(readMobileSheet)closeReadSheet();setSearchPageOpen(true);}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
@@ -6766,116 +6821,150 @@ function App(){
               </div>
             </MobileSheet>
           )}
-          {readMobileSheet==='search'&&(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH}>
-              <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
-                  <button type="button" onClick={()=>{closeReadSheet();}}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    ←
-                  </button>
-                </div>
-                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search Verses</div>
-              </div>
-              <div style={{display:'flex',gap:8,marginBottom:12,alignItems:'center'}}>
-                {/* Clearing a query meant selecting the lot and holding backspace.
-                    The button sits inside the field, where the padding makes room
-                    for it, and shows only when there is something to clear. */}
+
+      {/* ═══ SEARCH PAGE ═══
+          A layer rather than a tab: a tab would have to join the hardcoded list
+          that drives studyActive, which decides the nav pill state and whether
+          the Search/Navigate/Version buttons are even visible. Covering the nav
+          bar also buys back its height for results.
+
+          The shape is the point. WKWebView shrinks the web view when the
+          keyboard opens, and a flex column whose only growing child is
+          flex:1/overflow:auto simply gets shorter — the field stays at the top
+          where the keyboard cannot reach it. Nothing here may be anchored to the
+          bottom with position:fixed, which is what the old sheet got wrong. */}
+      {searchPageOpen&&(()=>{
+        const lang=versionLang(readVid);
+        const ref=parseReference(readSearchQ,lang);
+        const goRef=()=>{
+          searchTypedRef.current=false;
+          setSearchPageOpen(false);
+          setReadSearchResultsOpen(false);
+          const sameChap=(ref.book_num===readBook&&ref.chapter===readCh);
+          const v=ref.verse||1;
+          if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${v}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});if(ref.verse)setReadSelVerses(new Set([v]));}},60);}
+          else{readScrollToVerse.current=v;setReadBook(ref.book_num);setReadCh(ref.chapter);}
+        };
+        const openResult=(r)=>{
+          searchTypedRef.current=false;
+          setSearchPageOpen(false);
+          setReadSearchResultsOpen(false);
+          const sameChap=(r.book_num===readBook&&r.chapter===readCh);
+          if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},60);}
+          else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}
+        };
+        // One chip per setting that is not at its default, so the row is empty
+        // on an untouched search and every chip present is narrowing the result.
+        const chips=[];
+        if(searchOpts.scope!==SEARCH_DEFAULTS.scope)chips.push({k:'scope',label:searchOpts.scope==='ot'?'Old Testament':'New Testament'});
+        if(searchOpts.mode!==SEARCH_DEFAULTS.mode)chips.push({k:'mode',label:searchOpts.mode==='phrase'?'Exact phrase':'Any word'});
+        if(searchOpts.caseSensitive)chips.push({k:'caseSensitive',label:'Case sensitive'});
+        if(searchOpts.partial)chips.push({k:'partial',label:'Partial words'});
+        const clearChip=(k)=>{const o={...searchOpts,[k]:SEARCH_DEFAULTS[k]};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
+        const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
+        const optBtn=(active,label,onClick,red)=>(
+          <button key={label} type="button" onClick={onClick}
+            style={{flex:1,background:active?(red?'rgba(210,60,60,0.13)':T.gF):'transparent',border:`1px solid ${active?(red?'rgba(210,60,60,0.4)':T.gD):T.bd}`,borderRadius:6,color:active?(red?(dark?'#e08888':'#bf4040'):T.gT):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+            {label}
+          </button>
+        );
+        return (
+          <div style={{position:'fixed',inset:0,zIndex:240,background:T.bg,display:'flex',flexDirection:'column'}}>
+            {/* ── Header: never scrolls, never covered by the keyboard ── */}
+            <div style={{flexShrink:0,padding:`calc(var(--sat,0px) + 10px) 14px 0`,background:T.bg}}>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <button type="button" title="Close search" aria-label="Close search"
+                  onClick={()=>{searchTypedRef.current=false;setSearchPageOpen(false);setSearchFiltersOpen(false);}}
+                  style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'8px 11px',cursor:'pointer',fontSize:13,lineHeight:1,flexShrink:0}}>
+                  ←
+                </button>
                 <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
-                  <input value={readSearchQ} onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
-                    onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
-                    placeholder="Search all verses in this version…"
+                  {/* 16px or iOS zooms the page on focus */}
+                  <input ref={searchInputRef} value={readSearchQ} autoFocus
+                    onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
+                    onKeyDown={e=>{if(e.key==='Enter'){if(ref&&!readSearchRes)goRef();else doReadSearch();}}}
+                    placeholder="Search all verses…"
                     style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 36px 9px 12px',outline:'none',minWidth:0}}/>
                   {readSearchQ&&(
-                    <button type="button" title="Clear" aria-label="Clear search" onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
+                    <button type="button" title="Clear" aria-label="Clear search"
+                      onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
                       style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
                       ✕
                     </button>
                   )}
                 </div>
                 <button type="button" className="s-btn s-ghost" onClick={()=>doReadSearch()} disabled={readSearching}
-                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,padding:'9px 14px',fontWeight:600,flexShrink:0,fontSize:16}}>
+                  style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,padding:'9px 13px',fontWeight:600,flexShrink:0,fontSize:16}}>
                   {readSearching?<Spinner/>:'⌕'}
                 </button>
               </div>
-              {/* Search options */}
-              <div style={{marginBottom:14,padding:'10px 12px',background:T.bgSec,borderRadius:8,border:`1px solid ${T.bd}`}}>
-                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
-                  {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>(
-                    <button key={v} type="button" onClick={()=>{const o={...searchOpts,scope:v};setSearchOpts(o);}}
-                      style={{flex:1,background:searchOpts.scope===v?T.gF:'transparent',border:`1px solid ${searchOpts.scope===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.scope===v?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
-                  {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
-                    <button key={v} type="button" onClick={()=>{const o={...searchOpts,mode:v};setSearchOpts(o);}}
-                      style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-                <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                  <div style={{width:38,flexShrink:0}}/>
-                  {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>(
-                    <button key={k} type="button" onClick={()=>{const o={...searchOpts,[k]:!searchOpts[k]};setSearchOpts(o);}}
-                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Recent searches */}
-              {/* Results as the reader types. They have to live inside the sheet:
-                  it covers the reading view, so results rendered behind it would
-                  be dimmed, unreachable, and effectively invisible. Recents give
-                  way to them, since both answer "what am I looking for". */}
-              {liveResults&&(
-                <div style={{marginBottom:14}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8}}>
-                    {readSearching?'Searching…':`${(readSearchRes||[]).length}${readSearchCapped?'+':''} result${(readSearchRes||[]).length!==1?'s':''}`}
+
+              {/* ── Filters: one line of what is actually narrowing the search ── */}
+              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',padding:'8px 0 9px'}}>
+                <button type="button" onClick={()=>setSearchFiltersOpen(o=>!o)}
+                  style={{display:'inline-flex',alignItems:'center',gap:5,background:searchFiltersOpen?T.gF:'transparent',border:`1px solid ${searchFiltersOpen?T.gD:T.bd}`,borderRadius:20,color:searchFiltersOpen?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',padding:'5px 11px',cursor:'pointer',flexShrink:0}}>
+                  Filters<Caret open={searchFiltersOpen} size={10}/>
+                </button>
+                {chips.map(c=>(
+                  <button key={c.k} type="button" onClick={()=>clearChip(c.k)} title={`Remove ${c.label}`}
+                    style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FB,fontSize:11.5,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>
+                    {c.label}<span style={{color:T.gM,fontSize:11}}>✕</span>
+                  </button>
+                ))}
+                <div style={{flex:1}}/>
+                {readSearchRes&&!readSearching&&readSearchQ.trim().length>=3&&!(ref&&readSearchRes.length===0)&&(
+                  <div style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',color:T.dim,textTransform:'uppercase',flexShrink:0}}>
+                    {readSearchRes.length}{readSearchCapped?'+':''} result{readSearchRes.length!==1?'s':''}
                   </div>
-                  <div style={{maxHeight:'42vh',overflowY:'auto'}} className="sheet-scroll">
-                    {(readSearchRes||[]).slice(0,20).map(r=>{
-                      const b=BIBLE.find(x=>x.n===r.book_num);
-                      return (
-                        <div key={`${r.book_num}-${r.chapter}-${r.verse}`} className="reading-verse s-btn"
-                          onClick={()=>{
-                            // Same landing as a row in the full results list.
-                            searchTypedRef.current=false;
-                            setReadSearchResultsOpen(false);
-                            closeReadSheet();
-                            const sameChap=(r.book_num===readBook&&r.chapter===readCh);
-                            if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}
-                            else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}
-                          }}
-                          style={{padding:'8px 10px',marginBottom:5,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
-                          <div style={{fontFamily:FS,fontSize:9,color:T.gM,marginBottom:3,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
-                          <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:13.5,color:T.body,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
-                        </div>
-                      );
-                    })}
-                    {(readSearchRes||[]).length>20&&(
-                      <button type="button" onClick={()=>doReadSearch()}
-                        style={{width:'100%',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'9px 0',cursor:'pointer',marginTop:2}}>
-                        SEE ALL RESULTS
-                      </button>
-                    )}
+                )}
+              </div>
+
+              {searchFiltersOpen&&(
+                <div style={{marginBottom:9,padding:'10px 12px',background:T.bgSec,borderRadius:8,border:`1px solid ${T.bd}`}}>
+                  <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
+                    <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+                    {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
+                  </div>
+                  <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
+                    <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+                    {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
+                  </div>
+                  <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                    <div style={{width:38,flexShrink:0}}/>
+                    {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
                   </div>
                 </div>
               )}
-              {recentSearches.length>0&&!liveResults&&(
-                <div style={{marginBottom:14}}>
+              <div style={{height:1,background:T.accentLine}}/>
+            </div>
+
+            {/* ── Everything below scrolls, and is what the keyboard eats into ── */}
+            <div className="sheet-scroll" style={{flex:1,minHeight:0,overflowY:'auto',padding:'10px 14px 24px',position:'relative'}}>
+              {ref&&(
+                <button type="button" onClick={goRef}
+                  style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,padding:'11px 12px',marginBottom:10,cursor:'pointer'}}>
+                  <span style={{fontSize:15,color:T.gT,flexShrink:0}}>⤷</span>
+                  <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
+                  <span style={{fontFamily:FS,fontSize:14,color:T.gT,letterSpacing:'0.06em',fontWeight:600,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {bookName(ref.book,lang)} {ref.chapter}{ref.verse?`:${ref.verse}`:''}
+                  </span>
+                </button>
+              )}
+
+              {readSearchQ.trim().length>0&&readSearchQ.trim().length<3&&!ref&&(
+                <div style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',color:T.dim,textTransform:'uppercase',padding:'6px 2px'}}>Type at least 3 characters</div>
+              )}
+
+              {!readSearchQ.trim()&&recentSearches.length>0&&(
+                <div>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
-                    <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}} style={{background:'none',border:'none',color:T.dim,fontSize:10,cursor:'pointer',fontFamily:FS,letterSpacing:'0.06em'}}>clear all</button>
+                    <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}}
+                      style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>Clear</button>
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
                     {recentSearches.map(r=>(
-                      <button key={r} type="button" onClick={()=>doReadSearch(r)}
+                      <button key={r} type="button" onClick={()=>{searchTypedRef.current=false;doReadSearch(r);}}
                         style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:13,padding:'5px 12px',cursor:'pointer'}}>
                         {r}
                       </button>
@@ -6883,8 +6972,61 @@ function App(){
                   </div>
                 </div>
               )}
-            </MobileSheet>
-          )}
+
+              {readSearchRes&&readSearchRes.length>0&&readSearchQ.trim().length>=3&&(()=>{
+                let lastBk=null;
+                return readSearchRes.slice(0,readSearchLimit).map(r=>{
+                  const b=BIBLE.find(x=>x.n===r.book_num);
+                  const firstOfBook=r.book_num!==lastBk;
+                  if(firstOfBook)lastBk=r.book_num;
+                  return (
+                    <React.Fragment key={`${r.book_num}-${r.chapter}-${r.verse}`}>
+                      {firstOfBook&&(
+                        /* Opaque, or rows scroll through the text behind it. */
+                        <div id={`srch-bk-${r.book_num}`} style={{position:'sticky',top:-10,zIndex:2,background:T.bg,paddingTop:6,marginBottom:6}}>
+                          <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.16em',color:T.gT,textTransform:'uppercase',fontWeight:600,paddingBottom:5}}>
+                            {bookName(b,lang)}
+                          </div>
+                          <div style={{height:1,background:T.accentLine}}/>
+                        </div>
+                      )}
+                      <div className="reading-verse s-btn" onClick={()=>openResult(r)}
+                        style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                        <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,lang)} {r.chapter}:{r.verse}</div>
+                        <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
+                      </div>
+                    </React.Fragment>
+                  );
+                });
+              })()}
+
+              {readSearchRes&&readSearchLimit<readSearchRes.length&&readSearchQ.trim().length>=3&&(
+                <button type="button" onClick={()=>setReadSearchLimit(n=>n+50)}
+                  style={{width:'100%',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:9,letterSpacing:'0.12em',padding:'11px 0',cursor:'pointer',marginTop:4}}>
+                  SHOW {Math.min(50,readSearchRes.length-readSearchLimit)} MORE · {readSearchRes.length-readSearchLimit} LEFT
+                </button>
+              )}
+
+              {readSearchRes&&readSearchRes.length===0&&!readSearching&&readSearchQ.trim().length>=3&&!ref&&(
+                <div style={{padding:'22px 4px',textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.1em',color:T.gM,textTransform:'uppercase',marginBottom:10}}>No verses found</div>
+                  {/* The settings that most often explain an empty result, each
+                      with the one tap that undoes it. */}
+                  {searchOpts.caseSensitive&&(
+                    <button type="button" onClick={()=>setOpt('caseSensitive',false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:12,padding:'7px 12px',margin:4,cursor:'pointer'}}>Case Sensitive is on — turn it off →</button>
+                  )}
+                  {!searchOpts.partial&&(
+                    <button type="button" onClick={()=>setOpt('partial',true)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:12,padding:'7px 12px',margin:4,cursor:'pointer'}}>Matching whole words only — allow partial →</button>
+                  )}
+                  {searchOpts.scope!=='all'&&(
+                    <button type="button" onClick={()=>setOpt('scope','all')} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:12,padding:'7px 12px',margin:4,cursor:'pointer'}}>Searching {searchOpts.scope==='ot'?'the Old Testament':'the New Testament'} only — search all →</button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
       {fsActive&&tab==='read'&&<>
@@ -7090,10 +7232,20 @@ function App(){
                   );
                 })()}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
-                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                  <React.Fragment key={`f-${r.book_num}-${r.chapter}-${r.verse}`}>
+                  {firstOfBook&&(
+                    <div id={`srch-bk-${r.book_num}`} style={{position:'sticky',top:0,zIndex:2,background:T.bg,paddingTop:6,marginBottom:6}}>
+                      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.16em',color:T.gT,textTransform:'uppercase',fontWeight:600,paddingBottom:5}}>
+                        {bookName(b,versionLang(readVid))}
+                      </div>
+                      <div style={{height:1,background:T.accentLine}}/>
+                    </div>
+                  )}
+                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
+                  </React.Fragment>
                 );});})()}
                 {readSearchLimit<readSearchRes.length&&(
                   <div style={{textAlign:'center',padding:'14px 0',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.12em'}}>
