@@ -7435,6 +7435,7 @@ function App(){
       {tab==='strongs'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
           <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
+            <div style={{position:'relative',display:'flex'}}>
             <input value={strongsSearchQ} onChange={e=>{
               const val=e.target.value;setStrongsSearchQ(val);setStrongsTabEntry(null);
               if(strongsSearchTimer.current)clearTimeout(strongsSearchTimer.current);
@@ -7444,7 +7445,18 @@ function App(){
                 setStrongsSearchLoading(true);
                 dbSearchStrongs(q).then(r=>{setStrongsSearchRes(r);setStrongsSearchLoading(false);}).catch(()=>{setStrongsSearchRes([]);setStrongsSearchLoading(false);});
               },350);
-            }} placeholder="Search by Strong's number (H430) or English word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+            }} placeholder="Search by Strong's number (H430) or English word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
+            {strongsSearchQ&&(
+              /* Clears the results with the query, since they are only ever a
+                 reflection of it — the same end state as emptying the field by
+                 hand, without waiting out the debounce. */
+              <button type="button" title="Clear" aria-label="Clear search"
+                onClick={()=>{if(strongsSearchTimer.current)clearTimeout(strongsSearchTimer.current);setStrongsSearchQ('');setStrongsSearchRes(null);setStrongsTabEntry(null);}}
+                style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
+                ✕
+              </button>
+            )}
+            </div>
             <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
               {strongsSearchLoading?'SEARCHING…':strongsSearchRes?`${strongsSearchRes.length} RESULT${strongsSearchRes.length!==1?'S':''}`:strongsSearchQ.length>0&&strongsSearchQ.length<2?'TYPE AT LEAST 2 CHARACTERS':"STRONG'S CONCORDANCE · 14,197 ENTRIES"}
             </div>
@@ -7741,7 +7753,16 @@ function App(){
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
-              <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);setDictDbEntries(null);}} placeholder="Search Webster's 1828…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+              <div style={{position:'relative',display:'flex'}}>
+                <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);setDictDbEntries(null);}} placeholder="Search Webster's 1828…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
+                {dictSearchQ&&(
+                  <button type="button" title="Clear" aria-label="Clear search"
+                    onClick={()=>{setDictSearchQ('');setDictLive(null);setDictDbEntries(null);}}
+                    style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
+                    ✕
+                  </button>
+                )}
+              </div>
               <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>{statusLabel}</div>
             </div>
             {/* DB results grouped by word then POS */}
