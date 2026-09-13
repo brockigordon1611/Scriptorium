@@ -6925,11 +6925,16 @@ function App(){
             const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
             const optBtn=(active,label,onClick,red)=>(
               <button key={label} type="button" onClick={onClick}
-                style={{flex:1,background:active?(red?'rgba(210,60,60,0.16)':T.gF):'var(--ac-ghost-bg)',border:`1px solid ${active?(red?'rgba(210,60,60,0.45)':T.gD):`${T.gD}66`}`,borderRadius:6,color:active?(red?(dark?'#e08888':'#bf4040'):T.gT):T.mut,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                style={{flex:1,background:active?(red?'rgba(198,40,40,0.15)':T.gF):'transparent',border:`1px solid ${active?(red?'#c62828':T.gD):T.bd}`,borderRadius:6,color:active?(red?'#ef5350':T.gT):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                 {label}
               </button>
             );
             const summary=readSearchRes&&readSearchResultsOpen&&!(searchRef&&readSearchRes.length===0);
+            // One number for the row's height, so the field and the two square
+            // buttons beside it match by construction. aspect-ratio will not do
+            // it: the height comes from the row, but the width still follows the
+            // content, so the buttons collapsed to the width of their glyph.
+            const CTRL=34;
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
@@ -6938,8 +6943,7 @@ function App(){
               backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
               boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
 
-              {/* stretch, so the buttons take their height from the field */}
-              <div style={{display:'flex',alignItems:'stretch',gap:8,minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
                 <button type="button" title="Search" aria-label="Search"
                   onClick={()=>{
                     if(searchFieldOpen){
@@ -6954,7 +6958,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:13,lineHeight:1,padding:'5px 9px',cursor:'pointer',flexShrink:0}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
                   ⌕
                 </button>
 
@@ -6972,7 +6976,7 @@ function App(){
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'6px 30px 6px 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
@@ -6983,7 +6987,7 @@ function App(){
                   </div>
                   <button type="button" title="Search options" aria-label="Search options"
                     onClick={()=>setSearchFiltersOpen(o=>!o)}
-                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',background:searchFiltersOpen?T.gF:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:12,lineHeight:1,padding:'6px 8px',cursor:'pointer',flexShrink:0}}>
+                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFiltersOpen||searchOptsDirty?T.gF:'transparent',border:`1px solid ${searchFiltersOpen||searchOptsDirty?T.gD:T.bd}`,borderRadius:6,color:searchFiltersOpen||searchOptsDirty?T.gT:T.dim,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
                     ⊟
                     {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
                   </button>
@@ -7037,7 +7041,7 @@ function App(){
                   </div>
                   {searchOptsDirty&&(
                     <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-                      style={{width:'100%',marginTop:9,background:'var(--ac-ghost-bg)',border:`1px solid ${T.gD}66`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
+                      style={{width:'100%',marginTop:9,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
                       Reset to defaults
                     </button>
                   )}
