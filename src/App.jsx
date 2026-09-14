@@ -3751,6 +3751,7 @@ function App(){
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
   const[readSearchRes,setReadSearchRes]=useState(null);
+  const[readSearchResQ,setReadSearchResQ]=useState(''); // the query the standing results belong to
   const[readSearchResultsOpen,setReadSearchResultsOpen]=useState(false);
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
   const[readSearchLimit,setReadSearchLimit]=useState(50);
@@ -5383,6 +5384,7 @@ function App(){
       setReadSearchCapped(capped);
       setSearchTopBook(results.length?results[0].book_num:null);
       setReadSearchRes(results);
+      setReadSearchResQ(query);
       setReadSearchResultsOpen(true);
       if(!live){
         // The field stays. Taking it away on Enter made the full results look
@@ -5395,12 +5397,19 @@ function App(){
     }catch(err){
       if(!current())return;
       setReadSearchRes([]);
+      setReadSearchResQ(query);
       setReadSearchResultsOpen(true);
-      if(!live){setSearchFieldOpen(false);closeReadSheet();}
+      // An error takes the results away, not the field: closing it left no way
+      // to try the search again without reopening search from the nav bar.
+      if(!live)closeReadSheet();
     }finally{
       if(current())setReadSearching(false);
     }
   }
+  // Leaving search behind retires whatever search is still in flight. A reply
+  // that landed afterwards reopened the results over whatever the reader had
+  // moved on to — and with the field gone, nothing on screen could close them.
+  function abandonSearch(){++searchSeqRef.current;setReadSearching(false);}
   // The book scrubber needs the handful of books a result set touches, and was
   // rebuilding a Map over every result on every render of the reading tab — with
   // live search that would run on each keystroke as well as each scroll.
@@ -5465,11 +5474,19 @@ function App(){
   const readingHidden=searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen);
   // Parsed once for everything that offers the jump, rather than per render site.
   const searchRef=useMemo(()=>parseReference(readSearchQ,versionLang(readVid)),[readSearchQ,readVid]);
+  // Enter jumps to a typed reference only once the search for that exact text
+  // has come back with nothing. Offering the jump on whether any results had
+  // arrived yet made the same keystrokes do different things depending on how
+  // fast they were typed: get ahead of the live search and "john" jumped to
+  // John 1 instead of searching for the word. The row under the bar is still
+  // there for a jump the reader actually wants.
+  const refJump=searchRef&&readSearchRes&&readSearchRes.length===0&&readSearchResQ===readSearchQ.trim()?searchRef:null;
   // Jumping to a typed reference: the same landing a result row makes, minus
   // the search, since the reader told us exactly where they wanted to go.
   function goRefFromBar(ref){
     if(!ref)return;
     searchTypedRef.current=false;
+    abandonSearch();
     setSearchFieldOpen(false);setSearchFiltersOpen(false);
     setReadSearchResultsOpen(false);
     const v=ref.verse||1;
@@ -5911,14 +5928,14 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:studyIsActive?'calc(50% + 1px)':3,width:'calc(50% - 4px)',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{if(searchFieldOpen)setSearchFieldOpen(false);if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{if(searchFieldOpen){setSearchFieldOpen(false);abandonSearch();}if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:rIndLeft,width:44,height:'calc(100% - 6px)',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(searchFieldOpen){if(searchRef&&!(readSearchRes&&readSearchRes.length))goRefFromBar(searchRef);else if(readSearchQ.trim()){doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}return;}if(readMobileSheet)closeReadSheet();closeModal();if(readFullScreen.current)exitFullScreen();if(tab!=='read')setTab('read');if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}setSearchFieldOpen(true);setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(searchFieldOpen){if(refJump)goRefFromBar(refJump);else if(readSearchQ.trim()){doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}return;}if(readMobileSheet)closeReadSheet();closeModal();if(readFullScreen.current)exitFullScreen();if(tab!=='read')setTab('read');if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}setSearchFieldOpen(true);setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
@@ -7000,7 +7017,6 @@ function App(){
               may be anchored to the bottom. */}
           {searchBarOn&&(()=>{
             const lang=versionLang(readVid);
-            const ref=searchRef;
             const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
             return (<>
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
@@ -7030,7 +7046,7 @@ function App(){
                         if(e.key!=='Enter')return;
                         // Enter means "show me everything", so the capped preview
                         // gives way to the full set and the field gets out of the way.
-                        if(ref&&!(readSearchRes&&readSearchRes.length))goRefFromBar(ref);
+                        if(refJump)goRefFromBar(refJump);
                         // Blur only: the keyboard has done its job, the field has not.
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
@@ -7065,7 +7081,7 @@ function App(){
                       // Same as Enter: the complete set, and the keyboard out of
                       // the way. The field stays, because taking it away is what
                       // made this look like somewhere else.
-                      if(searchRef&&!(readSearchRes&&readSearchRes.length))goRefFromBar(searchRef);
+                      if(refJump)goRefFromBar(refJump);
                       else{doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}
                       return;
                     }
@@ -7347,7 +7363,7 @@ function App(){
                   );
                 })()}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
-                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
