@@ -57,6 +57,18 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 @keyframes slideUpSheetOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(100%);}}
 .slide-down-sheet-out{animation:slideDownSheetOut .25s ease-in both;}
 .slide-up-sheet-out{animation:slideUpSheetOut .25s ease-in both;}
+/* Search drops in from behind the nav and lifts back into it, the way the
+   version sheet does. The bar carries the slide; the page under it only
+   cross-fades, because a transform there would make the book scrubber's
+   position:fixed resolve against it instead of the screen. */
+@keyframes srchDrop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
+@keyframes srchLift{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
+.srch-drop{animation:srchDrop .26s cubic-bezier(0.32,0.72,0,1) both;}
+.srch-lift{animation:srchLift .2s ease-in both;}
+@keyframes srchBodyIn{from{opacity:0;}to{opacity:1;}}
+@keyframes srchBodyOut{from{opacity:1;}to{opacity:0;}}
+.srch-body-in{animation:srchBodyIn .22s ease-out both;}
+.srch-body-out{animation:srchBodyOut .18s ease-in both;}
 .modal-in{animation:modalIn .28s cubic-bezier(0.34,1.4,0.64,1) both;}
 .section-enter{animation:fadeUp .4s cubic-bezier(0.34,1.2,0.64,1) both;}
 .text-reveal{animation:textReveal .35s ease-out both;}

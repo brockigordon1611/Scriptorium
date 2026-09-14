@@ -1410,6 +1410,18 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 @keyframes slideUpSheetOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(100%);}}
 .slide-down-sheet-out{animation:slideDownSheetOut .25s ease-in both;}
 .slide-up-sheet-out{animation:slideUpSheetOut .25s ease-in both;}
+/* Search drops in from behind the nav and lifts back into it, the way the
+   version sheet does. The bar carries the slide; the page under it only
+   cross-fades, because a transform there would make the book scrubber's
+   position:fixed resolve against it instead of the screen. */
+@keyframes srchDrop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
+@keyframes srchLift{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
+.srch-drop{animation:srchDrop .26s cubic-bezier(0.32,0.72,0,1) both;}
+.srch-lift{animation:srchLift .2s ease-in both;}
+@keyframes srchBodyIn{from{opacity:0;}to{opacity:1;}}
+@keyframes srchBodyOut{from{opacity:1;}to{opacity:0;}}
+.srch-body-in{animation:srchBodyIn .22s ease-out both;}
+.srch-body-out{animation:srchBodyOut .18s ease-in both;}
 .modal-in{animation:modalIn .28s cubic-bezier(0.34,1.4,0.64,1) both;}
 .section-enter{animation:fadeUp .4s cubic-bezier(0.34,1.2,0.64,1) both;}
 .text-reveal{animation:textReveal .35s ease-out both;}
@@ -3799,6 +3811,8 @@ function App(){
   // recent-search chip does not start a second search behind the one it ran.
   const searchTypedRef=useRef(false);
   const[searchFieldOpen,setSearchFieldOpen]=useState(false); // is the query field expanded in the bar
+  const[searchClosing,setSearchClosing]=useState(false); // the bar is lifting back out
+  const searchCloseTimer=useRef(null);
   const searchBarRef=useRef(null);
   const[searchBarH,setSearchBarH]=useState(0); // measured: the bar grows a row when the field opens
   // How much screen there actually is. The scrubber positions itself against
@@ -5445,6 +5459,41 @@ function App(){
   // that landed afterwards reopened the results over whatever the reader had
   // moved on to — and with the field gone, nothing on screen could close them.
   function abandonSearch(){++searchSeqRef.current;setReadSearching(false);}
+  // Search is a place you leave, not a thing you submit: the top bar's button
+  // opens it and closes it, and nothing else. Closing runs as an animation —
+  // the bar lifts back behind the nav, the page under it fades — and the
+  // chapter returns once it has gone.
+  const searchIsOpen=searchFieldOpen||readSearchResultsOpen;
+  function closeSearch(){
+    if(!searchIsOpen)return;
+    if(searchCloseTimer.current)clearTimeout(searchCloseTimer.current);
+    if(searchInputRef.current)searchInputRef.current.blur();
+    setSearchClosing(true);
+    searchCloseTimer.current=setTimeout(()=>{
+      searchCloseTimer.current=null;
+      setSearchClosing(false);
+      setSearchFieldOpen(false);
+      setReadSearchResultsOpen(false);
+      abandonSearch();
+    },200);
+  }
+  // Reopening mid-close retires the teardown, or it would land on the search
+  // that was just opened — the same trap the sheets had.
+  function cancelSearchClose(){if(searchCloseTimer.current){clearTimeout(searchCloseTimer.current);searchCloseTimer.current=null;}setSearchClosing(false);}
+  function openSearch(){
+    cancelSearchClose();
+    if(readMobileSheet)closeReadSheet();
+    closeModal();
+    if(readFullScreen.current)exitFullScreen();
+    if(tab!=='read')setTab('read');
+    if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){
+      if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;
+      setReadSearchResultsOpen(true);
+      setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);
+    }
+    setSearchFieldOpen(true);
+    setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);
+  }
   // The book scrubber needs the handful of books a result set touches, and was
   // rebuilding a Map over every result on every render of the reading tab — with
   // live search that would run on each keystroke as well as each scroll.
@@ -5971,14 +6020,14 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:3,width:'calc(50% - 4px)',transform:studyIsActive?'translateX(calc(100% + 2px))':'translateX(0px)',willChange:'transform',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{if(searchFieldOpen){setSearchFieldOpen(false);abandonSearch();}if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(readSearchResultsOpen)setReadSearchResultsOpen(false);if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:3,width:44,height:'calc(100% - 6px)',transform:`translateX(${rIndLeft-3}px)`,willChange:'transform',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(searchFieldOpen){if(refJump)goRefFromBar(refJump);else if(readSearchQ.trim()){doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}return;}if(readMobileSheet)closeReadSheet();closeModal();if(readFullScreen.current)exitFullScreen();if(tab!=='read')setTab('read');if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}setSearchFieldOpen(true);setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" {...navTap(tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
@@ -7062,7 +7111,7 @@ function App(){
             const lang=versionLang(readVid);
             const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
             return (<>
-            <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
+            <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
@@ -7282,13 +7331,13 @@ function App(){
             {/* Unpinned, the filters belong to the opening page only, beside the
                 recent searches. Pinned, they ride in the bar instead. */}
             {searchFiltersInFlow&&(
-              <div style={{padding:'2px 10px 12px',display:'flex',flexDirection:'column',gap:7}}>
+              <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'2px 10px 12px',display:'flex',flexDirection:'column',gap:7}}>
                 {searchFilterRows()}
               </div>
             )}
             {/* Nothing to search for yet: offer what was searched before. */}
             {searchShowRecents&&(
-              <div style={{padding:'6px 10px'}}>
+              <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'6px 10px'}}>
                 {recentSearches.length>0?(<>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
@@ -7324,12 +7373,12 @@ function App(){
                 yet. Something has to hold the space, or the screen goes blank
                 between keystrokes. */}
             {searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
-              <div style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,textAlign:'center'}}>
+              <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,textAlign:'center'}}>
                 Searching…
               </div>
             )}
             {!searchShowRecents&&readSearchRes&&readSearchResultsOpen&&(
-              <div>
+              <div className={searchClosing?'srch-body-out':'srch-body-in'}>
                 {/* A typed reference beats searching for its own text. */}
                 {searchRef&&(
                   <button type="button" onClick={()=>goRefFromBar(searchRef)}
