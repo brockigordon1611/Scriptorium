@@ -1498,7 +1498,13 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
 /* Picker wheels: snap to the centred row, and no scrollbar over them. */
-.wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
+/* user-select and the callout are off because the rows are text, and a finger
+   held on text is a selection gesture to iOS: it raises the Copy / Look Up bar,
+   takes the touch away from the scroller, and the wheel stops scrubbing under a
+   thumb that is still moving. Every other control in the app already says this;
+   the wheel was the one that did not. touch-action pins it to the one gesture it
+   has, so nothing else can bid for the finger. */
+.wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y;}
 .wheel-col::-webkit-scrollbar{display:none;}
 /* Snapping brings every flick to a stop at the next row, which reads as the
    wheel fighting the finger on a list long enough to need flicking. Proximity
