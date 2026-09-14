@@ -1445,6 +1445,12 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 /* Picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
+/* Mandatory snapping brings every flick to a stop at the next row, which reads
+   as the wheel fighting the finger on a list long enough to need flicking.
+   Proximity lets it run and only pulls to a row once it has come to rest near
+   one; Wheel's settle then squares up whatever is left. The time picker keeps
+   mandatory, where the travel is short and landing exactly matters more. */
+.wheel-glide{scroll-snap-type:y proximity;}
 /* The search field wears the same gold edge as the buttons beside it. The
    app's input:focus rule is !important, and this field is focused whenever
    it is on screen, so it needs the higher specificity to win. The colour
@@ -2014,7 +2020,7 @@ const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
-function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true}){
+function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const pad=itemH*((rows-1)/2);
@@ -2030,6 +2036,11 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
       const el=ref.current;
       if(!el)return;
       const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
+      // Proximity snapping can leave the wheel resting between two rows, and the
+      // row it reports would then not be the row under the middle. Squaring up
+      // here settles that; when the snap already did it the difference is nothing
+      // and this does nothing.
+      if(Math.abs(el.scrollTop-i*itemH)>1)el.scrollTo({top:i*itemH,behavior:'smooth'});
       if(items[i]!==value)onChange(items[i]);
     },110);
   }
@@ -2039,7 +2050,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
           The book wheel does without it: its selection is already the only row in
           the label's own type, and a filled band under it read as a grey slab. */}
       {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>}
-      <div ref={ref} className="wheel-col" onScroll={onScroll}
+      <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={onScroll}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
             its own box, which would have made the column twice as tall as it
@@ -2133,7 +2144,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
         {shortBook(bookName(BIBLE.find(x=>x.n===pick),lang))}
       </div>
       <div aria-hidden style={{height:1,background:`${T.gD}55`,marginBottom:2}}/>
-      <Wheel items={books} value={pick} T={T} band={false} itemH={ROW} rows={rows} font={12} fontSel={13}
+      <Wheel items={books} value={pick} T={T} band={false} glide itemH={ROW} rows={rows} font={12} fontSel={13}
         // No fades: they are square-cornered rectangles, and inside a panel with
         // rounded corners they read as dark blocks with their own edges.
         fadeTop="none" fadeBot="none"
@@ -7349,9 +7360,13 @@ function App(){
                 </div>
               )}
 
-              {/* Second row, only while typing: what the query has found so far. */}
+              {/* Second row, only while typing: what the query has found so far.
+                  The bar's own 6px gap put the book name and the counts right under
+                  the field, and the label's negative margin pulled them closer still;
+                  this is the air that buys back. The wheel is positioned from the
+                  label, so it moves down with it. */}
               {searchFieldOpen&&summary&&(
-                <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchTopBook&&topBookLabel(9.5,'46%')}
                   <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {readSearching?'Searching…':(<>
