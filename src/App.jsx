@@ -5421,7 +5421,12 @@ function App(){
   // live search that would run on each keystroke as well as each scroll.
   // The bar is the whole search control: it shows while the field is open, and
   // stays while results stand so the reader can see what produced them.
-  const searchBarOn=tab==='read'&&!readMobileSheet&&!modal&&(searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen));
+  // A sheet on its way out is already gone as far as the bar is concerned. It
+  // used to wait out the 260ms close animation, so tapping search from the book
+  // picker left the field, chevron and magnifier missing for a quarter second
+  // while the recents and filters below them were already there. Tapping again
+  // in that gap reached the bar's submit path instead of opening anything.
+  const searchBarOn=tab==='read'&&!(readMobileSheet&&!readSheetClosing)&&!modal&&(searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen));
   // Below three characters there is nothing to search for, so the space under
   // the bar offers recent searches instead.
   const searchShowRecents=searchFieldOpen&&readSearchQ.trim().length<3;
