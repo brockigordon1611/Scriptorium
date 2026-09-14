@@ -5619,11 +5619,14 @@ function App(){
   // enough to draw the box, not enough to be the first thing seen.
   const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}99`,boxShadow:'none',color:T.mut};
   const ctrlOn={background:T.gF,border:`1px solid ${T.g}66`,boxShadow:`0 0 0 2px ${T.g}14`,color:T.gT};
-  // Anything that stays lit takes the same fill at reduced opacity — a chosen
-  // scope or mode, the open filter menu, a field holding a query — so the page
-  // still shows faintly through it. Solid is kept for the one control actually
-  // being used: the field under the cursor.
-  const ctrlOnSoft={...ctrlOn,background:`${T.gF}b8`};
+  // Anything that stays lit — a chosen scope or mode, the open filter menu, a
+  // field holding a query — is a wash of the accent rather than a fill: the
+  // same 15% the red pair below has always used, so the two lit states are the
+  // same material in two colours. It was T.gF at 72%, a dark fill three
+  // quarters of the way to opaque, which next to Case Sensitive read as a
+  // different kind of thing altogether. Solid is kept for the one control
+  // actually being used: the field under the cursor.
+  const ctrlOnSoft={...ctrlOn,background:`${T.g}26`};
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
