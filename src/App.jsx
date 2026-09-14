@@ -2076,23 +2076,34 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
 // handlers would — so all this has to do is read back which row it settled on.
 const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
-// How long the wheel has to be still before it counts as stopped. The second is
-// for after a touchcancel, which WebKit sends when its own scroller takes a
-// gesture over — while the finger is still on the glass — so a cancel is not
-// proof of a lift and is given longer to be contradicted.
-const SETTLE_MS=70,SETTLE_CANCELLED=240;
+// How long the wheel has to be still before it counts as stopped, and how long
+// it waits instead when there is reason to think a finger is still down but no
+// touch event has said so. A caught wheel that is then held perfectly still
+// does settle, after the longer wait; catching one and flicking it again — the
+// gesture this is really for — never reaches it, because the next drag pushes
+// the wait out in front of it.
+const SETTLE_MS=70,SETTLE_BLIND=800;
+// The pixel step below which a wheel counts as having coasted to a stop. A flick
+// left to itself decays to one or two pixels a frame before it stops; one that
+// stops while still crossing six or more was stopped by something, and the only
+// thing that stops a wheel is a finger.
+const HARD_STOP_PX=6;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
 function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const touching=React.useRef(false);
-  // Set by a cancel and cleared by any honest touch event. While it is up the
-  // finger's whereabouts are genuinely unknown, so everything waits longer —
-  // not just the cancel itself. Scrolling after a cancel used to drop straight
-  // back to the short clock, which put the gesture right back where it started:
-  // a pause mid-drag reading as a release.
+  // Raised whenever there is reason to believe a finger is on the glass that no
+  // touch event has told us about. While it is up everything waits the long
+  // time, not just the event that raised it: dropping back to the short clock on
+  // the next scroll put the gesture right back where it started, a pause
+  // mid-drag reading as a release. Any honest touch event lowers it.
   const blind=React.useRef(false);
+  // The last scroll step, and whether this device does touch at all — a mouse
+  // wheel moves in large discrete jumps and stops dead every time, which is a
+  // hard stop by any measure and nothing to do with a finger.
+  const lastTop=React.useRef(0),lastStep=React.useRef(0),hasTouch=React.useRef(false);
   const landRef=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
@@ -2111,7 +2122,12 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // from them would otherwise be answering with the first render's books.
   function arm(){
     if(settle.current)clearTimeout(settle.current);
-    settle.current=setTimeout(()=>{settle.current=null;if(landRef.current)landRef.current();},blind.current?SETTLE_CANCELLED:SETTLE_MS);
+    settle.current=setTimeout(()=>{settle.current=null;if(landRef.current)landRef.current();},blind.current?SETTLE_BLIND:SETTLE_MS);
+  }
+  function onScroll(){
+    const el=ref.current;
+    if(el){lastStep.current=Math.abs(el.scrollTop-lastTop.current);lastTop.current=el.scrollTop;}
+    arm();
   }
   function land(){
     const el=ref.current;
@@ -2123,6 +2139,23 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // momentum follows pushes it along in the usual way. Mouse and trackpad
     // never set this, and go on settling on stillness alone.
     if(!el||touching.current)return;
+    // Neither touchstart nor touchcancel can be relied on to tell us a finger
+    // has arrived. WebKit's own scroller takes the gesture over the moment a
+    // hand lands on a wheel that is still coasting, and what reaches the page
+    // after that is either nothing at all or a cancel — which looks exactly
+    // like a lift. So the wheel is asked instead of the browser: it was
+    // travelling six pixels a frame and then it was not, and nothing but a
+    // finger does that. Treat it as a finger and wait the long time. A drag
+    // that follows keeps pushing that wait out ahead of it, and the lift, when
+    // it is reported, cuts straight through to the short one.
+    // Every burst that ends abruptly gets its own deferral, not just the first:
+    // catching a glide and then dragging again is two hard stops, and only
+    // arming on the first let the second one land under the finger. Clearing the
+    // step is what stops this being a loop — only a real scroll event can set it
+    // again, so the next pass falls through and settles.
+    if(hasTouch.current&&lastStep.current>HARD_STOP_PX){
+      blind.current=true;lastStep.current=0;arm();return;
+    }
     const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
     const target=i*itemH;
     // Unsnapped, the wheel comes to rest wherever the flick left it, so
@@ -2146,10 +2179,12 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // scroll. arm and the refs it reads are the same in every render, so binding
   // these once is safe.
   React.useEffect(()=>{
-    const down=()=>{touching.current=true;blind.current=false;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    const down=()=>{hasTouch.current=true;touching.current=true;blind.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
     // One finger coming off a two-fingered touch is not a release.
-    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=false;arm();};
-    const cancel=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=true;arm();};
+    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=false;lastStep.current=0;arm();};
+    // A cancel is not a lift — it is WebKit saying its scroller has the gesture
+    // now, which it does with the finger still down.
+    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;blind.current=true;arm();};
     document.addEventListener('touchstart',down,{capture:true,passive:true});
     document.addEventListener('touchend',up,{capture:true,passive:true});
     document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
@@ -2168,7 +2203,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
           row took the gold. The two hairlines say where the middle is while the
           names are still moving through it. */}
       {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:band==='rules'?'none':T.gF,pointerEvents:'none'}}/>}
-      <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={arm}
+      <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={onScroll}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
             its own box, which would have made the column twice as tall as it
