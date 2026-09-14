@@ -1999,39 +1999,41 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
 // handlers would — so all this has to do is read back which row it settled on.
 const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
-function Wheel({items,value,onChange,render,T,width}){
+// The sizes below are the reminder time's, kept as defaults so that picker is
+// untouched; the book wheel passes its own to sit small under the search bar.
+function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
-  const pad=WHEEL_ITEM*((WHEEL_ROWS-1)/2);
+  const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
     // Start on the current value. Assigning scrollTop rather than scrolling to
     // it, so it is simply already there rather than animating on open.
     const el=ref.current,i=items.indexOf(value);
-    if(el&&i>=0)el.scrollTop=i*WHEEL_ITEM;
+    if(el&&i>=0)el.scrollTop=i*itemH;
   },[]);
   function onScroll(){
     if(settle.current)clearTimeout(settle.current);
     settle.current=setTimeout(()=>{
       const el=ref.current;
       if(!el)return;
-      const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/WHEEL_ITEM)));
+      const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
       if(items[i]!==value)onChange(items[i]);
     },110);
   }
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
       {/* Behind the numbers, so it marks the middle without painting over it. */}
-      <div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:WHEEL_ITEM,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>
+      <div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>
       <div ref={ref} className="wheel-col" onScroll={onScroll}
-        style={{position:'relative',zIndex:1,height:WHEEL_ITEM*WHEEL_ROWS}}>
+        style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
             its own box, which would have made the column twice as tall as it
             looks. These simply let the first and last rows reach the middle. */}
         <div style={{height:pad}}/>
         {items.map(it=>(
-          <div key={it} onClick={()=>{const el=ref.current;if(el)el.scrollTo({top:items.indexOf(it)*WHEEL_ITEM,behavior:'smooth'});}}
-            style={{height:WHEEL_ITEM,scrollSnapAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
-              fontFamily:FS,fontSize:it===value?19:16,fontWeight:it===value?600:400,
+          <div key={it} onClick={()=>{const el=ref.current;if(el)el.scrollTo({top:items.indexOf(it)*itemH,behavior:'smooth'});}}
+            style={{height:itemH,scrollSnapAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
+              fontFamily:FS,fontSize:it===value?fontSel:font,fontWeight:it===value?600:400,
               color:it===value?T.gT:T.dim,opacity:it===value?1:0.55,transition:'color .12s, opacity .12s'}}>
             {render?render(it):it}
           </div>
@@ -2039,8 +2041,8 @@ function Wheel({items,value,onChange,render,T,width}){
         <div style={{height:pad}}/>
       </div>
       {/* Over the numbers, fading the rows either side of the middle out. */}
-      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,top:0,height:pad,background:`linear-gradient(${T.bgCard},${T.bgCard}00)`,pointerEvents:'none'}}/>
-      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,bottom:0,height:pad,background:`linear-gradient(${T.bgCard}00,${T.bgCard})`,pointerEvents:'none'}}/>
+      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,top:0,height:pad,background:fadeTop||`linear-gradient(${T.bgCard},${T.bgCard}00)`,pointerEvents:'none'}}/>
+      <div aria-hidden style={{position:'absolute',zIndex:2,left:0,right:0,bottom:0,height:pad,background:fadeBot||`linear-gradient(${T.bgCard}00,${T.bgCard})`,pointerEvents:'none'}}/>
     </div>
   );
 }
@@ -2083,22 +2085,42 @@ function TimePicker({value,onSet,onCancel,T}){
 // appeared if you happened to scroll, and sat over the very results it existed
 // to move through. The wheel is the reminder time's, so this is a gesture the
 // app already teaches rather than a second one.
-function BookWheel({books,value,lang,onJump,T}){
+function BookWheel({books,value,lang,onJump,top,dark,T}){
   // Wheel seeds its scroll position from `value` once, at mount, so the running
   // selection is held here. Binding it straight to the bar's own book would have
   // the two disagree the moment a jump scrolled the list and moved that book.
   const[pick,setPick]=React.useState(()=>books.includes(value)?value:books[0]);
+  // The panel is glass, so the wheel's fades cannot be the card colour they
+  // default to: over something translucent that reads as an opaque slab laid
+  // across the top and bottom rows. A scrim going the way the theme already goes
+  // dims those rows without giving the glass a colour of its own — black over a
+  // dark app, white over a light one, where black would be a smear.
+  const scrim=dark?'0,0,0':'255,255,255';
   return (
-    <div style={{position:'absolute',top:'calc(100% + 6px)',left:0,right:0,zIndex:500,
-      background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'6px 8px',
-      boxShadow:'0 18px 40px rgba(0,0,0,0.5)'}}>
-      {/* The rows are a fixed 36px and carry no white-space rule of their own, so
-          "1 Thessalonians" would wrap out of the gold band. Keeping a label on one
-          line is the label's business, not the wheel's, so it is done in what the
-          wheel renders rather than by teaching the wheel about long text. */}
-      <Wheel items={books} value={pick} T={T}
+    <div style={{position:'fixed',top,zIndex:194,
+      // Lined up under the label that opens it, and as wide as the space that
+      // label is given: 14 to clear the bar's inset, 10 its padding, 2 the row's.
+      // The width is the same 46% of the row the label is capped at, worked out
+      // against the viewport — a panel sized to the text itself would resize
+      // under the thumb, since spinning the wheel changes which book that is.
+      left:14+10+2,width:'calc(46vw - 23px)',minWidth:120,
+      background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
+      backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
+      boxShadow:'0 4px 14px rgba(0,0,0,0.22)',padding:'4px 6px',
+      // slideDown scales as well as slides, and from the middle the panel swells
+      // open instead of dropping. The top edge is what it hangs from, so that is
+      // where it should unfurl from.
+      transformOrigin:'50% 0',animation:'slideDown .2s cubic-bezier(0.32,0.72,0,1) both'}}>
+      {/* Three short rows rather than five tall ones: the full-width panel this
+          replaced covered the results it was there to move through. The rows carry
+          no white-space rule of their own, so "Song of Solomon" would wrap out of
+          the gold band; keeping a label on one line is the label's business, not
+          the wheel's. */}
+      <Wheel items={books} value={pick} T={T} itemH={30} rows={3} font={12} fontSel={13.5}
+        fadeTop={`linear-gradient(rgba(${scrim},0.55),rgba(${scrim},0))`}
+        fadeBot={`linear-gradient(rgba(${scrim},0),rgba(${scrim},0.55))`}
         onChange={bn=>{setPick(bn);onJump(bn);}}
-        render={bn=><span style={{display:'block',maxWidth:'100%',padding:'0 8px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bookName(BIBLE.find(x=>x.n===bn),lang)}</span>}/>
+        render={bn=><span style={{display:'block',maxWidth:'100%',padding:'0 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bookName(BIBLE.find(x=>x.n===bn),lang)}</span>}/>
     </div>
   );
 }
@@ -5614,6 +5636,9 @@ function App(){
     ro.observe(el);
     return()=>ro.disconnect();
   },[searchBarOn,searchFieldOpen,searchFiltersOpen,searchTopBook,readSearchRes]);
+  // A modal or a sheet can take the bar away without going through closeSearch,
+  // and the wheel would be waiting, open, when the bar came back.
+  useEffect(()=>{if(!searchBarOn)setBookWheelOpen(false);},[searchBarOn]);
   // The jump-to-book wheel needs the handful of books a result set touches, and
   // this was rebuilding a Map over every result on every render of the reading
   // tab — with live search that would run on each keystroke as well as each
@@ -7192,6 +7217,17 @@ function App(){
                 would resolve to the bar's own box instead of the screen. At 190 it
                 covers the results and leaves the bar (195) and the nav (200). */}
             {bookWheelWanted&&<div onClick={()=>setBookWheelOpen(false)} style={{position:'fixed',inset:0,zIndex:190}}/>}
+            {/* A sibling of the bar, not a child, for the same reason as the
+                scrim: the bar's backdrop-filter makes it a backdrop root, so a
+                blur nested inside it would filter the bar's own content and come
+                out empty. Out here the panel can carry the bar's own glass. It
+                needs no measuring — the bar is at navH+8 and its height is
+                already tracked, so the two stay together when the filters pin
+                and the bar grows a row. */}
+            {bookWheelWanted&&(
+              <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
+                lang={lang} T={T} dark={dark} onJump={jumpToBook} top={Math.round(navH+8+searchBarH+6)}/>
+            )}
             <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
@@ -7283,17 +7319,6 @@ function App(){
                     </>)}
                   </div>
                 </div>
-              )}
-
-              {/* The wheel hangs off the bar rather than sitting in it: absolute,
-                  so it is out of the bar's flow and the results below keep their
-                  place instead of being shoved down by 180px. Solid ground, not
-                  glass — the wheel's own fades are drawn in T.bgCard, and the
-                  bar's backdrop-filter makes it a backdrop root, so a nested one
-                  would filter the bar's own content and come out empty. */}
-              {bookWheelWanted&&(
-                <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
-                  lang={lang} T={T} onJump={jumpToBook}/>
               )}
             </div>
             </>);
