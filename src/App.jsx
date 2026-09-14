@@ -5610,14 +5610,15 @@ function App(){
   // thing being used. Every colour is read from the theme, so a custom palette
   // lights them in its own gold.
   const CTRL=34; // the bar's row height: the field and the two square buttons
-  // Resting text was T.gM, the theme's muted gold. Over glass — which has no
-  // fill of its own, so the page shows through — a 9.5px label in it could not
-  // be read at arm's length. The accent itself is the same hue a third
-  // brighter, and the lit face is still a step above it: T.gT, a gold border,
-  // a fill and a glow ring. This is the chevron, the magnifier and every scope
-  // and mode button that is not the chosen one.
-  const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.g};
-  const ctrlOn={background:T.gF,border:`1px solid ${T.g}bb`,boxShadow:`0 0 0 2px ${T.g}24`,color:T.gT};
+  // Waiting is grey, not gold — the muted body tone, the same one the wheel
+  // gives the books either side of its selection. T.gM before it could not be
+  // read over glass, and the accent that replaced it could: solid gold on every
+  // button made the whole bar look chosen, with nothing left for the one that
+  // actually was. Grey reads at arm's length and leaves the gold to mean one
+  // thing. The outlines go with it, both of them a good way back from solid:
+  // enough to draw the box, not enough to be the first thing seen.
+  const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}99`,boxShadow:'none',color:T.mut};
+  const ctrlOn={background:T.gF,border:`1px solid ${T.g}66`,boxShadow:`0 0 0 2px ${T.g}14`,color:T.gT};
   // Anything that stays lit takes the same fill at reduced opacity — a chosen
   // scope or mode, the open filter menu, a field holding a query — so the page
   // still shows faintly through it. Solid is kept for the one control actually
@@ -5783,7 +5784,7 @@ function App(){
           // padding the moment a second book turned up.
           padding:'7px 0',margin:'-7px 0'}}>
         <span style={txt}>{nm}</span>
-        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.g,transform:bookWheelOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
+        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.mut,transform:bookWheelOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
           <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
