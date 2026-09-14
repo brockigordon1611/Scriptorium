@@ -2026,7 +2026,6 @@ const WHEEL_ROWS=5; // odd, so one row is the middle
 function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
-  const fixing=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
     // Start on the current value. Assigning scrollTop rather than scrolling to
@@ -2042,23 +2041,22 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
       const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
       const target=i*itemH;
       // Unsnapped, the wheel comes to rest wherever the flick left it, so
-      // squaring up onto the row is this rather than the compositor's. It is
-      // given the main thread to itself: onChange jumps the results, a render
-      // heavy enough to stall a programmatic smooth scroll for most of a second,
-      // and the wheel was then seen creeping onto its row long after the finger
-      // had gone. The scroll this starts brings us back here, on the row, and
-      // the jump goes out then. Refusing to re-issue the same correction keeps
-      // that from being a loop if the scroll ever fails to land — the next pass
-      // falls through and the selection is right even if the position is a few
-      // pixels shy. The time picker still snaps, so it never comes through here.
-      if(Math.abs(el.scrollTop-target)>1&&fixing.current!==target){
-        fixing.current=target;
-        el.scrollTo({top:target,behavior:'smooth'});
-        return;
-      }
-      fixing.current=null;
+      // squaring up onto the row is this rather than the compositor's — and it
+      // is assigned, not animated. A programmatic smooth scroll runs on the main
+      // thread, which onChange is about to fill with the jump's render, and the
+      // fourteen pixels it had to travel were taking two seconds to cross on a
+      // long result set. Assigned, the row is under the middle before the render
+      // starts and the jump goes out in the same pass. Half a row at rest is not
+      // a movement anyone follows; two seconds of creep is.
+      if(Math.abs(el.scrollTop-target)>1)el.scrollTop=target;
       if(items[i]!==value)onChange(items[i]);
-    },110);
+      // Seventy rather than a hundred and ten: this is how long the wheel has
+      // to be still before it counts as stopped, and it is now the whole of the
+      // wait — what follows it is a scroll assignment and a render, some twenty
+      // milliseconds. It was set long when what followed was seconds and firing
+      // early was expensive. Four frames is still well clear of the gap between
+      // two scroll events in a live flick.
+    },70);
   }
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
@@ -5753,7 +5751,12 @@ function App(){
     if(!el||!a)return false;
     const pad=parseFloat(getComputedStyle(el).paddingTop)||0;
     const delta=a.getBoundingClientRect().top-el.getBoundingClientRect().top-pad-8;
-    el.scrollTo({top:el.scrollTop+delta,behavior:'smooth'});
+    // Set, not animated. This is a jump: the distance is whatever lies between
+    // two books of results — thirty thousand pixels between Genesis and
+    // Revelation — and a smooth scroll over that is a second and a half of
+    // streaked text on the way to somewhere you already chose. It is also main
+    // thread work competing with the render that just extended the list.
+    el.scrollTop=el.scrollTop+delta;
     return true;
   }
   function jumpToBook(bn){
