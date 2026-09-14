@@ -2093,6 +2093,13 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // wheel moves in large discrete jumps and stops dead every time, which is a
   // hard stop by any measure and nothing to do with a finger.
   const lastTop=React.useRef(0),lastStep=React.useRef(0),hasTouch=React.useRef(false);
+  // Latched the moment a moving wheel is stopped dead, and held until something
+  // says the hand is off. It has to latch rather than be re-read each time: the
+  // catch is violent and the scrubbing that follows is gentle, so a rule that
+  // only looks at the last step sees a finger for one pass and then sees an
+  // ordinary standstill — and settles, mid-scrub, under the finger that is doing
+  // the scrubbing.
+  const caught=React.useRef(false);
   const landRef=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
@@ -2144,9 +2151,17 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // No timer behind this and nothing to count down. A wheel stopped dead has a
     // finger on it, and a finger on it means the choice is not made yet — so it
     // waits, for as long as that takes. What releases it is evidence, not time:
-    // either the lift is reported, or the wheel moves again and this time comes
-    // to rest gently, which nothing but released momentum does.
-    if(hasTouch.current&&lastStep.current>HARD_STOP_PX)return;
+    // a reported lift, or the next touch, which cannot begin until the last one
+    // ended.
+    //
+    // A stop at either end of the list is not a finger: momentum run into the
+    // top or the bottom stops just as dead, and latching on that would leave a
+    // flick to Revelation waiting for a hand that was never there.
+    if(caught.current)return;
+    if(hasTouch.current&&lastStep.current>HARD_STOP_PX&&
+       el.scrollTop>0&&el.scrollTop<el.scrollHeight-el.clientHeight-1){
+      caught.current=true;return;
+    }
     const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
     const target=i*itemH;
     // Unsnapped, the wheel comes to rest wherever the flick left it, so
@@ -2170,17 +2185,21 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // scroll. arm and the refs it reads are the same in every render, so binding
   // these once is safe.
   React.useEffect(()=>{
-    const down=()=>{hasTouch.current=true;touching.current=true;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    // A touch beginning is proof the one before it ended, whatever was or was
+    // not reported about it — which is the way out if a lift is never reported
+    // at all. It unlatches without settling: this new finger owns the wheel now,
+    // and its own end will settle it.
+    const down=()=>{hasTouch.current=true;touching.current=true;caught.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
     // One finger coming off a two-fingered touch is not a release. A reported
     // lift is the one thing that settles the wheel outright, so it clears the
     // step with it: whatever the wheel was doing, the hand is off it now.
-    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;lastStep.current=0;arm();};
+    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;caught.current=false;lastStep.current=0;arm();};
     // A cancel is WebKit saying its own scroller has the gesture now, which it
     // does with the finger still on the glass. So it is not a lift and does not
     // clear the step — if the wheel was stopped dead when it arrived, the rule
     // above still holds the settle off, and if the wheel had already come gently
     // to rest there was nothing to hold off anyway.
-    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;arm();};
+    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;caught.current=false;lastStep.current=0;arm();};
     document.addEventListener('touchstart',down,{capture:true,passive:true});
     document.addEventListener('touchend',up,{capture:true,passive:true});
     document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
