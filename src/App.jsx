@@ -5503,6 +5503,19 @@ function App(){
     readSearchTimer.current=setTimeout(()=>{doReadSearch(undefined,undefined,true);},350);
     return()=>{if(readSearchTimer.current)clearTimeout(readSearchTimer.current);};
   },[readSearchQ,searchOpts,readVid]);
+  // iOS scrolls the whole web view up to keep a focused input clear of the
+  // keyboard, and leaves it pannable afterwards. The search field is already at
+  // the top of the screen, so nothing needed revealing — all that gave was a
+  // page that could be dragged until the app sat entirely above the keyboard.
+  // Putting the offset back leaves the inner scrollers, which is everything the
+  // app actually scrolls, untouched.
+  useEffect(()=>{
+    if(!searchFieldOpen)return;
+    const pin=()=>{if(window.scrollX!==0||window.scrollY!==0)window.scrollTo(0,0);};
+    window.addEventListener('scroll',pin,{passive:true});
+    pin();
+    return()=>window.removeEventListener('scroll',pin);
+  },[searchFieldOpen]);
   async function doReadBookmark(){
     const sorted=[...readSelVerses].sort((a,b)=>a-b);
     const v=sorted[0];
@@ -5905,7 +5918,7 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:rIndLeft,width:44,height:'calc(100% - 6px)',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`left .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(searchFieldOpen){if(searchRef&&!(readSearchRes&&readSearchRes.length))goRefFromBar(searchRef);else if(readSearchQ.trim()){doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}return;}if(readMobileSheet)closeReadSheet();if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}setSearchFieldOpen(true);setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" onClick={tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{if(searchFieldOpen){if(searchRef&&!(readSearchRes&&readSearchRes.length))goRefFromBar(searchRef);else if(readSearchQ.trim()){doReadSearch();if(searchInputRef.current)searchInputRef.current.blur();}return;}if(readMobileSheet)closeReadSheet();closeModal();if(readFullScreen.current)exitFullScreen();if(tab!=='read')setTab('read');if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){if(readRef.current)readViewScrollRef.current=readRef.current.scrollTop;setReadSearchResultsOpen(true);setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);}setSearchFieldOpen(true);setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" onClick={tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
