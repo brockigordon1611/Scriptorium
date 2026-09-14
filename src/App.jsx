@@ -2076,12 +2076,24 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
 // handlers would — so all this has to do is read back which row it settled on.
 const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
+// How long the wheel has to be still before it counts as stopped. The second is
+// for after a touchcancel, which WebKit sends when its own scroller takes a
+// gesture over — while the finger is still on the glass — so a cancel is not
+// proof of a lift and is given longer to be contradicted.
+const SETTLE_MS=70,SETTLE_CANCELLED=240;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
 function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const touching=React.useRef(false);
+  // Set by a cancel and cleared by any honest touch event. While it is up the
+  // finger's whereabouts are genuinely unknown, so everything waits longer —
+  // not just the cancel itself. Scrolling after a cancel used to drop straight
+  // back to the short clock, which put the gesture right back where it started:
+  // a pause mid-drag reading as a release.
+  const blind=React.useRef(false);
+  const landRef=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
     // Start on the current value. Assigning scrollTop rather than scrolling to
@@ -2089,14 +2101,17 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     const el=ref.current,i=items.indexOf(value);
     if(el&&i>=0)el.scrollTop=i*itemH;
   },[]);
-  // Seventy milliseconds of stillness is what counts as stopped. It is now the
-  // whole of the wait — what follows is a scroll assignment and a render, some
-  // twenty milliseconds — where it was set long back when firing early cost
-  // seconds. Four frames is still well clear of the gap between two scroll
-  // events in a live flick.
+  // Stillness is the whole of the wait now — what follows is a scroll assignment
+  // and a render, some twenty milliseconds — where it was set long back when
+  // firing early cost seconds. Four frames is still well clear of the gap
+  // between two scroll events in a live flick.
+  //
+  // It runs the current land rather than the one that existed when the timer was
+  // set: the document listeners below are installed once, and a settle armed
+  // from them would otherwise be answering with the first render's books.
   function arm(){
     if(settle.current)clearTimeout(settle.current);
-    settle.current=setTimeout(land,70);
+    settle.current=setTimeout(()=>{settle.current=null;if(landRef.current)landRef.current();},blind.current?SETTLE_CANCELLED:SETTLE_MS);
   }
   function land(){
     const el=ref.current;
@@ -2121,6 +2136,29 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     if(Math.abs(el.scrollTop-target)>1)el.scrollTop=target;
     if(items[i]!==value)onChange(items[i]);
   }
+  landRef.current=land;
+  // Watched on the document, not on the column. The column is a strip sixty
+  // pixels wide inside a panel with padding and a header, and a thumb put down
+  // after a flick lands beside it as often as on it — a touchstart the column
+  // never saw left the wheel believing nothing was down, so the settle ran under
+  // the finger and jumped the results while it was still there. Capture, so it
+  // is seen before anything can stop it, and passive, so it can never hold up a
+  // scroll. arm and the refs it reads are the same in every render, so binding
+  // these once is safe.
+  React.useEffect(()=>{
+    const down=()=>{touching.current=true;blind.current=false;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    // One finger coming off a two-fingered touch is not a release.
+    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=false;arm();};
+    const cancel=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=true;arm();};
+    document.addEventListener('touchstart',down,{capture:true,passive:true});
+    document.addEventListener('touchend',up,{capture:true,passive:true});
+    document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
+    return()=>{
+      document.removeEventListener('touchstart',down,{capture:true});
+      document.removeEventListener('touchend',up,{capture:true});
+      document.removeEventListener('touchcancel',cancel,{capture:true});
+    };
+  },[]);
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
       {/* Behind the numbers, so it marks the middle without painting over it.
@@ -2131,9 +2169,6 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
           names are still moving through it. */}
       {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:band==='rules'?'none':T.gF,pointerEvents:'none'}}/>}
       <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={arm}
-        onTouchStart={()=>{touching.current=true;if(settle.current){clearTimeout(settle.current);settle.current=null;}}}
-        onTouchEnd={()=>{touching.current=false;arm();}}
-        onTouchCancel={()=>{touching.current=false;arm();}}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
             its own box, which would have made the column twice as tall as it
