@@ -2157,7 +2157,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
           opening the wheel does not take it away. It is not part of the wheel —
           the rule under it says so — but it reads the wheel's selection, so
           spinning changes it. Tapping it closes, the way tapping the label did. */}
-      <div onClick={onClose} style={{height:ROW,display:'flex',alignItems:'center',cursor:'pointer',
+      <div onClick={onClose} style={{height:ROW,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
         fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',
         overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
         {shortBook(bookName(BIBLE.find(x=>x.n===pick),lang))}
@@ -5610,7 +5610,13 @@ function App(){
   // thing being used. Every colour is read from the theme, so a custom palette
   // lights them in its own gold.
   const CTRL=34; // the bar's row height: the field and the two square buttons
-  const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.gM};
+  // Resting text was T.gM, the theme's muted gold. Over glass — which has no
+  // fill of its own, so the page shows through — a 9.5px label in it could not
+  // be read at arm's length. The accent itself is the same hue a third
+  // brighter, and the lit face is still a step above it: T.gT, a gold border,
+  // a fill and a glow ring. This is the chevron, the magnifier and every scope
+  // and mode button that is not the chosen one.
+  const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.g};
   const ctrlOn={background:T.gF,border:`1px solid ${T.g}bb`,boxShadow:`0 0 0 2px ${T.g}24`,color:T.gT};
   // Anything that stays lit takes the same fill at reduced opacity — a chosen
   // scope or mode, the open filter menu, a field holding a query — so the page
@@ -5629,11 +5635,11 @@ function App(){
   );
   const searchFilterRows=()=>(<>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
-      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
       {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
     </div>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
-      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
       {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
     </div>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
@@ -5777,7 +5783,7 @@ function App(){
           // padding the moment a second book turned up.
           padding:'7px 0',margin:'-7px 0'}}>
         <span style={txt}>{nm}</span>
-        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.gM,transform:bookWheelOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
+        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.g,transform:bookWheelOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
           <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
@@ -7352,10 +7358,10 @@ function App(){
                   </div>
                 </>):(<>
                   {searchTopBook&&summary&&topBookLabel(10,'44%')}
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {summary?(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
-                      {readSearchOccurrences!==null&&<span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
+                      {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
                     </>):'Search'}
                   </div>
                 </>)}
@@ -7397,10 +7403,10 @@ function App(){
               {searchFieldOpen&&summary&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchTopBook&&topBookLabel(9.5,'46%')}
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
+                  <div style={{fontFamily:FS,fontSize:9,color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {readSearching?'Searching…':(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
-                      {readSearchOccurrences!==null&&<span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
+                      {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
                     </>)}
                   </div>
                 </div>
