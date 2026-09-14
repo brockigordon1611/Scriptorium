@@ -79,12 +79,15 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 /* Picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
-/* Mandatory snapping brings every flick to a stop at the next row, which reads
-   as the wheel fighting the finger on a list long enough to need flicking.
-   Proximity lets it run and only pulls to a row once it has come to rest near
-   one; Wheel's settle then squares up whatever is left. The time picker keeps
-   mandatory, where the travel is short and landing exactly matters more. */
-.wheel-glide{scroll-snap-type:y proximity;}
+/* Snapping brings every flick to a stop at the next row, which reads as the
+   wheel fighting the finger on a list long enough to need flicking. Proximity
+   was no better here: the rows are 28px apart, so wherever the momentum would
+   land is near a snap point and proximity behaves like mandatory. So none at
+   all — a flick runs its whole momentum, the way the nav sheet's book list
+   does, and Wheel's settle glides onto the nearest row once it stops. The time
+   picker keeps mandatory, where the travel is short and landing exactly on a
+   number matters more than the spin. */
+.wheel-glide{scroll-snap-type:none;}
 /* The search field wears the same gold edge as the buttons beside it. The
    app's input:focus rule is !important, and this field is focused whenever
    it is on screen, so it needs the higher specificity to win. The colour

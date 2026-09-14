@@ -1445,12 +1445,15 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 /* Picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
-/* Mandatory snapping brings every flick to a stop at the next row, which reads
-   as the wheel fighting the finger on a list long enough to need flicking.
-   Proximity lets it run and only pulls to a row once it has come to rest near
-   one; Wheel's settle then squares up whatever is left. The time picker keeps
-   mandatory, where the travel is short and landing exactly matters more. */
-.wheel-glide{scroll-snap-type:y proximity;}
+/* Snapping brings every flick to a stop at the next row, which reads as the
+   wheel fighting the finger on a list long enough to need flicking. Proximity
+   was no better here: the rows are 28px apart, so wherever the momentum would
+   land is near a snap point and proximity behaves like mandatory. So none at
+   all — a flick runs its whole momentum, the way the nav sheet's book list
+   does, and Wheel's settle glides onto the nearest row once it stops. The time
+   picker keeps mandatory, where the travel is short and landing exactly on a
+   number matters more than the spin. */
+.wheel-glide{scroll-snap-type:none;}
 /* The search field wears the same gold edge as the buttons beside it. The
    app's input:focus rule is !important, and this field is focused whenever
    it is on screen, so it needs the higher specificity to win. The colour
@@ -2020,9 +2023,10 @@ const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
-function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide}){
+function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
+  const fixing=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
     // Start on the current value. Assigning scrollTop rather than scrolling to
@@ -2036,11 +2040,23 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
       const el=ref.current;
       if(!el)return;
       const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
-      // Proximity snapping can leave the wheel resting between two rows, and the
-      // row it reports would then not be the row under the middle. Squaring up
-      // here settles that; when the snap already did it the difference is nothing
-      // and this does nothing.
-      if(Math.abs(el.scrollTop-i*itemH)>1)el.scrollTo({top:i*itemH,behavior:'smooth'});
+      const target=i*itemH;
+      // Unsnapped, the wheel comes to rest wherever the flick left it, so
+      // squaring up onto the row is this rather than the compositor's. It is
+      // given the main thread to itself: onChange jumps the results, a render
+      // heavy enough to stall a programmatic smooth scroll for most of a second,
+      // and the wheel was then seen creeping onto its row long after the finger
+      // had gone. The scroll this starts brings us back here, on the row, and
+      // the jump goes out then. Refusing to re-issue the same correction keeps
+      // that from being a loop if the scroll ever fails to land — the next pass
+      // falls through and the selection is right even if the position is a few
+      // pixels shy. The time picker still snaps, so it never comes through here.
+      if(Math.abs(el.scrollTop-target)>1&&fixing.current!==target){
+        fixing.current=target;
+        el.scrollTo({top:target,behavior:'smooth'});
+        return;
+      }
+      fixing.current=null;
       if(items[i]!==value)onChange(items[i]);
     },110);
   }
@@ -2060,7 +2076,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
           <div key={it} onClick={()=>{const el=ref.current;if(el)el.scrollTo({top:items.indexOf(it)*itemH,behavior:'smooth'});}}
             style={{height:itemH,scrollSnapAlign:'center',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
               fontFamily:FS,fontSize:it===value?fontSel:font,fontWeight:it===value?600:400,
-              color:it===value?T.gT:T.dim,opacity:it===value?1:0.55,transition:'color .12s, opacity .12s'}}>
+              color:it===value?T.gT:(dimColor||T.dim),opacity:it===value?1:dimOp,transition:'color .12s, opacity .12s'}}>
             {render?render(it):it}
           </div>
         ))}
@@ -2148,6 +2164,12 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
         // No fades: they are square-cornered rectangles, and inside a panel with
         // rounded corners they read as dark blocks with their own edges.
         fadeTop="none" fadeBot="none"
+        // The time picker's unselected numbers are T.dim at 55%, which is quiet
+        // enough on its opaque card. This panel has no fill of its own — the
+        // page's verse text is blurred behind the names — and at that weight
+        // they were barely there. The muted body tone reads without competing
+        // with the middle row, which is gold, bolder and a point larger.
+        dimColor={T.mut} dimOp={0.85}
         onChange={bn=>{setPick(bn);onJump(bn);}}
         render={bn=><span style={{display:'block',maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{shortBook(bookName(BIBLE.find(x=>x.n===bn),lang))}</span>}/>
     </div>
@@ -6170,7 +6192,11 @@ function App(){
             <div style={{display:'flex',flex:1,gap:4,alignItems:'stretch',minWidth:0,boxSizing:'border-box'}}>
               {/* Settings pill */}
               <div style={pill}>
-                <button type="button" title="Settings" {...navTap(()=>(readMobileSheet==='settings'&&!readSheetClosing)?closeReadSheet():(cancelSheetClose(),setReadMobileSheet('settings')))} style={{...nb(readMobileSheet==='settings'&&!readSheetClosing),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {/* openReadSheet rather than setReadMobileSheet: settings is a sheet
+                    like the book and version pickers, so it takes search down with
+                    it. Setting the sheet directly left the results live underneath,
+                    and the bar with them, reachable around the sheet's edges. */}
+                <button type="button" title="Settings" {...navTap(()=>(readMobileSheet==='settings'&&!readSheetClosing)?closeReadSheet():openReadSheet('settings'))} style={{...nb(readMobileSheet==='settings'&&!readSheetClosing),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
