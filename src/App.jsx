@@ -6941,9 +6941,12 @@ function App(){
             const lang=versionLang(readVid);
             const ref=searchRef;
             const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
+            // Case Sensitive and Partial Match light red rather than gold: that
+            // colour is warning you they are cutting results, not decoration.
+            const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
             const optBtn=(active,label,onClick,red)=>(
               <button key={label} type="button" onClick={onClick}
-                style={{flex:1,background:active?(red?'rgba(198,40,40,0.15)':T.gF):'transparent',border:`1px solid ${active&&red?'#c62828':T.gD}`,borderRadius:6,color:active?(red?'#ef5350':T.gT):T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                style={{flex:1,...(active?(red?ctrlOnRed:ctrlOn):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
                 {label}
               </button>
             );
@@ -7503,30 +7506,30 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:11,color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:11,color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:`${T.g}0d`,border:`1px solid ${T.gD}`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,background:`${T.g}0d`,border:`1px solid ${T.gD}`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,background:`${T.g}0d`,border:`1px solid ${T.gD}`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
-                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
+                        style={{background:'rgba(198,40,40,0.10)',border:'1px solid rgba(200,60,60,0.55)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
                     {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
                     <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,background:`${T.g}0d`,border:`1px solid ${T.gD}`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
-                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
+                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:`${T.g}0d`,border:`1px solid ${T.gD}`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
                           {/* Invisible native select — fills tap target, opens system picker */}
                           <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
                             style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0,cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none',border:'none',background:'transparent'}}>
