@@ -1427,7 +1427,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .srch-field{border-color:var(--srch-bd)!important;box-shadow:none!important;}
 /* Lit while it is being typed in, and back to the quiet edge once the search
    has gone and the field is blurred. */
-.srch-field:focus{border-color:var(--srch-bd-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
+.srch-field:focus{border-color:var(--srch-bd-on)!important;background:var(--srch-bg-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile/tablet overrides (≤1199px) ── */
@@ -6953,6 +6953,12 @@ function App(){
             // it: the height comes from the row, but the width still follows the
             // content, so the buttons collapsed to the width of their glyph.
             const CTRL=34;
+            // The field and the two buttons share one pair of faces: barely
+            // tinted while they wait, bright gold with a soft glow while they are
+            // the thing being used. Every colour comes from the theme, so a custom
+            // palette lights them in its own gold.
+            const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.gM};
+            const ctrlOn={background:T.gF,border:`1px solid ${T.g}`,boxShadow:`0 0 0 2px ${T.g}33`,color:T.gT};
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
@@ -6975,7 +6981,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFlash?T.gF:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:searchFlash?T.gT:T.gM,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s'}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                   ⌕
                 </button>
 
@@ -6993,7 +6999,7 @@ function App(){
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':T.g,'--srch-glow':`${T.g}33`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':T.g,'--srch-glow':`${T.g}33`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
@@ -7004,7 +7010,7 @@ function App(){
                   </div>
                   <button type="button" title="Search options" aria-label="Search options"
                     onClick={()=>setSearchFiltersOpen(o=>!o)}
-                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFiltersOpen||searchOptsDirty?T.gF:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:searchFiltersOpen||searchOptsDirty?T.gT:T.gM,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
+                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFiltersOpen||searchOptsDirty?ctrlOn:ctrlRest),borderRadius:6,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                     ⊟
                     {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
                   </button>

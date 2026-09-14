@@ -74,7 +74,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .srch-field{border-color:var(--srch-bd)!important;box-shadow:none!important;}
 /* Lit while it is being typed in, and back to the quiet edge once the search
    has gone and the field is blurred. */
-.srch-field:focus{border-color:var(--srch-bd-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
+.srch-field:focus{border-color:var(--srch-bd-on)!important;background:var(--srch-bg-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 textarea::placeholder{color:var(--ac-dim);opacity:1;}
