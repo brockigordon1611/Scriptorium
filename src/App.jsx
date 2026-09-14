@@ -2063,9 +2063,12 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
       {/* Behind the numbers, so it marks the middle without painting over it.
-          The book wheel does without it: its selection is already the only row in
-          the label's own type, and a filled band under it read as a grey slab. */}
-      {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>}
+          "rules" is the same bracket without the fill, for the book wheel: the
+          fill under a name read as a grey slab, but with nothing there at all
+          you could not see which row the spin was on until it stopped and the
+          row took the gold. The two hairlines say where the middle is while the
+          names are still moving through it. */}
+      {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:band==='rules'?'none':T.gF,pointerEvents:'none'}}/>}
       <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={onScroll}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
@@ -2160,7 +2163,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
         {shortBook(bookName(BIBLE.find(x=>x.n===pick),lang))}
       </div>
       <div aria-hidden style={{height:1,background:`${T.gD}55`,marginBottom:2}}/>
-      <Wheel items={books} value={pick} T={T} band={false} glide itemH={ROW} rows={rows} font={12} fontSel={13}
+      <Wheel items={books} value={pick} T={T} band="rules" glide itemH={ROW} rows={rows} font={12} fontSel={13}
         // No fades: they are square-cornered rectangles, and inside a panel with
         // rounded corners they read as dark blocks with their own edges.
         fadeTop="none" fadeBot="none"
