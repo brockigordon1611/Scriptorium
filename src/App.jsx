@@ -5418,13 +5418,18 @@ function App(){
   const CTRL=34; // the bar's row height: the field and the two square buttons
   const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.gM};
   const ctrlOn={background:T.gF,border:`1px solid ${T.g}bb`,boxShadow:`0 0 0 2px ${T.g}24`,color:T.gT};
+  // Anything that stays lit takes the same fill at reduced opacity — a chosen
+  // scope or mode, the open filter menu, a field holding a query — so the page
+  // still shows faintly through it. Solid is kept for the one control actually
+  // being used: the field under the cursor.
+  const ctrlOnSoft={...ctrlOn,background:`${T.gF}b8`};
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
   const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
-      style={{flex:1,...(active?(red?ctrlOnRed:ctrlOn):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
+      style={{flex:1,...(active?(red?ctrlOnRed:ctrlOnSoft):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
       {label}
     </button>
   );
@@ -6992,6 +6997,55 @@ function App(){
               boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
 
               <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+                {searchFieldOpen?(<>
+                  {/* A chevron rather than a glyph: it points down at a menu
+                      waiting to open and up at one already open, which is the one
+                      thing the old icon never said. */}
+                  <button type="button" title="Search options" aria-label="Search options"
+                    onClick={()=>setSearchFiltersOpen(o=>!o)}
+                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFiltersOpen||searchOptsDirty?ctrlOnSoft:ctrlRest),borderRadius:6,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
+                    <svg width="11" height="7" viewBox="0 0 10 6" style={{transform:searchFiltersOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
+                      <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
+                  </button>
+                  <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
+                    {/* 16px or iOS zooms the page on focus */}
+                    <input ref={searchInputRef} className="srch-field" value={readSearchQ}
+                      onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
+                      onKeyDown={e=>{
+                        if(e.key!=='Enter')return;
+                        // Enter means "show me everything", so the capped preview
+                        // gives way to the full set and the field gets out of the way.
+                        if(ref&&!(readSearchRes&&readSearchRes.length))goRefFromBar(ref);
+                        // Blur only: the keyboard has done its job, the field has not.
+                        else{doReadSearch();e.currentTarget.blur();}
+                      }}
+                      placeholder="Search all verses…"
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:readSearchQ?ctrlOnSoft.background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':readSearchQ?`${T.g}bb`:T.gD,'--srch-bd-on':`${T.g}bb`,'--srch-glow':`${T.g}24`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
+                    {readSearchQ&&(
+                      <button type="button" title="Clear" aria-label="Clear search"
+                        onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
+                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </>):(<>
+                  {searchTopBook&&summary&&(
+                    <div style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,flexShrink:0,maxWidth:'44%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {bookName(BIBLE.find(x=>x.n===searchTopBook),lang)}
+                    </div>
+                  )}
+                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
+                    {summary?(<>
+                      <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
+                      {readSearchOccurrences!==null&&<span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
+                    </>):'Search'}
+                  </div>
+                </>)}
+                {/* The magnifier ends the row in both states, so it does not change
+                    sides when the field opens. */}
                 <button type="button" title="Search" aria-label="Search"
                   onClick={()=>{
                     if(searchFieldOpen){
@@ -7009,49 +7063,6 @@ function App(){
                   style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                   ⌕
                 </button>
-
-                {searchFieldOpen?(<>
-                  <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
-                    {/* 16px or iOS zooms the page on focus */}
-                    <input ref={searchInputRef} className="srch-field" value={readSearchQ}
-                      onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
-                      onKeyDown={e=>{
-                        if(e.key!=='Enter')return;
-                        // Enter means "show me everything", so the capped preview
-                        // gives way to the full set and the field gets out of the way.
-                        if(ref&&!(readSearchRes&&readSearchRes.length))goRefFromBar(ref);
-                        // Blur only: the keyboard has done its job, the field has not.
-                        else{doReadSearch();e.currentTarget.blur();}
-                      }}
-                      placeholder="Search all verses…"
-                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':`${T.g}bb`,'--srch-glow':`${T.g}24`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
-                    {readSearchQ&&(
-                      <button type="button" title="Clear" aria-label="Clear search"
-                        onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
-                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <button type="button" title="Search options" aria-label="Search options"
-                    onClick={()=>setSearchFiltersOpen(o=>!o)}
-                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFiltersOpen||searchOptsDirty?ctrlOn:ctrlRest),borderRadius:6,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
-                    ⊟
-                    {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
-                  </button>
-                </>):(<>
-                  {searchTopBook&&summary&&(
-                    <div style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,flexShrink:0,maxWidth:'44%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {bookName(BIBLE.find(x=>x.n===searchTopBook),lang)}
-                    </div>
-                  )}
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
-                    {summary?(<>
-                      <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
-                      {readSearchOccurrences!==null&&<span style={{color:T.dim}}> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
-                    </>):'Search'}
-                  </div>
-                </>)}
               </div>
 
               {/* Pinned: the filters ride in the bar itself. Nothing to position
@@ -7522,13 +7533,8 @@ function App(){
           )}
 
           {/* Selection action strip */}
-            {/* One piece of glass carrying its controls, the way the search bar
-                does, rather than a row of separately floating pills. The blur
-                lives here and nowhere inside: an element with backdrop-filter is
-                a backdrop root, so a nested one would filter this box's own empty
-                content and show nothing at all. */}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 10px',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease',background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)'}}>
+            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
@@ -7536,30 +7542,30 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:11,color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:`${T.g}0d`,border:`1px solid ${T.gD}`,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:11,color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,background:`${T.g}0d`,border:`1px solid ${T.gD}`,borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,background:`${T.g}0d`,border:`1px solid ${T.gD}`,borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
-                        style={{background:'rgba(198,40,40,0.10)',border:'1px solid rgba(200,60,60,0.55)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
+                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
                     {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
                     <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,background:`${T.g}0d`,border:`1px solid ${T.gD}`,borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
-                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:`${T.g}0d`,border:`1px solid ${T.gD}`,borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
+                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
                           {/* Invisible native select — fills tap target, opens system picker */}
                           <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
                             style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0,cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none',border:'none',background:'transparent'}}>
