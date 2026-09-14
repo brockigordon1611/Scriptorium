@@ -2076,13 +2076,8 @@ function useSheetDrag(dir,onDismiss,onStart,onSettled){
 // handlers would — so all this has to do is read back which row it settled on.
 const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
-// How long the wheel has to be still before it counts as stopped, and how long
-// it waits instead when there is reason to think a finger is still down but no
-// touch event has said so. A caught wheel that is then held perfectly still
-// does settle, after the longer wait; catching one and flicking it again — the
-// gesture this is really for — never reaches it, because the next drag pushes
-// the wait out in front of it.
-const SETTLE_MS=70,SETTLE_BLIND=800;
+// How long the wheel has to be still before it counts as stopped.
+const SETTLE_MS=70;
 // The pixel step below which a wheel counts as having coasted to a stop. A flick
 // left to itself decays to one or two pixels a frame before it stops; one that
 // stops while still crossing six or more was stopped by something, and the only
@@ -2094,12 +2089,6 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const touching=React.useRef(false);
-  // Raised whenever there is reason to believe a finger is on the glass that no
-  // touch event has told us about. While it is up everything waits the long
-  // time, not just the event that raised it: dropping back to the short clock on
-  // the next scroll put the gesture right back where it started, a pause
-  // mid-drag reading as a release. Any honest touch event lowers it.
-  const blind=React.useRef(false);
   // The last scroll step, and whether this device does touch at all — a mouse
   // wheel moves in large discrete jumps and stops dead every time, which is a
   // hard stop by any measure and nothing to do with a finger.
@@ -2122,11 +2111,15 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // from them would otherwise be answering with the first render's books.
   function arm(){
     if(settle.current)clearTimeout(settle.current);
-    settle.current=setTimeout(()=>{settle.current=null;if(landRef.current)landRef.current();},blind.current?SETTLE_BLIND:SETTLE_MS);
+    settle.current=setTimeout(()=>{settle.current=null;if(landRef.current)landRef.current();},SETTLE_MS);
   }
   function onScroll(){
     const el=ref.current;
-    if(el){lastStep.current=Math.abs(el.scrollTop-lastTop.current);lastTop.current=el.scrollTop;}
+    // Only a move counts. A scroll event that reports the position it reported
+    // last is not the wheel travelling nothing — it is the same standstill named
+    // twice — and recording it as a zero step wiped out the evidence that a
+    // finger had just stopped the wheel dead.
+    if(el){const d=Math.abs(el.scrollTop-lastTop.current);if(d>0){lastStep.current=d;lastTop.current=el.scrollTop;}}
     arm();
   }
   function land(){
@@ -2148,14 +2141,12 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // finger does that. Treat it as a finger and wait the long time. A drag
     // that follows keeps pushing that wait out ahead of it, and the lift, when
     // it is reported, cuts straight through to the short one.
-    // Every burst that ends abruptly gets its own deferral, not just the first:
-    // catching a glide and then dragging again is two hard stops, and only
-    // arming on the first let the second one land under the finger. Clearing the
-    // step is what stops this being a loop — only a real scroll event can set it
-    // again, so the next pass falls through and settles.
-    if(hasTouch.current&&lastStep.current>HARD_STOP_PX){
-      blind.current=true;lastStep.current=0;arm();return;
-    }
+    // No timer behind this and nothing to count down. A wheel stopped dead has a
+    // finger on it, and a finger on it means the choice is not made yet — so it
+    // waits, for as long as that takes. What releases it is evidence, not time:
+    // either the lift is reported, or the wheel moves again and this time comes
+    // to rest gently, which nothing but released momentum does.
+    if(hasTouch.current&&lastStep.current>HARD_STOP_PX)return;
     const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
     const target=i*itemH;
     // Unsnapped, the wheel comes to rest wherever the flick left it, so
@@ -2179,12 +2170,17 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // scroll. arm and the refs it reads are the same in every render, so binding
   // these once is safe.
   React.useEffect(()=>{
-    const down=()=>{hasTouch.current=true;touching.current=true;blind.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
-    // One finger coming off a two-fingered touch is not a release.
-    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;blind.current=false;lastStep.current=0;arm();};
-    // A cancel is not a lift — it is WebKit saying its scroller has the gesture
-    // now, which it does with the finger still down.
-    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;blind.current=true;arm();};
+    const down=()=>{hasTouch.current=true;touching.current=true;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    // One finger coming off a two-fingered touch is not a release. A reported
+    // lift is the one thing that settles the wheel outright, so it clears the
+    // step with it: whatever the wheel was doing, the hand is off it now.
+    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;lastStep.current=0;arm();};
+    // A cancel is WebKit saying its own scroller has the gesture now, which it
+    // does with the finger still on the glass. So it is not a lift and does not
+    // clear the step — if the wheel was stopped dead when it arrived, the rule
+    // above still holds the settle off, and if the wheel had already come gently
+    // to rest there was nothing to hold off anyway.
+    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;arm();};
     document.addEventListener('touchstart',down,{capture:true,passive:true});
     document.addEventListener('touchend',up,{capture:true,passive:true});
     document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
