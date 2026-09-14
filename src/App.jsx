@@ -2094,17 +2094,11 @@ function TimePicker({value,onSet,onCancel,T}){
 // appeared if you happened to scroll, and sat over the very results it existed
 // to move through. The wheel is the reminder time's, so this is a gesture the
 // app already teaches rather than a second one.
-function BookWheel({books,value,lang,onJump,onClose,box,dark,T}){
+function BookWheel({books,value,lang,onJump,onClose,box,T}){
   // Wheel seeds its scroll position from `value` once, at mount, so the running
   // selection is held here. Binding it straight to the bar's own book would have
   // the two disagree the moment a jump scrolled the list and moved that book.
   const[pick,setPick]=React.useState(()=>books.includes(value)?value:books[0]);
-  // The panel is glass, so the wheel's fades cannot be the card colour they
-  // default to: over something translucent that reads as an opaque slab laid
-  // across the row. A scrim going the way the theme already goes dims the last
-  // row without giving the glass a colour of its own — black over a dark app,
-  // white over a light one, where black would be a smear.
-  const scrim=dark?'0,0,0':'255,255,255';
   const ROW=28;
   return (
     <div style={{position:'fixed',zIndex:196, /* above the bar's 195, below the nav's 200: it stands where the bar's own label is, and a backdrop-filtered bar paints its blur over anything behind it */
@@ -2125,7 +2119,10 @@ function BookWheel({books,value,lang,onJump,onClose,box,dark,T}){
           carry no white-space rule of their own, so "Song of Solomon" would wrap
           out of the row without one here. */}
       <Wheel items={books} value={pick} T={T} anchor="top" band={false} itemH={ROW} rows={3} font={12} fontSel={11}
-        fadeBot={`linear-gradient(rgba(${scrim},0),rgba(${scrim},0.55))`}
+        // No fades either: they are square-cornered rectangles, and inside a panel
+        // with rounded corners the bottom one read as a dark block with its own
+        // edges. The last row being dimmed already says there is more below it.
+        fadeTop="none" fadeBot="none"
         onChange={bn=>{setPick(bn);onJump(bn);}}
         render={bn=>{
           const sel=bn===pick;
@@ -7263,7 +7260,7 @@ function App(){
                 and the bar grows a row. */}
             {bookWheelWanted&&(
               <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
-                lang={lang} T={T} dark={dark} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
+                lang={lang} T={T} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
             )}
             <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
