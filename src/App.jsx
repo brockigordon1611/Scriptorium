@@ -2089,6 +2089,13 @@ const SETTLE_MS=70;
 // stops while still crossing six or more was stopped by something, and the only
 // thing that stops a wheel is a finger.
 const HARD_STOP_PX=6;
+// How recently the glass has to have been touched for the wheel to assume the
+// finger is still on it. touchmove is the one signal that reports a finger that
+// is actually doing something, and it arrives every frame of a drag — so a
+// quarter second of silence is a lift, and anything less is a hand still at
+// work. A flick and release never pays this: its last touchmove is long past by
+// the time the momentum runs out.
+const TOUCH_GRACE_MS=250;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
 function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
@@ -2099,6 +2106,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // wheel moves in large discrete jumps and stops dead every time, which is a
   // hard stop by any measure and nothing to do with a finger.
   const lastTop=React.useRef(0),lastStep=React.useRef(0),hasTouch=React.useRef(false);
+  const lastTouchAt=React.useRef(0);
   // Latched the moment a moving wheel is stopped dead, and held until something
   // says the hand is off. It has to latch rather than be re-read each time: the
   // catch is violent and the scrubbing that follows is gentle, so a rule that
@@ -2145,6 +2153,13 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // momentum follows pushes it along in the usual way. Mouse and trackpad
     // never set this, and go on settling on stillness alone.
     if(!el||touching.current)return;
+    // The finger was moving a moment ago, so it is still there. This is the one
+    // that catches scrubbing: touchstart can be swallowed when it lands on a
+    // wheel that is still coasting, and a touchend can arrive mid-gesture when
+    // the scroller takes the pan over — both leave the flags saying nobody is
+    // holding it. touchmove does not lie about that, and it arrives every frame
+    // of a drag.
+    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS)return;
     // Neither touchstart nor touchcancel can be relied on to tell us a finger
     // has arrived. WebKit's own scroller takes the gesture over the moment a
     // hand lands on a wheel that is still coasting, and what reaches the page
@@ -2195,7 +2210,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // not reported about it — which is the way out if a lift is never reported
     // at all. It unlatches without settling: this new finger owns the wheel now,
     // and its own end will settle it.
-    const down=()=>{hasTouch.current=true;touching.current=true;caught.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    const down=()=>{hasTouch.current=true;lastTouchAt.current=Date.now();touching.current=true;caught.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
     // One finger coming off a two-fingered touch is not a release. A reported
     // lift is the one thing that settles the wheel outright, so it clears the
     // step with it: whatever the wheel was doing, the hand is off it now.
@@ -2206,11 +2221,16 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // above still holds the settle off, and if the wheel had already come gently
     // to rest there was nothing to hold off anyway.
     const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;caught.current=false;lastStep.current=0;arm();};
+    // A drag in progress, reported every frame — the liveness signal the other
+    // three do not give.
+    const move=()=>{hasTouch.current=true;lastTouchAt.current=Date.now();};
     document.addEventListener('touchstart',down,{capture:true,passive:true});
+    document.addEventListener('touchmove',move,{capture:true,passive:true});
     document.addEventListener('touchend',up,{capture:true,passive:true});
     document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
     return()=>{
       document.removeEventListener('touchstart',down,{capture:true});
+      document.removeEventListener('touchmove',move,{capture:true});
       document.removeEventListener('touchend',up,{capture:true});
       document.removeEventListener('touchcancel',cancel,{capture:true});
     };
