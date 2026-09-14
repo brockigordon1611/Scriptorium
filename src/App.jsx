@@ -1115,6 +1115,19 @@ const BIBLE = [
 ];
 function bookName(b,lang){if(!b)return'';if(lang==='ES'&&b.nameES)return b.nameES;return b.name;}
 function versionLang(vid){return PUBLIC_VERSIONS.find(v=>v.id===vid)?.lang||'EN';}
+// A book name for a control too narrow to hold it. The map is the conventional
+// English abbreviation, because a mechanical cut gives "Reve." and "Lame." and
+// nobody reads those. Anything not in it — another language's names included —
+// falls back to the first word cut short, which is what most of these are.
+const BOOK_SHORT={'Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Nehemiah':'Neh.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Obadiah':'Obad.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Zechariah':'Zech.','Matthew':'Matt.','Philippians':'Phil.','Colossians':'Col.','Philemon':'Phlm.','Hebrews':'Heb.','Revelation':'Rev.','Ephesians':'Eph.','Galatians':'Gal.','Corinthians':'Cor.','Thessalonians':'Thess.','Chronicles':'Chr.','Samuel':'Sam.','Timothy':'Tim.'};
+function shortBook(n){
+  if(!n||n.length<=7)return n||'';
+  if(BOOK_SHORT[n])return BOOK_SHORT[n];
+  // "1 Thessalonians" abbreviates its second word and keeps the numeral.
+  const m=n.match(/^([123])\s+(.+)$/);
+  if(m)return m[1]+' '+(BOOK_SHORT[m[2]]||(m[2].length<=6?m[2]:m[2].slice(0,4)+'.'));
+  return n.slice(0,5)+'.';
+}
 
 // Reads a typed reference — "john 3:16", "1 cor 13", "gen 1:1-5", "Éxodo 2" —
 // so a reader who knows where they are going is not made to search for it. The
@@ -2105,10 +2118,14 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
       // Sat on the label rather than under it: the selected row IS the label, so
       // the panel is placed from the label's own measured box, backing off by its
       // border and padding so the first row lands exactly where the name was.
-      top:box.top-5,left:box.left-7,width:150,
+      // +1, not -5: the label's box overhangs the row above it by a pixel, and
+      // starting there puts the panel's top border flush under the field and the
+      // filter chevron instead of across their bottom edge. No top padding for the
+      // same reason — every pixel above the first row is a pixel over that row.
+      top:box.top+1,left:box.left-7,width:75,
       background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
       backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-      boxShadow:'0 4px 14px rgba(0,0,0,0.22)',padding:'4px 6px',
+      boxShadow:'0 4px 14px rgba(0,0,0,0.22)',padding:'0 6px 4px',
       // slideDown scales as well as slides, and from the middle the panel swells
       // open instead of dropping. The top edge is what it hangs from — and now
       // what it is anchored to — so that is where it should unfurl from.
@@ -2118,7 +2135,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
           looking at, now with the rest of the books hanging under it. The rows
           carry no white-space rule of their own, so "Song of Solomon" would wrap
           out of the row without one here. */}
-      <Wheel items={books} value={pick} T={T} anchor="top" band={false} itemH={ROW} rows={3} font={12} fontSel={11}
+      <Wheel items={books} value={pick} T={T} anchor="top" band={false} itemH={ROW} rows={5} font={12} fontSel={11}
         // No fades either: they are square-cornered rectangles, and inside a panel
         // with rounded corners the bottom one read as a dark block with its own
         // edges. The last row being dimmed already says there is more below it.
@@ -2134,7 +2151,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
               style={{display:'flex',alignItems:'center',width:'100%',minWidth:0,cursor:'pointer',
                 textTransform:sel?'uppercase':'none',letterSpacing:sel?'0.12em':'0.02em',
                 overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-              {bookName(BIBLE.find(x=>x.n===bn),lang)}
+              {shortBook(bookName(BIBLE.find(x=>x.n===bn),lang))}
             </span>
           );
         }}/>
