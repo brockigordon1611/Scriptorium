@@ -67,6 +67,11 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 /* Time picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
+/* The search field wears the same gold edge as the buttons beside it. The
+   app's input:focus rule is !important, and this field is focused whenever
+   it is on screen, so it needs the higher specificity to win. The colour
+   comes from the element so it still follows the theme. */
+.srch-field,.srch-field:focus{border-color:var(--srch-bd)!important;box-shadow:none!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 textarea::placeholder{color:var(--ac-dim);opacity:1;}

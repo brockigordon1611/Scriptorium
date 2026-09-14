@@ -1420,6 +1420,11 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 /* Time picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
+/* The search field wears the same gold edge as the buttons beside it. The
+   app's input:focus rule is !important, and this field is focused whenever
+   it is on screen, so it needs the higher specificity to win. The colour
+   comes from the element so it still follows the theme. */
+.srch-field,.srch-field:focus{border-color:var(--srch-bd)!important;box-shadow:none!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile/tablet overrides (≤1199px) ── */
@@ -6935,7 +6940,7 @@ function App(){
             const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
             const optBtn=(active,label,onClick,red)=>(
               <button key={label} type="button" onClick={onClick}
-                style={{flex:1,background:active?(red?'rgba(198,40,40,0.15)':T.gF):'transparent',border:`1px solid ${active?(red?'#c62828':T.gD):T.bd}`,borderRadius:6,color:active?(red?'#ef5350':T.gT):T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                style={{flex:1,background:active?(red?'rgba(198,40,40,0.15)':T.gF):'transparent',border:`1px solid ${active&&red?'#c62828':T.gD}`,borderRadius:6,color:active?(red?'#ef5350':T.gT):T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                 {label}
               </button>
             );
@@ -6974,7 +6979,7 @@ function App(){
                 {searchFieldOpen?(<>
                   <div style={{position:'relative',flex:1,minWidth:0,display:'flex'}}>
                     {/* 16px or iOS zooms the page on focus */}
-                    <input ref={searchInputRef} value={readSearchQ}
+                    <input ref={searchInputRef} className="srch-field" value={readSearchQ}
                       onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);}}
                       onKeyDown={e=>{
                         if(e.key!=='Enter')return;
@@ -6985,7 +6990,7 @@ function App(){
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,'--srch-bd':T.gD,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
@@ -7035,7 +7040,7 @@ function App(){
               {/* Options, on the same scrim-and-panel footing as the rest of the app. */}
               {searchFiltersOpen&&(<>
                 <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
-                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`${T.bgCard}c4`,border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(20px) saturate(120%)',WebkitBackdropFilter:'blur(20px) saturate(120%)',boxShadow:'0 8px 32px rgba(0,0,0,0.38)'}}>
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`${T.bgCard}e6`,border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(20px) saturate(120%)',WebkitBackdropFilter:'blur(20px) saturate(120%)',boxShadow:'0 8px 32px rgba(0,0,0,0.38)'}}>
                   <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                     {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
@@ -7050,7 +7055,7 @@ function App(){
                   </div>
                   {searchOptsDirty&&(
                     <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-                      style={{width:'100%',marginTop:9,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
+                      style={{width:'100%',marginTop:9,background:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
                       Reset to defaults
                     </button>
                   )}
