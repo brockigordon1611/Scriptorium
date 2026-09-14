@@ -2098,7 +2098,7 @@ const HARD_STOP_PX=6;
 const TOUCH_GRACE_MS=250;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
-function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
+function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const touching=React.useRef(false);
@@ -2107,6 +2107,10 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   // hard stop by any measure and nothing to do with a finger.
   const lastTop=React.useRef(0),lastStep=React.useRef(0),hasTouch=React.useRef(false);
   const lastTouchAt=React.useRef(0);
+  // What was last handed to onChange. It cannot be read off value any more:
+  // onCentre moves value with the wheel, so by the time this settles the two are
+  // already equal and the jump would never go out.
+  const committed=React.useRef(value);
   // Latched the moment a moving wheel is stopped dead, and held until something
   // says the hand is off. It has to latch rather than be re-read each time: the
   // catch is violent and the scrubbing that follows is gentle, so a rule that
@@ -2136,6 +2140,15 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   }
   function onScroll(){
     const el=ref.current;
+    // What is under the middle right now, told straight away. Settling is a
+    // separate thing and deliberately will not happen under a finger — but the
+    // name and the highlight are just a readout of where the wheel is, and
+    // holding those back until the finger lifts left a spinning wheel with no
+    // row lit and a stale name above it. Nothing here commits anything.
+    if(el&&onCentre){
+      const c=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
+      if(items[c]!==value)onCentre(items[c]);
+    }
     // Only a move counts. A scroll event that reports the position it reported
     // last is not the wheel travelling nothing — it is the same standstill named
     // twice — and recording it as a zero step wiped out the evidence that a
@@ -2159,7 +2172,11 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // the scroller takes the pan over — both leave the flags saying nobody is
     // holding it. touchmove does not lie about that, and it arrives every frame
     // of a drag.
-    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS)return;
+    // Re-armed, not abandoned. Returning outright meant that a settle which
+    // happened to fall inside the grace was the last one ever scheduled, and the
+    // wheel then sat on its book and never jumped at all. Waiting is the point;
+    // giving up is not.
+    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS){arm();return;}
     // Neither touchstart nor touchcancel can be relied on to tell us a finger
     // has arrived. WebKit's own scroller takes the gesture over the moment a
     // hand lands on a wheel that is still coasting, and what reaches the page
@@ -2194,7 +2211,7 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     // starts and the jump goes out in the same pass. Half a row at rest is not
     // a movement anyone follows; two seconds of creep is.
     if(Math.abs(el.scrollTop-target)>1)el.scrollTop=target;
-    if(items[i]!==value)onChange(items[i]);
+    if(items[i]!==committed.current){committed.current=items[i];onChange(items[i]);}
   }
   landRef.current=land;
   // Watched on the document, not on the column. The column is a strip sixty
@@ -2348,7 +2365,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
         // they were barely there. The muted body tone reads without competing
         // with the middle row, which is gold, bolder and a point larger.
         dimColor={T.mut} dimOp={0.85}
-        onChange={bn=>{setPick(bn);onJump(bn);}}
+        onChange={onJump} onCentre={setPick}
         render={bn=><span style={{display:'block',maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{shortBook(bookName(BIBLE.find(x=>x.n===bn),lang))}</span>}/>
     </div>
   );
