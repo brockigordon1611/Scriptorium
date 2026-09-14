@@ -5387,9 +5387,8 @@ function App(){
       if(!live){
         // The field stays. Taking it away on Enter made the full results look
         // like a second screen, when they are the same list the live search was
-        // already showing — only complete. The options panel closes, since that
-        // question has been answered.
-        setSearchFiltersOpen(false);
+        // already showing — only complete. The filters stay too: they are pinned
+        // by the reader, not by the search.
         setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=0;},30);
         closeReadSheet();
       }
@@ -5429,12 +5428,34 @@ function App(){
       {label}
     </button>
   );
-  // Filters show while there is nothing to search for, and whenever they are
-  // asked for back. Typing puts them away, as it does the recent searches.
-  const searchFiltersShown=searchFieldOpen&&(readSearchQ.trim().length<3||searchFiltersOpen);
+  const searchFilterRows=()=>(<>
+    <div style={{display:'flex',gap:4,alignItems:'center'}}>
+      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+      {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
+    </div>
+    <div style={{display:'flex',gap:4,alignItems:'center'}}>
+      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+      {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
+    </div>
+    <div style={{display:'flex',gap:4,alignItems:'center'}}>
+      <div style={{width:38,flexShrink:0}}/>
+      {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
+    </div>
+    {searchOptsDirty&&(
+      <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
+        style={{width:'100%',...ctrlRest,borderRadius:6,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
+        Reset to defaults
+      </button>
+    )}
+  </>);
+  // The filter button is a pin. Pinned, the filters ride in the bar and stay
+  // put while results scroll under them. Unpinned, they appear only on the
+  // opening page, alongside the recent searches, and typing puts them away.
+  const searchFiltersPinned=searchFieldOpen&&searchFiltersOpen;
+  const searchFiltersInFlow=searchShowRecents&&!searchFiltersOpen;
   // The chapter gives way to whatever search is showing — its results, or the
   // recent searches offered before there is a query to run.
-  const readingHidden=searchShowRecents||searchFiltersShown||!!(readSearchRes&&readSearchResultsOpen);
+  const readingHidden=searchShowRecents||!!(readSearchRes&&readSearchResultsOpen);
   // Parsed once for everything that offers the jump, rather than per render site.
   const searchRef=useMemo(()=>parseReference(readSearchQ,versionLang(readVid)),[readSearchQ,readVid]);
   // Jumping to a typed reference: the same landing a result row makes, minus
@@ -6960,7 +6981,7 @@ function App(){
           {searchBarOn&&(()=>{
             const lang=versionLang(readVid);
             const ref=searchRef;
-            const summary=readSearchRes&&readSearchResultsOpen&&!(searchRef&&readSearchRes.length===0);
+            const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
             return (<>
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
@@ -7011,14 +7032,7 @@ function App(){
                     )}
                   </div>
                   <button type="button" title="Search options" aria-label="Search options"
-                    onClick={()=>{
-                      const opening=!searchFiltersOpen;
-                      setSearchFiltersOpen(opening);
-                      // Asking for the filters back clears what is on screen, so
-                      // the choice is made against a clean page rather than over
-                      // results that are about to be replaced anyway.
-                      if(opening){searchTypedRef.current=false;setReadSearchRes(null);setReadSearchResultsOpen(false);setSearchTopBook(null);setReadSearchCapped(false);}
-                    }}
+                    onClick={()=>setSearchFiltersOpen(o=>!o)}
                     style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFiltersOpen||searchOptsDirty?ctrlOn:ctrlRest),borderRadius:6,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                     ⊟
                     {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
@@ -7037,6 +7051,15 @@ function App(){
                   </div>
                 </>)}
               </div>
+
+              {/* Pinned: the filters ride in the bar itself. Nothing to position
+                  and nothing to measure separately — the bar is already fixed, and
+                  the reading pane already clears whatever height the bar reports. */}
+              {searchFiltersPinned&&(
+                <div style={{display:'flex',flexDirection:'column',gap:6,paddingTop:1}}>
+                  {searchFilterRows()}
+                </div>
+              )}
 
               {/* Second row, only while typing: what the query has found so far. */}
               {searchFieldOpen&&summary&&(
@@ -7168,29 +7191,11 @@ function App(){
               <div ref={chLineRef} style={{height:1,background:T.accentLine,marginTop:8}}/>
             </div>
           )}
-            {/* Filters sit on the page under the field rather than floating over
-                it: shown when there is nothing to search for yet, and whenever the
-                reader asks for them back. Selecting one re-runs the search. */}
-            {searchFiltersShown&&(
-              <div style={{padding:'2px 10px 12px'}}>
-                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
-                  {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
-                </div>
-                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
-                  {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
-                </div>
-                <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                  <div style={{width:38,flexShrink:0}}/>
-                  {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
-                </div>
-                {searchOptsDirty&&(
-                  <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-                    style={{width:'100%',marginTop:9,...ctrlRest,borderRadius:6,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
-                    Reset to defaults
-                  </button>
-                )}
+            {/* Unpinned, the filters belong to the opening page only, beside the
+                recent searches. Pinned, they ride in the bar instead. */}
+            {searchFiltersInFlow&&(
+              <div style={{padding:'2px 10px 12px',display:'flex',flexDirection:'column',gap:7}}>
+                {searchFilterRows()}
               </div>
             )}
             {/* Nothing to search for yet: offer what was searched before. */}
