@@ -3773,6 +3773,16 @@ function App(){
   const searchBookRaf=useRef(false);
   const[searchFiltersOpen,setSearchFiltersOpen]=useState(false);
   const searchInputRef=useRef(null);
+  // The magnifier fills gold as the search goes out and then lets go, so the
+  // gold means "that registered" rather than sitting on permanently. Driven
+  // from doReadSearch, so a tap, Enter and a recent-search chip all show it.
+  const[searchFlash,setSearchFlash]=useState(false);
+  const searchFlashTimer=useRef(null);
+  function flashSearch(){
+    setSearchFlash(true);
+    clearTimeout(searchFlashTimer.current);
+    searchFlashTimer.current=setTimeout(()=>setSearchFlash(false),260);
+  }
   const[readSearching,setReadSearching]=useState(false);
   const[searchOpts,setSearchOpts]=useState({scope:'all',mode:'all',caseSensitive:false,partial:false});
   const SEARCH_DEFAULTS={scope:'all',mode:'all',caseSensitive:false,partial:false};
@@ -5246,7 +5256,7 @@ function App(){
     // being the most recent search.
     const seq=++searchSeqRef.current;
     const current=()=>seq===searchSeqRef.current;
-    if(!live)searchTypedRef.current=false;
+    if(!live){searchTypedRef.current=false;flashSearch();}
     if(overrideQ!==undefined)setReadSearchQ(overrideQ);
     setReadSearching(true);
     if(!live){setReadSearchRes(null);setReadSearchResultsOpen(false);setReadSearchPopover(false);}
@@ -6958,7 +6968,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFlash?T.gF:'transparent',border:`1px solid ${searchFlash?T.gD:T.bd}`,borderRadius:6,color:searchFlash?T.gT:T.dim,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s'}}>
                   ⌕
                 </button>
 
