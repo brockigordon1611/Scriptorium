@@ -1129,6 +1129,47 @@ function shortBook(n){
   return n.slice(0,5)+'.';
 }
 
+// Scrolls to a place the reader asked for, arriving rather than appearing.
+// Animating the whole way is what made the book jump take a second and a half:
+// Genesis to Revelation is thirty thousand pixels of results, and no easing
+// makes that anything but a streak. So only the last screenful is travelled —
+// everything before it is covered outright, which costs one frame — and the
+// arrival is eased over 300ms, which is the part anyone actually sees. A short
+// jump is under the run-up already and simply animates the whole way.
+const GLIDE_RUN=420,GLIDE_MS=300;
+function glideTo(el,top){
+  if(el._stopGlide)el._stopGlide();
+  const end=Math.max(0,Math.min(el.scrollHeight-el.clientHeight,top));
+  const dist=end-el.scrollTop;
+  if(Math.abs(dist)<2){el.scrollTop=end;return;}
+  const from=Math.abs(dist)>GLIDE_RUN?end-Math.sign(dist)*GLIDE_RUN:el.scrollTop;
+  el.scrollTop=from;
+  const span=end-from,t0=performance.now();
+  // Three tenths of a second in which the reader may decide to scroll for
+  // themselves, and an animation that carried on through that would be pulling
+  // the page out from under their thumb. Their touch ends it where it stands.
+  const stop=()=>{
+    if(el._glide)cancelAnimationFrame(el._glide);
+    el._glide=0;el._stopGlide=null;
+    el.removeEventListener('touchstart',stop);
+    el.removeEventListener('wheel',stop);
+  };
+  el._stopGlide=stop;
+  el.addEventListener('touchstart',stop,{passive:true});
+  el.addEventListener('wheel',stop,{passive:true});
+  const step=now=>{
+    const t=Math.min(1,(now-t0)/GLIDE_MS);
+    // Cubic ease-out: fastest at the start, so it reads as coming to rest.
+    // A throttled frame — a backgrounded app, a stalled thread — arrives with
+    // t already past 1 and simply finishes the scroll, so it can never stall
+    // part-way there.
+    el.scrollTop=from+span*(1-Math.pow(1-t,3));
+    if(t<1)el._glide=requestAnimationFrame(step);
+    else stop();
+  };
+  el._glide=requestAnimationFrame(step);
+}
+
 // Reads a typed reference — "john 3:16", "1 cor 13", "gen 1:1-5", "Éxodo 2" —
 // so a reader who knows where they are going is not made to search for it. The
 // book is matched in whatever language the version is in, on any prefix long
@@ -2026,6 +2067,7 @@ const WHEEL_ROWS=5; // odd, so one row is the middle
 function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
+  const touching=React.useRef(false);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
     // Start on the current value. Assigning scrollTop rather than scrolling to
@@ -2033,30 +2075,37 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
     const el=ref.current,i=items.indexOf(value);
     if(el&&i>=0)el.scrollTop=i*itemH;
   },[]);
-  function onScroll(){
+  // Seventy milliseconds of stillness is what counts as stopped. It is now the
+  // whole of the wait — what follows is a scroll assignment and a render, some
+  // twenty milliseconds — where it was set long back when firing early cost
+  // seconds. Four frames is still well clear of the gap between two scroll
+  // events in a live flick.
+  function arm(){
     if(settle.current)clearTimeout(settle.current);
-    settle.current=setTimeout(()=>{
-      const el=ref.current;
-      if(!el)return;
-      const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
-      const target=i*itemH;
-      // Unsnapped, the wheel comes to rest wherever the flick left it, so
-      // squaring up onto the row is this rather than the compositor's — and it
-      // is assigned, not animated. A programmatic smooth scroll runs on the main
-      // thread, which onChange is about to fill with the jump's render, and the
-      // fourteen pixels it had to travel were taking two seconds to cross on a
-      // long result set. Assigned, the row is under the middle before the render
-      // starts and the jump goes out in the same pass. Half a row at rest is not
-      // a movement anyone follows; two seconds of creep is.
-      if(Math.abs(el.scrollTop-target)>1)el.scrollTop=target;
-      if(items[i]!==value)onChange(items[i]);
-      // Seventy rather than a hundred and ten: this is how long the wheel has
-      // to be still before it counts as stopped, and it is now the whole of the
-      // wait — what follows it is a scroll assignment and a render, some twenty
-      // milliseconds. It was set long when what followed was seconds and firing
-      // early was expensive. Four frames is still well clear of the gap between
-      // two scroll events in a live flick.
-    },70);
+    settle.current=setTimeout(land,70);
+  }
+  function land(){
+    const el=ref.current;
+    // A finger still on the glass is still choosing. Stillness alone cannot tell
+    // the difference between a wheel let go of and one held under a fingertip,
+    // so a pause mid-drag used to lock on: the results jumped under the panel
+    // and the finger was left dragging a wheel that had already answered.
+    // Nothing lands while a touch is down. The lift re-arms it, and whatever
+    // momentum follows pushes it along in the usual way. Mouse and trackpad
+    // never set this, and go on settling on stillness alone.
+    if(!el||touching.current)return;
+    const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
+    const target=i*itemH;
+    // Unsnapped, the wheel comes to rest wherever the flick left it, so
+    // squaring up onto the row is this rather than the compositor's — and it
+    // is assigned, not animated. A programmatic smooth scroll runs on the main
+    // thread, which onChange is about to fill with the jump's render, and the
+    // fourteen pixels it had to travel were taking two seconds to cross on a
+    // long result set. Assigned, the row is under the middle before the render
+    // starts and the jump goes out in the same pass. Half a row at rest is not
+    // a movement anyone follows; two seconds of creep is.
+    if(Math.abs(el.scrollTop-target)>1)el.scrollTop=target;
+    if(items[i]!==value)onChange(items[i]);
   }
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
@@ -2067,7 +2116,10 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
           row took the gold. The two hairlines say where the middle is while the
           names are still moving through it. */}
       {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:pad,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:band==='rules'?'none':T.gF,pointerEvents:'none'}}/>}
-      <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={onScroll}
+      <div ref={ref} className={"wheel-col"+(glide?' wheel-glide':'')} onScroll={arm}
+        onTouchStart={()=>{touching.current=true;if(settle.current){clearTimeout(settle.current);settle.current=null;}}}
+        onTouchEnd={()=>{touching.current=false;arm();}}
+        onTouchCancel={()=>{touching.current=false;arm();}}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
             its own box, which would have made the column twice as tall as it
@@ -5589,7 +5641,10 @@ function App(){
       setTimeout(()=>{if(readRef.current)readRef.current.scrollTop=searchResultScrollRef.current;},30);
     }
     setSearchFieldOpen(true);
-    setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);
+    // No focus, so no keyboard. Opening search is going somewhere, not starting
+    // to type, and half the time it is opened to read results already standing —
+    // where the keyboard covered them and had to be dismissed first. Tapping the
+    // field, or the magnifier in the bar, is what asks for the keyboard.
   }
   // The bar is the whole search control: it shows while the field is open, and
   // stays while results stand so the reader can see what produced them.
@@ -5751,12 +5806,11 @@ function App(){
     if(!el||!a)return false;
     const pad=parseFloat(getComputedStyle(el).paddingTop)||0;
     const delta=a.getBoundingClientRect().top-el.getBoundingClientRect().top-pad-8;
-    // Set, not animated. This is a jump: the distance is whatever lies between
-    // two books of results — thirty thousand pixels between Genesis and
-    // Revelation — and a smooth scroll over that is a second and a half of
-    // streaked text on the way to somewhere you already chose. It is also main
-    // thread work competing with the render that just extended the list.
-    el.scrollTop=el.scrollTop+delta;
+    // Arriving, not appearing: glideTo covers everything past the last
+    // screenful outright and eases the rest, so a jump across the whole Bible
+    // costs the same 300ms as a jump across one book. Animating the full
+    // distance is what made this take a second and a half.
+    glideTo(el,el.scrollTop+delta);
     return true;
   }
   function jumpToBook(bn){
