@@ -59,8 +59,8 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .slide-up-sheet-out{animation:slideUpSheetOut .25s ease-in both;}
 /* Search drops in from behind the nav and lifts back into it, the way the
    version sheet does. The bar carries the slide; the page under it only
-   cross-fades, because a transform there would make the book scrubber's
-   position:fixed resolve against it instead of the screen. */
+   cross-fades, because a transform there would make the search bar's
+   own position:fixed resolve against it instead of the screen. */
 @keyframes srchDrop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes srchLift{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
 .srch-drop{animation:srchDrop .26s cubic-bezier(0.32,0.72,0,1) both;}
@@ -76,7 +76,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
-/* Time picker wheels: snap to the centred row, and no scrollbar over them. */
+/* Picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
 /* The search field wears the same gold edge as the buttons beside it. The

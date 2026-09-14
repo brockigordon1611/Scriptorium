@@ -1412,8 +1412,8 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .slide-up-sheet-out{animation:slideUpSheetOut .25s ease-in both;}
 /* Search drops in from behind the nav and lifts back into it, the way the
    version sheet does. The bar carries the slide; the page under it only
-   cross-fades, because a transform there would make the book scrubber's
-   position:fixed resolve against it instead of the screen. */
+   cross-fades, because a transform there would make the search bar's
+   own position:fixed resolve against it instead of the screen. */
 @keyframes srchDrop{from{opacity:0;transform:translateY(-100%);}to{opacity:1;transform:translateY(0);}}
 @keyframes srchLift{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-100%);}}
 .srch-drop{animation:srchDrop .26s cubic-bezier(0.32,0.72,0,1) both;}
@@ -1429,7 +1429,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .gold-shimmer{background:linear-gradient(90deg,transparent,var(--ac-shimmer,rgba(200,168,78,0.12)),transparent);background-size:200% 100%;animation:shimmer 3s ease-in-out infinite;}
 .breathe{animation:breathe 2.5s ease-in-out infinite;}
 .spinner{width:18px;height:18px;border:2px solid var(--ac-spin-ring,rgba(200,168,78,0.2));border-top-color:var(--ac-spin-top,#c8a84e);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;}
-/* Time picker wheels: snap to the centred row, and no scrollbar over them. */
+/* Picker wheels: snap to the centred row, and no scrollbar over them. */
 .wheel-col{scrollbar-width:none;-ms-overflow-style:none;scroll-snap-type:y mandatory;overflow-y:auto;overscroll-behavior:contain;}
 .wheel-col::-webkit-scrollbar{display:none;}
 /* The search field wears the same gold edge as the buttons beside it. The
@@ -2074,6 +2074,31 @@ function TimePicker({value,onSet,onCancel,T}){
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// The search bar's book name opens this. It replaced a rail of three-letter
+// stubs down the right edge of the results, which was unreadable at 7.5px, only
+// appeared if you happened to scroll, and sat over the very results it existed
+// to move through. The wheel is the reminder time's, so this is a gesture the
+// app already teaches rather than a second one.
+function BookWheel({books,value,lang,onJump,T}){
+  // Wheel seeds its scroll position from `value` once, at mount, so the running
+  // selection is held here. Binding it straight to the bar's own book would have
+  // the two disagree the moment a jump scrolled the list and moved that book.
+  const[pick,setPick]=React.useState(()=>books.includes(value)?value:books[0]);
+  return (
+    <div style={{position:'absolute',top:'calc(100% + 6px)',left:0,right:0,zIndex:500,
+      background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'6px 8px',
+      boxShadow:'0 18px 40px rgba(0,0,0,0.5)'}}>
+      {/* The rows are a fixed 36px and carry no white-space rule of their own, so
+          "1 Thessalonians" would wrap out of the gold band. Keeping a label on one
+          line is the label's business, not the wheel's, so it is done in what the
+          wheel renders rather than by teaching the wheel about long text. */}
+      <Wheel items={books} value={pick} T={T}
+        onChange={bn=>{setPick(bn);onJump(bn);}}
+        render={bn=><span style={{display:'block',maxWidth:'100%',padding:'0 8px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bookName(BIBLE.find(x=>x.n===bn),lang)}</span>}/>
     </div>
   );
 }
@@ -3774,8 +3799,6 @@ function App(){
   const[stripClosing,setStripClosing]=useState(false);
   const[copyHover,setCopyHover]=useState(false);
   const[bmHover,setBmHover]=useState(false);
-  const[scrubberVisible,setScrubberVisible]=useState(false);
-  const scrubberTimerRef=useRef(null);
   const longPressTimer=useRef(null);
   const longPressFired=useRef(false);
   const wasTouchEvent=useRef(false);
@@ -3815,20 +3838,11 @@ function App(){
   const searchCloseTimer=useRef(null);
   const searchBarRef=useRef(null);
   const[searchBarH,setSearchBarH]=useState(0); // measured: the bar grows a row when the field opens
-  // How much screen there actually is. The scrubber positions itself against
-  // this, and it used to read window.innerHeight during render — which never
-  // re-ran, and is wrong anyway once the bar's field brings up a keyboard.
-  const[viewportH,setViewportH]=useState(()=>typeof window!=='undefined'?window.innerHeight:0);
-  useEffect(()=>{
-    const vv=typeof window!=='undefined'?window.visualViewport:null;
-    const measure=()=>setViewportH(vv?vv.height:window.innerHeight);
-    measure();
-    window.addEventListener('resize',measure);
-    if(vv)vv.addEventListener('resize',measure);
-    return()=>{window.removeEventListener('resize',measure);if(vv)vv.removeEventListener('resize',measure);};
-  },[]);
   const[searchTopBook,setSearchTopBook]=useState(null); // book the result list is currently showing
-  const searchBookRaf=useRef(false);
+  const searchBookRaf=useRef(0);
+  // Which book the results are scrolled to is the bar's label; this is the
+  // wheel that changes it.
+  const[bookWheelOpen,setBookWheelOpen]=useState(false);
   const[searchFiltersOpen,setSearchFiltersOpen]=useState(false);
   const searchInputRef=useRef(null);
   // The magnifier fills gold as the search goes out and then lets go, so the
@@ -4853,8 +4867,7 @@ function App(){
   // ── Jump-To scroll: fires after readSearchLimit extends ──
   useEffect(()=>{
     if(!readSearchJumpTo.current)return;
-    const el=document.getElementById('srch-bk-'+readSearchJumpTo.current);
-    if(el){el.scrollIntoView({behavior:'smooth',block:'start'});readSearchJumpTo.current=null;}
+    if(scrollBookUnderBar(readSearchJumpTo.current))readSearchJumpTo.current=null;
   },[readSearchLimit]);
 
   // ── Load active lexicon data when activeLexiconId changes ──
@@ -5206,17 +5219,24 @@ function App(){
     trackSearchBook(el);
   }
   // Which book the reader has scrolled to, for the bar above the results. The
-  // anchors are the ones the scrubber already jumps to, so this needs nothing
+  // anchors are the ones the wheel jumps to, so this needs nothing
   // added to the rows. Measured once a frame — getBoundingClientRect on every
   // scroll event would thrash layout.
   function trackSearchBook(el){
-    if(!el||searchBookRaf.current)return;
-    searchBookRaf.current=true;
-    requestAnimationFrame(()=>{
-      searchBookRaf.current=false;
+    if(!el)return;
+    // An id rather than a flag: a frame that never arrives — the app put to sleep
+    // mid-scroll, say — used to leave the flag raised and the label frozen on
+    // whatever book it last saw, for the rest of the session.
+    if(searchBookRaf.current)cancelAnimationFrame(searchBookRaf.current);
+    searchBookRaf.current=requestAnimationFrame(()=>{
+      searchBookRaf.current=0;
       const heads=el.querySelectorAll('[id^="srch-bk-"]');
       if(!heads.length){setSearchTopBook(null);return;}
-      const line=el.getBoundingClientRect().top+24;
+      // The line is the top of what the reader can actually see, not the top of
+      // the scroll box — the box runs up behind the nav and the bar, and its own
+      // padding is what clears them. Measuring from the box meant a jump landed
+      // the book below the line and the label kept naming the one before it.
+      const line=el.getBoundingClientRect().top+(parseFloat(getComputedStyle(el).paddingTop)||0)+24;
       let cur=Number(heads[0].id.slice(8));
       for(const h of heads){
         if(h.getBoundingClientRect().top<=line)cur=Number(h.id.slice(8));
@@ -5230,10 +5250,6 @@ function App(){
   scrollHandlerRef.current=(el)=>{
     onSearchScroll(el);
     if(tab==='read')handleReadScroll({target:el});
-    // Show book scrubber on scroll, hide after 2.5s idle
-    setScrubberVisible(true);
-    clearTimeout(scrubberTimerRef.current);
-    scrubberTimerRef.current=setTimeout(()=>setScrubberVisible(false),2500);
     // Chapter line pin: trigger when line enters the safe-area slab
     if(chLineRef.current){
       if(!safeAreaTopRef.current)safeAreaTopRef.current=measureSafeAreaTop();
@@ -5468,6 +5484,7 @@ function App(){
     if(!searchIsOpen)return;
     if(searchCloseTimer.current)clearTimeout(searchCloseTimer.current);
     if(searchInputRef.current)searchInputRef.current.blur();
+    setBookWheelOpen(false);
     setSearchClosing(true);
     searchCloseTimer.current=setTimeout(()=>{
       searchCloseTimer.current=null;
@@ -5482,6 +5499,7 @@ function App(){
   function cancelSearchClose(){if(searchCloseTimer.current){clearTimeout(searchCloseTimer.current);searchCloseTimer.current=null;}setSearchClosing(false);}
   function openSearch(){
     cancelSearchClose();
+    setBookWheelOpen(false);
     if(readMobileSheet)closeReadSheet();
     closeModal();
     if(readFullScreen.current)exitFullScreen();
@@ -5494,9 +5512,6 @@ function App(){
     setSearchFieldOpen(true);
     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},60);
   }
-  // The book scrubber needs the handful of books a result set touches, and was
-  // rebuilding a Map over every result on every render of the reading tab — with
-  // live search that would run on each keystroke as well as each scroll.
   // The bar is the whole search control: it shows while the field is open, and
   // stays while results stand so the reader can see what produced them.
   // A sheet on its way out is already gone as far as the bar is concerned. It
@@ -5599,7 +5614,66 @@ function App(){
     ro.observe(el);
     return()=>ro.disconnect();
   },[searchBarOn,searchFieldOpen,searchFiltersOpen,searchTopBook,readSearchRes]);
+  // The jump-to-book wheel needs the handful of books a result set touches, and
+  // this was rebuilding a Map over every result on every render of the reading
+  // tab — with live search that would run on each keystroke as well as each
+  // scroll.
   const searchBooks=useMemo(()=>readSearchRes?[...new Set(readSearchRes.map(r=>r.book_num))]:[],[readSearchRes]);
+  // Moved up out of the results body when the right-edge scrubber went: the bar
+  // sits above the list it scrolls, so what does the scrolling has to be reachable
+  // from both. Past readSearchLimit the book has no row to scroll to yet, so it
+  // parks the number and lets the effect on readSearchLimit finish the jump once
+  // the rows exist. A book no longer in the results falls through both branches
+  // harmlessly — findIndex gives -1, and scrollBookUnderBar finds no row.
+  // scrollIntoView({block:'start'}) aligns to the scroll box, and the scroll box
+  // runs up underneath the nav and the bar — so the book's first verse landed
+  // behind them and the reader arrived looking at the middle of it. This puts it
+  // just under the bar instead, using the same padding the pane already keeps
+  // clear. Returns false when there is no row to scroll to yet, which is how the
+  // deferred jump knows to hold on to the book number.
+  function scrollBookUnderBar(bn){
+    const el=readRef.current,a=document.getElementById('srch-bk-'+bn);
+    if(!el||!a)return false;
+    const pad=parseFloat(getComputedStyle(el).paddingTop)||0;
+    const delta=a.getBoundingClientRect().top-el.getBoundingClientRect().top-pad-8;
+    el.scrollTo({top:el.scrollTop+delta,behavior:'smooth'});
+    return true;
+  }
+  function jumpToBook(bn){
+    const idx=readSearchRes.findIndex(r=>r.book_num===parseInt(bn));
+    // A page past the target, not just up to it: rendering exactly idx+1 rows
+    // made the book the last row in the list, and a last row cannot be scrolled
+    // to the top — the jump clamped and left it halfway down the screen.
+    if(idx>=readSearchLimit){readSearchJumpTo.current=String(bn);setReadSearchLimit(Math.min(readSearchRes.length,idx+51));}
+    else scrollBookUnderBar(bn);
+  }
+  // The book the bar is showing, which doubles as the way into the others the
+  // results touch. Both rows of the bar show it at their own size, so it is built
+  // once here the way optBtn and searchFilterRows are rather than written twice.
+  const topBookLabel=(fs,maxW)=>{
+    const nm=bookName(BIBLE.find(x=>x.n===searchTopBook),versionLang(readVid));
+    const txt={fontFamily:FS,fontSize:fs,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0};
+    // One book in the results is nowhere to go, so it stays the plain label it
+    // has always been rather than a control that does nothing.
+    if(searchBooks.length<2)return <div style={{...txt,flexShrink:0,maxWidth:maxW}}>{nm}</div>;
+    return (
+      <button type="button" title="Jump to book" aria-label={`Jump to book — showing ${nm}`}
+        onClick={()=>setBookWheelOpen(o=>!o)}
+        style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,maxWidth:maxW,minWidth:0,
+          background:'none',border:'none',cursor:'pointer',WebkitTapHighlightColor:'transparent',
+          // Ten-point type is a small thing to aim a thumb at. The padding makes
+          // the target the height of the row and the negative margin hands the
+          // space straight back, so the bar's own spacing is unchanged. Vertical
+          // only: a horizontal one would pull the label off the bar's left
+          // padding the moment a second book turned up.
+          padding:'7px 0',margin:'-7px 0'}}>
+        <span style={txt}>{nm}</span>
+        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.gM,transform:bookWheelOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
+          <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    );
+  };
   // Results as you type. Three characters rather than the dictionary's two: a
   // two-letter fragment matches a good part of the Bible and costs the most to
   // find. A committed search — Enter, the magnifier, a recent chip — goes
@@ -7110,7 +7184,14 @@ function App(){
           {searchBarOn&&(()=>{
             const lang=versionLang(readVid);
             const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
+            const bookWheelWanted=bookWheelOpen&&searchBooks.length>1;
             return (<>
+            {/* Tap-anywhere-else to put the wheel away. It has to be a sibling of
+                the bar rather than a child of it: the bar's backdrop-filter makes
+                it a containing block for fixed descendants, so inset:0 inside it
+                would resolve to the bar's own box instead of the screen. At 190 it
+                covers the results and leaves the bar (195) and the nav (200). */}
+            {bookWheelWanted&&<div onClick={()=>setBookWheelOpen(false)} style={{position:'fixed',inset:0,zIndex:190}}/>}
             <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
@@ -7153,11 +7234,7 @@ function App(){
                     )}
                   </div>
                 </>):(<>
-                  {searchTopBook&&summary&&(
-                    <div style={{fontFamily:FS,fontSize:10,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,flexShrink:0,maxWidth:'44%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {bookName(BIBLE.find(x=>x.n===searchTopBook),lang)}
-                    </div>
-                  )}
+                  {searchTopBook&&summary&&topBookLabel(10,'44%')}
                   <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {summary?(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
@@ -7198,11 +7275,7 @@ function App(){
               {/* Second row, only while typing: what the query has found so far. */}
               {searchFieldOpen&&summary&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2}}>
-                  {searchTopBook&&(
-                    <div style={{fontFamily:FS,fontSize:9.5,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,flexShrink:0,maxWidth:'46%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {bookName(BIBLE.find(x=>x.n===searchTopBook),lang)}
-                    </div>
-                  )}
+                  {searchTopBook&&topBookLabel(9.5,'46%')}
                   <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {readSearching?'Searching…':(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
@@ -7212,6 +7285,16 @@ function App(){
                 </div>
               )}
 
+              {/* The wheel hangs off the bar rather than sitting in it: absolute,
+                  so it is out of the bar's flow and the results below keep their
+                  place instead of being shoved down by 180px. Solid ground, not
+                  glass — the wheel's own fades are drawn in T.bgCard, and the
+                  bar's backdrop-filter makes it a backdrop root, so a nested one
+                  would filter the bar's own content and come out empty. */}
+              {bookWheelWanted&&(
+                <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
+                  lang={lang} T={T} onJump={jumpToBook}/>
+              )}
             </div>
             </>);
           })()}
@@ -7413,47 +7496,6 @@ function App(){
                     )}
                   </div>
                 )}
-                {readSearchRes.length>1&&!readMobileSheet&&(()=>{
-                  const booksInRes=searchBooks;
-                  if(booksInRes.length<2)return null;
-                  function srchAbbr(name){
-                    if(name==='Philippians')return'Php';
-                    if(name==='Philemon')return'Phm';
-                    const m=name.match(/^(\d+)\s+(\w{2})/);
-                    if(m)return m[1]+m[2];
-                    return name.slice(0,3);
-                  }
-                  function jumpToBook(bn){
-                    const idx=readSearchRes.findIndex(r=>r.book_num===parseInt(bn));
-                    if(idx>=readSearchLimit){readSearchJumpTo.current=String(bn);setReadSearchLimit(idx+1);}
-                    else{document.getElementById('srch-bk-'+bn)?.scrollIntoView({behavior:'smooth',block:'start'});}
-                  }
-                  const _barGap=searchBarH?searchBarH+18:12;
-                  const _avail=(viewportH||window.innerHeight)-navH-_barGap-bottomBarH-12;
-                  const _ch=Math.min(booksInRes.length*15+12,_avail);
-                  const _top=navH+_barGap+Math.max(0,(_avail-_ch)/2);
-                  return(
-                    <div style={{position:'fixed',right:0,top:_top,height:_ch,transform:`translateX(${scrubberVisible?'0':'110%'})`,zIndex:200,
-                      display:'flex',flexDirection:'column',alignItems:'center',
-                      background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,
-                      borderRadius:'10px 0 0 10px',padding:'6px 2px',gap:0,
-                      overflowY:'auto',
-                      boxShadow:'-2px 0 14px rgba(0,0,0,0.22)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-                      transition:'transform .3s cubic-bezier(0.4,0,0.2,1)'}}>
-                      {booksInRes.map(bn=>{
-                        const nm=bookName(BIBLE.find(x=>x.n===bn),versionLang(readVid))||'?';
-                        return(
-                          <button key={bn} type="button" onClick={()=>jumpToBook(bn)}
-                            style={{background:'none',border:'none',color:T.gM,fontFamily:FS,fontSize:7.5,
-                              letterSpacing:'0.03em',padding:'3px 6px',cursor:'pointer',lineHeight:1.1,
-                              borderRadius:4,minWidth:28,textAlign:'center',fontWeight:600,whiteSpace:'nowrap'}}>
-                            {srchAbbr(nm)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
                   <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));}},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
