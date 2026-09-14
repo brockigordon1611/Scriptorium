@@ -1147,19 +1147,28 @@ function glideTo(el,top,onDone){
   if(Math.abs(span)<2){el.scrollTop=end;if(onDone)onDone();return;}
   const ms=Math.min(GLIDE_MAX,Math.max(GLIDE_MIN,Math.sqrt(Math.abs(span))*3));
   const t0=performance.now();
-  // Half a second in which the reader may decide to scroll for themselves, and
-  // an animation carrying on through that would be pulling the page out from
-  // under their thumb. Their touch ends it where it stands.
+  // The flight is not interruptible. A touch used to end it where it stood,
+  // which meant a thumb landing anywhere near the screen mid-blur stopped the
+  // scroll on whatever book happened to be passing — the reader asked for one
+  // book and was left in another, with nothing to say why. Half a second is
+  // short enough to wait out, so the list is made inert for the duration and
+  // the finger is answered when it lands.
+  //
+  // Unset rather than 'auto', so whatever the stylesheet says still applies
+  // afterwards. The timer is the way back if frames never come at all — a
+  // backgrounded app, a thread wedged somewhere — because a results list left
+  // untouchable is a far worse failure than a scroll that skipped its
+  // animation. It finishes the journey and hands the list back.
+  el.style.pointerEvents='none';
   const stop=superseded=>{
     if(el._glide)cancelAnimationFrame(el._glide);
-    el._glide=0;el._stopGlide=null;
-    el.removeEventListener('touchstart',stop);
-    el.removeEventListener('wheel',stop);
+    clearTimeout(el._glideGuard);
+    el._glide=0;el._glideGuard=0;el._stopGlide=null;
+    el.style.pointerEvents='';
     if(onDone&&superseded!==true)onDone();
   };
   el._stopGlide=stop;
-  el.addEventListener('touchstart',stop,{passive:true});
-  el.addEventListener('wheel',stop,{passive:true});
+  el._glideGuard=setTimeout(()=>{el.scrollTop=end;stop();},ms+400);
   const step=now=>{
     const t=Math.min(1,(now-t0)/ms);
     // Cubic in and out: it gathers pace, runs, and comes to rest, which is what
