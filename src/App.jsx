@@ -1424,7 +1424,10 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
    app's input:focus rule is !important, and this field is focused whenever
    it is on screen, so it needs the higher specificity to win. The colour
    comes from the element so it still follows the theme. */
-.srch-field,.srch-field:focus{border-color:var(--srch-bd)!important;box-shadow:none!important;}
+.srch-field{border-color:var(--srch-bd)!important;box-shadow:none!important;}
+/* Lit while it is being typed in, and back to the quiet edge once the search
+   has gone and the field is blurred. */
+.srch-field:focus{border-color:var(--srch-bd-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
 /* ── Mobile/tablet overrides (≤1199px) ── */
@@ -6990,7 +6993,7 @@ function App(){
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,'--srch-bd':T.gD,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':T.g,'--srch-glow':`${T.g}33`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
