@@ -3681,7 +3681,13 @@ function App(){
   // so it would skip the reset that puts the version sheet back on its list and
   // the sheet would reopen wherever it was last left.
   function openReadSheet(name){
+    // A sheet is somewhere else, so search closes with it — results included.
+    // The book picker used to take only the field: choosing a chapter from it
+    // dropped the reader back onto the last search results with no field left
+    // to close them, a bar naming one book over verses from another.
     setSearchFieldOpen(false);
+    setReadSearchResultsOpen(false);
+    abandonSearch();
     if(readMobileSheet&&readMobileSheet!==name)setVersionSheetView('list');
     setReadMobileSheet(name);
   }
