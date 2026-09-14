@@ -6948,9 +6948,9 @@ function App(){
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
-              background:`${T.bgCard}d9`,
+              background:`${T.bgCard}8c`,
               border:`1px solid ${T.gD}55`,borderRadius:8,
-              backdropFilter:'blur(10px)',WebkitBackdropFilter:'blur(10px)',
+              backdropFilter:'blur(22px) saturate(120%)',WebkitBackdropFilter:'blur(22px) saturate(120%)',
               boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
 
               <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
