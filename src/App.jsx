@@ -1129,41 +1129,46 @@ function shortBook(n){
   return n.slice(0,5)+'.';
 }
 
-// Scrolls to a place the reader asked for, arriving rather than appearing.
-// Animating the whole way is what made the book jump take a second and a half:
-// Genesis to Revelation is thirty thousand pixels of results, and no easing
-// makes that anything but a streak. So only the last screenful is travelled —
-// everything before it is covered outright, which costs one frame — and the
-// arrival is eased over 300ms, which is the part anyone actually sees. A short
-// jump is under the run-up already and simply animates the whole way.
-const GLIDE_RUN=420,GLIDE_MS=300;
-function glideTo(el,top){
-  if(el._stopGlide)el._stopGlide();
+// Scrolls to a place the reader asked for by travelling there: the whole
+// distance goes past, every verse between here and the book chosen. Animating
+// only the last screenful and covering the rest outright was quicker still, but
+// what it read as was a twitch on arrival rather than a journey.
+//
+// Duration grows with the square root of the distance, so the far end of the
+// Bible takes about twice as long as the next book over rather than sixty times,
+// and is capped either side: never so brief it flickers, never slow enough to
+// wait on. Thirty thousand pixels in half a second is a blur, which is what
+// scrolling that far fast looks like.
+const GLIDE_MIN=220,GLIDE_MAX=520;
+function glideTo(el,top,onDone){
+  if(el._stopGlide)el._stopGlide(true);
   const end=Math.max(0,Math.min(el.scrollHeight-el.clientHeight,top));
-  const dist=end-el.scrollTop;
-  if(Math.abs(dist)<2){el.scrollTop=end;return;}
-  const from=Math.abs(dist)>GLIDE_RUN?end-Math.sign(dist)*GLIDE_RUN:el.scrollTop;
-  el.scrollTop=from;
-  const span=end-from,t0=performance.now();
-  // Three tenths of a second in which the reader may decide to scroll for
-  // themselves, and an animation that carried on through that would be pulling
-  // the page out from under their thumb. Their touch ends it where it stands.
-  const stop=()=>{
+  const from=el.scrollTop,span=end-from;
+  if(Math.abs(span)<2){el.scrollTop=end;if(onDone)onDone();return;}
+  const ms=Math.min(GLIDE_MAX,Math.max(GLIDE_MIN,Math.sqrt(Math.abs(span))*3));
+  const t0=performance.now();
+  // Half a second in which the reader may decide to scroll for themselves, and
+  // an animation carrying on through that would be pulling the page out from
+  // under their thumb. Their touch ends it where it stands.
+  const stop=superseded=>{
     if(el._glide)cancelAnimationFrame(el._glide);
     el._glide=0;el._stopGlide=null;
     el.removeEventListener('touchstart',stop);
     el.removeEventListener('wheel',stop);
+    if(onDone&&superseded!==true)onDone();
   };
   el._stopGlide=stop;
   el.addEventListener('touchstart',stop,{passive:true});
   el.addEventListener('wheel',stop,{passive:true});
   const step=now=>{
-    const t=Math.min(1,(now-t0)/GLIDE_MS);
-    // Cubic ease-out: fastest at the start, so it reads as coming to rest.
-    // A throttled frame — a backgrounded app, a stalled thread — arrives with
-    // t already past 1 and simply finishes the scroll, so it can never stall
-    // part-way there.
-    el.scrollTop=from+span*(1-Math.pow(1-t,3));
+    const t=Math.min(1,(now-t0)/ms);
+    // Cubic in and out: it gathers pace, runs, and comes to rest, which is what
+    // makes the distance legible. Easing out alone starts at full speed, and a
+    // scroll that is already at full speed on its first frame is a cut, not a
+    // movement. A throttled frame — a backgrounded app, a stalled thread —
+    // arrives with t already past 1 and simply finishes the scroll, so it can
+    // never stall part-way there.
+    el.scrollTop=from+span*(t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2);
     if(t<1)el._glide=requestAnimationFrame(step);
     else stop();
   };
@@ -5354,7 +5359,8 @@ function App(){
   // added to the rows. Measured once a frame — getBoundingClientRect on every
   // scroll event would thrash layout.
   function trackSearchBook(el){
-    if(!el)return;
+    // A glide is flying the list past on purpose; the label lands with it.
+    if(!el||el._glide)return;
     // An id rather than a flag: a frame that never arrives — the app put to sleep
     // mid-scroll, say — used to leave the flag raised and the label frozen on
     // whatever book it last saw, for the rest of the session.
@@ -5806,11 +5812,12 @@ function App(){
     if(!el||!a)return false;
     const pad=parseFloat(getComputedStyle(el).paddingTop)||0;
     const delta=a.getBoundingClientRect().top-el.getBoundingClientRect().top-pad-8;
-    // Arriving, not appearing: glideTo covers everything past the last
-    // screenful outright and eases the rest, so a jump across the whole Bible
-    // costs the same 300ms as a jump across one book. Animating the full
-    // distance is what made this take a second and a half.
-    glideTo(el,el.scrollTop+delta);
+    // Travelling, not appearing. The label is left out of it: every book the
+    // blur passes would otherwise be a state change, and each one re-renders a
+    // result list thousands of rows long — forty of those inside half a second
+    // is what would turn the scroll back into a stutter. It is measured once,
+    // when the scroll comes to rest or a thumb stops it.
+    glideTo(el,el.scrollTop+delta,()=>trackSearchBook(el));
     return true;
   }
   function jumpToBook(bn){
