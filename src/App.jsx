@@ -2084,11 +2084,6 @@ const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
 // How long the wheel has to be still before it counts as stopped.
 const SETTLE_MS=70;
-// The pixel step below which a wheel counts as having coasted to a stop. A flick
-// left to itself decays to one or two pixels a frame before it stops; one that
-// stops while still crossing six or more was stopped by something, and the only
-// thing that stops a wheel is a finger.
-const HARD_STOP_PX=6;
 // How recently the glass has to have been touched for the wheel to assume the
 // finger is still on it. touchmove is the one signal that reports a finger that
 // is actually doing something, and it arrives every frame of a drag — so a
@@ -2102,22 +2097,11 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   const touching=React.useRef(false);
-  // The last scroll step, and whether this device does touch at all — a mouse
-  // wheel moves in large discrete jumps and stops dead every time, which is a
-  // hard stop by any measure and nothing to do with a finger.
-  const lastTop=React.useRef(0),lastStep=React.useRef(0),hasTouch=React.useRef(false);
   const lastTouchAt=React.useRef(0);
   // What was last handed to onChange. It cannot be read off value any more:
   // onCentre moves value with the wheel, so by the time this settles the two are
   // already equal and the jump would never go out.
   const committed=React.useRef(value);
-  // Latched the moment a moving wheel is stopped dead, and held until something
-  // says the hand is off. It has to latch rather than be re-read each time: the
-  // catch is violent and the scrubbing that follows is gentle, so a rule that
-  // only looks at the last step sees a finger for one pass and then sees an
-  // ordinary standstill — and settles, mid-scrub, under the finger that is doing
-  // the scrubbing.
-  const caught=React.useRef(false);
   const landRef=React.useRef(null);
   const pad=itemH*((rows-1)/2);
   React.useEffect(()=>{
@@ -2149,11 +2133,6 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
       const c=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
       if(items[c]!==value)onCentre(items[c]);
     }
-    // Only a move counts. A scroll event that reports the position it reported
-    // last is not the wheel travelling nothing — it is the same standstill named
-    // twice — and recording it as a zero step wiped out the evidence that a
-    // finger had just stopped the wheel dead.
-    if(el){const d=Math.abs(el.scrollTop-lastTop.current);if(d>0){lastStep.current=d;lastTop.current=el.scrollTop;}}
     arm();
   }
   function land(){
@@ -2172,34 +2151,14 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
     // the scroller takes the pan over — both leave the flags saying nobody is
     // holding it. touchmove does not lie about that, and it arrives every frame
     // of a drag.
-    // Re-armed, not abandoned. Returning outright meant that a settle which
-    // happened to fall inside the grace was the last one ever scheduled, and the
-    // wheel then sat on its book and never jumped at all. Waiting is the point;
-    // giving up is not.
-    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS){arm();return;}
-    // Neither touchstart nor touchcancel can be relied on to tell us a finger
-    // has arrived. WebKit's own scroller takes the gesture over the moment a
-    // hand lands on a wheel that is still coasting, and what reaches the page
-    // after that is either nothing at all or a cancel — which looks exactly
-    // like a lift. So the wheel is asked instead of the browser: it was
-    // travelling six pixels a frame and then it was not, and nothing but a
-    // finger does that. Treat it as a finger and wait the long time. A drag
-    // that follows keeps pushing that wait out ahead of it, and the lift, when
-    // it is reported, cuts straight through to the short one.
-    // No timer behind this and nothing to count down. A wheel stopped dead has a
-    // finger on it, and a finger on it means the choice is not made yet — so it
-    // waits, for as long as that takes. What releases it is evidence, not time:
-    // a reported lift, or the next touch, which cannot begin until the last one
-    // ended.
     //
-    // A stop at either end of the list is not a finger: momentum run into the
-    // top or the bottom stops just as dead, and latching on that would leave a
-    // flick to Revelation waiting for a hand that was never there.
-    if(caught.current)return;
-    if(hasTouch.current&&lastStep.current>HARD_STOP_PX&&
-       el.scrollTop>0&&el.scrollTop<el.scrollHeight-el.clientHeight-1){
-      caught.current=true;return;
-    }
+    // Re-armed, not abandoned — and this is the only thing that holds the settle
+    // off now. Every other rule here was a guess at whether a finger was there,
+    // and each was a dead end when it guessed wrong: it returned, nothing
+    // scheduled another pass, and the wheel sat lit on a book it never jumped
+    // to. That is what "selects it but does not jump" was. A wait has to keep
+    // waiting; this one does, and it is watching the hand rather than guessing.
+    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS){arm();return;}
     const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
     const target=i*itemH;
     // Unsnapped, the wheel comes to rest wherever the flick left it, so
@@ -2227,20 +2186,17 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
     // not reported about it — which is the way out if a lift is never reported
     // at all. It unlatches without settling: this new finger owns the wheel now,
     // and its own end will settle it.
-    const down=()=>{hasTouch.current=true;lastTouchAt.current=Date.now();touching.current=true;caught.current=false;lastStep.current=0;if(ref.current)lastTop.current=ref.current.scrollTop;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
-    // One finger coming off a two-fingered touch is not a release. A reported
-    // lift is the one thing that settles the wheel outright, so it clears the
-    // step with it: whatever the wheel was doing, the hand is off it now.
-    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;caught.current=false;lastStep.current=0;arm();};
+    const down=()=>{lastTouchAt.current=Date.now();touching.current=true;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+    // One finger coming off a two-fingered touch is not a release.
+    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;arm();};
     // A cancel is WebKit saying its own scroller has the gesture now, which it
-    // does with the finger still on the glass. So it is not a lift and does not
-    // clear the step — if the wheel was stopped dead when it arrived, the rule
-    // above still holds the settle off, and if the wheel had already come gently
-    // to rest there was nothing to hold off anyway.
-    const cancel=e=>{if(e.touches&&e.touches.length)return;hasTouch.current=true;touching.current=false;caught.current=false;lastStep.current=0;arm();};
+    // does with the finger still on the glass — so it is not proof of a lift. It
+    // does not need to be: the grace is still counting from the last touchmove,
+    // and a hand still at work keeps refreshing that.
+    const cancel=e=>{if(e.touches&&e.touches.length)return;touching.current=false;arm();};
     // A drag in progress, reported every frame — the liveness signal the other
     // three do not give.
-    const move=()=>{hasTouch.current=true;lastTouchAt.current=Date.now();};
+    const move=()=>{lastTouchAt.current=Date.now();};
     document.addEventListener('touchstart',down,{capture:true,passive:true});
     document.addEventListener('touchmove',move,{capture:true,passive:true});
     document.addEventListener('touchend',up,{capture:true,passive:true});
