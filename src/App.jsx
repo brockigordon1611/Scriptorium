@@ -6967,7 +6967,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFlash?T.gF:'transparent',border:`1px solid ${searchFlash?T.gD:T.bd}`,borderRadius:6,color:searchFlash?T.gT:T.dim,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s'}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFlash?T.gF:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:searchFlash?T.gT:T.gM,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s'}}>
                   ⌕
                 </button>
 
@@ -6996,7 +6996,7 @@ function App(){
                   </div>
                   <button type="button" title="Search options" aria-label="Search options"
                     onClick={()=>setSearchFiltersOpen(o=>!o)}
-                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFiltersOpen||searchOptsDirty?T.gF:'transparent',border:`1px solid ${searchFiltersOpen||searchOptsDirty?T.gD:T.bd}`,borderRadius:6,color:searchFiltersOpen||searchOptsDirty?T.gT:T.dim,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
+                    style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',background:searchFiltersOpen||searchOptsDirty?T.gF:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:searchFiltersOpen||searchOptsDirty?T.gT:T.gM,fontSize:12,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0}}>
                     ⊟
                     {searchOptsDirty&&<span style={{position:'absolute',top:-2,right:-2,width:6,height:6,borderRadius:3,background:T.gM}}/>}
                   </button>
