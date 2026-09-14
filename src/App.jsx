@@ -6961,7 +6961,7 @@ function App(){
             // the thing being used. Every colour comes from the theme, so a custom
             // palette lights them in its own gold.
             const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.gM};
-            const ctrlOn={background:T.gF,border:`1px solid ${T.g}`,boxShadow:`0 0 0 2px ${T.g}33`,color:T.gT};
+            const ctrlOn={background:T.gF,border:`1px solid ${T.g}bb`,boxShadow:`0 0 0 2px ${T.g}24`,color:T.gT};
             return (
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
@@ -7002,7 +7002,7 @@ function App(){
                         else{doReadSearch();e.currentTarget.blur();}
                       }}
                       placeholder="Search all verses…"
-                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':T.g,'--srch-glow':`${T.g}33`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
+                      style={{flex:1,height:CTRL,boxSizing:'border-box',background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':T.gD,'--srch-bd-on':`${T.g}bb`,'--srch-glow':`${T.g}24`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');searchInputRef.current&&searchInputRef.current.focus();}}
@@ -7052,7 +7052,7 @@ function App(){
               {/* Options, on the same scrim-and-panel footing as the rest of the app. */}
               {searchFiltersOpen&&(<>
                 <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
-                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:`${T.bgCard}e6`,border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(20px) saturate(120%)',WebkitBackdropFilter:'blur(20px) saturate(120%)',boxShadow:'0 8px 32px rgba(0,0,0,0.38)'}}>
+                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 8px 32px rgba(0,0,0,0.3)'}}>
                   <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
                     <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
                     {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
