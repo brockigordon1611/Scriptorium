@@ -2084,20 +2084,11 @@ const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
 // How long the wheel has to be still before it counts as stopped.
 const SETTLE_MS=70;
-// How recently the glass has to have been touched for the wheel to assume the
-// finger is still on it. touchmove is the one signal that reports a finger that
-// is actually doing something, and it arrives every frame of a drag — so a
-// quarter second of silence is a lift, and anything less is a hand still at
-// work. A flick and release never pays this: its last touchmove is long past by
-// the time the momentum runs out.
-const TOUCH_GRACE_MS=250;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
 function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
-  const touching=React.useRef(false);
-  const lastTouchAt=React.useRef(0);
   // What was last handed to onChange. It cannot be read off value any more:
   // onCentre moves value with the wheel, so by the time this settles the two are
   // already equal and the jump would never go out.
@@ -2135,30 +2126,20 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
     }
     arm();
   }
+  // Stillness is the whole rule: seventy milliseconds without the wheel moving
+  // and it settles, whether or not a finger is on the glass. Brock asked for
+  // this outright, after a long run of attempts to hold the settle off until
+  // the hand was gone — a touchstart swallowed by a coasting scroller, a
+  // touchend arriving mid-gesture, the wheel’s own deceleration read as a
+  // catch. Each worked for the case it was written for and surprised him
+  // somewhere else, and a wheel that behaves the same way every time is worth
+  // more than one that is right about intent and unpredictable about it.
+  //
+  // So pausing mid-scrub settles, and jumps. That is the trade, and this is now
+  // the one path here with no branch that can decline to fire.
   function land(){
     const el=ref.current;
-    // A finger still on the glass is still choosing. Stillness alone cannot tell
-    // the difference between a wheel let go of and one held under a fingertip,
-    // so a pause mid-drag used to lock on: the results jumped under the panel
-    // and the finger was left dragging a wheel that had already answered.
-    // Nothing lands while a touch is down. The lift re-arms it, and whatever
-    // momentum follows pushes it along in the usual way. Mouse and trackpad
-    // never set this, and go on settling on stillness alone.
-    if(!el||touching.current)return;
-    // The finger was moving a moment ago, so it is still there. This is the one
-    // that catches scrubbing: touchstart can be swallowed when it lands on a
-    // wheel that is still coasting, and a touchend can arrive mid-gesture when
-    // the scroller takes the pan over — both leave the flags saying nobody is
-    // holding it. touchmove does not lie about that, and it arrives every frame
-    // of a drag.
-    //
-    // Re-armed, not abandoned — and this is the only thing that holds the settle
-    // off now. Every other rule here was a guess at whether a finger was there,
-    // and each was a dead end when it guessed wrong: it returned, nothing
-    // scheduled another pass, and the wheel sat lit on a book it never jumped
-    // to. That is what "selects it but does not jump" was. A wait has to keep
-    // waiting; this one does, and it is watching the hand rather than guessing.
-    if(Date.now()-lastTouchAt.current<TOUCH_GRACE_MS){arm();return;}
+    if(!el)return;
     const i=Math.max(0,Math.min(items.length-1,Math.round(el.scrollTop/itemH)));
     const target=i*itemH;
     // Unsnapped, the wheel comes to rest wherever the flick left it, so
@@ -2173,41 +2154,6 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
     if(items[i]!==committed.current){committed.current=items[i];onChange(items[i]);}
   }
   landRef.current=land;
-  // Watched on the document, not on the column. The column is a strip sixty
-  // pixels wide inside a panel with padding and a header, and a thumb put down
-  // after a flick lands beside it as often as on it — a touchstart the column
-  // never saw left the wheel believing nothing was down, so the settle ran under
-  // the finger and jumped the results while it was still there. Capture, so it
-  // is seen before anything can stop it, and passive, so it can never hold up a
-  // scroll. arm and the refs it reads are the same in every render, so binding
-  // these once is safe.
-  React.useEffect(()=>{
-    // A touch beginning is proof the one before it ended, whatever was or was
-    // not reported about it — which is the way out if a lift is never reported
-    // at all. It unlatches without settling: this new finger owns the wheel now,
-    // and its own end will settle it.
-    const down=()=>{lastTouchAt.current=Date.now();touching.current=true;if(settle.current){clearTimeout(settle.current);settle.current=null;}};
-    // One finger coming off a two-fingered touch is not a release.
-    const up=e=>{if(e.touches&&e.touches.length)return;touching.current=false;arm();};
-    // A cancel is WebKit saying its own scroller has the gesture now, which it
-    // does with the finger still on the glass — so it is not proof of a lift. It
-    // does not need to be: the grace is still counting from the last touchmove,
-    // and a hand still at work keeps refreshing that.
-    const cancel=e=>{if(e.touches&&e.touches.length)return;touching.current=false;arm();};
-    // A drag in progress, reported every frame — the liveness signal the other
-    // three do not give.
-    const move=()=>{lastTouchAt.current=Date.now();};
-    document.addEventListener('touchstart',down,{capture:true,passive:true});
-    document.addEventListener('touchmove',move,{capture:true,passive:true});
-    document.addEventListener('touchend',up,{capture:true,passive:true});
-    document.addEventListener('touchcancel',cancel,{capture:true,passive:true});
-    return()=>{
-      document.removeEventListener('touchstart',down,{capture:true});
-      document.removeEventListener('touchmove',move,{capture:true});
-      document.removeEventListener('touchend',up,{capture:true});
-      document.removeEventListener('touchcancel',cancel,{capture:true});
-    };
-  },[]);
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
       {/* Behind the numbers, so it marks the middle without painting over it.
