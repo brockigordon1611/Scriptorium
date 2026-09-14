@@ -6962,7 +6962,7 @@ function App(){
             // palette lights them in its own gold.
             const ctrlRest={background:`${T.g}0d`,border:`1px solid ${T.gD}`,boxShadow:'none',color:T.gM};
             const ctrlOn={background:T.gF,border:`1px solid ${T.g}bb`,boxShadow:`0 0 0 2px ${T.g}24`,color:T.gT};
-            return (
+            return (<>
             <div ref={searchBarRef} className="srch-bar-fixed" style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:210,
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
@@ -7049,32 +7049,37 @@ function App(){
                 </div>
               )}
 
-              {/* Options, on the same scrim-and-panel footing as the rest of the app. */}
-              {searchFiltersOpen&&(<>
-                <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
-                <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',left:0,right:0,zIndex:500,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 8px 32px rgba(0,0,0,0.3)'}}>
-                  <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                    <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
-                    {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
-                  </div>
-                  <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
-                    <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
-                    {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
-                  </div>
-                  <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                    <div style={{width:38,flexShrink:0}}/>
-                    {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
-                  </div>
-                  {searchOptsDirty&&(
-                    <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-                      style={{width:'100%',marginTop:9,background:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
-                      Reset to defaults
-                    </button>
-                  )}
-                </div>
-              </>)}
             </div>
-            );
+            {/* A sibling of the bar, not a child of it. backdrop-filter makes an
+                element a backdrop root, so a blur nested inside the bar would have
+                sampled the bar's own empty content and come out showing nothing —
+                which is why this panel had no surface at all. Out here its backdrop
+                is the page, and it frosts like the bar does. Its top follows the
+                measured bar height, since the bar grows a row when the field opens. */}
+            {searchFiltersOpen&&(<>
+              <div onClick={()=>setSearchFiltersOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
+              <div onClick={e=>e.stopPropagation()} style={{position:'fixed',top:navH+8+searchBarH+8,left:14,right:14,zIndex:500,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:10,padding:'12px 14px',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 8px 32px rgba(0,0,0,0.3)'}}>
+                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+                  {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
+                </div>
+                <div style={{display:'flex',gap:4,marginBottom:7,alignItems:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+                  {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
+                </div>
+                <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                  <div style={{width:38,flexShrink:0}}/>
+                  {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
+                </div>
+                {searchOptsDirty&&(
+                  <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
+                    style={{width:'100%',marginTop:9,background:'transparent',border:`1px solid ${T.gD}`,borderRadius:6,color:T.gM,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
+                    Reset to defaults
+                  </button>
+                )}
+              </div>
+            </>)}
+            </>);
           })()}
 
 
