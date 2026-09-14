@@ -7060,7 +7060,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:13,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:19,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                   ⌕
                 </button>
               </div>
