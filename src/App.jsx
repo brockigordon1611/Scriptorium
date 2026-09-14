@@ -2111,7 +2111,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
   // through. Odd, because a centred selection needs a middle row.
   const rows=books.length>=7?7:books.length>=5?5:3;
   return (
-    <div style={{position:'fixed',zIndex:196, /* above the bar's 195, below the nav's 200: it stands where the bar's own label is, and a backdrop-filtered bar paints its blur over anything behind it */
+    <div data-bookwheel style={{position:'fixed',zIndex:196, /* above the bar's 195, below the nav's 200: it stands where the bar's own label is, and a backdrop-filtered bar paints its blur over anything behind it */
       // Two pixels clear of the field and the filter chevron above it, not
       // touching them: the label's box overhangs the row above by one, so its
       // own top plus three is the field's bottom plus two.
@@ -5662,6 +5662,19 @@ function App(){
   // A modal or a sheet can take the bar away without going through closeSearch,
   // and the wheel would be waiting, open, when the bar came back.
   useEffect(()=>{if(!searchBarOn)setBookWheelOpen(false);},[searchBarOn]);
+  // The wheel used to sit behind a full-screen scrim, which is what stopped the
+  // results being scrolled while it was open — and swallowed any drag that began
+  // a few pixels off the wheel's 61px-wide strip, which is most of them. Closing
+  // on a touch or a wheel anywhere else is this instead, so a gesture aimed past
+  // the wheel scrolls the results and takes the wheel away with it, rather than
+  // being eaten by a pane that looked like nothing was there.
+  useEffect(()=>{
+    if(!bookWheelOpen)return;
+    const away=e=>{if(!(e.target instanceof Element)||!e.target.closest('[data-bookwheel]'))setBookWheelOpen(false);};
+    document.addEventListener('pointerdown',away,true);
+    document.addEventListener('wheel',away,{capture:true,passive:true});
+    return()=>{document.removeEventListener('pointerdown',away,true);document.removeEventListener('wheel',away,{capture:true});};
+  },[bookWheelOpen]);
   // Measured before paint so the wheel is never drawn at the wrong place first.
   // Rounded: the label sits at a fractional y inside a bar measured the same way,
   // and half a pixel would put the panel's border and its blur on a half-pixel
@@ -7246,19 +7259,12 @@ function App(){
             const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
             const bookWheelWanted=bookWheelOpen&&searchBooks.length>1&&!!bookLabelBox;
             return (<>
-            {/* Tap-anywhere-else to put the wheel away. It has to be a sibling of
-                the bar rather than a child of it: the bar's backdrop-filter makes
-                it a containing block for fixed descendants, so inset:0 inside it
-                would resolve to the bar's own box instead of the screen. At 190 it
-                covers the results and leaves the bar (195) and the nav (200). */}
-            {bookWheelWanted&&<div onClick={()=>setBookWheelOpen(false)} style={{position:'fixed',inset:0,zIndex:190}}/>}
-            {/* A sibling of the bar, not a child, for the same reason as the
-                scrim: the bar's backdrop-filter makes it a backdrop root, so a
-                blur nested inside it would filter the bar's own content and come
-                out empty. Out here the panel can carry the bar's own glass. It
-                needs no measuring — the bar is at navH+8 and its height is
-                already tracked, so the two stay together when the filters pin
-                and the bar grows a row. */}
+            {/* A sibling of the bar, not a child: the bar's backdrop-filter makes
+                it a backdrop root, so a blur nested inside it would filter the
+                bar's own content and come out empty. Out here the panel can
+                carry the bar's own glass. It needs no measuring — the bar is at
+                navH+8 and its height is already tracked, so the two stay
+                together when the filters pin and the bar grows a row. */}
             {bookWheelWanted&&(
               <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
                 lang={lang} T={T} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
