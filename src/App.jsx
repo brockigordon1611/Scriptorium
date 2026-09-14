@@ -3977,13 +3977,26 @@ function App(){
   const readScrollToVerse=useRef(null);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
+  // A verse selected by arriving at it is provisional. It is there to show you
+  // where you landed, not because you picked it — so it goes when you leave the
+  // page, and the first verse you tap by hand replaces it rather than joining
+  // it. Without that the verse you were sent to lingers, every later tap adds to
+  // a selection you never made, and you end up looking at three highlighted
+  // verses across two jumps wondering which one you asked for. Verses you choose
+  // yourself still multi-select exactly as before: the flag is only ever up
+  // between arriving somewhere and touching anything.
+  const autoSel=useRef(false);
+  function clearAutoSel(){if(!autoSel.current)return;autoSel.current=false;setReadSelVerses(new Set());setStripOpen(false);}
   function dismissStrip(){setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
-  function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);setReadSelVerses(s=>{const ns=new Set(s);ns.add(v);return ns;});setStripOpen(true);}
+  function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive&&!audioPlaying){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
   function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
-  function handleVerseToggle(v){const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
+  function handleVerseToggle(v){autoSel.current=false;const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
   function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current&&!audioPlaying){if(readSelVerses.has(v)){handleVerseToggle(v);}else{openStrip(v);}}setTimeout(()=>{wasTouchEvent.current=false;},300);}
   function verseClick(v){if(wasTouchEvent.current)return;if(audioPlaying)return;if(readFullScreen.current)exitFullScreen();if(readSelVerses.has(v)){if(stripOpen)handleVerseToggle(v);else openStrip(v);}else{openStrip(v);}}
+  // Leaving the reading page is leaving it: anything the navigation lit goes
+  // with it, so coming back does not find an old jump still highlighted.
+  useEffect(()=>{if(tab!=='read')clearAutoSel();},[tab]);
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmCat,setReadBmCat]=useState('');
   const[readBmLabelFocused,setReadBmLabelFocused]=useState(false);
@@ -5211,6 +5224,7 @@ function App(){
     }
     prevReadStateRef.current={vid:readVid,book:readBook,ch:readCh};
     setReadSelVerses(new Set());
+    autoSel.current=false;
     // Close strip immediately so it doesn't flash empty while new chapter loads
     if(!readPendingSelVerses.current)setStripOpen(false);
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
@@ -5222,7 +5236,7 @@ function App(){
         // things you would want to do with it are the point of going. A verse
         // lit with no strip now means one thing only: the audio is reading it,
         // which the strip's own gate already excludes.
-        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(tv);return ns;});setStripOpen(true);},80);}
+        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([tv]));setStripOpen(true);autoSel.current=true;},80);}
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
         if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
@@ -5681,6 +5695,7 @@ function App(){
   function cancelSearchClose(){if(searchCloseTimer.current){clearTimeout(searchCloseTimer.current);searchCloseTimer.current=null;}setSearchClosing(false);}
   function openSearch(){
     cancelSearchClose();
+    clearAutoSel();
     setBookWheelOpen(false);
     if(readMobileSheet)closeReadSheet();
     closeModal();
@@ -6341,7 +6356,7 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:3,width:'calc(50% - 4px)',transform:studyIsActive?'translateX(calc(100% + 2px))':'translateX(0px)',willChange:'transform',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(parallelVs);return ns;});setStripOpen(true);readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
@@ -7741,7 +7756,7 @@ function App(){
                   </div>
                 )}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
-                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));setStripOpen(true);},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));setStripOpen(true);autoSel.current=true;},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
