@@ -5706,15 +5706,30 @@ function App(){
       {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
     </div>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
-      <div style={{width:38,flexShrink:0}}/>
+      {/* Scope and Mode name their rows in this column; this row has nothing to
+          say, so the reset lives here. It used to be a full-width bar that
+          appeared under the filters the moment anything was changed, pushing the
+          counts and the results down a row and pulling them back up again when
+          it was pressed. The slot is already 38px whether or not anything is in
+          it, so now nothing moves. Stretched rather than centred, so it is the
+          height of the two buttons beside it to the pixel. */}
+      <div style={{width:38,flexShrink:0,display:'flex',alignSelf:'stretch'}}>
+        {searchOptsDirty&&(
+          <button type="button" title="Reset to defaults" aria-label="Reset search options to defaults"
+            onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
+            style={{...ctrlRest,borderRadius:6,width:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:0,cursor:'pointer',transition:'background .12s,border-color .12s,color .12s'}}>
+            {/* A circle turning back on itself: the same arrow the app draws
+                everywhere else, 24-unit box and a 2px stroke in currentColor, so
+                it takes the resting grey and lights with the rest of the bar. */}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="1 4 1 10 7 10"/>
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+            </svg>
+          </button>
+        )}
+      </div>
       {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>optBtn(searchOpts[k],l,()=>setOpt(k,!searchOpts[k]),true))}
     </div>
-    {searchOptsDirty&&(
-      <button type="button" onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
-        style={{width:'100%',...ctrlRest,borderRadius:6,fontFamily:FS,fontSize:8.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'8px 0',cursor:'pointer'}}>
-        Reset to defaults
-      </button>
-    )}
   </>);
   // The filter button is a pin. Pinned, the filters ride in the bar and stay
   // put while results scroll under them. Unpinned, they appear only on the
