@@ -2001,7 +2001,7 @@ const WHEEL_ITEM=36;
 const WHEEL_ROWS=5; // odd, so one row is the middle
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
-function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,anchor='center'}){
+function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,anchor='center',band=true}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   // Centred, the selection sits in the middle and the list runs both ways from
@@ -2029,8 +2029,10 @@ function Wheel({items,value,onChange,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_
   }
   return (
     <div style={{position:'relative',flex:width||1,minWidth:0}}>
-      {/* Behind the numbers, so it marks the middle without painting over it. */}
-      <div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:padTop,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>
+      {/* Behind the numbers, so it marks the middle without painting over it.
+          The book wheel does without it: its selection is already the only row in
+          the label's own type, and a filled band under it read as a grey slab. */}
+      {band&&<div aria-hidden style={{position:'absolute',zIndex:0,left:0,right:0,top:padTop,height:itemH,borderTop:`1px solid ${T.gD}`,borderBottom:`1px solid ${T.gD}`,background:T.gF,pointerEvents:'none'}}/>}
       <div ref={ref} className="wheel-col" onScroll={onScroll}
         style={{position:'relative',zIndex:1,height:itemH*rows}}>
         {/* Spacers rather than padding: padding on a scroll container is part of
@@ -2122,24 +2124,20 @@ function BookWheel({books,value,lang,onJump,onClose,box,dark,T}){
           looking at, now with the rest of the books hanging under it. The rows
           carry no white-space rule of their own, so "Song of Solomon" would wrap
           out of the row without one here. */}
-      <Wheel items={books} value={pick} T={T} anchor="top" itemH={ROW} rows={3} font={12} fontSel={11}
+      <Wheel items={books} value={pick} T={T} anchor="top" band={false} itemH={ROW} rows={3} font={12} fontSel={11}
         fadeBot={`linear-gradient(rgba(${scrim},0),rgba(${scrim},0.55))`}
         onChange={bn=>{setPick(bn);onJump(bn);}}
         render={bn=>{
           const sel=bn===pick;
+          // No chevron while the wheel is open: it pointed at a menu that is
+          // already showing. Tapping the name closes it again, which is the same
+          // gesture that opened it — and the scrim behind takes any other tap.
           return (
-            <span style={{display:'flex',alignItems:'center',gap:4,width:'100%',minWidth:0,
-              textTransform:sel?'uppercase':'none',letterSpacing:sel?'0.12em':'0.02em'}}>
-              <span style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{bookName(BIBLE.find(x=>x.n===bn),lang)}</span>
-              {/* The chevron stays with the name, so the control still reads as
-                  the one thing it was before it opened. stopPropagation because
-                  the row underneath it only ever re-centres itself. */}
-              {sel&&(
-                <svg onClick={e=>{e.stopPropagation();onClose();}} width="9" height="6" viewBox="0 0 10 6"
-                  style={{flexShrink:0,display:'block',transform:'rotate(180deg)',cursor:'pointer'}}>
-                  <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              )}
+            <span onClick={sel?onClose:undefined}
+              style={{display:'flex',alignItems:'center',width:'100%',minWidth:0,cursor:'pointer',
+                textTransform:sel?'uppercase':'none',letterSpacing:sel?'0.12em':'0.02em',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {bookName(BIBLE.find(x=>x.n===bn),lang)}
             </span>
           );
         }}/>
