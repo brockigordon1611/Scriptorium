@@ -5453,9 +5453,11 @@ function App(){
   // opening page, alongside the recent searches, and typing puts them away.
   const searchFiltersPinned=searchFieldOpen&&searchFiltersOpen;
   const searchFiltersInFlow=searchShowRecents&&!searchFiltersOpen;
-  // The chapter gives way to whatever search is showing — its results, or the
-  // recent searches offered before there is a query to run.
-  const readingHidden=searchShowRecents||!!(readSearchRes&&readSearchResultsOpen);
+  // Search owns the screen for as long as the field is open. It used to hand
+  // the chapter back in the gap between the third character and the first
+  // result — 350ms of debounce plus the search itself — where it sat under the
+  // bar, visible and tappable. The field closing is what brings reading back.
+  const readingHidden=searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen);
   // Parsed once for everything that offers the jump, rather than per render site.
   const searchRef=useMemo(()=>parseReference(readSearchQ,versionLang(readVid)),[readSearchQ,readVid]);
   // Jumping to a typed reference: the same landing a result row makes, minus
@@ -7156,6 +7158,9 @@ function App(){
 
           <div ref={readRef} className="read-area" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
+              // The chapter is not on screen while search owns it, so a sideways
+              // swipe here would move it with nothing to show for it.
+              if(readingHidden){swipeTouchX.current=null;return;}
               swipeTouchX.current=e.touches[0].clientX;
               swipeTouchY.current=e.touches[0].clientY;
               swipeTouchT.current=Date.now();
@@ -7230,6 +7235,14 @@ function App(){
                     </span>
                   </button>
                 )}
+              </div>
+            )}
+            {/* The query is long enough to search but nothing has come back
+                yet. Something has to hold the space, or the screen goes blank
+                between keystrokes. */}
+            {searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
+              <div style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,textAlign:'center'}}>
+                Searching…
               </div>
             )}
             {!searchShowRecents&&readSearchRes&&readSearchResultsOpen&&(
