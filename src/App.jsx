@@ -1423,6 +1423,16 @@ const FS="'Cinzel',Georgia,serif";
 const FB="'Cormorant Garamond','EB Garamond',Georgia,serif";
 const fontFamilyMap={serif:FB,sans:"'Source Sans 3','Segoe UI',system-ui,sans-serif",mono:"'Inconsolata','SFMono-Regular','Courier New',monospace"};
 
+// Interface type follows the reading size, but never one for one: a 9px label
+// scaled the way a 31px verse is would swamp the row it labels. Three ramps,
+// each compressing the slider's travel by its own factor, all capped at 1.35x
+// and floored at 1 so nothing moves until the slider passes its default.
+// The fallback of 1 is the whole revert story -- drop the <style> these read
+// from and every one of these resolves to the number it was written as.
+const U =n=>`calc(${n}px * var(--ui-s,1))`;  // UI body copy: FB, 11-16px
+const UL=n=>`calc(${n}px * var(--ui-l,1))`;  // micro-labels: FS, 10px and under
+const UH=n=>`calc(${n}px * var(--ui-h,1))`;  // headings: 17px and up
+
 const CSS=`
 /* Fonts are bundled and loaded from public/fonts/fonts.css via index.html.
    Fetching them from Google here meant a first offline launch fell back to Georgia. */
@@ -4549,6 +4559,23 @@ function App(){
     if(!r.parentNode)document.head.appendChild(r);
   },[T.g,T.gD]);
 
+  // ── Interface scale injection ──
+  // Its own <style>, not folded into the accent one above, so it can be pulled
+  // without touching the colours. Writing a variable rather than threading a
+  // number through the tree means dragging the slider repaints without a
+  // re-render, and the nav and bottom bars' ResizeObservers pick up their own
+  // new heights on their own.
+  useEffect(()=>{
+    // Each ramp is written as where it lands at the top of the slider rather
+    // than as a compression factor, because that is the thing actually agreed:
+    // micro-labels 1.18x, headings 1.25x, everything else 1.35x. Expressed the
+    // other way the caps never bound and the interface stopped short of them.
+    const t=Math.min(1,Math.max(0,(readFontSize-31)/11)),at=hi=>(1+t*(hi-1)).toFixed(4);
+    const el=document.getElementById('ui-scale-vars')||Object.assign(document.createElement('style'),{id:'ui-scale-vars'});
+    el.textContent=`:root{--ui-s:${at(1.35)};--ui-l:${at(1.18)};--ui-h:${at(1.25)};}`;
+    if(!el.parentNode)document.head.appendChild(el);
+  },[readFontSize]);
+
   // ── Audio playback functions ──
   const scrollToVerse=(v)=>{
     if(!readRef.current)return;
@@ -6355,8 +6382,8 @@ function App(){
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
           <div className="hide-mobile" style={{flexShrink:0}}>
-            <h1 style={{fontFamily:FS,fontSize:17,fontWeight:700,color:T.gT,letterSpacing:'0.07em',margin:0,lineHeight:1}}>Scriptorium</h1>
-            <div className="hide-mobile" style={{fontFamily:FS,fontSize:8,color:T.gD,letterSpacing:'0.18em',textTransform:'uppercase',fontWeight:500,marginTop:2}}>{data.versions.map(v=>v.label).join(' - ')}</div>
+            <h1 style={{fontFamily:FS,fontSize:UH(17),fontWeight:700,color:T.gT,letterSpacing:'0.07em',margin:0,lineHeight:1}}>Scriptorium</h1>
+            <div className="hide-mobile" style={{fontFamily:FS,fontSize:UL(8),color:T.gD,letterSpacing:'0.18em',textTransform:'uppercase',fontWeight:500,marginTop:2}}>{data.versions.map(v=>v.label).join(' - ')}</div>
           </div>
           {/* ── 6-button nav bar ── */}
           {(()=>{
@@ -6394,6 +6421,12 @@ function App(){
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
+              {/* The two labels inside this pill stay at their literal size while
+                  the rest of the interface scales. At the default they already sit
+                  in a slot with about four pixels to spare -- the gear and tools
+                  pills either side are fixed-width icons -- so any growth here
+                  pushes the version label off the right edge. Measured at the top
+                  of the slider, scaling them overflowed the row by 27px at 375pt. */}
               {/* Tab pill: Read | Study — sliding toggle indicator */}
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
@@ -6432,7 +6465,7 @@ function App(){
                     <path d="M10.3 15 L10.3 17.5 L11 16.6 L11.7 17.5 L11.7 15" strokeWidth="1.2" fill="none"/>
                   </svg>
                 </button>
-                <button type="button" title="Select Version" {...navTap(!studyActive?()=>((readMobileSheet==='version'&&!readSheetClosing)?closeReadSheet():openReadSheet('version')):undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:10,fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
+                <button type="button" title="Select Version" {...navTap(!studyActive?()=>((readMobileSheet==='version'&&!readSheetClosing)?closeReadSheet():openReadSheet('version')):undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UL(10),fontWeight:600,padding:0,whiteSpace:'nowrap',color:studyActive?'transparent':rVersion?T.gT:T.dim,transition:'color .04s ease-out',visibility:studyActive?'hidden':'visible'}}>
                   {readVerLabel||'—'}
                 </button>
               </div>
@@ -7544,14 +7577,14 @@ function App(){
                         // between the two, clearing leaves the keyboard alone in both directions.
                         onMouseDown={e=>e.preventDefault()}
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
-                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
+                        style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:U(14),lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
                         ✕
                       </button>
                     )}
                   </div>
                 </>):(<>
                   {searchTopBook&&summary&&topBookLabel(10,'44%')}
-                  <div style={{fontFamily:FS,fontSize:9,color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
+                  <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {summary?(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
                       {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
@@ -7574,7 +7607,7 @@ function App(){
                     if(readSearchRes)setReadSearchResultsOpen(true);
                     setTimeout(()=>{const el=searchInputRef.current;if(el){el.focus();el.select();}},40);
                   }}
-                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:19,lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFlash?ctrlOn:ctrlRest),borderRadius:6,fontSize:UH(19),lineHeight:1,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                   ⌕
                 </button>
               </div>
@@ -7596,7 +7629,7 @@ function App(){
               {searchFieldOpen&&summary&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchTopBook&&topBookLabel(9.5,'46%')}
-                  <div style={{fontFamily:FS,fontSize:9,color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
+                  <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {readSearching?'Searching…':(<>
                       <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
                       {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
@@ -7713,9 +7746,9 @@ function App(){
           {/* Chapter title */}
           {!readingHidden&&(
             <div style={{padding:'10px 12px 2px'}}>
-              <div style={{textAlign:'center',fontFamily:FS,fontSize:9,letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
+              <div style={{textAlign:'center',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.28em',textTransform:'uppercase',color:T.gM,marginBottom:2,fontWeight:500}}>{readVerLabel}</div>
               <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <div style={{fontFamily:FS,fontSize:19,fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
+                <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center'}}>{bookName(readBk,versionLang(readVid))} {readCh}</div>
               </div>
               <div ref={chLineRef} style={{height:1,background:T.accentLine,marginTop:8}}/>
             </div>
@@ -7732,29 +7765,29 @@ function App(){
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'6px 10px'}}>
                 {recentSearches.length>0?(<>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                    <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
+                    <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
                     <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}}
-                      style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>Clear</button>
+                      style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:UL(8),letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>Clear</button>
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
                     {recentSearches.map(r=>(
                       <button key={r} type="button" onClick={()=>{searchTypedRef.current=false;doReadSearch(r);}}
-                        style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:13,padding:'6px 13px',cursor:'pointer'}}>
+                        style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 13px',cursor:'pointer'}}>
                         {r}
                       </button>
                     ))}
                   </div>
                 </>):(
-                  <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,padding:'10px 2px'}}>
+                  <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),padding:'10px 2px'}}>
                     Type at least three characters to search this version.
                   </div>
                 )}
                 {searchRef&&(
                   <button type="button" onClick={()=>goRefFromBar(searchRef)}
                     style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,padding:'11px 12px',marginTop:12,cursor:'pointer'}}>
-                    <span style={{fontSize:15,color:T.gT,flexShrink:0}}>⤷</span>
-                    <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
-                    <span style={{fontFamily:FS,fontSize:14,color:T.gT,letterSpacing:'0.06em',fontWeight:600}}>
+                    <span style={{fontSize:U(15),color:T.gT,flexShrink:0}}>⤷</span>
+                    <span style={{fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
+                    <span style={{fontFamily:FS,fontSize:U(14),color:T.gT,letterSpacing:'0.06em',fontWeight:600}}>
                       {bookName(searchRef.book,versionLang(readVid))} {searchRef.chapter}{searchRef.verse?`:${searchRef.verse}`:''}
                     </span>
                   </button>
@@ -7765,7 +7798,7 @@ function App(){
                 yet. Something has to hold the space, or the screen goes blank
                 between keystrokes. */}
             {searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
-              <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:14,textAlign:'center'}}>
+              <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>
                 Searching…
               </div>
             )}
@@ -7775,58 +7808,58 @@ function App(){
                 {searchRef&&(
                   <button type="button" onClick={()=>goRefFromBar(searchRef)}
                     style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,padding:'11px 12px',marginBottom:10,cursor:'pointer'}}>
-                    <span style={{fontSize:15,color:T.gT,flexShrink:0}}>⤷</span>
-                    <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
-                    <span style={{fontFamily:FS,fontSize:14,color:T.gT,letterSpacing:'0.06em',fontWeight:600}}>
+                    <span style={{fontSize:U(15),color:T.gT,flexShrink:0}}>⤷</span>
+                    <span style={{fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
+                    <span style={{fontFamily:FS,fontSize:U(14),color:T.gT,letterSpacing:'0.06em',fontWeight:600}}>
                       {bookName(searchRef.book,versionLang(readVid))} {searchRef.chapter}{searchRef.verse?`:${searchRef.verse}`:''}
                     </span>
                   </button>
                 )}
                 {readSearchRes.length===0&&!searchRef&&(
                   <div>
-                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15,marginBottom:10}}>No verses found.</div>
+                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15),marginBottom:10}}>No verses found.</div>
                     {searchOpts.caseSensitive&&(
-                      <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Disable it →</button>
+                        <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Disable it →</button>
                       </div>
                     )}
                     {searchOpts.partial===false&&(
-                      <div style={{fontSize:12,marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Whole Word mode — partial matches excluded.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Enable Partial Match →</button>
+                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Enable Partial Match →</button>
                       </div>
                     )}
                     {searchOpts.scope!=='all'&&(
-                      <div style={{fontSize:12,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                      <div style={{fontSize:U(12),padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:12,padding:0,fontFamily:FB}}>Search All Scripture →</button>
+                        <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Search All Scripture →</button>
                       </div>
                     )}
                   </div>
                 )}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
                   <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);landSilent.current=true;if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));setStripOpen(false);landSilent.current=false;autoSel.current=true;},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
-                    <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
+                    <div style={{fontFamily:FS,fontSize:UL(10),color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
                 );});})()}
                 {readSearchLimit<readSearchRes.length&&(
-                  <div style={{textAlign:'center',padding:'14px 0',color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.12em'}}>
+                  <div style={{textAlign:'center',padding:'14px 0',color:T.dim,fontFamily:FS,fontSize:UL(8),letterSpacing:'0.12em'}}>
                     ··· {readSearchRes.length-readSearchLimit} more ···
                   </div>
                 )}
               </div>
             )}
             {!readingHidden&&readVerses.length===0&&(
-              <div style={{textAlign:'center',padding:'48px 0',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:15}}>
+              <div style={{textAlign:'center',padding:'48px 0',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15)}}>
                 No verses found. Download a version for offline use via the Compare tab &gt; Versions.
               </div>
             )}
             {strongsMode&&readVid!=='kjv'&&!readingHidden&&(
               <div style={{margin:'8px 8px 0',padding:'8px 14px',borderRadius:7,border:`1px solid ${T.gD}`,background:T.gF,display:'flex',alignItems:'center',gap:8}}>
-                <span style={{color:T.gT,fontSize:14,flexShrink:0}}>ℍ</span>
-                <span style={{fontFamily:FB,fontSize:13,color:T.gM,lineHeight:1.4}}>Strong's mode is only available for KJV.</span>
+                <span style={{color:T.gT,fontSize:U(14),flexShrink:0}}>ℍ</span>
+                <span style={{fontFamily:FB,fontSize:U(13),color:T.gM,lineHeight:1.4}}>Strong's mode is only available for KJV.</span>
               </div>
             )}
             {!readingHidden&&readVerses.length>0&&(
@@ -7841,7 +7874,7 @@ function App(){
                         onClick={()=>{if(audioPlaying){if(audioModeRef.current==='speech'){seekWebSpeechToVerse(v);}else{const _ts=audioTimestampsRef.current;if(_ts&&_ts[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=_ts[v];currentVerseRef.current=v;setCurrentVerse(v);}}}else{verseClick(v);}}}
                         style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
-                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
+                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent'}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
@@ -7861,7 +7894,7 @@ function App(){
                         onClick={()=>{if(audioPlaying){if(audioModeRef.current==='speech'){seekWebSpeechToVerse(v);}else{const _ts=audioTimestampsRef.current;if(_ts&&_ts[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=_ts[v];currentVerseRef.current=v;setCurrentVerse(v);}}}else{verseClick(v);}}}
                         style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',boxShadow:isAudio?`0 0 0 1.5px var(--ac-audio-ring)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px var(--ac-sel-glow)`:'none',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
-                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:10,color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
+                        {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
                         </span>
@@ -7873,7 +7906,7 @@ function App(){
             )}
             {!readingHidden&&readVerses.length>0&&(
               <div style={{paddingTop:20,paddingBottom:stripOpen&&!stripClosing?130:69,textAlign:'center',transition:'padding-bottom .18s ease'}}>
-                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.22em',textTransform:'uppercase',color:T.gD,fontWeight:500}}>
+                <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.22em',textTransform:'uppercase',color:T.gD,fontWeight:500}}>
                   {readCh===readTotalCh?'End of Book':'End of Chapter'}
                 </div>
               </div>
@@ -8083,15 +8116,15 @@ function App(){
             transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
             transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
-              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:U(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
-                <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
+                <span style={{fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
                   {bookName(BIBLE.find(b=>b.n===readBook),versionLang(readVid))||''} {readCh}
                 </span>
               </div>
-              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:U(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
             </div>
@@ -8099,7 +8132,7 @@ function App(){
                 going offline never shifts the nav buttons. */}
             {!online&&(
               <div style={{position:'absolute',left:0,right:0,bottom:'max(2px, calc(env(safe-area-inset-bottom, 0px) / 2 - 5px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
-                <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline</span>
+                <span style={{fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline</span>
               </div>
             )}
             </div>
