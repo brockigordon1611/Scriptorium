@@ -4568,11 +4568,11 @@ function App(){
   useEffect(()=>{
     // Each ramp is written as where it lands at the top of the slider rather
     // than as a compression factor, because that is the thing actually agreed:
-    // micro-labels 1.18x, headings 1.25x, everything else 1.35x. Expressed the
+    // micro-labels 1.35x, headings 1.5x, everything else 1.6x. Expressed the
     // other way the caps never bound and the interface stopped short of them.
     const t=Math.min(1,Math.max(0,(readFontSize-31)/11)),at=hi=>(1+t*(hi-1)).toFixed(4);
     const el=document.getElementById('ui-scale-vars')||Object.assign(document.createElement('style'),{id:'ui-scale-vars'});
-    el.textContent=`:root{--ui-s:${at(1.35)};--ui-l:${at(1.18)};--ui-h:${at(1.25)};}`;
+    el.textContent=`:root{--ui-s:${at(1.6)};--ui-l:${at(1.35)};--ui-h:${at(1.5)};}`;
     if(!el.parentNode)document.head.appendChild(el);
   },[readFontSize]);
 
@@ -6421,18 +6421,19 @@ function App(){
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
-              {/* The two labels inside this pill stay at their literal size while
-                  the rest of the interface scales. At the default they already sit
-                  in a slot with about four pixels to spare -- the gear and tools
-                  pills either side are fixed-width icons -- so any growth here
-                  pushes the version label off the right edge. Measured at the top
-                  of the slider, scaling them overflowed the row by 27px at 375pt. */}
+              {/* The two buttons inside this pill carry 2px of horizontal padding
+                  rather than 12. Both are flex:1 inside a flex:1 pill, so that
+                  padding sets no visible width at the default -- it only sets the
+                  min-content floor the row overflows at. The gear and tools pills
+                  either side are fixed-width icons, which leaves this pill about
+                  163px on a 375pt screen; the old padding put its floor past that
+                  as soon as the labels grew. */}
               {/* Tab pill: Read | Study — sliding toggle indicator */}
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:3,width:'calc(50% - 4px)',transform:studyIsActive?'translateX(calc(100% + 2px))':'translateX(0px)',willChange:'transform',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:10.5,fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 12px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
+                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
               <div style={{...pill,position:'relative'}}>
@@ -6745,16 +6746,16 @@ function App(){
           {/* Header row: back + absolutely centered title + dark mode pill */}
           <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
             <button type="button" onClick={closeReadSheet}
-              style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,zIndex:1}}>
+              style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,zIndex:1}}>
               ←
             </button>
-            <div style={{position:'absolute',left:0,right:0,textAlign:'center',fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',pointerEvents:'none'}}>Settings</div>
+            <div style={{position:'absolute',left:0,right:0,textAlign:'center',fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',pointerEvents:'none'}}>Settings</div>
             {/* Dark mode pill — compact */}
             <div onClick={()=>setDark(d=>!d)} style={{position:'relative',width:72,height:32,borderRadius:16,background:T.bgCard,boxShadow:`0 0 0 1.5px ${T.gD},0 3px 10px rgba(0,0,0,${dark?0.5:0.12})`,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',flexShrink:0,transition:'background .3s,box-shadow .3s',overflow:'hidden'}}>
               <div style={{position:'absolute',top:0,bottom:0,left:dark?8:'auto',right:dark?'auto':8,display:'flex',alignItems:'center',justifyContent:'center',width:32,pointerEvents:'none'}}>
-                <span style={{fontFamily:FS,fontSize:7,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:T.gT,lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
+                <span style={{fontFamily:FS,fontSize:UL(7),fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:T.gT,lineHeight:1.2,textAlign:'center',transition:'color .3s'}}>{dark?'Dark':'Light'}</span>
               </div>
-              <div style={{position:'absolute',top:3,left:dark?'calc(100% - 29px)':3,width:26,height:26,borderRadius:'50%',background:T.bgSec,boxShadow:`0 2px 6px rgba(0,0,0,${dark?0.5:0.18}),0 0 0 1px ${T.gD}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'left .25s cubic-bezier(.4,0,.2,1),background .3s',fontSize:13}}>
+              <div style={{position:'absolute',top:3,left:dark?'calc(100% - 29px)':3,width:26,height:26,borderRadius:'50%',background:T.bgSec,boxShadow:`0 2px 6px rgba(0,0,0,${dark?0.5:0.18}),0 0 0 1px ${T.gD}`,display:'flex',alignItems:'center',justifyContent:'center',transition:'left .25s cubic-bezier(.4,0,.2,1),background .3s',fontSize:U(13)}}>
                 {dark
                   ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:T.gT}}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                   : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color:T.gT}}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -6766,29 +6767,29 @@ function App(){
           {tab==='read'&&<div style={{display:'flex',gap:8,marginBottom:8}}>
             {/* Strong's card */}
             <div onClick={()=>readVid==='kjv'&&setStrongsMode(v=>!v)} title={readVid!=='kjv'?"Strong's numbers are only available for the KJV":undefined} style={{flex:1,padding:'9px 10px',background:strongsMode&&readVid==='kjv'?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid==='kjv'?T.gD:T.bd}`,borderRadius:10,cursor:readVid==='kjv'?'pointer':'not-allowed',opacity:readVid==='kjv'?1:0.45,userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s,opacity .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:strongsMode&&readVid==='kjv'?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
+              <span style={{fontFamily:FS,fontSize:UH(18),color:strongsMode&&readVid==='kjv'?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
+                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:strongsMode&&readVid==='kjv'?T.mut:T.dim,transition:'color .2s'}}>Strong's</div>
+                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>{readVid==='kjv'?'Hebrew & Greek':'KJV only'}</div>
               </div>
-              {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:11,color:T.gM,cursor:'pointer',flexShrink:0,padding:'8px',margin:'-8px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>}
+              {readVid==='kjv'&&<span onClick={e=>{e.stopPropagation();setStrongsInfoVisible(v=>!v);}} style={{fontSize:U(11),color:T.gM,cursor:'pointer',flexShrink:0,padding:'8px',margin:'-8px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>}
             </div>
             {/* Auto Fullscreen card */}
             <div onClick={()=>{const v=!readAutoFullscreen;setReadAutoFullscreen(v);try{localStorage.setItem('scrip:autoFullscreen',JSON.stringify(v));}catch{};if(!v&&readFullScreen.current)exitFullScreen();}} style={{flex:1,padding:'9px 10px',background:readAutoFullscreen?T.gF:T.bgSec,border:`1.5px solid ${readAutoFullscreen?T.gD:T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:readAutoFullscreen?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>⛶</span>
+              <span style={{fontFamily:FS,fontSize:UH(18),color:readAutoFullscreen?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>⛶</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Auto on scroll</div>
+                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:readAutoFullscreen?T.mut:T.dim,transition:'color .2s'}}>Fullscreen</div>
+                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Auto on scroll</div>
               </div>
             </div>
           </div>}
           {strongsInfoVisible&&tab==='read'&&<div style={{marginTop:-8,marginBottom:14,padding:'10px 14px',background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:9,display:'flex',gap:8,alignItems:'flex-start'}}>
             <span style={{color:T.gT,flexShrink:0}}>ⓘ</span>
-            <span style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.5}}>Underlines every word with its original Hebrew or Greek number. Tap any word to see its definition and every verse where it appears. KJV only.</span>
+            <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.5}}>Underlines every word with its original Hebrew or Greek number. Tap any word to see its definition and every verse where it appears. KJV only.</span>
           </div>}
           {/* ── Appearance (universal accordion) ── */}
           <button type="button" onClick={()=>setSettingsAppOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:settingsAppOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>Aa</span>
             <span style={{flex:1,textAlign:'left'}}>Reading Appearance</span>
             <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={settingsAppOpen}/></span>
@@ -6798,8 +6799,8 @@ function App(){
             {/* Accent Color */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Accent Color</span>
-                {accent==='custom'&&<button type="button" onClick={()=>{setAccent('gold');setCustomPickerOpen(false);}} style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:12,padding:0,cursor:'pointer'}}>↺ Reset</button>}
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Accent Color</span>
+                {accent==='custom'&&<button type="button" onClick={()=>{setAccent('gold');setCustomPickerOpen(false);}} style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:U(12),padding:0,cursor:'pointer'}}>↺ Reset</button>}
               </div>
               <div style={{display:'flex',gap:8,alignItems:'center'}}>
                 {Object.entries(ACCENTS).map(([key,pal])=>(
@@ -6817,7 +6818,7 @@ function App(){
                 }} style={{marginLeft:'auto',width:32,height:32,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',border:`2px solid ${accent==='custom'?T.gT:T.bd}`,boxShadow:accent==='custom'?`0 0 0 2px ${customAccentHex},0 2px 12px ${customAccentHex}66`:'0 1px 5px rgba(0,0,0,0.35)',transition:'box-shadow .2s,border-color .2s',padding:0,background:accent==='custom'?customAccentHex:'conic-gradient(hsl(0,100%,50%),hsl(30,100%,50%),hsl(60,100%,50%),hsl(90,100%,50%),hsl(120,100%,50%),hsl(150,100%,50%),hsl(180,100%,50%),hsl(210,100%,50%),hsl(240,100%,50%),hsl(270,100%,50%),hsl(300,100%,50%),hsl(330,100%,50%),hsl(360,100%,50%))'}}>
                   {accent==='custom'
                     ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{pointerEvents:'none',filter:'drop-shadow(0 1px 2px rgba(0,0,0,0.7))',flexShrink:0}}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    : <span style={{fontSize:13,color:'rgba(255,255,255,0.95)',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,0.8)',lineHeight:1,pointerEvents:'none'}}>+</span>
+                    : <span style={{fontSize:U(13),color:'rgba(255,255,255,0.95)',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,0.8)',lineHeight:1,pointerEvents:'none'}}>+</span>
                   }
                 </button>
               </div>
@@ -6826,40 +6827,40 @@ function App(){
             {/* Text Size */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Text Size</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Text Size</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FB,fontSize:11,color:T.dim}}>A</span>
+                <span style={{fontFamily:FB,fontSize:U(11),color:T.dim}}>A</span>
                 <input type="range" min="13" max="42" value={readFontSize}
                   onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FB,fontSize:20,color:T.dim}}>A</span>
+                <span style={{fontFamily:FB,fontSize:UH(20),color:T.dim}}>A</span>
               </div>
             </div>
 
             {/* Line Spacing */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Line Spacing</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readLineHeight.toFixed(1)}</span>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Line Spacing</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{readLineHeight.toFixed(1)}</span>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Tight</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>Tight</span>
                 <input type="range" min="1.1" max="2.8" step="0.1" value={readLineHeight}
                   onChange={e=>{const v=Number(e.target.value);setReadLineHeight(v);try{localStorage.setItem('scrip:lineHeight',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FS,fontSize:9,color:T.dim}}>Wide</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>Wide</span>
               </div>
             </div>
 
             {/* Font Family */}
             <div style={{marginBottom:14}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Font</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>Font</div>
               <div style={{display:'flex',gap:4}}>
                 {[['serif','Serif'],['sans','Sans-Serif'],['mono','Monospace']].map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>{setReadFontFamily(k);try{localStorage.setItem('scrip:fontFamily',k);}catch{}}}
-                    style={{flex:1,background:readFontFamily===k?T.gF:'transparent',border:`1px solid ${readFontFamily===k?T.gD:T.bd}`,borderRadius:6,color:readFontFamily===k?T.gT:T.dim,fontFamily:k==='serif'?FB:k==='sans'?"'Inter','Segoe UI',system-ui,sans-serif":"'Courier New',monospace",fontSize:12,padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    style={{flex:1,background:readFontFamily===k?T.gF:'transparent',border:`1px solid ${readFontFamily===k?T.gD:T.bd}`,borderRadius:6,color:readFontFamily===k?T.gT:T.dim,fontFamily:k==='serif'?FB:k==='sans'?"'Inter','Segoe UI',system-ui,sans-serif":"'Courier New',monospace",fontSize:U(12),padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                     {l}
                   </button>
                 ))}
@@ -6868,11 +6869,11 @@ function App(){
 
             {/* Text Alignment */}
             <div style={{marginBottom:14}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Alignment</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>Alignment</div>
               <div style={{display:'flex',gap:4}}>
                 {[['left','Left'],['justify','Justified']].map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>{setReadTextAlign(k);try{localStorage.setItem('scrip:textAlign',k);}catch{}}}
-                    style={{flex:1,background:readTextAlign===k?T.gF:'transparent',border:`1px solid ${readTextAlign===k?T.gD:T.bd}`,borderRadius:6,color:readTextAlign===k?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    style={{flex:1,background:readTextAlign===k?T.gF:'transparent',border:`1px solid ${readTextAlign===k?T.gD:T.bd}`,borderRadius:6,color:readTextAlign===k?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                     {l}
                   </button>
                 ))}
@@ -6881,11 +6882,11 @@ function App(){
 
             {/* Verse Numbers */}
             <div style={{marginBottom:14}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Verse Numbers</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>Verse Numbers</div>
               <div style={{display:'flex',gap:4}}>
                 {[['super','Superscript'],['inline','Inline'],['hidden','Hidden']].map(([k,l])=>(
                   <button key={k} type="button" onClick={()=>{setReadVerseNums(k);try{localStorage.setItem('scrip:verseNums',k);}catch{}}}
-                    style={{flex:1,background:readVerseNums===k?T.gF:'transparent',border:`1px solid ${readVerseNums===k?T.gD:T.bd}`,borderRadius:6,color:readVerseNums===k?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                    style={{flex:1,background:readVerseNums===k?T.gF:'transparent',border:`1px solid ${readVerseNums===k?T.gD:T.bd}`,borderRadius:6,color:readVerseNums===k?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
                     {l}
                   </button>
                 ))}
@@ -6895,12 +6896,12 @@ function App(){
             {/* Toggles row */}
             <div style={{display:'flex',gap:6,marginBottom:14}}>
               <button type="button" onClick={()=>{const v=!readParaMode;setReadParaMode(v);try{localStorage.setItem('scrip:paraMode',JSON.stringify(v));}catch{}}}
-                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readParaMode?T.gF:'transparent',border:`1px solid ${readParaMode?T.gD:T.bd}`,borderRadius:6,color:readParaMode?T.gT:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
-                <span>Paragraph Mode</span><span style={{fontSize:8,opacity:0.7}}>{readParaMode?'ON':'OFF'}</span>
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readParaMode?T.gF:'transparent',border:`1px solid ${readParaMode?T.gD:T.bd}`,borderRadius:6,color:readParaMode?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Paragraph Mode</span><span style={{fontSize:UL(8),opacity:0.7}}>{readParaMode?'ON':'OFF'}</span>
               </button>
               <button type="button" onClick={()=>{const v=!readRedLetter;setReadRedLetter(v);try{localStorage.setItem('scrip:redLetter',JSON.stringify(v));}catch{}}}
-                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readRedLetter?'rgba(198,40,40,0.15)':'transparent',border:`1px solid ${readRedLetter?'#c62828':T.bd}`,borderRadius:6,color:readRedLetter?'#ef5350':T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
-                <span>Red Letter</span><span style={{fontSize:8,opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
+                style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:readRedLetter?'rgba(198,40,40,0.15)':'transparent',border:`1px solid ${readRedLetter?'#c62828':T.bd}`,borderRadius:6,color:readRedLetter?'#ef5350':T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                <span>Red Letter</span><span style={{fontSize:UL(8),opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
               </button>
             </div>
 
@@ -6913,10 +6914,10 @@ function App(){
                 {v:3,text:'God <i>is</i> love.'},
               ];
               const vnSup=(v)=>readVerseNums==='super'?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>:null;
-              const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:10,color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
+              const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
               return(
               <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
-                <div style={{fontFamily:FS,fontSize:7,letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
+                <div style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
                 {readParaMode?(
                   <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
                     {pvVerses.map(({v,text})=>(
@@ -6937,7 +6938,7 @@ function App(){
           {/* ── AUDIO SETTINGS ── */}
           {tab==='read'&&(
           <button type="button" onClick={()=>setAudioSettingsOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:audioSettingsOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>♪</span>
             <span style={{flex:1,textAlign:'left'}}>Audio Playback</span>
             <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={audioSettingsOpen}/></span>
@@ -6950,23 +6951,23 @@ function App(){
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',gap:4,marginBottom:audioInfoOpen?4:0}}>
                 <button type="button" onClick={()=>{const v=!audioAutoScroll;setAudioAutoScroll(v);try{localStorage.setItem('scrip:audio:autoScroll',JSON.stringify(v));}catch{}}}
-                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoScroll?T.gF:'transparent',border:`1px solid ${audioAutoScroll?T.gD:T.bd}`,borderRadius:6,color:audioAutoScroll?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                   <span>Auto-scroll</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
-                    <span style={{fontSize:9,opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
-                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                    <span style={{fontSize:UL(9),opacity:0.7}}>{audioAutoScroll?'ON':'OFF'}</span>
+                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='scroll'?null:'scroll');}} style={{fontSize:U(11),color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
                 <button type="button" onClick={()=>{const v=!audioAutoAdvance;setAudioAutoAdvance(v);try{localStorage.setItem('scrip:audio:autoAdvance',JSON.stringify(v));}catch{}}}
-                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:audioAutoAdvance?T.gF:'transparent',border:`1px solid ${audioAutoAdvance?T.gD:T.bd}`,borderRadius:6,color:audioAutoAdvance?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                   <span>Auto-advance</span>
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
-                    <span style={{fontSize:9,opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
-                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                    <span style={{fontSize:UL(9),opacity:0.7}}>{audioAutoAdvance?'ON':'OFF'}</span>
+                    <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='advance'?null:'advance');}} style={{fontSize:U(11),color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                   </div>
                 </button>
               </div>
-              {audioInfoOpen&&<div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:6,padding:'7px 10px',fontSize:11,fontFamily:FB,color:T.dim,lineHeight:1.5}}>
+              {audioInfoOpen&&<div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:6,padding:'7px 10px',fontSize:U(11),fontFamily:FB,color:T.dim,lineHeight:1.5}}>
                 {audioInfoOpen==='scroll'
                   ?'Automatically scrolls the page to keep the currently reading verse visible.'
                   :audioInfoOpen==='advance'
@@ -6978,36 +6979,36 @@ function App(){
             {/* Keep screen awake */}
             <div style={{marginBottom:14}}>
               <button type="button" onClick={()=>{const v=!audioKeepAwake;setAudioKeepAwake(v);try{localStorage.setItem('scrip:audio:keepAwake',JSON.stringify(v));}catch{}}}
-                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',background:audioKeepAwake?T.gF:'transparent',border:`1px solid ${audioKeepAwake?T.gD:T.bd}`,borderRadius:6,color:audioKeepAwake?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',background:audioKeepAwake?T.gF:'transparent',border:`1px solid ${audioKeepAwake?T.gD:T.bd}`,borderRadius:6,color:audioKeepAwake?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
                 <span>Keep screen on</span>
                 <div style={{display:'flex',alignItems:'center',gap:5}}>
-                  <span style={{fontSize:9,opacity:0.7}}>{audioKeepAwake?'ON':'OFF'}</span>
-                  <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='keepAwake'?null:'keepAwake');}} style={{fontSize:11,color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
+                  <span style={{fontSize:UL(9),opacity:0.7}}>{audioKeepAwake?'ON':'OFF'}</span>
+                  <span onClick={e=>{e.stopPropagation();setAudioInfoOpen(v=>v==='keepAwake'?null:'keepAwake');}} style={{fontSize:U(11),color:T.gM,cursor:'pointer',lineHeight:1,userSelect:'none',WebkitUserSelect:'none',padding:'6px',margin:'-6px',display:'inline-flex',alignItems:'center',justifyContent:'center'}}>ⓘ</span>
                 </div>
               </button>
             </div>
 
             {/* Playback Source */}
             <div style={{marginBottom:14}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>Source</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>Source</div>
               <div style={{display:'flex',flexDirection:'column',gap:4}}>
                 <div style={{display:'flex',gap:4}}>
                   {[['auto','Auto'],['off','Off']].map(([k,l])=>(
                     <button key={k} type="button" onClick={()=>{setAudioSource(k);try{localStorage.setItem('scrip:audio:source',k);}catch{}}}
-                      style={{flex:1,background:audioSource===k?T.gF:'transparent',border:`1px solid ${audioSource===k?T.gD:T.bd}`,borderRadius:6,color:audioSource===k?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',lineHeight:'1'}}>
+                      style={{flex:1,background:audioSource===k?T.gF:'transparent',border:`1px solid ${audioSource===k?T.gD:T.bd}`,borderRadius:6,color:audioSource===k?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',lineHeight:'1'}}>
                       {l}
                     </button>
                   ))}
                 </div>
                 <button type="button" onClick={()=>{setAudioSource('local');try{localStorage.setItem('scrip:audio:source','local');}catch{}}}
-                  style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:audioSource==='local'&&Capacitor.isNativePlatform()?'6px 6px 0 0':'6px',color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',lineHeight:'1'}}>
-                  KJV Audio{Capacitor.isNativePlatform()&&(!otInstalled||!ntInstalled)&&<span style={{fontFamily:FB,fontSize:9,color:T.dim,marginLeft:6}}>{otInstalled||ntInstalled?'· partial':'· import required'}</span>}
+                  style={{background:audioSource==='local'?T.gF:'transparent',border:`1px solid ${audioSource==='local'?T.gD:T.bd}`,borderRadius:audioSource==='local'&&Capacitor.isNativePlatform()?'6px 6px 0 0':'6px',color:audioSource==='local'?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',height:'36px',boxSizing:'border-box',lineHeight:'1'}}>
+                  KJV Audio{Capacitor.isNativePlatform()&&(!otInstalled||!ntInstalled)&&<span style={{fontFamily:FB,fontSize:UL(9),color:T.dim,marginLeft:6}}>{otInstalled||ntInstalled?'· partial':'· import required'}</span>}
                 </button>
                 {audioSource==='local'&&Capacitor.isNativePlatform()&&(
                   <div style={{border:`1px solid ${T.gD}`,borderTop:'none',borderRadius:'0 0 6px 6px',padding:'10px',marginBottom:2}}>
                     {audioImport?(
                       <>
-                        <div style={{fontFamily:FB,fontSize:12,color:T.mut,marginBottom:6}}>
+                        <div style={{fontFamily:FB,fontSize:U(12),color:T.mut,marginBottom:6}}>
                           Extracting {audioImport.pack==='OT'?'Old Testament':'New Testament'}...
                           {audioImport.total>0&&` (${audioImport.current} / ${audioImport.total})`}
                         </div>
@@ -7016,7 +7017,7 @@ function App(){
                             <div style={{height:'100%',width:`${Math.round((audioImport.current/audioImport.total)*100)}%`,background:T.gT,borderRadius:2,transition:'width .2s'}}/>
                           </div>
                         )}
-                        {audioImport.error&&<div style={{fontFamily:FB,fontSize:11,color:'#ef5350',marginTop:6}}>{audioImport.error}</div>}
+                        {audioImport.error&&<div style={{fontFamily:FB,fontSize:U(11),color:'#ef5350',marginTop:6}}>{audioImport.error}</div>}
                       </>
                     ):(
                       <>
@@ -7024,11 +7025,11 @@ function App(){
                             have nothing left to say, so leave just the status cards. */}
                         {!(otInstalled&&ntInstalled)&&(
                           <>
-                            <div style={{fontFamily:FB,fontSize:11,color:T.dim,lineHeight:1.6,marginBottom:8}}>
+                            <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,lineHeight:1.6,marginBottom:8}}>
                               Download the free KJV MP3 packs from faithcomesbyhearing.com, then import each ZIP file below.
                             </div>
                             <button type="button" onClick={()=>setModal({type:'audiohelp'})}
-                              style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:12,padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
+                              style={{display:'flex',alignItems:'center',gap:7,width:'100%',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:U(12),padding:'9px 11px',cursor:'pointer',marginBottom:10,textAlign:'left'}}>
                               {audioHelpVideo&&<span style={{flexShrink:0,color:T.gT,display:'inline-flex',alignItems:'center'}}><PlayMark/></span>}
                               <span>{audioHelpVideo?'Watch how to do this':'Step-by-step instructions'}</span>
                             </button>
@@ -7041,21 +7042,21 @@ function App(){
                           ].map(({pack,label,installed,url})=>(
                             <div key={pack} style={{flex:1,background:installed?'rgba(98,196,132,0.08)':T.bgCard,border:`1px solid ${installed?'#62c484':T.bd}`,borderRadius:6,padding:'8px'}}>
                               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                                <span style={{fontFamily:FB,fontSize:11,color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
-                                {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:11,cursor:'pointer',padding:0}}>✕</button>}
+                                <span style={{fontFamily:FB,fontSize:U(11),color:installed?'#62c484':T.mut}}>{installed?'✓ ':''}{label}</span>
+                                {installed&&<button onClick={()=>removeAudioPack(pack)} style={{background:'none',border:'none',color:T.dim,fontFamily:FB,fontSize:U(11),cursor:'pointer',padding:0}}>✕</button>}
                               </div>
                               {!installed&&(
                                 <>
-                                  <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>1. Download</div>
+                                  <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim,marginBottom:4}}>1. Download</div>
                                   <a href={url} target="_blank" rel="noreferrer" onClick={e=>{e.preventDefault();openExternal(url);}}
-                                    style={{display:'block',width:'100%',boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
+                                    style={{display:'block',width:'100%',boxSizing:'border-box',background:'transparent',border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer',textAlign:'center',textDecoration:'none',marginBottom:8}}>
                                     Download {pack} File
                                   </a>
-                                  <div style={{fontFamily:FB,fontSize:10,color:T.dim,marginBottom:4}}>2. Import</div>
+                                  <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim,marginBottom:4}}>2. Import</div>
                                   <input id={`audiozip-${pack}`} type="file" accept=".zip" style={{display:'none'}}
                                     onChange={e=>{const f=e.target.files[0];if(f)importAudioZip(f,pack);e.target.value='';}}/>
                                   <button onClick={()=>document.getElementById(`audiozip-${pack}`).click()}
-                                    style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                                    style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:4,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                                     Import {pack} File (.ZIP)
                                   </button>
                                 </>
@@ -7069,11 +7070,11 @@ function App(){
                 )}
                 <div style={{display:'flex',gap:4,alignItems:'center'}}>
                   <button type="button" onClick={()=>{setAudioSource('speech');try{localStorage.setItem('scrip:audio:source','speech');}catch{}}}
-                    style={{flex:1,background:audioSource==='speech'?T.gF:'transparent',border:`1px solid ${audioSource==='speech'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='speech'?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',lineHeight:'1',boxSizing:'border-box',height:'36px',whiteSpace:'nowrap'}}>
+                    style={{flex:1,background:audioSource==='speech'?T.gF:'transparent',border:`1px solid ${audioSource==='speech'?T.gD:T.bd}`,borderRadius:6,color:audioSource==='speech'?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'8px 10px',cursor:'pointer',transition:'all .12s',textAlign:'left',lineHeight:'1',boxSizing:'border-box',height:'36px',whiteSpace:'nowrap'}}>
                     Browser Voice (any language)
                   </button>
                   <select value={voicesByVersion[readVid]||''} onChange={e=>{const name=e.target.value;setVoicesByVersion(prev=>{const next={...prev};if(name)next[readVid]=name;else delete next[readVid];return next;});}}
-                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 4px',outline:'none',boxSizing:'border-box',lineHeight:'1',WebkitAppearance:'auto',appearance:'auto',height:'36px',overflow:'hidden'}}>
+                    style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(12),padding:'8px 4px',outline:'none',boxSizing:'border-box',lineHeight:'1',WebkitAppearance:'auto',appearance:'auto',height:'36px',overflow:'hidden'}}>
                     <option value="">Default for language</option>
                     {availableVoices.map((v,i)=><option key={i} value={v.name}>{v.name} ({v.lang})</option>)}
                   </select>
@@ -7084,27 +7085,27 @@ function App(){
             {/* FCBH API Key (if streaming selected) */}
             {audioSource==='fcbh'&&(
             <div style={{marginBottom:14}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.mut,marginBottom:6}}>FCBH API Key</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>FCBH API Key</div>
               <input type="password" placeholder="Enter FCBH API key..."
                 defaultValue={localStorage.getItem('scrip:audio:fcbhKey')||''}
                 onBlur={e=>{try{localStorage.setItem('scrip:audio:fcbhKey',e.target.value);}catch{}}}
-                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:12,padding:'8px 10px',outline:'none',boxSizing:'border-box'}}/>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:6}}>Get free at <span style={{color:T.gT}}>bible.faithcomesbyhearing.com</span></div>
+                style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(12),padding:'8px 10px',outline:'none',boxSizing:'border-box'}}/>
+              <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginTop:6}}>Get free at <span style={{color:T.gT}}>bible.faithcomesbyhearing.com</span></div>
             </div>
             )}
 
             {/* Playback Speed */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut}}>Speed</span>
-                <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Speed</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{audioRate.toFixed(2)}x</span>
               </div>
               <input type="range" min="0.5" max="2" step="0.25" value={audioRate}
                 onChange={e=>{const v=Number(e.target.value);setAudioRate(v);try{localStorage.setItem('scrip:audio:rate',v);}catch{}}}
                 style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
             </div>
 
-            {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:`1px solid rgba(198,40,40,0.3)`,borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:12,marginBottom:14}}>
+            {audioError&&<div style={{padding:'10px 12px',background:'rgba(198,40,40,0.1)',border:`1px solid rgba(198,40,40,0.3)`,borderRadius:6,color:'#ef5350',fontFamily:FB,fontSize:U(12),marginBottom:14}}>
               {audioError}
             </div>}
 
@@ -7112,7 +7113,7 @@ function App(){
 
           {/* ── Offline Data accordion ── */}
           <button type="button" onClick={()=>setOfflineDataOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
             <span style={{width:22,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,flexShrink:0}}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -7138,19 +7139,19 @@ function App(){
                     return(
                       <div key={item.id} style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'9px 12px'}}>
                         <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <span style={{fontFamily:FS,fontSize:16,color:T.gT,width:22,textAlign:'center',flexShrink:0}}>{item.icon}</span>
+                          <span style={{fontFamily:FS,fontSize:U(16),color:T.gT,width:22,textAlign:'center',flexShrink:0}}>{item.icon}</span>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>{item.label}</div>
-                            <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>{item.sub}</div>
+                            <div style={{fontFamily:FB,fontSize:U(13),fontWeight:600,color:T.mut}}>{item.label}</div>
+                            <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>{item.sub}</div>
                           </div>
                           {dl.downloading?(
-                            <span style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.06em',flexShrink:0}}>{pct}%</span>
+                            <span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.06em',flexShrink:0}}>{pct}%</span>
                           ):dl.downloaded?(
-                            <button onClick={()=>deleteDownload(item.id)} style={{background:'none',border:`1px solid ${T.gD}`,borderRadius:6,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>✓ Offline</button>
+                            <button onClick={()=>deleteDownload(item.id)} style={{background:'none',border:`1px solid ${T.gD}`,borderRadius:6,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>✓ Offline</button>
                           ):(
-                            <button onClick={()=>startDownload(item.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>↓ Download</button>
+                            <button onClick={()=>startDownload(item.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>↓ Download</button>
                           )}
-                          {dl.err&&<span style={{fontFamily:FB,fontSize:10,color:T.redTxt}}>Error</span>}
+                          {dl.err&&<span style={{fontFamily:FB,fontSize:UL(10),color:T.redTxt}}>Error</span>}
                         </div>
                         {dl.downloading&&dl.total>0&&(
                           <div style={{marginTop:7,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
@@ -7164,7 +7165,7 @@ function App(){
                 {/* Downloaded bible versions */}
                 {(data?.versions||[]).filter(v=>PUBLIC_VERSIONS.some(pv=>pv.id===v.id)).length>0&&(
                   <div style={{marginTop:8}}>
-                    <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:6,paddingLeft:2}}>BIBLE VERSIONS</div>
+                    <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:6,paddingLeft:2}}>BIBLE VERSIONS</div>
                     <div style={{display:'flex',flexDirection:'column',gap:6}}>
                       {(data?.versions||[]).filter(v=>PUBLIC_VERSIONS.some(pv=>pv.id===v.id)).map(v=>{
                         const dl=dlStates[v.id]||{};
@@ -7172,19 +7173,19 @@ function App(){
                         return(
                           <div key={v.id} style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'9px 12px'}}>
                             <div style={{display:'flex',alignItems:'center',gap:10}}>
-                              <span style={{fontFamily:FS,fontSize:11,fontWeight:700,color:T.gT,width:45,textAlign:'center',flexShrink:0,letterSpacing:'0.04em'}}>{v.label}</span>
+                              <span style={{fontFamily:FS,fontSize:U(11),fontWeight:700,color:T.gT,width:45,textAlign:'center',flexShrink:0,letterSpacing:'0.04em'}}>{v.label}</span>
                               <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontFamily:FB,fontSize:13,fontWeight:600,color:T.mut}}>{v.label} Bible</div>
-                                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>{v.lang} · {v.id.toUpperCase()}</div>
+                                <div style={{fontFamily:FB,fontSize:U(13),fontWeight:600,color:T.mut}}>{v.label} Bible</div>
+                                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>{v.lang} · {v.id.toUpperCase()}</div>
                               </div>
                               {dl.downloading?(
-                                <span style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.06em',flexShrink:0}}>{pct}%</span>
+                                <span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.06em',flexShrink:0}}>{pct}%</span>
                               ):dl.downloaded?(
-                                <button onClick={()=>deleteDownload(v.id)} style={{background:'none',border:`1px solid ${T.gD}`,borderRadius:6,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>✓ Offline</button>
+                                <button onClick={()=>deleteDownload(v.id)} style={{background:'none',border:`1px solid ${T.gD}`,borderRadius:6,color:T.greenTxt||'#62c484',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>✓ Offline</button>
                               ):(
-                                <button onClick={()=>startDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>↓ Download</button>
+                                <button onClick={()=>startDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 9px',cursor:'pointer',flexShrink:0}}>↓ Download</button>
                               )}
-                              {dl.err&&<span style={{fontFamily:FB,fontSize:10,color:T.redTxt}}>Error</span>}
+                              {dl.err&&<span style={{fontFamily:FB,fontSize:UL(10),color:T.redTxt}}>Error</span>}
                             </div>
                             {dl.downloading&&dl.total>0&&(
                               <div style={{marginTop:7,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
@@ -7201,35 +7202,35 @@ function App(){
             );
           })()}
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'help'});}}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⋯</span>Help & Reference
           </button>
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'about'});}}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>§</span>About & Legal
           </button>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginTop:8}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>{user?.guest?'Log In':'Sign Out'}
           </button>
-          {user?.email&&<div style={{fontFamily:FB,fontSize:12,color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
+          {user?.email&&<div style={{fontFamily:FB,fontSize:U(12),color:T.dim,textAlign:'center',marginTop:8,padding:'0 4px'}}>Signed in as <span style={{color:T.gM}}>{user.email}</span></div>}
           {!user?.guest&&!deleteAccountConfirm&&(
             <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
-              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:U(11),letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
               Delete Account
             </button>
           )}
           {!user?.guest&&deleteAccountConfirm&&(
             <div style={{marginTop:10,background:T.bgSec,border:`1px solid ${T.redTxt}44`,borderRadius:9,padding:'14px 16px'}}>
-              <div style={{fontFamily:FB,fontSize:13,color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
+              <div style={{fontFamily:FB,fontSize:U(13),color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
+              <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
               <div style={{display:'flex',gap:8}}>
                 <button type="button" onClick={()=>setDeleteAccountConfirm(false)}
-                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'9px 0',cursor:'pointer'}}>
                   Cancel
                 </button>
                 <button type="button" onClick={async()=>{const r=await Auth.deleteAccount();if(r.error)alert(r.error);setDeleteAccountConfirm(false);}}
-                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer',fontWeight:600}}>
+                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:U(13),padding:'9px 0',cursor:'pointer',fontWeight:600}}>
                   Delete
                 </button>
               </div>
@@ -8116,7 +8117,7 @@ function App(){
             transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
             transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
-              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:U(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}
               </button>
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
@@ -8124,7 +8125,7 @@ function App(){
                   {bookName(BIBLE.find(b=>b.n===readBook),versionLang(readVid))||''} {readCh}
                 </span>
               </div>
-              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:U(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
+              <button type="button" className="s-btn s-ghost" onClick={readNextCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {readCh<readTotalCh?`Ch ${readCh+1}`:readBook<66?bookName(BIBLE.find(b=>b.n===readBook+1),versionLang(readVid)):''} {'\u203a'}
               </button>
             </div>
