@@ -6434,7 +6434,7 @@ function App(){
                 placeholder="Search…"
                 style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 26px 0 8px',outline:'none',width:150}}/>
               {readSearchQ&&(
-                <button type="button" title="Clear" aria-label="Clear search" onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
+                <button type="button" title="Clear" aria-label="Clear search" onMouseDown={e=>e.preventDefault()} onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
                   style={{position:'absolute',right:0,top:0,bottom:0,width:24,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',outline:'none',color:T.dim,fontSize:12,lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'}}>
                   ✕
                 </button>
@@ -7501,6 +7501,14 @@ function App(){
                       style={{flex:1,height:CTRL,boxSizing:'border-box',background:readSearchQ?ctrlOnSoft.background:`${T.g}0d`,border:`1px solid ${T.gD}`,'--srch-bd':readSearchQ?`${T.g}bb`:T.gD,'--srch-bd-on':`${T.g}bb`,'--srch-glow':`${T.g}24`,'--srch-bg-on':T.gF,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'0 30px 0 10px',outline:'none',minWidth:0}}/>
                     {readSearchQ&&(
                       <button type="button" title="Clear" aria-label="Clear search"
+                        // Clearing the field is not a reason to move focus, and on iOS the
+                        // keyboard follows focus: tapping any button blurs the input and the
+                        // keyboard drops with it. Refusing the default on the press keeps focus
+                        // exactly where it was, so the keyboard stays up if it was up and stays
+                        // down if it was down. The click still fires; only the focus change is
+                        // prevented. It pairs with not focusing the field afterwards either —
+                        // between the two, clearing leaves the keyboard alone in both directions.
+                        onMouseDown={e=>e.preventDefault()}
                         onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
                         style={{position:'absolute',right:2,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.gM,fontSize:14,lineHeight:1,cursor:'pointer',padding:'6px 7px',WebkitTapHighlightColor:'transparent'}}>
                         ✕
