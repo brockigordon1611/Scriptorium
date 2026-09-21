@@ -34,3 +34,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return false
     }
 }
+
+// iOS 27's SDK requires the UIScene lifecycle; an app still launching through
+// UIApplicationDelegate alone traps on startup before any of its own code runs.
+// Adopting it is the Info.plist manifest plus this class. It lives here rather
+// than in its own file so the Xcode project needs no new build-phase entry —
+// one less thing for an iCloud sync to mangle.
+//
+// The window is built from Main.storyboard by UIKit, named in the manifest, so
+// there is nothing to set up on connect. What does need doing is forwarding:
+// with scenes in play, a URL opened into the app and a universal link arrive
+// here instead of at the AppDelegate, and Capacitor's proxy is what the
+// AppDelegate was handing them to. Auth redirects come back this way, so
+// dropping them would have broken signing in without an obvious cause.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        guard let url = URLContexts.first?.url else { return }
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+    }
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        // A link that launched the app cold arrives in the connect options, not
+        // as an openURLContexts call.
+        if let url = connectionOptions.urlContexts.first?.url {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+        }
+    }
+}
