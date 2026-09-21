@@ -7892,16 +7892,27 @@ function App(){
               React.createElement('div',{...strongsDragHandlers,
                 style:{position:'absolute',top:0,left:0,right:0,zIndex:2,display:'flex',justifyContent:'center',alignItems:'flex-start',height:22,paddingTop:10,boxSizing:'border-box',touchAction:'none',cursor:'grab'}},
                 React.createElement('div',{style:{width:36,height:4,background:T.bdA,borderRadius:2}})),
+              // Pinned to the panel rather than carried inside the scroller: a
+              // long entry used to take the close button up out of sight with it,
+              // so getting out meant scrolling all the way back first. A sibling
+              // of the scrolling area stays put however far the text runs. It sits
+              // where it always did — the scroller's own 20px padding — so nothing
+              // appears to have moved.
+              //
+              // Same shape as the verse strip's close: 32 by 30, the muted red,
+              // the thin red edge. They do the same job in the same app and were
+              // two different buttons.
+              React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
+                style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
-                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}},
+                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,minHeight:30,paddingRight:44}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
                     // The number is the heading of this panel — it was set smaller than
                     // the body text beneath it while the close button outweighed it.
                     React.createElement('span',{style:{fontFamily:FS,fontSize:19,letterSpacing:'0.1em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
                     totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:13,color:T.dim,background:T.bgCH,borderRadius:11,padding:'3px 9px'}},`×${totalCount}`)
-                  ),
-                  React.createElement(NavIconBtn,{ch:'✕',T,title:'Close',size:34,onClick:closeStrongsPopup})
+                  )
                 ),
                 strongsPopup.entry?(
                   React.createElement('div',null,
