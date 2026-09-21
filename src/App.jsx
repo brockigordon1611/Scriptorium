@@ -8111,7 +8111,7 @@ function App(){
                             {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           {/* Custom display — purely visual, no pointer events */}
-                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FS,fontSize:10,letterSpacing:'0.05em',color:readBmCat?gTBright:T.dim,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
+                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?gTBright:T.dim,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
                             {readBmCat?bmCategories.find(c=>String(c.id)===String(readBmCat))?.name||'Bookmark Category…':'Bookmark Category…'}
                           </span>
                           <div style={{position:'absolute',right:8,top:0,bottom:0,display:'flex',alignItems:'center',pointerEvents:'none'}}>
@@ -8167,7 +8167,7 @@ function App(){
           {/* Mobile nav sheet — now uses global nav via header button */}
           {/* Verse reference header */}
           <div style={{textAlign:'center',padding:'18px 14px 2px',flexShrink:0}}>
-            <div style={{fontFamily:FS,fontSize:17,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
+            <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
               {parallelBkData?.name} {parallelCh}:{parallelVs}
             </div>
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
@@ -8201,19 +8201,19 @@ function App(){
               return(
                 <div key={vid} style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
                   <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 12px',borderBottom:`1px solid ${T.bdS}`,background:T.bgSec}}>
-                    <span style={{flex:1,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',fontWeight:600,color:T.gT}}>{verDef?.label||vid}</span>
-                    <span style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.08em'}}>{verDef?.lang}</span>
+                    <span style={{flex:1,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',fontWeight:600,color:T.gT}}>{verDef?.label||vid}</span>
+                    <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim,letterSpacing:'0.08em'}}>{verDef?.lang}</span>
                     <button type="button" title="Move up" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];return a;})} disabled={isFirst}
-                      style={{background:'none',border:'none',color:isFirst?T.dim:T.gM,cursor:isFirst?'default':'pointer',fontSize:16,padding:'0 3px',lineHeight:1}}>↑</button>
+                      style={{background:'none',border:'none',color:isFirst?T.dim:T.gM,cursor:isFirst?'default':'pointer',fontSize:U(16),padding:'0 3px',lineHeight:1}}>↑</button>
                     <button type="button" title="Move down" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];return a;})} disabled={isLast}
-                      style={{background:'none',border:'none',color:isLast?T.dim:T.gM,cursor:isLast?'default':'pointer',fontSize:16,padding:'0 3px',lineHeight:1}}>↓</button>
+                      style={{background:'none',border:'none',color:isLast?T.dim:T.gM,cursor:isLast?'default':'pointer',fontSize:U(16),padding:'0 3px',lineHeight:1}}>↓</button>
                     <button type="button" title="Remove" onClick={()=>setParallelVids(ids=>ids.filter(id=>id!==vid))}
-                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:14,padding:'0 3px',lineHeight:1}}>✕</button>
+                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:U(14),padding:'0 3px',lineHeight:1}}>✕</button>
                   </div>
                   <div style={{padding:'13px 16px'}}>
                     {verseRow
                       ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
-                      :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>Not available</div>}
+                      :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>Not available</div>}
                   </div>
                 </div>
               );
@@ -8221,24 +8221,24 @@ function App(){
             {/* Add removed versions back */}
             {(data?.versions||[]).filter(v=>!parallelVids.includes(v.id)).map(v=>(
               <button key={v.id} type="button" onClick={()=>setParallelVids(ids=>[...ids,v.id])}
-                style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'transparent',border:`1px dashed ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 14px',cursor:'pointer',marginBottom:8,boxSizing:'border-box'}}>
+                style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'transparent',border:`1px dashed ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'10px 14px',cursor:'pointer',marginBottom:8,boxSizing:'border-box'}}>
                 ＋ {v.label}
               </button>
             ))}
           </div>
           {/* Bottom nav */}
           <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
+            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
               ‹ Prev
             </button>
             <button type="button" className="show-mobile" onClick={()=>setParallelMobileSheet('nav')}
-              style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
+              style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
               {parallelVs} / {parallelTotalVs}
             </button>
-            <span className="hide-mobile" style={{fontFamily:FS,fontSize:11,color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
+            <span className="hide-mobile" style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
               {parallelVs} / {parallelTotalVs}
             </span>
-            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
+            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
               Next ›
             </button>
           </div>
@@ -8254,10 +8254,10 @@ function App(){
 
             {/* Unified toolbar — desktop only */}
             <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:5,padding:'5px 8px',flexWrap:'nowrap',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-              <span style={{color:T.gM,fontSize:14,flexShrink:0}}>⌕</span>
+              <span style={{color:T.gM,fontSize:U(14),flexShrink:0}}>⌕</span>
               <input className="s-btn" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search passages, text, notes…"
-                style={{flex:1,minWidth:120,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'5px 8px',outline:'none'}}/>
-              {q&&<button type="button" className="s-btn s-ghost" title="Clear search" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:13,padding:'2px 4px',flexShrink:0}}>✕</button>}
+                style={{flex:1,minWidth:120,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'5px 8px',outline:'none'}}/>
+              {q&&<button type="button" className="s-btn s-ghost" title="Clear search" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:U(13),padding:'2px 4px',flexShrink:0}}>✕</button>}
               <div style={{width:1,height:18,background:T.bd,flexShrink:0,margin:'0 2px'}}/>
               <TBtn T={T} ch="＋ Verse" onClick={openAdd} primary/>
               <TBtn T={T} ch="＋ Section" onClick={openAddSec}/>
@@ -8268,11 +8268,11 @@ function App(){
             {/* Mobile action row */}
             <div className="show-mobile" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',borderBottom:`1px solid ${T.bdS}`}}>
               <button type="button" onClick={openAdd}
-                style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'8px 0',cursor:'pointer',fontWeight:700,textAlign:'center'}}>
+                style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'8px 0',cursor:'pointer',fontWeight:700,textAlign:'center'}}>
                 ＋ Add Verse
               </button>
               <button type="button" onClick={openAddSec}
-                style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'8px 0',cursor:'pointer',fontWeight:500,textAlign:'center'}}>
+                style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:8,color:T.mut,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'8px 0',cursor:'pointer',fontWeight:500,textAlign:'center'}}>
                 ＋ Section
               </button>
             </div>
@@ -8289,20 +8289,20 @@ function App(){
               <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   <button type="button" onClick={closeMobileSheet}
-                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     ←
                   </button>
                 </div>
-                <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
+                <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input value={q} onChange={e=>setQ(e.target.value)}
                   placeholder="Search passages, text, notes…"
-                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'8px 10px',outline:'none'}}/>
-                {q&&<button type="button" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,padding:'4px'}}>✕</button>}
+                  style={{flex:1,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:U(15),padding:'8px 10px',outline:'none'}}/>
+                {q&&<button type="button" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:U(14),cursor:'pointer',flexShrink:0,padding:'4px'}}>✕</button>}
               </div>
               {q&&<button type="button" onClick={closeMobileSheet}
-                style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',fontWeight:600,padding:'8px 18px',cursor:'pointer',width:'100%'}}>
+                style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',fontWeight:600,padding:'8px 18px',cursor:'pointer',width:'100%'}}>
                 View Results
               </button>}
             </MobileSheet>
@@ -8313,13 +8313,13 @@ function App(){
             <div className="cmp-area" style={{maxWidth:1120,margin:'0 auto',padding:'14px 14px 20px'}}>
               {hasFilter?(
                 <>
-                  <div style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bd}`,fontWeight:600}}>{filtered.length} result{filtered.length!==1?'s':''}{q&&<span style={{color:T.dim,fontWeight:400}}> for "{q}"</span>}</div>
-                  {filtered.length===0&&<div style={{textAlign:'center',padding:'48px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:16}}>No entries match.</div>}
+                  <div style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:16,paddingBottom:12,borderBottom:`1px solid ${T.bd}`,fontWeight:600}}>{filtered.length} result{filtered.length!==1?'s':''}{q&&<span style={{color:T.dim,fontWeight:400}}> for "{q}"</span>}</div>
+                  {filtered.length===0&&<div style={{textAlign:'center',padding:'48px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(16)}}>No entries match.</div>}
                   {filtered.map((e,i)=><EntryCard key={e.id} entry={e} versions={visibleVersions} q={q} dark={dark} T={T} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulse={pulseId===e.id} idx={i} onRead={jumpToFromCard} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>)}
                 </>
               ):(
                 data.sections.length===0
-                  ?<div style={{textAlign:'center',padding:'64px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:16}}>No sections yet. Click + Section to add one.</div>
+                  ?<div style={{textAlign:'center',padding:'64px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(16)}}>No sections yet. Click + Section to add one.</div>
                   :data.sections.map((sec,si)=>(
                     <Section key={sec.id} sec={sec} entries={data.entries.filter(e=>e.sectionId===sec.id)} versions={visibleVersions} q={q} dark={dark} T={T} onEditSec={openEditSec} onDelSec={openDelSec} onEdit={openEdit} onDup={openDup} onDel={openDelEntry} pulseId={pulseId} secToggle={secToggle} idx={si} isFirst={si===0} isLast={si===data.sections.length-1} onMoveUp={()=>moveSection(sec.id,'up')} onMoveDown={()=>moveSection(sec.id,'down')} onRead={jumpToFromCard} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>
                   ))
@@ -8330,10 +8330,10 @@ function App(){
             </div>
             <div className="no-print fade-in" style={{textAlign:'center',padding:'16px 24px 32px'}}>
               <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-                <div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:9}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/>
+                <div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:UL(9)}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/>
               </div>
-              <div style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:T.dim}}>All renderings should be verified against printed texts.</div>
-              <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',marginTop:6,fontWeight:500}}>To God Alone Be the Glory</div>
+              <div style={{fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:T.dim}}>All renderings should be verified against printed texts.</div>
+              <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',marginTop:6,fontWeight:500}}>To God Alone Be the Glory</div>
             </div>
           </div>
         </div>
@@ -8353,19 +8353,19 @@ function App(){
                 setStrongsSearchLoading(true);
                 dbSearchStrongs(q).then(r=>{setStrongsSearchRes(r);setStrongsSearchLoading(false);}).catch(()=>{setStrongsSearchRes([]);setStrongsSearchLoading(false);});
               },350);
-            }} placeholder="Search by Strong's number (H430) or English word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
+            }} placeholder="Search by Strong's number (H430) or English word…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:U(15),padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
             {strongsSearchQ&&(
               /* Clears the results with the query, since they are only ever a
                  reflection of it — the same end state as emptying the field by
                  hand, without waiting out the debounce. */
               <button type="button" title="Clear" aria-label="Clear search"
                 onClick={()=>{if(strongsSearchTimer.current)clearTimeout(strongsSearchTimer.current);setStrongsSearchQ('');setStrongsSearchRes(null);setStrongsTabEntry(null);}}
-                style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
+                style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:U(15),lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
                 ✕
               </button>
             )}
             </div>
-            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
+            <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
               {strongsSearchLoading?'SEARCHING…':strongsSearchRes?`${strongsSearchRes.length} RESULT${strongsSearchRes.length!==1?'S':''}`:strongsSearchQ.length>0&&strongsSearchQ.length<2?'TYPE AT LEAST 2 CHARACTERS':"STRONG'S CONCORDANCE · 14,197 ENTRIES"}
             </div>
           </div>
@@ -8408,8 +8408,8 @@ function App(){
               <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'16px 18px 32px'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{te.strongs_number}</span>
-                    {totalCount>0&&<span style={{fontFamily:FB,fontSize:12,color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}}>×{totalCount}</span>}
+                    <span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{te.strongs_number}</span>
+                    {totalCount>0&&<span style={{fontFamily:FB,fontSize:U(12),color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}}>×{totalCount}</span>}
                   </div>
                   <NavIconBtn ch="✕" onClick={()=>{setStrongsTabEntry(null);}} T={T} title="Close"/>
                 </div>
@@ -8424,8 +8424,8 @@ function App(){
                     {e.full_def&&<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}}>{renderDerivation(e.full_def)}</div>}
                     {groupList.length>0&&(
                       <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
-                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
-                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.08em',color:T.dim,marginBottom:8}}>Total KJV Occurrences (×{totalCount})</div>
+                        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
+                        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',color:T.dim,marginBottom:8}}>Total KJV Occurrences (×{totalCount})</div>
                         {groupList.map(([key,{word,refs}])=>{
                           const isExpanded=strongsExpandedWords.has(key);
                           const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
@@ -8453,8 +8453,8 @@ function App(){
                         })}
                       </div>
                     )}
-                    {groupList.length===0&&te.versesLoading&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}}>Loading verses…</div>}
-                    {groupList.length===0&&!te.versesLoading&&te.versesOffline&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8,lineHeight:1.5}}>KJV occurrences need a connection. The definition above is saved on your device.</div>}
+                    {groupList.length===0&&te.versesLoading&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}}>Loading verses…</div>}
+                    {groupList.length===0&&!te.versesLoading&&te.versesOffline&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8,lineHeight:1.5}}>KJV occurrences need a connection. The definition above is saved on your device.</div>}
                   </>
                 )}
               </div>
@@ -8477,18 +8477,18 @@ function App(){
                   onMouseEnter={e=>e.currentTarget.style.background=T.gF}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2}}>
-                    <span style={{fontFamily:FS,fontSize:12,color:T.gT,fontWeight:600,letterSpacing:'0.06em'}}>{r.strongs_number}</span>
-                    <span style={{fontFamily:'serif',fontSize:16,color:T.body}}>{r.original_word}</span>
-                    <span style={{fontFamily:FB,fontSize:13,color:T.mut,fontStyle:'italic'}}>{r.transliteration}</span>
+                    <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,fontWeight:600,letterSpacing:'0.06em'}}>{r.strongs_number}</span>
+                    <span style={{fontFamily:'serif',fontSize:U(16),color:T.body}}>{r.original_word}</span>
+                    <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,fontStyle:'italic'}}>{r.transliteration}</span>
                   </div>
-                  <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.short_def}</div>
+                  <div style={{fontFamily:FB,fontSize:U(13),color:T.dim,lineHeight:1.4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.short_def}</div>
                 </div>
               ))}
             </div>
           )}
           {strongsSearchRes&&strongsSearchRes.length===0&&(
             <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:32}}>
-              <div style={{fontFamily:FB,fontSize:14,color:T.dim,textAlign:'center'}}>No results found for "{strongsSearchQ}"</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:T.dim,textAlign:'center'}}>No results found for "{strongsSearchQ}"</div>
             </div>
           )}
           {!strongsSearchRes&&!strongsTabEntry&&(
@@ -8504,16 +8504,16 @@ function App(){
                     <div>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                         <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                          <span style={{fontFamily:FS,fontSize:10,color:T.gM,letterSpacing:'0.1em'}}>CUSTOM LEXICON</span>
-                          <span style={{fontFamily:FB,fontSize:13,color:T.gT,fontWeight:600}}>{activeLexData.title}</span>
-                          <span style={{fontFamily:FS,fontSize:8,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'1px 5px'}}>{(activeLexData.entryCount||chapters.length).toLocaleString()} entries</span>
+                          <span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.1em'}}>CUSTOM LEXICON</span>
+                          <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,fontWeight:600}}>{activeLexData.title}</span>
+                          <span style={{fontFamily:FS,fontSize:UL(8),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'1px 5px'}}>{(activeLexData.entryCount||chapters.length).toLocaleString()} entries</span>
                         </div>
-                        <button onClick={()=>{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>Restore Built-in</button>
+                        <button onClick={()=>{setActiveLexiconId(null);try{localStorage.removeItem('scrip:activeLexId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:UL(8),letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>Restore Built-in</button>
                       </div>
                       <input value={lexSearchQ} onChange={e=>setLexSearchQ(e.target.value)} placeholder={`Search ${activeLexData.title}…`}
-                        style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box',marginBottom:10}}/>
-                      {q.length>=2&&filtered.length===0&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,padding:'16px 0',textAlign:'center'}}>No matches for "{lexSearchQ}"</div>}
-                      {q.length<2&&<div style={{fontFamily:FS,fontSize:8.5,color:T.dim,letterSpacing:'0.08em',marginBottom:8}}>{q.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeLexData.entryCount||chapters.length).toLocaleString()} ENTRIES — SEARCH ABOVE`}</div>}
+                        style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:U(15),padding:'10px 12px',outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+                      {q.length>=2&&filtered.length===0&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,padding:'16px 0',textAlign:'center'}}>No matches for "{lexSearchQ}"</div>}
+                      {q.length<2&&<div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.08em',marginBottom:8}}>{q.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeLexData.entryCount||chapters.length).toLocaleString()} ENTRIES — SEARCH ABOVE`}</div>}
                       {lexOpenEntry?(
                         <div>
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
@@ -8536,21 +8536,21 @@ function App(){
                 {/* No active lexicon — icon + description + uploaded list */}
                 {!activeLexiconId&&(
                   <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-                    <div style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
-                    <div style={{fontFamily:FB,fontSize:13,color:T.dim,maxWidth:290,lineHeight:1.7,marginBottom:24}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
+                    <div style={{fontFamily:FS,fontSize:U(15),fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>Strong's Concordance</div>
+                    <div style={{fontFamily:FB,fontSize:U(13),color:T.dim,maxWidth:290,lineHeight:1.7,marginBottom:24}}>Search by Strong's number (e.g. H430, G2316) or English definition.</div>
                     {userLexicons.length>0&&(
                       <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
-                        <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED LEXICONS</div>
+                        <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED LEXICONS</div>
                         {userLexicons.map(lex=>(
                           <div key={lex.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
                             <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lex.title}</div>
-                              <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2}}>{(lex.entryCount||0).toLocaleString()} entries · {lex.ext?.toUpperCase()}</div>
+                              <div style={{fontFamily:FB,fontSize:U(14),color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lex.title}</div>
+                              <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:2}}>{(lex.entryCount||0).toLocaleString()} entries · {lex.ext?.toUpperCase()}</div>
                             </div>
                             <button onClick={()=>{setActiveLexiconId(lex.id);setLexSearchQ('');setLexOpenEntry(null);try{localStorage.setItem('scrip:activeLexId',lex.id);}catch{}}}
-                              style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
+                              style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
                             <button onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${lex.title}"?`))return;await idbDeleteResource(lex.id);setUserLexicons(prev=>prev.filter(x=>x.id!==lex.id));}}
-                              style={{background:'none',border:'none',color:T.dim,fontSize:15,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
+                              style={{background:'none',border:'none',color:T.dim,fontSize:U(15),cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
                           </div>
                         ))}
                       </div>
@@ -8563,14 +8563,14 @@ function App(){
                 <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                     <div>
-                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                      <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
                       <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
                         {['.lexi','.txt','.md','.pdf'].map(f=>(
-                          <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                          <span key={f} style={{fontFamily:'monospace',fontSize:U(11),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
                         ))}
                       </div>
                     </div>
-                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 16px',cursor:lexImporting?'default':'pointer',opacity:lexImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'9px 16px',cursor:lexImporting?'default':'pointer',opacity:lexImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
                       {lexImporting?'Importing…':'＋ Upload Lexicon'}
                       <input type="file" accept=".lexi,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={lexImporting}
                         onChange={async e=>{
@@ -8585,7 +8585,7 @@ function App(){
                         }}/>
                     </label>
                   </div>
-                  {lexImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:12,color:T.redTxt,lineHeight:1.5}}>{lexImportErr}</div>}
+                  {lexImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:U(12),color:T.redTxt,lineHeight:1.5}}>{lexImportErr}</div>}
                 </div>
               )}
             </div>
@@ -8618,14 +8618,14 @@ function App(){
               <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>CUSTOM DICTIONARY</span>
-                    <span style={{fontFamily:FB,fontSize:13,color:T.gT,fontWeight:600}}>{activeDictData.title}</span>
+                    <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>CUSTOM DICTIONARY</span>
+                    <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,fontWeight:600}}>{activeDictData.title}</span>
                   </div>
-                  <button onClick={()=>{setActiveDictId(null);try{localStorage.removeItem('scrip:activeDictId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:8,letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap'}}>Restore Webster's 1828</button>
+                  <button onClick={()=>{setActiveDictId(null);try{localStorage.removeItem('scrip:activeDictId');}catch{}}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:UL(8),letterSpacing:'0.08em',padding:'4px 9px',cursor:'pointer',whiteSpace:'nowrap'}}>Restore Webster's 1828</button>
                 </div>
                 <input value={lexSearchQ} onChange={e=>{setLexSearchQ(e.target.value);setLexOpenEntry(null);}} placeholder={`Search ${activeDictData.title}…`}
-                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
-                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
+                  style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:U(15),padding:'10px 12px',outline:'none',boxSizing:'border-box'}}/>
+                <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>
                   {dq.length>=2?`${filtered.length} RESULT${filtered.length!==1?'S':''}`:dq.length>0?'TYPE AT LEAST 2 CHARACTERS':`${(activeDictData.entryCount||chapters.length).toLocaleString()} ENTRIES`}
                 </div>
               </div>
@@ -8639,7 +8639,7 @@ function App(){
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,whiteSpace:'pre-wrap'}}>{lexOpenEntry.body}</div>
                   </div>
                 ):dq.length>=2&&filtered.length===0?(
-                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:14,color:T.dim}}>No results for "{lexSearchQ}"</div>
+                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:U(14),color:T.dim}}>No results for "{lexSearchQ}"</div>
                 ):dq.length>=2?(
                   filtered.map((c,i)=>(
                     <div key={i} onClick={()=>setLexOpenEntry(c)} style={{padding:'10px 18px',borderBottom:`1px solid ${T.bdS}`,cursor:'pointer'}}
@@ -8649,7 +8649,7 @@ function App(){
                     </div>
                   ))
                 ):(
-                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:14,color:T.dim}}>
+                  <div style={{padding:'32px 18px',textAlign:'center',fontFamily:FB,fontSize:U(14),color:T.dim}}>
                     Type at least 2 characters to search {activeDictData.title}.
                   </div>
                 )}
@@ -8662,16 +8662,16 @@ function App(){
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             <div style={{padding:'12px 18px',borderBottom:`1px solid ${T.bd}`,flexShrink:0}}>
               <div style={{position:'relative',display:'flex'}}>
-                <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);setDictDbEntries(null);}} placeholder="Search Webster's 1828…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:15,padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
+                <input value={dictSearchQ} onChange={e=>{setDictSearchQ(e.target.value);setDictLive(null);setDictDbEntries(null);}} placeholder="Search Webster's 1828…" style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FB,fontSize:U(15),padding:'10px 36px 10px 12px',outline:'none',boxSizing:'border-box'}}/>
                 {dictSearchQ&&(
                   <button type="button" title="Clear" aria-label="Clear search"
                     onClick={()=>{setDictSearchQ('');setDictLive(null);setDictDbEntries(null);}}
-                    style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:15,lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
+                    style={{position:'absolute',right:4,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',outline:'none',color:T.dim,fontSize:U(15),lineHeight:1,cursor:'pointer',padding:'7px 8px',WebkitTapHighlightColor:'transparent'}}>
                     ✕
                   </button>
                 )}
               </div>
-              <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>{statusLabel}</div>
+              <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:6,letterSpacing:'0.08em'}}>{statusLabel}</div>
             </div>
             {/* DB results grouped by word then POS */}
             {hasDb&&(
@@ -8682,7 +8682,7 @@ function App(){
                     <div key={word} style={{borderBottom:`1px solid ${T.bdS}`}}>
                       <div style={{padding:'12px 18px 6px',display:'flex',alignItems:'center',gap:8}}>
                         <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*1.05),color:T.gT,fontWeight:600}}>{word.toLowerCase()}</span>
-                        <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
+                        <span style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>
                       </div>
                       {entries.map((e,ei)=>(
                         <div key={ei} style={{padding:'4px 18px 10px'}}>
@@ -8703,15 +8703,15 @@ function App(){
             {/* Loading */}
             {isLoading&&!hasDb&&(
               <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:10}}>
-                <Spinner/><div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:T.dim,marginTop:4}}>LOOKING UP…</div>
+                <Spinner/><div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',color:T.dim,marginTop:4}}>LOOKING UP…</div>
               </div>
             )}
             {/* External API fallback results */}
             {!isLoading&&!hasDb&&hasLive&&(
               <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0'}}>
                 <div style={{padding:'6px 18px 10px',display:'flex',alignItems:'center',gap:6}}>
-                  <span style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.1em',color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'2px 6px'}}>EXTERNAL SOURCE</span>
-                  <span style={{fontFamily:FB,fontSize:10,color:T.dim}}>Not found in Webster's 1828</span>
+                  <span style={{fontFamily:FS,fontSize:UL(7.5),letterSpacing:'0.1em',color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'2px 6px'}}>EXTERNAL SOURCE</span>
+                  <span style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Not found in Webster's 1828</span>
                 </div>
                 {dictLive.map((entry,ei)=>(
                   <div key={ei}>
@@ -8741,22 +8741,22 @@ function App(){
               <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
                 {/* Scrollable content: message + uploaded dict list */}
                 <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'24px 18px 16px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
+                  <div style={{fontFamily:FB,fontSize:U(14),color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
                     {!q?<>Search for any English word in Webster&rsquo;s 1828 Dictionary. Words not found there (e.g. &ldquo;internet&rdquo;) are automatically looked up via the Free Dictionary API, sourced from Wiktionary.</>:q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
                   </div>
                   {userDicts.length>0&&(
                     <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
-                      <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED DICTIONARIES</div>
+                      <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>UPLOADED DICTIONARIES</div>
                       {userDicts.map(d=>(
                         <div key={d.id} style={{display:'flex',alignItems:'center',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:9,padding:'12px 14px',marginBottom:8,gap:10}}>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:FB,fontSize:14,color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.title}</div>
-                            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2}}>{(d.entryCount||0).toLocaleString()} entries · {d.ext?.toUpperCase()}</div>
+                            <div style={{fontFamily:FB,fontSize:U(14),color:T.body,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.title}</div>
+                            <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:2}}>{(d.entryCount||0).toLocaleString()} entries · {d.ext?.toUpperCase()}</div>
                           </div>
                           <button onClick={()=>{setActiveDictId(d.id);setLexSearchQ('');setLexOpenEntry(null);try{localStorage.setItem('scrip:activeDictId',d.id);}catch{}}}
-                            style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
+                            style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 12px',cursor:'pointer',flexShrink:0,fontWeight:600}}>Use This</button>
                           <button onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${d.title}"?`))return;await idbDeleteResource(d.id);setUserDicts(prev=>prev.filter(x=>x.id!==d.id));}}
-                            style={{background:'none',border:'none',color:T.dim,fontSize:15,cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
+                            style={{background:'none',border:'none',color:T.dim,fontSize:U(15),cursor:'pointer',padding:'3px 5px',lineHeight:1}}>✕</button>
                         </div>
                       ))}
                     </div>
@@ -8766,14 +8766,14 @@ function App(){
                 <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                     <div>
-                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                      <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
                       <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
                         {['.dcti','.txt','.md','.pdf'].map(f=>(
-                          <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                          <span key={f} style={{fontFamily:'monospace',fontSize:U(11),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
                         ))}
                       </div>
                     </div>
-                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'9px 16px',cursor:dictImporting?'default':'pointer',opacity:dictImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
+                    <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'9px 16px',cursor:dictImporting?'default':'pointer',opacity:dictImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
                       {dictImporting?'Importing…':'＋ Upload Dictionary'}
                       <input type="file" accept=".dcti,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={dictImporting}
                         onChange={async e=>{
@@ -8788,7 +8788,7 @@ function App(){
                         }}/>
                     </label>
                   </div>
-                  {dictImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:12,color:T.redTxt,lineHeight:1.5}}>{dictImportErr}</div>}
+                  {dictImportErr&&<div style={{marginTop:8,padding:'8px 14px',background:T.red,border:`1px solid ${T.redTxt}44`,borderRadius:8,fontFamily:FB,fontSize:U(12),color:T.redTxt,lineHeight:1.5}}>{dictImportErr}</div>}
                 </div>
               </div>
             )}
@@ -8824,15 +8824,15 @@ function App(){
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             {/* Header */}
             <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
-              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Scripture Atlas</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{MAPS.length} built-in · {userMaps.length} imported</div>
+              <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Scripture Atlas</div>
+              <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginTop:2}}>{MAPS.length} built-in · {userMaps.length} imported</div>
             </div>
             {/* Map grid */}
             <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 12px 16px'}}>
               {/* User-imported maps */}
               {userMaps.length>0&&(
                 <div style={{marginBottom:18}}>
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED MAPS</div>
+                  <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED MAPS</div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
                     {userMaps.map(m=>(
                       <div key={m.id} style={{position:'relative',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden',cursor:'pointer',aspectRatio:'4/3',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}
@@ -8844,13 +8844,13 @@ function App(){
                           <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
                         ):(
                           <div style={{textAlign:'center',padding:12}}>
-                            <div style={{fontSize:28,marginBottom:6}}>▤</div>
-                            <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
-                            <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
+                            <div style={{fontSize:UH(28),marginBottom:6}}>▤</div>
+                            <div style={{fontFamily:FB,fontSize:U(11),color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
+                            <div style={{fontFamily:FS,fontSize:UL(8),color:T.dim,marginTop:4}}>PDF</div>
                           </div>
                         )}
                         <button type="button" onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${m.title}"?`))return;await idbDeleteResource(m.id);setUserMaps(prev=>prev.filter(x=>x.id!==m.id));}}
-                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
+                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:U(12),cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -8858,22 +8858,22 @@ function App(){
                 </div>
               )}
               {/* Built-in maps */}
-              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
+              <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
               <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
-              <div style={{fontFamily:FB,fontSize:9,color:T.dim,textAlign:'center',lineHeight:1.6,padding:'18px 14px 4px'}}>Scans courtesy of the David Rumsey Map Collection, davidrumsey.com. The maps themselves are in the public domain.</div>
+              <div style={{fontFamily:FB,fontSize:UL(9),color:T.dim,textAlign:'center',lineHeight:1.6,padding:'18px 14px 4px'}}>Scans courtesy of the David Rumsey Map Collection, davidrumsey.com. The maps themselves are in the public domain.</div>
             </div>
             {/* Import footer */}
             <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                 <div>
-                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
                     {['.jpg','.png','.webp','.pdf'].map(f=>(
-                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                      <span key={f} style={{fontFamily:'monospace',fontSize:U(11),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
                     ))}
                   </div>
                 </div>
-                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:mapsImporting?0.5:1}}>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:mapsImporting?0.5:1}}>
                   {mapsImporting?'Importing…':'＋ Import Map'}
                   <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" style={{display:'none'}} disabled={mapsImporting}
                     onChange={async e=>{
@@ -8885,7 +8885,7 @@ function App(){
                     }}/>
                 </label>
               </div>
-              {mapsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{mapsImportErr}</div>}
+              {mapsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(11),color:T.redTxt}}>{mapsImportErr}</div>}
             </div>
           </div>
         );
@@ -8932,15 +8932,15 @@ function App(){
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
             {/* Header */}
             <div style={{padding:'14px 16px 10px',borderBottom:`1px solid ${T.bdS}`,flexShrink:0}}>
-              <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Larkin's Charts</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} built-in · {userCharts.length} imported</div>
+              <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Larkin's Charts</div>
+              <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginTop:2}}>Clarence Larkin · Dispensational Truth (1918) · {allImgs.length} built-in · {userCharts.length} imported</div>
             </div>
             {/* Scrollable sections */}
             <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 12px 16px'}}>
               {/* User-imported charts */}
               {userCharts.length>0&&(
                 <div style={{marginBottom:18}}>
-                  <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED CHARTS</div>
+                  <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>IMPORTED CHARTS</div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))',gap:10}}>
                     {userCharts.map(m=>(
                       <div key={m.id} style={{position:'relative',background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden',cursor:'pointer',aspectRatio:'4/3',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}
@@ -8952,13 +8952,13 @@ function App(){
                           <UserBlobThumb id={m.id} mime={m.mime} title={m.title} T={T}/>
                         ):(
                           <div style={{textAlign:'center',padding:12}}>
-                            <div style={{fontSize:28,marginBottom:6}}>▤</div>
-                            <div style={{fontFamily:FB,fontSize:11,color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
-                            <div style={{fontFamily:FS,fontSize:8,color:T.dim,marginTop:4}}>PDF</div>
+                            <div style={{fontSize:UH(28),marginBottom:6}}>▤</div>
+                            <div style={{fontFamily:FB,fontSize:U(11),color:T.body,lineHeight:1.3,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{m.title}</div>
+                            <div style={{fontFamily:FS,fontSize:UL(8),color:T.dim,marginTop:4}}>PDF</div>
                           </div>
                         )}
                         <button type="button" onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${m.title}"?`))return;await idbDeleteResource(m.id);setUserCharts(prev=>prev.filter(x=>x.id!==m.id));}}
-                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
+                          style={{position:'absolute',top:4,right:4,background:'rgba(0,0,0,0.55)',border:'none',color:'#fff',fontSize:U(12),cursor:'pointer',borderRadius:6,padding:'2px 6px',lineHeight:1}}>✕</button>
                       </div>
                     ))}
                   </div>
@@ -8966,7 +8966,7 @@ function App(){
                 </div>
               )}
               {/* Built-in Larkin sections */}
-              <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>LARKIN'S CHARTS</div>
+              <div style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>LARKIN'S CHARTS</div>
               {LARKIN_SECTIONS.map(({title,imgs})=>(
                 <LarkinSection key={title} title={title} imgs={imgs} BASE={BASE} T={T} allImgs={allImgs}/>
               ))}
@@ -8975,14 +8975,14 @@ function App(){
             <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                 <div>
-                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
                     {['.jpg','.png','.webp','.pdf'].map(f=>(
-                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                      <span key={f} style={{fontFamily:'monospace',fontSize:U(11),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
                     ))}
                   </div>
                 </div>
-                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:chartsImporting?0.5:1}}>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:chartsImporting?0.5:1}}>
                   {chartsImporting?'Importing…':'＋ Import Chart'}
                   <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" style={{display:'none'}} disabled={chartsImporting}
                     onChange={async e=>{
@@ -8994,7 +8994,7 @@ function App(){
                     }}/>
                 </label>
               </div>
-              {chartsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{chartsImportErr}</div>}
+              {chartsImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(11),color:T.redTxt}}>{chartsImportErr}</div>}
             </div>
           </div>
         );
@@ -9008,13 +9008,13 @@ function App(){
             {/* ── Resource list ── */}
             <div style={{flex:1,overflowY:'auto',padding:'20px 16px 16px'}}>
               <div style={{marginBottom:18}}>
-                <div style={{fontFamily:FS,fontSize:13,fontWeight:700,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Other Resources</div>
+                <div style={{fontFamily:FS,fontSize:U(13),fontWeight:700,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Other Resources</div>
               </div>
               {resources.length===0&&!resImporting&&(
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',minHeight:'55vh',padding:'24px'}}>
-                  <div style={{fontSize:36,marginBottom:16,opacity:0.4}}>▤</div>
-                  <div style={{fontFamily:FS,fontSize:13,color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>No Resources Yet</div>
-                  <div style={{fontFamily:FB,fontSize:14,color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import books, commentaries, devotionals, cross-references, PDFs, and more.</div>
+                  <div style={{fontSize:UH(36),marginBottom:16,opacity:0.4}}>▤</div>
+                  <div style={{fontFamily:FS,fontSize:U(13),color:T.gT,letterSpacing:'0.08em',marginBottom:10}}>No Resources Yet</div>
+                  <div style={{fontFamily:FB,fontSize:U(14),color:T.dim,lineHeight:1.7,maxWidth:280,margin:'0 auto'}}>Import books, commentaries, devotionals, cross-references, PDFs, and more.</div>
                 </div>
               )}
               {resources.map(res=>{
@@ -9031,10 +9031,10 @@ function App(){
                     const full=await idbGetResourceWithChapters(res.id);
                     if(full){setOpenResData(full);setOpenResChapter(0);setOpenResId(res.id);}
                   }}>
-                  <div style={{fontSize:22,flexShrink:0}}>{kindIcon}</div>
+                  <div style={{fontSize:UH(22),flexShrink:0}}>{kindIcon}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{res.title}</div>
-                    <div style={{fontFamily:FS,fontSize:9,color:T.dim,letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                    <div style={{fontFamily:FB,fontSize:U(16),color:T.body,fontWeight:600,marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{res.title}</div>
+                    <div style={{fontFamily:FS,fontSize:UL(9),color:T.dim,letterSpacing:'0.08em',textTransform:'uppercase'}}>
                       {kindLabel} · {res.ext?.toUpperCase()} · {new Date(res.importedAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -9042,8 +9042,8 @@ function App(){
                     <button type="button"
                       onClick={async e=>{e.stopPropagation();if(!window.confirm(`Delete "${res.title}"?`))return;await idbDeleteResource(res.id);setResources(prev=>prev.filter(r=>r.id!==res.id));}}
                       title="Delete" aria-label="Delete"
-                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontSize:15,cursor:'pointer',width:36,height:36,minWidth:36,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
-                    {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:18,opacity:0.5}}>›</div>}
+                      style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontSize:U(15),cursor:'pointer',width:36,height:36,minWidth:36,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
+                    {res.kind!=='pdf'&&res.kind!=='image'&&<div style={{color:T.gM,fontSize:UH(18),opacity:0.5}}>›</div>}
                   </div>
                 </div>
                 );
@@ -9053,14 +9053,14 @@ function App(){
             <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
                 <div>
-                  <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
+                  <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.12em',marginBottom:5}}>ACCEPTED FORMATS</div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:'4px 8px'}}>
                     {['.txt','.md','.pdf','.jpg','.png','.cmti','.devi','.refi','.dzip'].map(f=>(
-                      <span key={f} style={{fontFamily:'monospace',fontSize:11,color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
+                      <span key={f} style={{fontFamily:'monospace',fontSize:U(11),color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:4,padding:'2px 6px'}}>{f}</span>
                     ))}
                   </div>
                 </div>
-                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:resImporting?0.5:1}}>
+                <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:resImporting?0.5:1}}>
                   {resImporting?'Importing…':'＋ Import Resource'}
                   <input type="file" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.cmti,.devi,.refi,.dzip" style={{display:'none'}} disabled={resImporting}
                     onChange={async e=>{
@@ -9075,7 +9075,7 @@ function App(){
                     }}/>
                 </label>
               </div>
-              {resImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:11,color:T.redTxt}}>{resImportErr}</div>}
+              {resImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(11),color:T.redTxt}}>{resImportErr}</div>}
             </div>
             </>
           ):(
@@ -9089,9 +9089,9 @@ function App(){
                 </span>
                 {/* Absolutely centered title — unaffected by sibling widths */}
                 <div style={{position:'absolute',left:0,right:0,textAlign:'center',pointerEvents:'none'}}>
-                  <span style={{fontFamily:FS,fontSize:12,color:T.gT,letterSpacing:'0.06em'}}>{openResData?.title}</span>
+                  <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,letterSpacing:'0.06em'}}>{openResData?.title}</span>
                 </div>
-                <div style={{marginLeft:'auto',fontFamily:FS,fontSize:11,color:T.dim,letterSpacing:'0.06em',flexShrink:0,zIndex:1}}>
+                <div style={{marginLeft:'auto',fontFamily:FS,fontSize:U(11),color:T.dim,letterSpacing:'0.06em',flexShrink:0,zIndex:1}}>
                   {openResData?.chapters?.length>1?`${openResChapter+1}/${openResData.chapters.length}`:''}
                 </div>
               </div>
@@ -9101,7 +9101,7 @@ function App(){
                 onTouchMove={e=>{if(swipeTouchX.current===null)return;const dx=e.touches[0].clientX-swipeTouchX.current;const dy=e.touches[0].clientY-swipeTouchY.current;if(!swipeDir.current&&(Math.abs(dx)>12||Math.abs(dy)>12)){swipeDir.current=Math.abs(dx)>Math.abs(dy)?'h':'v';}}}
                 onTouchEnd={e=>{if(swipeTouchX.current===null)return;const wasH=swipeDir.current==='h';const dx=e.changedTouches[0].clientX-swipeTouchX.current;const dt=Math.max(1,Date.now()-swipeTouchT.current);const velocity=Math.abs(dx)/dt;swipeTouchX.current=null;swipeDir.current=null;if(!wasH)return;if(Math.abs(dx)<60&&velocity<0.35)return;if(dx<0)setOpenResChapter(c=>Math.min((openResData?.chapters?.length||1)-1,c+1));else setOpenResChapter(c=>Math.max(0,c-1));}}>
                 {openResData?.chapters?.[openResChapter]?.title&&(
-                  <div style={{fontFamily:FS,fontSize:13,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24,textAlign:'center'}}>{openResData.chapters[openResChapter].title}</div>
+                  <div style={{fontFamily:FS,fontSize:U(13),color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:24,textAlign:'center'}}>{openResData.chapters[openResChapter].title}</div>
                 )}
                 {openResData?.chapters?.[openResChapter]?.body
                   ?.split(/\n{2,}/)
@@ -9116,17 +9116,17 @@ function App(){
                 <div className="bottom-nav-safe" style={{borderTop:`1px solid ${T.bdS}`,background:T.bgCard,flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 12px 0',minHeight:49,boxSizing:'border-box'}}>
                   <button type="button" className="s-btn s-ghost" disabled={openResChapter===0}
                     onClick={()=>setOpenResChapter(c=>Math.max(0,c-1))}
-                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===0?0.3:1}}>
+                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===0?0.3:1}}>
                     {'‹'} {openResChapter>0?(openResData.chapters[openResChapter-1]?.title||`Ch ${openResChapter}`):''}
                   </button>
                   <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
-                    <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
+                    <span style={{fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',color:T.dim,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textTransform:'uppercase'}}>
                       {openResData.chapters[openResChapter]?.title||`Chapter ${openResChapter+1}`}
                     </span>
                   </div>
                   <button type="button" className="s-btn s-ghost" disabled={openResChapter===openResData.chapters.length-1}
                     onClick={()=>setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1))}
-                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
+                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
                     {openResChapter<openResData.chapters.length-1?(openResData.chapters[openResChapter+1]?.title||`Ch ${openResChapter+2}`):''} {'›'}
                   </button>
                 </div>
@@ -9141,9 +9141,9 @@ function App(){
         <div style={{position:'fixed',inset:0,zIndex:950,background:'rgba(0,0,0,0.92)',display:'flex',flexDirection:'column'}} onClick={e=>{if(e.target===e.currentTarget){URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}}}>
           {/* Header bar */}
           <div style={{display:'flex',alignItems:'center',gap:10,padding:`max(calc(var(--sat,0px) + 10px),var(--sat-min,20px)) 14px 10px`,background:'rgba(0,0,0,0.6)',flexShrink:0,backdropFilter:'blur(8px)'}}>
-            <button type="button" onClick={()=>{URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
+            <button type="button" onClick={()=>{URL.revokeObjectURL(viewingBlob.url);setViewingBlob(null);}} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:UH(17),cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
             <div style={{flex:1,overflow:'hidden',textAlign:'center'}}>
-              <div style={{fontFamily:'system-ui,sans-serif',fontSize:13,color:'rgba(255,255,255,0.9)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{viewingBlob.title}</div>
+              <div style={{fontFamily:'system-ui,sans-serif',fontSize:U(13),color:'rgba(255,255,255,0.9)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{viewingBlob.title}</div>
             </div>
             <div style={{width:40,flexShrink:0}}/>
           </div>
@@ -9222,7 +9222,7 @@ function App(){
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
             {labels[day-1].map((r,i)=>(
               <button key={i} type="button" onClick={()=>open(r.b,r.c,r.v)}
-                style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:15,padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:U(15),padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
                 {r.label}
               </button>
             ))}
@@ -9232,7 +9232,7 @@ function App(){
           <button type="button" onClick={()=>planToggleDay(day)}
             title={done.has(day)?'Mark as not read':'Mark as read'} aria-label={done.has(day)?'Mark as not read':'Mark as read'}
             style={{flexShrink:0,width:26,height:26,marginTop:1,borderRadius:7,cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',
-              background:done.has(day)?T.gF:'transparent',border:`1.5px solid ${done.has(day)?T.gD:T.bd}`,color:T.gT,fontSize:14,lineHeight:1,padding:0}}>
+              background:done.has(day)?T.gF:'transparent',border:`1.5px solid ${done.has(day)?T.gD:T.bd}`,color:T.gT,fontSize:U(14),lineHeight:1,padding:0}}>
             {done.has(day)?'✓':''}
           </button>
         );
@@ -9259,8 +9259,8 @@ function App(){
                         if(planRemind.on){planRemindOff();return;}
                         setTimePicker({value:planRemind.time,onSet:planRemindOn});
                       }}
-                      style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:12,padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
-                      <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:9,lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
+                      style={{display:'flex',alignItems:'center',gap:7,background:'transparent',border:'none',borderRadius:7,color:planRemind.on?T.gT:T.dim,fontFamily:FB,fontSize:U(12),padding:'5px 2px',cursor:'pointer',opacity:planRemindBusy?0.5:1,whiteSpace:'nowrap'}}>
+                      <span style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${planRemind.on?T.gD:T.bd}`,background:planRemind.on?T.gD:'transparent',color:T.bg,fontSize:UL(9),lineHeight:1,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{planRemind.on?'\u2713':''}</span>
                       Reminder
                     </button>
                     {planRemind.on&&(
@@ -9268,20 +9268,20 @@ function App(){
                          picker again to change it. */
                       <button type="button" onClick={()=>setTimePicker({value:planRemind.time,onSet:planRemindOn})}
                         style={{position:'absolute',left:2,bottom:'100%',marginBottom:1,background:'none',border:'none',outline:'none',padding:0,margin:0,cursor:'pointer',
-                          fontFamily:FS,fontSize:10.5,lineHeight:1,letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap'}}>
+                          fontFamily:FS,fontSize:U(10.5),lineHeight:1,letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap'}}>
                         {planTimeLabel(planRemind.time)}
                       </button>
                     )}
                   </>)}
                 </div>
-                <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:11.5,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
-                <span style={{fontFamily:FB,fontSize:13,color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
+                <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:U(11.5),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
+                <span style={{fontFamily:FB,fontSize:U(13),color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
               </div>
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
               </div>
               {planRemindMsg&&(
-                <div style={{fontFamily:FB,fontSize:12,color:T.ambTxt,marginTop:7,lineHeight:1.5}}>{planRemindMsg}</div>
+                <div style={{fontFamily:FB,fontSize:U(12),color:T.ambTxt,marginTop:7,lineHeight:1.5}}>{planRemindMsg}</div>
               )}
             </>}>
             {plan.map(entry=>entry.day===today?(
@@ -9290,7 +9290,7 @@ function App(){
                 <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
                   <Tick day={today}/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:FS,fontSize:13.5,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
+                    <div style={{fontFamily:FS,fontSize:U(13.5),letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT}}>
                       Today · {planDateLabel(today,planYear)}
                     </div>
                     <Passages day={entry.day}/>
@@ -9301,7 +9301,7 @@ function App(){
               <div key={entry.day} style={{display:'flex',alignItems:'flex-start',gap:11,padding:'11px 2px',borderTop:`1px solid ${T.bd}`}}>
                 <Tick day={entry.day}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:FB,fontSize:14,color:done.has(entry.day)?T.dim:T.mut}}>
+                  <div style={{fontFamily:FB,fontSize:U(14),color:done.has(entry.day)?T.dim:T.mut}}>
                     {planDateLabel(entry.day,planYear)}
                   </div>
                   <Passages day={entry.day}/>
@@ -9313,15 +9313,15 @@ function App(){
       })()}
       {modal?.type==='audiohelp'&&(
         <Modal title="Adding KJV Audio" onClose={closeModal} T={T} topSheet={navH} isClosing={modalClosing} footer={<SBtn ch="Close" onClick={closeModal} T={T}/>}>
-          <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>
+          <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.7}}>
             <p style={{margin:'0 0 12px'}}>
               The KJV audio is free from Faith Comes By Hearing. You download it from their
               website, then bring the file back into Scriptorium. The Old and New Testaments
               are two separate downloads — do the whole process once for each.
             </p>
             <div style={{borderLeft:`2px solid ${T.gD}`,paddingLeft:12,margin:'0 0 16px'}}>
-              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:5}}>Why the extra steps</div>
-              <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.6}}>
+              <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:5}}>Why the extra steps</div>
+              <div style={{fontFamily:FB,fontSize:U(13),color:T.dim,lineHeight:1.6}}>
                 Faith Comes By Hearing give these recordings away freely for your own
                 listening, but passing them on to others needs a licence Scriptorium
                 doesn't hold. So the audio can't be built into the app — the copy has to
@@ -9329,21 +9329,21 @@ function App(){
               </div>
             </div>
             <div style={{background:T.bg,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 12px',marginBottom:18}}>
-              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>The two files</div>
+              <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:7}}>The two files</div>
               {[['ENGKJVO1DA.zip','Old Testament','1.7 GB','929 chapters'],
                 ['ENGKJVN1DA.zip','New Testament','488 MB','260 chapters']].map(([f,t,sz,ch])=>(
                 <div key={f} style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:4,flexWrap:'wrap'}}>
-                  <code style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:12,color:T.gT}}>{f}</code>
-                  <span style={{fontFamily:FB,fontSize:12,color:T.mut}}>{t}</span>
-                  <span style={{fontFamily:FB,fontSize:12,color:T.dim}}>· {sz} · {ch}</span>
+                  <code style={{fontFamily:'ui-monospace,Menlo,monospace',fontSize:U(12),color:T.gT}}>{f}</code>
+                  <span style={{fontFamily:FB,fontSize:U(12),color:T.mut}}>{t}</span>
+                  <span style={{fontFamily:FB,fontSize:U(12),color:T.dim}}>· {sz} · {ch}</span>
                 </div>
               ))}
-              <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.5,marginTop:7}}>
+              <div style={{fontFamily:FB,fontSize:U(12),color:T.dim,lineHeight:1.5,marginTop:7}}>
                 The <strong style={{color:T.mut}}>O</strong> and <strong style={{color:T.mut}}>N</strong> in the
                 filename are the only difference — O for Old, N for New.
               </div>
             </div>
-            <p style={{margin:'0 0 16px',fontSize:13,color:T.dim,lineHeight:1.6}}>
+            <p style={{margin:'0 0 16px',fontSize:U(13),color:T.dim,lineHeight:1.6}}>
               Check you have storage free before you start — the Old Testament is 1.7 GB,
               and you need room for both the download and the audio it unpacks into.
             </p>
@@ -9356,22 +9356,22 @@ function App(){
               ['Now do the same for the New Testament','Use the NT buttons and ENGKJVN1DA.zip. Once both show a green tick, audio plays with no connection at all.'],
             ].map(([t,d],i)=>(
               <div key={i} style={{display:'flex',gap:11,marginBottom:13}}>
-                <div style={{flexShrink:0,width:23,height:23,borderRadius:12,border:`1px solid ${T.gD}`,color:T.gT,fontFamily:FS,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',marginTop:1}}>{i+1}</div>
+                <div style={{flexShrink:0,width:23,height:23,borderRadius:12,border:`1px solid ${T.gD}`,color:T.gT,fontFamily:FS,fontSize:U(11),display:'flex',alignItems:'center',justifyContent:'center',marginTop:1}}>{i+1}</div>
                 <div style={{minWidth:0}}>
                   <div style={{color:T.gT,fontWeight:600,marginBottom:2}}>{t}</div>
-                  <div style={{fontSize:13,color:T.dim,lineHeight:1.6}}>{d}</div>
+                  <div style={{fontSize:U(13),color:T.dim,lineHeight:1.6}}>{d}</div>
                 </div>
               </div>
             ))}
-            <p style={{margin:'14px 0 0',fontSize:13,color:T.dim,lineHeight:1.6}}>
+            <p style={{margin:'14px 0 0',fontSize:U(13),color:T.dim,lineHeight:1.6}}>
               Once a Testament shows its green tick you can delete that .zip from the Files
               app to get the space back — Scriptorium has already copied what it needs.
             </p>
           </div>
           {audioHelpVideo&&(
             <div style={{marginTop:22,paddingTop:18,borderTop:`1px solid ${T.bd}`}}>
-              <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:4}}>Watch it done</div>
-              <div style={{fontFamily:FB,fontSize:12,color:T.dim,marginBottom:9,lineHeight:1.5}}>
+              <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:4}}>Watch it done</div>
+              <div style={{fontFamily:FB,fontSize:U(12),color:T.dim,marginBottom:9,lineHeight:1.5}}>
                 It is a phone recording, so it shows narrow here — use the expand control to fill the screen.
               </div>
               {/* A portrait clip can be tall or wide, not both. Capped so the whole
@@ -9398,7 +9398,7 @@ function App(){
             const rdSz=Math.max(15,Math.min(readFontSize,22));
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
-                <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
+                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
                 <div style={{flex:1,height:1,background:T.bd}}/>
               </div>
             );
@@ -9409,7 +9409,7 @@ function App(){
               </div>
             );
             const Chip=({children})=>(
-              <span style={{display:'inline-flex',alignItems:'center',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:5,padding:'2px 7px',fontFamily:'monospace',fontSize:12,color:T.gT,marginRight:6,marginBottom:4}}>{children}</span>
+              <span style={{display:'inline-flex',alignItems:'center',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:5,padding:'2px 7px',fontFamily:'monospace',fontSize:U(12),color:T.gT,marginRight:6,marginBottom:4}}>{children}</span>
             );
             return(
               <div>
@@ -9560,17 +9560,17 @@ function App(){
           {(()=>{
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
-                <div style={{fontFamily:FS,fontSize:12,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
+                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
                 <div style={{flex:1,height:1,background:T.bd}}/>
               </div>
             );
             const P=({children})=>(
-              <p style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.75,marginBottom:10,marginTop:0}}>{children}</p>
+              <p style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.75,marginBottom:10,marginTop:0}}>{children}</p>
             );
             const Li=({children})=>(
               <div style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:7}}>
-                <span style={{color:T.gM,flexShrink:0,marginTop:3,fontSize:11}}>◆</span>
-                <span style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7}}>{children}</span>
+                <span style={{color:T.gM,flexShrink:0,marginTop:3,fontSize:U(11)}}>◆</span>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.7}}>{children}</span>
               </div>
             );
             return(
@@ -9614,7 +9614,7 @@ function App(){
                 {/* VERSION */}
                 <div style={{marginTop:28,paddingTop:16,borderTop:`1px solid ${T.bdS}`,display:'flex',alignItems:'center',gap:12}}>
                   <div style={{flex:1,height:1,background:T.accentLine}}/>
-                  <span style={{fontFamily:FS,fontSize:11,letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',fontWeight:500}}>To God Alone Be the Glory</span>
+                  <span style={{fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',color:T.gD,textTransform:'uppercase',fontWeight:500}}>To God Alone Be the Glory</span>
                   <div style={{flex:1,height:1,background:T.accentLine}}/>
                 </div>
               </div>
@@ -9634,21 +9634,21 @@ function App(){
 
             {/* Header */}
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
-              <span style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Custom Color</span>
+              <span style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.1em',textTransform:'uppercase'}}>Custom Color</span>
               <NavIconBtn ch="✕" T={T} title="Close"
                 onClick={()=>{setAccent(pickerOrigRef.current.accent);setCustomAccentHex(pickerOrigRef.current.hex);setCustomPickerOpen(false);}}/>
             </div>
 
             {/* Color preview swatch */}
             <div style={{height:80,borderRadius:14,background:`linear-gradient(135deg,${hslToHex(pickerH,pickerS,Math.min(pickerL+15,95))},${hslToHex(pickerH,pickerS,pickerL)},${hslToHex(pickerH,pickerS,Math.max(pickerL-15,5))})`,marginBottom:18,boxShadow:`0 4px 20px ${hslToHex(pickerH,pickerS,pickerL)}66,inset 0 1px 0 rgba(255,255,255,0.15)`,display:'flex',alignItems:'flex-end',justifyContent:'flex-end',padding:'8px 10px'}}>
-              <span style={{fontFamily:'monospace',fontSize:12,color:'rgba(255,255,255,0.85)',fontWeight:600,letterSpacing:'0.08em',textShadow:'0 1px 4px rgba(0,0,0,0.6)',background:'rgba(0,0,0,0.25)',borderRadius:6,padding:'3px 7px'}}>{hslToHex(pickerH,pickerS,pickerL).toUpperCase()}</span>
+              <span style={{fontFamily:'monospace',fontSize:U(12),color:'rgba(255,255,255,0.85)',fontWeight:600,letterSpacing:'0.08em',textShadow:'0 1px 4px rgba(0,0,0,0.6)',background:'rgba(0,0,0,0.25)',borderRadius:6,padding:'3px 7px'}}>{hslToHex(pickerH,pickerS,pickerL).toUpperCase()}</span>
             </div>
 
             {/* Hue */}
             <div style={{marginBottom:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                <span style={{fontFamily:FB,fontSize:12,color:T.mut}}>Hue</span>
-                <span style={{fontFamily:'monospace',fontSize:11,color:T.gM}}>{pickerH}°</span>
+                <span style={{fontFamily:FB,fontSize:U(12),color:T.mut}}>Hue</span>
+                <span style={{fontFamily:'monospace',fontSize:U(11),color:T.gM}}>{pickerH}°</span>
               </div>
               <input type="range" className="cpicker-slider" min="0" max="360" value={pickerH}
                 onChange={e=>{const h=Number(e.target.value);setPickerH(h);const hex=hslToHex(h,pickerS,pickerL);setCustomAccentHex(hex);}}
@@ -9658,8 +9658,8 @@ function App(){
             {/* Saturation */}
             <div style={{marginBottom:16}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                <span style={{fontFamily:FB,fontSize:12,color:T.mut}}>Saturation</span>
-                <span style={{fontFamily:'monospace',fontSize:11,color:T.gM}}>{pickerS}%</span>
+                <span style={{fontFamily:FB,fontSize:U(12),color:T.mut}}>Saturation</span>
+                <span style={{fontFamily:'monospace',fontSize:U(11),color:T.gM}}>{pickerS}%</span>
               </div>
               <input type="range" className="cpicker-slider" min="0" max="100" value={pickerS}
                 onChange={e=>{const s=Number(e.target.value);setPickerS(s);const hex=hslToHex(pickerH,s,pickerL);setCustomAccentHex(hex);}}
@@ -9669,8 +9669,8 @@ function App(){
             {/* Lightness */}
             <div style={{marginBottom:22}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                <span style={{fontFamily:FB,fontSize:12,color:T.mut}}>Lightness</span>
-                <span style={{fontFamily:'monospace',fontSize:11,color:T.gM}}>{pickerL}%</span>
+                <span style={{fontFamily:FB,fontSize:U(12),color:T.mut}}>Lightness</span>
+                <span style={{fontFamily:'monospace',fontSize:U(11),color:T.gM}}>{pickerL}%</span>
               </div>
               <input type="range" className="cpicker-slider" min="0" max="100" value={pickerL}
                 onChange={e=>{const l=Number(e.target.value);setPickerL(l);const hex=hslToHex(pickerH,pickerS,l);setCustomAccentHex(hex);}}
@@ -9680,11 +9680,11 @@ function App(){
             {/* Buttons */}
             <div style={{display:'flex',gap:8}}>
               <button type="button" onClick={()=>{setAccent(pickerOrigRef.current.accent);setCustomAccentHex(pickerOrigRef.current.hex);setCustomPickerOpen(false);}}
-                style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
+                style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
                 Cancel
               </button>
               <button type="button" onClick={()=>setCustomPickerOpen(false)}
-                style={{flex:2,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer',fontWeight:600}}>
+                style={{flex:2,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:9,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer',fontWeight:600}}>
                 Done
               </button>
             </div>
