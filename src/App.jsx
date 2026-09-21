@@ -2394,7 +2394,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
                 <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
               </div>
             )}
-            <span style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
+            <span style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>{title}</span>
           </div>
         ):(
           <>
@@ -6650,7 +6650,7 @@ function App(){
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
+            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Menu</div>
           </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
@@ -6704,7 +6704,7 @@ function App(){
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
+            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</div>
           </div>
           {/* Bookmarks + Recent Passages */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
@@ -7393,7 +7393,7 @@ function App(){
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Version</div>
+                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Select Version</div>
                   </div>
                   {(data?.versions||[]).map(v=>(
                     <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);closeReadSheet();}}
@@ -7418,7 +7418,7 @@ function App(){
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Bible Versions</div>
+                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Bible Versions</div>
                   </div>
                   {/* Current versions list */}
                   {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:U(15),color:T.dim}}>No versions added yet.</div>}
@@ -8293,7 +8293,7 @@ function App(){
                     ←
                   </button>
                 </div>
-                <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Search</div>
+                <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Search</div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input value={q} onChange={e=>setQ(e.target.value)}
