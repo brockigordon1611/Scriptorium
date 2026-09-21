@@ -6799,6 +6799,23 @@ function App(){
           </button>
           {settingsAppOpen&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
 
+            {/* Menus & Buttons: the nav, labels and panels, on its own ramp and
+                its own key. The readout is a percentage because that is what it
+                is -- nothing here has a single pixel size to name. */}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Menus & Buttons</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{uiSize}%</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FS,fontSize:U(9),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
+                <input type="range" min="100" max="160" step="5" value={uiSize}
+                  onChange={e=>{const v=Number(e.target.value);setUiSize(v);try{localStorage.setItem('scrip:uiSize',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FS,fontSize:UH(15),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
+              </div>
+            </div>
+
             {/* Accent Color */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -6827,10 +6844,10 @@ function App(){
               </div>
             </div>
 
-            {/* Text Size */}
+            {/* Scripture Size */}
             <div style={{marginBottom:14}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Text Size</span>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>Scripture Size</span>
                 <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -6839,23 +6856,6 @@ function App(){
                   onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FB,fontSize:UH(20),color:T.dim}}>A</span>
-              </div>
-            </div>
-
-            {/* App Text Size: labels, buttons and panels, on its own ramp and its
-                own key. The readout is a percentage because that is what it is --
-                nothing here has a single pixel size to name. */}
-            <div style={{marginBottom:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>App Text Size</span>
-                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{uiSize}%</span>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontFamily:FS,fontSize:U(9),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
-                <input type="range" min="100" max="160" step="5" value={uiSize}
-                  onChange={e=>{const v=Number(e.target.value);setUiSize(v);try{localStorage.setItem('scrip:uiSize',v);}catch{}}}
-                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
-                <span style={{fontFamily:FS,fontSize:UH(15),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
               </div>
             </div>
 
@@ -6873,6 +6873,34 @@ function App(){
                 <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>Wide</span>
               </div>
             </div>
+
+            {/* Live preview */}
+            {(()=>{
+              const pvVerses=[
+                {v:1,text:'The LORD <i>is</i> my shepherd; I shall not want.'},
+                {v:2,text:'<red>I am the way, the truth, and the life.</red>'},
+                {v:3,text:'God <i>is</i> love.'},
+              ];
+              const vnSup=(v)=>readVerseNums==='super'?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>:null;
+              const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
+              return(
+              <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
+                <div style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
+                {readParaMode?(
+                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
+                    {pvVerses.map(({v,text})=>(
+                      <span key={v}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>{' '}</span>
+                    ))}
+                  </div>
+                ):(
+                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
+                    {pvVerses.map(({v,text})=>(
+                      <div key={v} style={{marginBottom:1}}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/></div>
+                    ))}
+                  </div>
+                )}
+              </div>);
+            })()}
 
             {/* Font Family */}
             <div style={{marginBottom:14}}>
@@ -6924,35 +6952,6 @@ function App(){
                 <span>Red Letter</span><span style={{fontSize:UL(8),opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
               </button>
             </div>
-
-
-            {/* Live preview */}
-            {(()=>{
-              const pvVerses=[
-                {v:1,text:'The LORD <i>is</i> my shepherd; I shall not want.'},
-                {v:2,text:'<red>I am the way, the truth, and the life.</red>'},
-                {v:3,text:'God <i>is</i> love.'},
-              ];
-              const vnSup=(v)=>readVerseNums==='super'?<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>:null;
-              const vnInl=(v)=>readVerseNums==='inline'?<span style={{fontFamily:FS,fontSize:UL(10),color:T.gM,marginRight:6,fontWeight:600}}>{v}</span>:null;
-              return(
-              <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:12,marginTop:4}}>
-                <div style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.14em',color:T.dim,textTransform:'uppercase',marginBottom:8}}>Preview</div>
-                {readParaMode?(
-                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
-                    {pvVerses.map(({v,text})=>(
-                      <span key={v}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/>{' '}</span>
-                    ))}
-                  </div>
-                ):(
-                  <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,textAlign:readTextAlign,color:T.body}}>
-                    {pvVerses.map(({v,text})=>(
-                      <div key={v} style={{marginBottom:1}}>{vnSup(v)}{vnInl(v)}<span dangerouslySetInnerHTML={{__html:processRedLetter(text,readRedLetter,dark)}}/></div>
-                    ))}
-                  </div>
-                )}
-              </div>);
-            })()}
 
           </div>}
           {/* ── AUDIO SETTINGS ── */}
