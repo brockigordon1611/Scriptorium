@@ -2125,7 +2125,7 @@ const WHEEL_ROWS=5; // odd, so one row is the middle
 const SETTLE_MS=70;
 // The sizes below are the reminder time's, kept as defaults so that picker is
 // untouched; the book wheel passes its own to sit small under the search bar.
-function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=16,fontSel=19,fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
+function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,rows=WHEEL_ROWS,font=UL(16),fontSel=UL(19),fadeTop,fadeBot,band=true,glide,dimColor,dimOp=0.55}){
   const ref=React.useRef(null);
   const settle=React.useRef(null);
   // What was last handed to onChange. It cannot be read off value any more:
@@ -2296,7 +2296,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
         {shortBook(bookName(BIBLE.find(x=>x.n===pick),lang))}
       </div>
       <div aria-hidden style={{height:1,background:`${T.gD}55`,marginBottom:2}}/>
-      <Wheel items={books} value={pick} T={T} band="rules" glide itemH={ROW} rows={rows} font={12} fontSel={13}
+      <Wheel items={books} value={pick} T={T} band="rules" glide itemH={ROW} rows={rows} font={UL(12)} fontSel={UL(13)}
         // No fades: they are square-cornered rectangles, and inside a panel with
         // rounded corners they read as dark blocks with their own edges.
         fadeTop="none" fadeBot="none"
@@ -3782,7 +3782,7 @@ function MapLightboxGrid({maps,BASE,T}){
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
               style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
-            <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:UL(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
             <button onClick={()=>setLightbox(i=>Math.min(i+1,maps.length-1))} disabled={lightbox===maps.length-1}
               style={{background:'none',border:`1px solid ${lightbox===maps.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===maps.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===maps.length-1?'default':'pointer'}}>Next ›</button>
           </div>
@@ -3827,7 +3827,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
           style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
-        <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:UL(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
         <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
           style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
       </div>
@@ -7340,7 +7340,7 @@ function App(){
                     </button>
                   )}
                   </div>
-                  <div style={{textAlign:'center',fontFamily:FS,fontSize:UH(20),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
+                  <div style={{textAlign:'center',fontFamily:FS,fontSize:UH(20),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',margin:'0 auto'}}>
                     {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
                   {navStep==='verse'&&(
@@ -7366,7 +7366,7 @@ function App(){
                         <FadeScroll T={T} className="sheet-scroll" style={{display:'flex',flexDirection:'column',gap:4}}>
                           {BIBLE.filter(filter).map(b=>(
                             <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
-                              style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:U(13),letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
+                              style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:UL(13),letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
                               {bookName(b,versionLang(readVid))}
                             </button>
                           ))}
@@ -9154,7 +9154,7 @@ function App(){
                 <div className="bottom-nav-safe" style={{borderTop:`1px solid ${T.bdS}`,background:T.bgCard,flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 12px 0',minHeight:49,boxSizing:'border-box'}}>
                   <button type="button" className="s-btn s-ghost" disabled={openResChapter===0}
                     onClick={()=>setOpenResChapter(c=>Math.max(0,c-1))}
-                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===0?0.3:1}}>
+                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===0?0.3:1}}>
                     {'‹'} {openResChapter>0?(openResData.chapters[openResChapter-1]?.title||`Ch ${openResChapter}`):''}
                   </button>
                   <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
@@ -9164,7 +9164,7 @@ function App(){
                   </div>
                   <button type="button" className="s-btn s-ghost" disabled={openResChapter===openResData.chapters.length-1}
                     onClick={()=>setOpenResChapter(c=>Math.min(openResData.chapters.length-1,c+1))}
-                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
+                    style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0,opacity:openResChapter===openResData.chapters.length-1?0.3:1}}>
                     {openResChapter<openResData.chapters.length-1?(openResData.chapters[openResChapter+1]?.title||`Ch ${openResChapter+2}`):''} {'›'}
                   </button>
                 </div>
