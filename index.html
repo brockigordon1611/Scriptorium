@@ -114,7 +114,9 @@
       <div style="font-family:CormorantBoot,'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:15px;color:#8a7a48">Loading&hellip;</div>
     </div>
   </div>
-  <style>@keyframes bootLine{0%{background-position:200% 0}100%{background-position:-200% 0}}</style>
+  <style>/* Same sweep as goldLine in the app stylesheet, which takes over the moment
+       React mounts. These ran opposite ways, so the shimmer reversed mid-start-up. */
+    @keyframes bootLine{0%{background-position:-100% 0}100%{background-position:200% 0}}</style>
   <script>
     /* The native splash is torn down on a timer that knows nothing about the
        WebView, so whatever sits between the two — black — shows through until

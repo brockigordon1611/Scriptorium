@@ -6254,36 +6254,37 @@ function App(){
   // ── Auth gate ──
   // Ahead of the auth gates on purpose: the install runs before sign-in, so
   // anything rendered after those early returns is never reached while it matters.
-  if(bundledInstall&&bundledInstall.total>0){
-    const pct=Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100));
-    return(
-      <div style={{position:'fixed',inset:0,zIndex:600,background:D.bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 32px',gap:18}}>
-        <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:D.gT,letterSpacing:'0.1em'}}>Scriptorium</div>
-        <div style={{width:'min(320px,80vw)',height:4,background:D.bgSec,borderRadius:2,overflow:'hidden'}}>
-          <div style={{width:`${pct}%`,height:'100%',background:D.gD,transition:'width .2s'}}/>
-        </div>
-        <div style={{fontFamily:FB,fontSize:14,color:D.mut,textAlign:'center',lineHeight:1.6}}>Finalizing initial set-up</div>
-        <div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em',marginTop:-8}}>{pct}%</div>
-      </div>
-    );
-  }
-  // One screen for both waits — while auth resolves and while study data loads.
-  // The auth phase used to be a bare spinner on black, so opening the app meant
-  // staring at an empty screen before the real one appeared.
-  const LoadingScreen=({msg})=>(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg}}>
+  // One screen for the whole of start-up, and deliberately the same screen the
+  // static markup in index.html has already painted: same type, same sizes, same
+  // spacing, same shimmer. React taking over should look like nothing happened.
+  //
+  // So there is no entrance animation here. This used to fade and slide up on
+  // mount — replaying an arrival for content already on the glass, in two
+  // staggered halves — which is what read as the start-up restarting itself part
+  // way through. The screen is not arriving; it is continuing.
+  //
+  // pct turns the shimmer into a fill without changing anything around it, so the
+  // install phase is this screen telling you more rather than a third screen with
+  // its own title size, its own bar and its own spacing.
+  const LoadingScreen=({msg,pct})=>(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg,textAlign:'center',padding:'0 24px',boxSizing:'border-box'}}>
       <style>{CSS}</style>
-      <div className="fade-up" style={{textAlign:'center'}}>
-        <div style={{fontFamily:FS,fontSize:28,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
-        <div style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:D.gM,marginBottom:24,lineHeight:1.7}}>"The words of the LORD are pure words: as silver tried<br/>in a furnace of earth, purified seven times." — Psalm 12:6</div>
+      <div style={{fontFamily:FS,fontSize:28,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
+      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:D.gM,marginBottom:24,lineHeight:1.7}}>"The words of the LORD are pure words: as silver tried<br/>in a furnace of earth, purified seven times." — Psalm 12:6</div>
+      <div style={{width:160,height:2,overflow:'hidden',background:D.bd,borderRadius:1,marginBottom:14}}>
+        {pct==null
+          ?<div style={{width:'100%',height:'100%',background:'linear-gradient(90deg,transparent,#c8a84e,transparent)',backgroundSize:'200% 100%',animation:'goldLine 1.5s ease-in-out infinite'}}/>
+          :<div style={{width:pct+'%',height:'100%',background:'#c8a84e',transition:'width .25s ease'}}/>}
       </div>
-      <div className="fade-up stagger-2" style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginTop:12}}>
-        <div style={{width:160,height:2,overflow:'hidden',background:D.bd,borderRadius:1}}><div style={{width:'100%',height:'100%',background:'linear-gradient(90deg,transparent,#c8a84e,transparent)',backgroundSize:'200% 100%',animation:'goldLine 1.5s ease-in-out infinite'}}/></div>
-        <div className="breathe" style={{fontFamily:FB,fontStyle:'italic',fontSize:15,color:D.gM}}>{msg}</div>
-      </div>
+      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:15,color:D.gM}}>{msg}</div>
+      {pct!=null&&<div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em',marginTop:6}}>{pct}%</div>}
     </div>
   );
 
+  if(bundledInstall&&bundledInstall.total>0){
+    const pct=Math.min(100,Math.round(bundledInstall.done/bundledInstall.total*100));
+    return <LoadingScreen msg="Finalizing initial set-up" pct={pct}/>;
+  }
   if(!authChecked)return <LoadingScreen msg="Loading…"/>;
   if(!user)return <AuthPanel onAuth={u=>setUser(u)}/>;
   if(recoveryMode)return <RecoveryPanel T={D} onDone={()=>setRecoveryMode(false)}/>;
