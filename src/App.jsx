@@ -4169,7 +4169,11 @@ function App(){
     if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
     const h=navRef.current,b=bottomBarRef.current;
     if(h){h.style.willChange='transform';headerAnimRef.current=h.animate([{transform:'translateY(0)'},{transform:'translateY(-100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});}
-    if(b){b.style.willChange='transform';bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});}
+    // Not while search has already sent it away: its own transform is holding
+    // it off-screen, and a WAAPI animation with fill:forwards outranks an inline
+    // style. Animating it here would hand the bar to fullscreen, and leaving
+    // fullscreen would then slide it back up over the results.
+    if(b&&!readingHidden){b.style.willChange='transform';bottomAnimRef.current=b.animate([{transform:'translateY(0)'},{transform:'translateY(100%)'}],{duration:180,easing:'ease-in',fill:'forwards'});}
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   function exitFullScreen(){
@@ -4179,7 +4183,7 @@ function App(){
     if(bottomAnimRef.current){bottomAnimRef.current.cancel();bottomAnimRef.current=null;}
     const h=navRef.current,b=bottomBarRef.current;
     if(h){h.style.willChange='transform';const a=h.animate([{transform:'translateY(-100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>{a.cancel();h.style.willChange='';}}
-    if(b){b.style.willChange='transform';const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>{a.cancel();b.style.willChange='';}}
+    if(b&&!readingHidden){b.style.willChange='transform';const a=b.animate([{transform:'translateY(100%)'},{transform:'translateY(0)'}],{duration:180,easing:'ease-out',fill:'forwards'});a.onfinish=()=>{a.cancel();b.style.willChange='';}}
     setTimeout(()=>{fsTransitioning.current=false;},180);
   }
   const lastScrollY=useRef(0);
@@ -4194,7 +4198,6 @@ function App(){
   const autoScrollUntil=useRef(0); // reading along scrolls the pane itself; ignore those events
   const scrollPendingState=useRef(null);
   function handleReadScroll(e){
-    if(readSearchRes&&readSearchResultsOpen){if(readFullScreen.current)exitFullScreen();scrollDelta.current=0;return;}
     const el=e.target;const sy=el.scrollTop;const dy=sy-lastScrollY.current;lastScrollY.current=sy;
     // Fullscreen logic runs immediately (no RAF needed — it doesn't touch layout)
     // Scrolling to keep up with the voice fires the same events a finger does,
@@ -7470,7 +7473,7 @@ function App(){
               <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
                 lang={lang} T={T} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
             )}
-            <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:navH+8,left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
+            <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:fsActive?8:navH+8,transition:'top .18s ease',left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
