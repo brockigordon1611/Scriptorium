@@ -3623,13 +3623,14 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
 // reader but left maps with no way in at all and charts with a single fixed step.
 // Listeners are attached by hand because React registers touchmove as passive, so
 // preventDefault from a synthetic handler is ignored and the page scrolls instead.
-function PinchZoom({src,alt,onZoomChange}){
+function PinchZoom({src,alt,onZoomChange,maxScale}){
   const wrapRef=React.useRef(null);
   const imgRef=React.useRef(null);
   const st=React.useRef({scale:1,tx:0,ty:0});
   const gest=React.useRef(null);
   const lastTap=React.useRef(0);
-  const MAX_SCALE=6;
+  // Maps carry far more detail than the charts do, so they are allowed to go deeper.
+  const MAX_SCALE=maxScale||6;
   React.useEffect(()=>{
     const wrap=wrapRef.current;
     if(!wrap)return;
@@ -3709,7 +3710,7 @@ function PinchZoom({src,alt,onZoomChange}){
       wrap.removeEventListener('touchmove',onMove);
       wrap.removeEventListener('touchend',onEnd);
     };
-  },[onZoomChange]);
+  },[onZoomChange,maxScale]);
   // A new image starts unzoomed.
   React.useEffect(()=>{
     st.current={scale:1,tx:0,ty:0};
@@ -3746,8 +3747,8 @@ function MapLightboxGrid({maps,BASE,T}){
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:8}}>
         {maps.map((m,i)=>(
           <div key={m.file} onClick={()=>setLightbox(i)} style={{display:'flex',flexDirection:'column',gap:5,cursor:'pointer'}}>
-            <div style={{aspectRatio:'3/4',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <img src={`${BASE}maps/${m.file}`} alt={m.title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} loading="lazy"/>
+            <div style={{aspectRatio:'4/3',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <img src={`${BASE}maps/thumb/${m.file}`} alt={m.title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} loading="lazy"/>
             </div>
             <div style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
           </div>
@@ -3760,7 +3761,7 @@ function MapLightboxGrid({maps,BASE,T}){
             <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
             <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
           </div>
-          <PinchZoom src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} onZoomChange={setMapZoomed}/>
+          <PinchZoom src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} onZoomChange={setMapZoomed} maxScale={12}/>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
               style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
@@ -3804,7 +3805,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
         <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
       </div>
       {/* Image */}
-        <PinchZoom src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section} onZoomChange={setZoomed}/>
+        <PinchZoom src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section} onZoomChange={setZoomed} maxScale={10}/>
       {/* Prev / Next */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
@@ -8743,21 +8744,26 @@ function App(){
       {/* ═══ MAPS TAB ═══ */}
       {tab==='maps'&&(()=>{
         const BASE=import.meta.env.BASE_URL;
+        // Ordered as the story runs, Genesis through Acts. Every plate is a full-resolution
+        // scan; the grid reads the small copies under maps/thumb so it never decodes these.
         const MAPS=[
-          {title:'The Holy Land',file:'The_Holy_Land__01.jpg'},
-          {title:'Tribe of Asher',file:'Tribe_of_Asher__01.jpg'},
-          {title:'Tribe of Benjamin',file:'Tribe_of_Benjamin__01.jpg'},
-          {title:'Tribe of Dan',file:'Tribe_of_Dan__01.jpg'},
-          {title:'Tribe of Ephraim',file:'Tribe_of_Ephraim__01.jpg'},
-          {title:'Tribe of Gad',file:'Tribe_of_Gad__01.jpg'},
-          {title:'Tribe of Issachar',file:'Tribe_of_Issachar__01.jpg'},
-          {title:'Tribe of Judah',file:'Tribe_of_Judah__01.jpg'},
-          {title:'Tribe of Manasseh (Beyond Jordan)',file:'Tribe_of_Manasseh_beyond_Jordan__01.jpg'},
-          {title:'Tribe of Manasseh (This Side Jordan)',file:'Tribe_of_Manasseh_this_side_Jordan__01.jpg'},
-          {title:'Tribe of Naphtali',file:'Tribe_of_Naphtali__01.jpg'},
-          {title:'Tribe of Reuben',file:'Tribe_of_Reuben__01.jpg'},
-          {title:'Tribe of Simeon',file:'Tribe_of_Simeon__01.jpg'},
-          {title:'Tribe of Zebulun',file:'Tribe_of_Zebulun__01.jpg'},
+          {title:'The Descendants of Noah',file:'01_Descendants_of_Noah.jpg'},
+          {title:'The Land Promised to Abraham',file:'02_Land_Promised_to_Abraham.jpg'},
+          {title:'Travels of the Patriarchs',file:'03_Travels_of_the_Patriarchs.jpg'},
+          {title:'Egypt, Sinai and the Wilderness',file:'04_Egypt_Sinai_and_the_Wilderness.jpg'},
+          {title:'Canaan and the Twelve Tribes',file:'05_Canaan_and_the_Twelve_Tribes.jpg'},
+          {title:'The Holy Land Among the Twelve Tribes',file:'06_The_Holy_Land_Among_the_Twelve_Tribes.jpg'},
+          {title:'Judaea Divided Among the Twelve Tribes',file:'07_Judaea_Divided_Among_the_Twelve_Tribes.jpg'},
+          {title:'Palaestina in XII Tribus',file:'08_Palaestina_in_XII_Tribus.jpg'},
+          {title:'Terra Sancta, the Land of Promise',file:'09_Terra_Sancta_the_Land_of_Promise.jpg'},
+          {title:'The Kingdom of David and Solomon',file:'10_Kingdom_of_David_and_Solomon.jpg'},
+          {title:'The Holy Land at Successive Periods',file:'11_The_Holy_Land_at_Successive_Periods.jpg'},
+          {title:'The Holy Land: Northern Division',file:'12_The_Holy_Land_Northern_Division.jpg'},
+          {title:'The Holy Land: Southern Division',file:'13_The_Holy_Land_Southern_Division.jpg'},
+          {title:'Sacred Geography of Judaea',file:'14_Sacred_Geography_of_Judaea.jpg'},
+          {title:'Jerusalem, Ancient and Modern',file:'15_Jerusalem_Ancient_and_Modern.jpg'},
+          {title:'Environs of Jerusalem',file:'16_Environs_of_Jerusalem.jpg'},
+          {title:'Journeys of Christ and the Apostles',file:'17_Journeys_of_Christ_and_the_Apostles.jpg'},
         ];
         return(
           <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
@@ -8799,6 +8805,7 @@ function App(){
               {/* Built-in maps */}
               <div style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.14em',marginBottom:10,paddingLeft:4}}>BUILT-IN MAPS</div>
               <MapLightboxGrid maps={MAPS} BASE={BASE} T={T}/>
+              <div style={{fontFamily:FB,fontSize:9,color:T.dim,textAlign:'center',lineHeight:1.6,padding:'18px 14px 4px'}}>Scans courtesy of the David Rumsey Map Collection, davidrumsey.com. The maps themselves are in the public domain.</div>
             </div>
             {/* Import footer */}
             <div style={{flexShrink:0,borderTop:`1px solid ${T.bd}`,padding:'12px 18px 28px',background:T.bgNav}}>
