@@ -3760,24 +3760,24 @@ function MapLightboxGrid({maps,BASE,T}){
             <div style={{aspectRatio:'4/3',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:7,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
               <img src={`${BASE}maps/thumb/${m.file}`} alt={m.title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}} loading="lazy"/>
             </div>
-            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:T.dim,textAlign:'center',lineHeight:1.3,paddingBottom:2}}>{m.title}</div>
           </div>
         ))}
       </div>
       {lightbox!==null&&(
         <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={mapOnTouchStart} onTouchEnd={mapOnTouchEnd} onClick={()=>{if(mapSwiped.current){mapSwiped.current=false;return;}setLightbox(null);}}>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontFamily:'Georgia,serif',fontSize:12,color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
-            <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
-            <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
+            <div style={{fontFamily:'Georgia,serif',fontSize:U(12),color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
+            <div style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
+            <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:UH(17),cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
           </div>
           <PinchZoom src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} onZoomChange={setMapZoomed} maxScale={12}/>
           <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
-              style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
-            <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
+              style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
+            <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
             <button onClick={()=>setLightbox(i=>Math.min(i+1,maps.length-1))} disabled={lightbox===maps.length-1}
-              style={{background:'none',border:`1px solid ${lightbox===maps.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===maps.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===maps.length-1?'default':'pointer'}}>Next ›</button>
+              style={{background:'none',border:`1px solid ${lightbox===maps.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===maps.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===maps.length-1?'default':'pointer'}}>Next ›</button>
           </div>
         </div>
       )}
@@ -3810,19 +3810,19 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
     <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={lkOnTouchStart} onTouchEnd={lkOnTouchEnd} onClick={()=>{if(lkSwiped.current){lkSwiped.current=false;return;}zoomed?setZoomed(false):onClose();}}>
       {/* Top bar */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
-        <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
-        <div style={{fontFamily:'Georgia,serif',fontSize:10,color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
-        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:17,cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
+        <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
+        <div style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
+        <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:UH(17),cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
       </div>
       {/* Image */}
         <PinchZoom src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section} onZoomChange={setZoomed} maxScale={10}/>
       {/* Prev / Next */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
-          style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
-        <div style={{fontFamily:'Georgia,serif',fontSize:11,color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
+          style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
+        <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
         <button onClick={()=>setIdx(i=>Math.min(i+1,imgs.length-1))} disabled={idx===imgs.length-1}
-          style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:11,letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
+          style={{background:'none',border:`1px solid ${idx===imgs.length-1?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===imgs.length-1?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===imgs.length-1?'default':'pointer'}}>Next ›</button>
       </div>
     </div>
   );
@@ -3835,8 +3835,8 @@ function LarkinSection({title,imgs,BASE,T,allImgs}){
     <div style={{marginBottom:4}}>
       <div onClick={()=>setOpen(v=>!v)} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderBottom:`1px solid ${T.bdS}`}}>
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
-        <span style={{fontFamily:'Georgia,serif',fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1}}>{title}</span>
-        <span style={{fontFamily:'Georgia,serif',fontSize:10,color:T.dim,flexShrink:0}}>{imgs.length}</span>
+        <span style={{fontFamily:'Georgia,serif',fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1}}>{title}</span>
+        <span style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:T.dim,flexShrink:0}}>{imgs.length}</span>
       </div>
       {open&&(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:6,padding:'8px 0 10px'}}>
@@ -3864,7 +3864,7 @@ function UserBlobThumb({id,mime,title,T}){
     }).catch(()=>{});
     return()=>{if(url)URL.revokeObjectURL(url);};
   },[id,mime]);
-  if(!src)return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:12,width:'100%',height:'100%'}}><div style={{fontSize:28,marginBottom:6}}>▣</div><div style={{fontFamily:'system-ui',fontSize:11,color:T.body,lineHeight:1.3,textAlign:'center',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',maxWidth:'100%'}}>{title}</div></div>;
+  if(!src)return <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:12,width:'100%',height:'100%'}}><div style={{fontSize:UH(28),marginBottom:6}}>▣</div><div style={{fontFamily:'system-ui',fontSize:U(11),color:T.body,lineHeight:1.3,textAlign:'center',overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',maxWidth:'100%'}}>{title}</div></div>;
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
@@ -5825,17 +5825,17 @@ function App(){
   const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
-      style={{flex:1,...(active?(red?ctrlOnRed:ctrlOnSoft):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:9.5,letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
+      style={{flex:1,...(active?(red?ctrlOnRed:ctrlOnSoft):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
       {label}
     </button>
   );
   const searchFilterRows=()=>(<>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
-      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
+      <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Scope</div>
       {[['all','All'],['ot','OT'],['nt','NT']].map(([v,l])=>optBtn(searchOpts.scope===v,l,()=>setOpt('scope',v)))}
     </div>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
-      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
+      <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.mut,textTransform:'uppercase',fontWeight:600,width:38,flexShrink:0}}>Mode</div>
       {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>optBtn(searchOpts.mode===v,l,()=>setOpt('mode',v)))}
     </div>
     <div style={{display:'flex',gap:4,alignItems:'center'}}>
@@ -6327,15 +6327,15 @@ function App(){
   const LoadingScreen=({msg,pct})=>(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:D.bg,textAlign:'center',padding:'0 24px',boxSizing:'border-box'}}>
       <style>{CSS}</style>
-      <div style={{fontFamily:FS,fontSize:28,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
-      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:14,color:D.gM,marginBottom:24,lineHeight:1.7}}>"The words of the LORD are pure words: as silver tried<br/>in a furnace of earth, purified seven times." — Psalm 12:6</div>
+      <div style={{fontFamily:FS,fontSize:UH(28),fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
+      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:D.gM,marginBottom:24,lineHeight:1.7}}>"The words of the LORD are pure words: as silver tried<br/>in a furnace of earth, purified seven times." — Psalm 12:6</div>
       <div style={{width:160,height:2,overflow:'hidden',background:D.bd,borderRadius:1,marginBottom:14}}>
         {pct==null
           ?<div style={{width:'100%',height:'100%',background:'linear-gradient(90deg,transparent,#c8a84e,transparent)',backgroundSize:'200% 100%',animation:'goldLine 1.5s ease-in-out infinite'}}/>
           :<div style={{width:pct+'%',height:'100%',background:'#c8a84e',transition:'width .25s ease'}}/>}
       </div>
-      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:15,color:D.gM}}>{msg}</div>
-      {pct!=null&&<div style={{fontFamily:FS,fontSize:11,color:D.dim,letterSpacing:'0.08em',marginTop:6}}>{pct}%</div>}
+      <div style={{fontFamily:FB,fontStyle:'italic',fontSize:U(15),color:D.gM}}>{msg}</div>
+      {pct!=null&&<div style={{fontFamily:FS,fontSize:U(11),color:D.dim,letterSpacing:'0.08em',marginTop:6}}>{pct}%</div>}
     </div>
   );
 
@@ -6367,13 +6367,13 @@ function App(){
           <div style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:16,width:'min(92vw,420px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.7)',textAlign:'center'}}>
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'40px 36px 36px'}}>
-              <div style={{fontSize:36,marginBottom:16}}>✓</div>
-              <div style={{fontFamily:FS,fontSize:17,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:12}}>Email Verified</div>
-              <div style={{fontFamily:FB,fontSize:15,color:D.mut,lineHeight:1.8,marginBottom:28}}>
+              <div style={{fontSize:UH(36),marginBottom:16}}>✓</div>
+              <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:12}}>Email Verified</div>
+              <div style={{fontFamily:FB,fontSize:U(15),color:D.mut,lineHeight:1.8,marginBottom:28}}>
                 Your account is confirmed. Welcome to Scriptorium — your Bible study workspace is ready.
               </div>
               <button type="button" onClick={()=>setAuthWelcome(false)}
-                style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:8,color:D.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',padding:'12px 0',fontWeight:600,cursor:'pointer'}}>
+                style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:8,color:D.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.14em',textTransform:'uppercase',padding:'12px 0',fontWeight:600,cursor:'pointer'}}>
                 Enter Scriptorium
               </button>
             </div>
@@ -6422,7 +6422,7 @@ function App(){
                     like the book and version pickers, so it takes search down with
                     it. Setting the sheet directly left the results live underneath,
                     and the bar with them, reachable around the sheet's edges. */}
-                <button type="button" title="Settings" {...navTap(()=>(readMobileSheet==='settings'&&!readSheetClosing)?closeReadSheet():openReadSheet('settings'))} style={{...nb(readMobileSheet==='settings'&&!readSheetClosing),width:44,fontSize:17,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <button type="button" title="Settings" {...navTap(()=>(readMobileSheet==='settings'&&!readSheetClosing)?closeReadSheet():openReadSheet('settings'))} style={{...nb(readMobileSheet==='settings'&&!readSheetClosing),width:44,fontSize:UH(17),display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
@@ -6444,7 +6444,7 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:3,width:44,height:'calc(100% - 6px)',transform:`translateX(${rIndLeft-3}px)`,willChange:'transform',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:21,paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" {...navTap(tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
@@ -6480,35 +6480,35 @@ function App(){
           {/* Read controls (desktop only) - removed; now in 6-button nav */}
           {false&&<div className="hide-mobile" style={{display:'none'}}>
             <select className="s-btn" value={readVid||''} onChange={e=>setReadVid(e.target.value)}
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.04em',padding:'0 6px',outline:'none',fontWeight:600,flexShrink:0}}>
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.04em',padding:'0 6px',outline:'none',fontWeight:600,flexShrink:0}}>
               {(data?.versions||[]).map(v=><option key={v.id} value={v.id}>{v.label}</option>)}
             </select>
             {/* Book */}
             <select className="s-btn" value={readBook} onChange={e=>{setReadBook(parseInt(e.target.value));setReadCh(1);}}
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:11,padding:'0 4px',outline:'none',maxWidth:110}}>
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(11),padding:'0 4px',outline:'none',maxWidth:110}}>
               {BIBLE.map(b=><option key={b.n} value={b.n}>{bookName(b,versionLang(readVid))}</option>)}
             </select>
             {/* Chapter */}
             <select className="s-btn" value={readCh} onChange={e=>setReadCh(parseInt(e.target.value))}
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:11,padding:'0 4px',outline:'none',width:48}}>
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(11),padding:'0 4px',outline:'none',width:48}}>
               {Array.from({length:readTotalCh},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
             {/* Verse */}
             <select className="s-btn" value="" onChange={e=>{const v=parseInt(e.target.value);if(v){const el=document.getElementById(`rv-${v}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});}}}
-              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FB,fontSize:11,padding:'0 4px',outline:'none',width:48}}>
+              style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FB,fontSize:U(11),padding:'0 4px',outline:'none',width:48}}>
               <option value="">Vs</option>
               {Array.from({length:readBk?.v?.[readCh-1]||0},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
             {/* Search */}
             <button type="button" className="s-btn s-ghost" title="Search" onClick={()=>doReadSearch()} disabled={readSearching}
-              style={{height:33.33,boxSizing:'border-box',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,padding:'0 8px',flexShrink:0,fontSize:17,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>{readSearching?<Spinner/>:'⌕'}</button>
+              style={{height:33.33,boxSizing:'border-box',background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,padding:'0 8px',flexShrink:0,fontSize:UH(17),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>{readSearching?<Spinner/>:'⌕'}</button>
             <div style={{position:'relative',display:'inline-flex',flexShrink:0}}>
               <input value={readSearchQ} onChange={e=>{searchTypedRef.current=true;setReadSearchQ(e.target.value);if(e.target.value)setReadSearchPopover(true);}} onKeyDown={e=>e.key==='Enter'&&doReadSearch()}
                 placeholder="Search…"
-                style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:11,padding:'0 26px 0 8px',outline:'none',width:150}}/>
+                style={{height:33.33,boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(11),padding:'0 26px 0 8px',outline:'none',width:150}}/>
               {readSearchQ&&(
                 <button type="button" title="Clear" aria-label="Clear search" onMouseDown={e=>e.preventDefault()} onClick={()=>{searchTypedRef.current=false;setReadSearchQ('');}}
-                  style={{position:'absolute',right:0,top:0,bottom:0,width:24,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',outline:'none',color:T.dim,fontSize:12,lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'}}>
+                  style={{position:'absolute',right:0,top:0,bottom:0,width:24,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:'none',outline:'none',color:T.dim,fontSize:U(12),lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'}}>
                   ✕
                 </button>
               )}
@@ -6516,46 +6516,46 @@ function App(){
             {/* Options toggle */}
             {(()=>{const act=searchOpts.scope!=='all'||searchOpts.mode!=='any'||searchOpts.caseSensitive||searchOpts.partial;return(
               <button type="button" title="Search options" onClick={()=>setReadSearchPopover(v=>!v)}
-                style={{height:33.33,boxSizing:'border-box',background:readSearchPopover||act?T.gF:'none',border:`1px solid ${readSearchPopover||act?T.gD:T.bd}`,borderRadius:6,color:readSearchPopover||act?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:11,fontFamily:FS,letterSpacing:'0.05em',display:'flex',alignItems:'center',gap:3,cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}>
-                ⊟{act&&<span style={{fontSize:7,background:T.gM,color:'#fff',borderRadius:3,padding:'1px 3px',lineHeight:1}}>●</span>}
+                style={{height:33.33,boxSizing:'border-box',background:readSearchPopover||act?T.gF:'none',border:`1px solid ${readSearchPopover||act?T.gD:T.bd}`,borderRadius:6,color:readSearchPopover||act?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:U(11),fontFamily:FS,letterSpacing:'0.05em',display:'flex',alignItems:'center',gap:3,cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}>
+                ⊟{act&&<span style={{fontSize:UL(7),background:T.gM,color:'#fff',borderRadius:3,padding:'1px 3px',lineHeight:1}}>●</span>}
               </button>
             );})()}
-            {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadSearchResultsOpen(false);}} style={{background:'none',border:'none',color:T.dim,fontSize:14,cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
+            {readSearchRes&&<button type="button" title="Clear search" onClick={()=>{setReadSearchRes(null);setReadSearchQ('');setReadSearchResultsOpen(false);}} style={{background:'none',border:'none',color:T.dim,fontSize:U(14),cursor:'pointer',flexShrink:0,lineHeight:1}}>✕</button>}
             {/* Settings button + popover */}
             <button type="button" title="Reading settings" onClick={()=>setReadSettingsOpen(v=>!v)}
-              style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:14,display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+              style={{height:33.33,boxSizing:'border-box',background:readSettingsOpen?T.gF:'none',border:`1px solid ${readSettingsOpen?T.gD:T.bd}`,borderRadius:6,color:readSettingsOpen?T.gT:T.dim,padding:'0 9px',flexShrink:0,fontSize:U(14),display:'flex',alignItems:'center',cursor:'pointer',transition:'all .15s'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
             {readSettingsOpen&&<>
               <div onClick={()=>setReadSettingsOpen(false)} style={{position:'fixed',inset:0,zIndex:499}}/>
               <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'16px 18px',width:260,boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
-                <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.16em',color:T.gM,marginBottom:12,textTransform:'uppercase',fontWeight:600}}>Reading Settings</div>
+                <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.16em',color:T.gM,marginBottom:12,textTransform:'uppercase',fontWeight:600}}>Reading Settings</div>
                 {/* Dark/light */}
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
+                  <span style={{fontFamily:FB,fontSize:U(13),color:T.mut}}>{dark?'Dark Mode':'Light Mode'}</span>
                   <button type="button" onClick={()=>setDark(d=>!d)}
-                    style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600}}>
+                    style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:20,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600}}>
                     {dark?'☀︎ Light':'☾ Dark'}
                   </button>
                 </div>
                 {/* Strong's */}
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-                  <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Strong's Concordance</span>
+                  <span style={{fontFamily:FB,fontSize:U(13),color:T.mut}}>Strong's Concordance</span>
                   <button type="button" onClick={()=>setStrongsMode(v=>!v)}
-                    style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s'}}>
+                    style={{background:strongsMode?T.gF:'transparent',border:`1px solid ${strongsMode?T.gD:T.bd}`,borderRadius:20,color:strongsMode?T.gT:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:strongsMode?600:400,transition:'all .15s'}}>
                     {strongsMode?'On':'Off'}
                   </button>
                 </div>
                 {/* Font size */}
                 <div>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                    <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Text Size</span>
-                    <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
+                    <span style={{fontFamily:FB,fontSize:U(13),color:T.mut}}>Text Size</span>
+                    <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
                   </div>
                   <input type="range" min="13" max="60" value={readFontSize}
                     onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                     style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
                   <div style={{display:'flex',justifyContent:'space-between',marginTop:2,marginBottom:8}}>
-                    <span style={{fontFamily:FS,fontSize:8,color:T.dim}}>A</span>
-                    <span style={{fontFamily:FS,fontSize:12,color:T.dim}}>A</span>
+                    <span style={{fontFamily:FS,fontSize:UL(8),color:T.dim}}>A</span>
+                    <span style={{fontFamily:FS,fontSize:U(12),color:T.dim}}>A</span>
                   </div>
                   <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:8,color:T.body,fontFamily:FB,fontSize:readFontSize,lineHeight:1.75}}>
                     In the beginning God created the heaven and the earth.
@@ -6569,11 +6569,11 @@ function App(){
               <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% + 8px)',right:0,zIndex:500,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'14px 16px',width:310,boxShadow:'0 8px 32px rgba(0,0,0,0.28)'}}>
                 {/* Scope */}
                 <div style={{marginBottom:12}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Scope</div>
+                  <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Scope</div>
                   <div style={{display:'flex',gap:4}}>
                     {[['all','All Scripture'],['ot','OT Only'],['nt','NT Only']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,scope:v}))}
-                        style={{flex:1,background:searchOpts.scope===v?T.gF:'transparent',border:`1px solid ${searchOpts.scope===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.scope===v?T.gT:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
+                        style={{flex:1,background:searchOpts.scope===v?T.gF:'transparent',border:`1px solid ${searchOpts.scope===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.scope===v?T.gT:T.dim,fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
                         {l}
                       </button>
                     ))}
@@ -6581,11 +6581,11 @@ function App(){
                 </div>
                 {/* Match mode */}
                 <div style={{marginBottom:12}}>
-                  <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Match Mode</div>
+                  <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.16em',color:T.gM,marginBottom:6,textTransform:'uppercase',fontWeight:600}}>Match Mode</div>
                   <div style={{display:'flex',gap:4}}>
                     {[['all','All Words'],['phrase','Phrase'],['any','Any Word']].map(([v,l])=>(
                       <button key={v} type="button" onClick={()=>setSearchOpts(o=>({...o,mode:v}))}
-                        style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
+                        style={{flex:1,background:searchOpts.mode===v?T.gF:'transparent',border:`1px solid ${searchOpts.mode===v?T.gD:T.bd}`,borderRadius:6,color:searchOpts.mode===v?T.gT:T.dim,fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s',whiteSpace:'nowrap'}}>
                         {l}
                       </button>
                     ))}
@@ -6595,7 +6595,7 @@ function App(){
                 <div style={{display:'flex',gap:6,marginBottom:recentSearches.length>0?14:0}}>
                   {[['caseSensitive','Case Sensitive'],['partial','Partial Match']].map(([k,l])=>(
                     <button key={k} type="button" onClick={()=>setSearchOpts(o=>({...o,[k]:!o[k]}))}
-                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
+                      style={{flex:1,background:searchOpts[k]?'rgba(210,60,60,0.13)':'transparent',border:`1px solid ${searchOpts[k]?'rgba(210,60,60,0.4)':T.bd}`,borderRadius:6,color:searchOpts[k]?(dark?'#e08888':'#bf4040'):T.dim,fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',transition:'all .12s'}}>
                       {l}
                     </button>
                   ))}
@@ -6605,13 +6605,13 @@ function App(){
                   <div>
                     <div style={{height:1,background:T.bd,marginBottom:10}}/>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
-                      <div style={{fontFamily:FS,fontSize:8,letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
-                      <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}} style={{background:'none',border:'none',color:T.dim,fontSize:9,cursor:'pointer',fontFamily:FS,letterSpacing:'0.06em'}}>clear all</button>
+                      <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.16em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
+                      <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}} style={{background:'none',border:'none',color:T.dim,fontSize:UL(9),cursor:'pointer',fontFamily:FS,letterSpacing:'0.06em'}}>clear all</button>
                     </div>
                     <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
                       {recentSearches.map(r=>(
                         <button key={r} type="button" onClick={()=>doReadSearch(r)}
-                          style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:11,padding:'3px 9px',cursor:'pointer',transition:'background .1s'}}>
+                          style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FB,fontSize:U(11),padding:'3px 9px',cursor:'pointer',transition:'background .1s'}}>
                           {r}
                         </button>
                       ))}
@@ -6624,7 +6624,7 @@ function App(){
           <div className="hide-mobile" style={{flex:1}}/>
           {/* Desktop: full button row */}
           <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:6}}>
-            {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:500,color:T.gM}}>● Saving…</span>}
+            {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',fontWeight:500,color:T.gM}}>● Saving…</span>}
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2}}>
               <GhostBtn T={T} ch="✦ Bookmarks" onClick={()=>setModal({type:'bookmarks'})}/>
               <GhostBtn T={T} ch="↺ Recents" onClick={()=>setModal({type:'recents'})}/>
@@ -6633,10 +6633,10 @@ function App(){
               <GhostBtn T={T} ch="§" onClick={()=>setModal({type:'about'})} title="About & Legal"/>
             </div>
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3}}>
-              <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.body,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
+              <button type="button" onClick={()=>Auth.signOut()} style={{background:'transparent',border:'1px solid transparent',borderRadius:6,color:T.body,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',cursor:'pointer',fontWeight:400}}>→ Sign Out</button>
             </div>
           </div>
-          {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
+          {saveStatus==='saving'&&<span className="show-mobile" style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap',flexShrink:0}}>● Saving…</span>}
         </div>
       </div>
 
@@ -6646,11 +6646,11 @@ function App(){
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeMobileSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
+            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Menu</div>
           </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
@@ -6660,32 +6660,32 @@ function App(){
             {icon:'§',label:'About & Legal',fn:()=>{closeMobileSheet();setModal({type:'about'});}},
           ].map(item=>(
             <button key={item.label} type="button" className="s-btn s-ghost" onClick={item.fn}
-              style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%',marginBottom:6}}>
+              style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%',marginBottom:6}}>
               <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>{item.icon}</span>{item.label}
             </button>
           ))}
           <div style={{height:1,background:T.bd,margin:'8px 0 10px'}}/>
           <button type="button" className="s-btn" onClick={()=>Auth.signOut()}
-            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:18,padding:'13px 14px',width:'100%'}}>
+            style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:user?.guest?T.green:T.red,border:`1px solid ${user?.guest?T.greenTxt:T.redTxt}33`,borderRadius:9,color:user?.guest?T.greenTxt:T.redTxt,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%'}}>
             <span style={{width:22,textAlign:'center',flexShrink:0}}>→</span>{user?.guest?'Log In':'Sign Out'}
           </button>
           {!user?.guest&&!deleteAccountConfirm&&(
             <button type="button" onClick={()=>setDeleteAccountConfirm(true)}
-              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:11,letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
+              style={{background:'transparent',border:'none',color:T.dim,fontFamily:FB,fontSize:U(11),letterSpacing:'0.06em',padding:'10px 0 2px',width:'100%',textAlign:'center',cursor:'pointer'}}>
               Delete Account
             </button>
           )}
           {!user?.guest&&deleteAccountConfirm&&(
             <div style={{marginTop:10,background:T.bgSec,border:`1px solid ${T.redTxt}44`,borderRadius:9,padding:'14px 16px'}}>
-              <div style={{fontFamily:FB,fontSize:13,color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
-              <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
+              <div style={{fontFamily:FB,fontSize:U(13),color:T.redTxt,marginBottom:8,textAlign:'center'}}>Delete your account?</div>
+              <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginBottom:14,textAlign:'center',lineHeight:1.6}}>This permanently deletes all your data — bookmarks, uploaded versions, and notes. This cannot be undone.</div>
               <div style={{display:'flex',gap:8}}>
                 <button type="button" onClick={()=>setDeleteAccountConfirm(false)}
-                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:'transparent',border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'9px 0',cursor:'pointer'}}>
                   Cancel
                 </button>
                 <button type="button" onClick={async()=>{const r=await Auth.deleteAccount();if(r.error)alert(r.error);setDeleteAccountConfirm(false);}}
-                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:13,padding:'9px 0',cursor:'pointer',fontWeight:600}}>
+                  style={{flex:1,background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:7,color:T.redTxt,fontFamily:FB,fontSize:U(13),padding:'9px 0',cursor:'pointer',fontWeight:600}}>
                   Delete
                 </button>
               </div>
@@ -6700,26 +6700,26 @@ function App(){
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
-                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
+            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Study Tools</div>
           </div>
           {/* Bookmarks + Recent Passages */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
             <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>✦</span>
+              <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,flexShrink:0}}>✦</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Bookmarks</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>Saved verses</div>
+                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut}}>Bookmarks</div>
+                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Saved verses</div>
               </div>
             </div>
             <div onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:18,color:T.gT,flexShrink:0}}>↺</span>
+              <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,flexShrink:0}}>↺</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:12,fontWeight:600,color:T.mut}}>Recent Passages</div>
-                <div style={{fontFamily:FB,fontSize:10,color:T.dim}}>History</div>
+                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut}}>Recent Passages</div>
+                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>History</div>
               </div>
             </div>
           </div>
@@ -6733,13 +6733,13 @@ function App(){
             {icon:'⋯',label:'Other Resources',sub:'Additional study materials',key:'other',fn:()=>{setTab('other');closeReadSheet();}},
           ].map(item=>(
             <button key={item.key} type="button" className="s-btn s-ghost" onClick={item.fn}
-              style={{display:'flex',alignItems:'center',gap:14,textAlign:'left',width:'100%',background:tab===item.key?T.gF:'transparent',border:`1px solid ${tab===item.key?T.gD:T.bd}`,borderRadius:9,color:tab===item.key?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
-              <span style={{width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontSize:13,flexShrink:0,fontFamily:FS}}>{item.iconSvg||item.icon}</span>
+              style={{display:'flex',alignItems:'center',gap:14,textAlign:'left',width:'100%',background:tab===item.key?T.gF:'transparent',border:`1px solid ${tab===item.key?T.gD:T.bd}`,borderRadius:9,color:tab===item.key?T.gT:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 16px',marginBottom:7}}>
+              <span style={{width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontSize:U(13),flexShrink:0,fontFamily:FS}}>{item.iconSvg||item.icon}</span>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,letterSpacing:'0.05em',color:tab===item.key?T.gT:T.mut}}>{item.label}</div>
-                <div style={{fontFamily:FB,fontSize:11,color:T.dim,marginTop:2}}>{item.sub}</div>
+                <div style={{fontFamily:FS,fontSize:U(16),fontWeight:600,letterSpacing:'0.05em',color:tab===item.key?T.gT:T.mut}}>{item.label}</div>
+                <div style={{fontFamily:FB,fontSize:U(11),color:T.dim,marginTop:2}}>{item.sub}</div>
               </div>
-              {tab===item.key&&<span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:T.gM}}>ACTIVE</span>}
+              {tab===item.key&&<span style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',color:T.gM}}>ACTIVE</span>}
             </button>
           ))}
         </MobileSheet>
@@ -7266,13 +7266,13 @@ function App(){
             const setNavBk=isP?setParallelBk:setReadBook;
             const setNavCh=isP?setParallelCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
-            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:17,letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
+            const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:UH(17),letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
             /* Dynamic book button height: fit all 22 rows (13 OT + 9 NT) without scrolling.
                Overhead: sheet padding 52+32, marginTop -44, header 28, line 11, OT label 30, NT label 25,
                grid gaps 12*2+8*2=40, paddingBottom 12, sheet border 2 ≈ 188px */
             /* 5 columns: OT=8 rows, NT=6 rows, total 14 rows */
             const bookBtnH=38;
-            const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:12,letterSpacing:'0.01em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:'0 2px',height:bookBtnH,display:'flex',alignItems:'center',justifyContent:'center'};
+            const bookBtn={border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:U(12),letterSpacing:'0.01em',cursor:'pointer',textAlign:'center',background:T.bgIn,whiteSpace:'nowrap',overflow:'hidden',padding:'0 2px',height:bookBtnH,display:'flex',alignItems:'center',justifyContent:'center'};
             const gridBtnActive={...gridBtn,background:T.gF,border:`1px solid ${T.gD}`,color:T.gT};
             const ABBR={'Genesis':'Gen.','Exodus':'Exod.','Leviticus':'Lev.','Numbers':'Num.','Deuteronomy':'Deut.','Joshua':'Josh.','Judges':'Judg.','Ruth':'Ruth','1 Samuel':'1 Sam.','2 Samuel':'2 Sam.','1 Kings':'1 Kgs.','2 Kings':'2 Kgs.','1 Chronicles':'1 Chr.','2 Chronicles':'2 Chr.','Ezra':'Ezra','Nehemiah':'Neh.','Esther':'Esth.','Job':'Job','Psalms':'Ps.','Proverbs':'Prov.','Ecclesiastes':'Eccl.','Song of Solomon':'Song','Isaiah':'Isa.','Jeremiah':'Jer.','Lamentations':'Lam.','Ezekiel':'Ezek.','Daniel':'Dan.','Hosea':'Hos.','Joel':'Joel','Amos':'Amos','Obadiah':'Obad.','Jonah':'Jon.','Micah':'Mic.','Nahum':'Nah.','Habakkuk':'Hab.','Zephaniah':'Zeph.','Haggai':'Hag.','Zechariah':'Zech.','Malachi':'Mal.','Matthew':'Matt.','Mark':'Mark','Luke':'Luke','John':'John','Acts':'Acts','Romans':'Rom.','1 Corinthians':'1 Cor.','2 Corinthians':'2 Cor.','Galatians':'Gal.','Ephesians':'Eph.','Philippians':'Phil.','Colossians':'Col.','1 Thessalonians':'1 Thes.','2 Thessalonians':'2 Thes.','1 Timothy':'1 Tim.','2 Timothy':'2 Tim.','Titus':'Tit.','Philemon':'Phlm.','Hebrews':'Heb.','James':'Jas.','1 Peter':'1 Pet.','2 Peter':'2 Pet.','1 John':'1 Jn.','2 John':'2 Jn.','3 John':'3 Jn.','Jude':'Jude','Revelation':'Rev.'};
             function romanName(name){return ABBR[name]||name;}
@@ -7287,28 +7287,28 @@ function App(){
                   <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                   {navStep==='book'?(
                     <button type="button" onClick={closeReadSheet}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   ):navStep==='chapter'?(
                     <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   ):(
                     <button type="button" onClick={()=>{setNavStep('chapter');setNavPickedCh(null);}}
-                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                       ←
                     </button>
                   )}
                   </div>
-                  <div style={{textAlign:'center',fontFamily:FS,fontSize:20,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
+                  <div style={{textAlign:'center',fontFamily:FS,fontSize:UH(20),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>
                     {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
                   {navStep==='verse'&&(
                     <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={()=>{if(isP){setParallelVs(1);}closeReadSheet();}}
-                        style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
+                        style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
                         Ch {navPickedCh} →
                       </button>
                     </div>
@@ -7322,13 +7322,13 @@ function App(){
                   <div style={{display:'flex',gap:8,height:`calc(100dvh - ${navH}px - 178px)`,overflow:'hidden'}}>
                     {[{label:'Old Testament',filter:b=>b.n<=39},{label:'New Testament',filter:b=>b.n>=40}].map(({label,filter})=>(
                       <div key={label} style={{flex:1,display:'flex',flexDirection:'column',minWidth:0}}>
-                        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.28em',color:T.gM,textTransform:'uppercase',fontWeight:600,textAlign:'center',marginBottom:6,flexShrink:0,width:'100%',wordSpacing:'0.4em'}}>{label}</div>
+                        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.28em',color:T.gM,textTransform:'uppercase',fontWeight:600,textAlign:'center',marginBottom:6,flexShrink:0,width:'100%',wordSpacing:'0.4em'}}>{label}</div>
                         {/* These columns scroll inside the sheet rather than
                             scrolling it, so they carry their own edges. */}
                         <FadeScroll T={T} className="sheet-scroll" style={{display:'flex',flexDirection:'column',gap:4}}>
                           {BIBLE.filter(filter).map(b=>(
                             <button key={b.n} type="button" onClick={()=>{setNavPickedBk(b.n);setNavPickedCh(null);setNavStep('chapter');}}
-                              style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:13,letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
+                              style={{width:'100%',border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FS,fontSize:U(13),letterSpacing:'0.03em',cursor:'pointer',textAlign:'center',background:T.bgIn,padding:'9px 4px',boxSizing:'border-box',flexShrink:0}}>
                               {bookName(b,versionLang(readVid))}
                             </button>
                           ))}
@@ -7340,7 +7340,7 @@ function App(){
 
                 {/* Chapter grid */}
                 {navStep==='chapter'&&pickedBkData&&<div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
                     Select Chapter
                   </div>
                   {/* Scrolls within the sheet like the book columns, so the header
@@ -7363,7 +7363,7 @@ function App(){
 
                 {/* Verse grid */}
                 {navStep==='verse'&&pickedBkData&&navPickedCh&&<div>
-                  <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
+                  <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.18em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:5,marginTop:15,textAlign:'center'}}>
                     Select Verse
                   </div>
                   <FadeScroll T={T} className="sheet-scroll" fadeKey={navPickedCh}
@@ -7389,22 +7389,22 @@ function App(){
                   <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={closeReadSheet}
-                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Version</div>
+                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Version</div>
                   </div>
                   {(data?.versions||[]).map(v=>(
                     <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);closeReadSheet();}}
-                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:readVid===v.id?T.gF:'transparent',border:`1px solid ${readVid===v.id?T.gD:T.bd}`,borderRadius:9,color:readVid===v.id?T.gT:T.mut,fontFamily:FB,fontSize:18,padding:'13px 16px',marginBottom:7}}>
+                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:readVid===v.id?T.gF:'transparent',border:`1px solid ${readVid===v.id?T.gD:T.bd}`,borderRadius:9,color:readVid===v.id?T.gT:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 16px',marginBottom:7}}>
                       <span>{v.label}</span>
-                      <span style={{fontFamily:FS,fontSize:9,letterSpacing:'0.1em',color:readVid===v.id?T.gM:T.dim}}>{v.lang}</span>
+                      <span style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',color:readVid===v.id?T.gM:T.dim}}>{v.lang}</span>
                     </button>
                   ))}
                   <div style={{borderTop:`1px solid ${T.bd}`,marginTop:6,paddingTop:12}}>
                     <button type="button" onClick={openManageView}
-                      style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FB,fontSize:14,padding:'10px 14px',cursor:'pointer',boxSizing:'border-box'}}>
+                      style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,color:T.dim,fontFamily:FB,fontSize:U(14),padding:'10px 14px',cursor:'pointer',boxSizing:'border-box'}}>
                       <span style={{color:T.gM,display:'flex',alignItems:'center'}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Manage Bible Versions
                     </button>
                   </div>
@@ -7414,14 +7414,14 @@ function App(){
                   <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={()=>setVersionSheetView('list')}
-                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Bible Versions</div>
+                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>Bible Versions</div>
                   </div>
                   {/* Current versions list */}
-                  {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:15,color:T.dim}}>No versions added yet.</div>}
+                  {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:U(15),color:T.dim}}>No versions added yet.</div>}
                   {manageVers.map((v,i)=>{
                     const dl=dlStates[v.id]||{};
                     const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
@@ -7431,51 +7431,51 @@ function App(){
                       <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
                         <div style={{display:'flex',alignItems:'center',gap:12}}>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                            <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
+                            <div style={{fontFamily:FB,fontSize:U(16),color:T.body,fontWeight:500}}>{v.label}</div>
+                            <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
                           </div>
                           {isBuiltin&&startDownload&&(
-                            dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
-                            :dl.downloaded?<button onClick={()=>deleteDownload(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
-                            :<button onClick={()=>startDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
+                            dl.downloading?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
+                            :dl.downloaded?<button onClick={()=>deleteDownload(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
+                            :<button onClick={()=>startDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
                           )}
                           {!isBuiltin&&(
                             isReImporting
-                              ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
-                              :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
-                              :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                              ?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
+                              :avail===true?<span style={{fontFamily:FS,fontSize:UL(9),color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
+                              :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
                                 ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
                               </label>
                               :null
                           )}
-                          <button onClick={()=>manageRemove(v.id)} disabled={manageVers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:manageVers.length===1?'default':'pointer',opacity:manageVers.length===1?0.4:1}}>✕</button>
+                          <button onClick={()=>manageRemove(v.id)} disabled={manageVers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:U(13),cursor:manageVers.length===1?'default':'pointer',opacity:manageVers.length===1?0.4:1}}>✕</button>
                         </div>
                         {isBuiltin&&dl.downloading&&dl.total>0&&(
                           <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
                             <div style={{height:'100%',width:`${Math.round((dl.progress/dl.total)*100)}%`,background:T.gT,borderRadius:1,transition:'width .2s'}}/>
                           </div>
                         )}
-                        {dl.err&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:4}}>{dl.err}</div>}
+                        {dl.err&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:4}}>{dl.err}</div>}
                       </div>
                     );
                   })}
                   {/* Add built-in versions */}
                   {PUBLIC_VERSIONS.filter(pv=>!manageVers.find(v=>v.id===pv.id)).length>0&&(
                     <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-                      <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
+                      <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
                       <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                         {PUBLIC_VERSIONS.filter(pv=>!manageVers.find(v=>v.id===pv.id)).map(pv=>(
-                          <button key={pv.id} onClick={()=>manageAddBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:15,padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
+                          <button key={pv.id} onClick={()=>manageAddBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:U(15),padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
                         ))}
                       </div>
                     </div>
                   )}
                   {/* Import your own Bible */}
                   <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-                    <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
-                    <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). Text stays on your device only — never uploaded.</div>
-                    <input value={mngImportLabel} onChange={e=>setMngImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8}}/>
-                    <select value={mngImportLang} onChange={e=>setMngImportLang(e.target.value)} style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8}}>
+                    <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
+                    <div style={{fontFamily:FB,fontSize:U(12),color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). Text stays on your device only — never uploaded.</div>
+                    <input value={mngImportLabel} onChange={e=>setMngImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 11px',outline:'none',marginBottom:8}}/>
+                    <select value={mngImportLang} onChange={e=>setMngImportLang(e.target.value)} style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 11px',outline:'none',marginBottom:8}}>
                       <option value="EN">English</option>
                       <option value="ES">Spanish</option>
                       <option value="PT">Portuguese</option>
@@ -7487,28 +7487,28 @@ function App(){
                       <option value="RU">Russian</option>
                       <option value="OTHER">Other</option>
                     </select>
-                    <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:mngImportFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:U(13),color:mngImportFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                       {mngImportFile?mngImportFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
                       <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
                     </label>
                     {mngImporting==='new'?(
-                      <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
+                      <div style={{fontFamily:FB,fontSize:U(13),color:T.gM,padding:'8px 0'}}>
                         Importing…{mngImportProg[1]>0?` ${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:''}
                         <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
                           <div style={{height:'100%',width:mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'0%',background:T.gT,borderRadius:1,transition:'width .3s'}}/>
                         </div>
                       </div>
                     ):(
-                      <button onClick={mngDoImport} disabled={!mngImportFile||!mngImportLabel.trim()} style={{width:'100%',background:(!mngImportFile||!mngImportLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!mngImportFile||!mngImportLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!mngImportFile||!mngImportLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:(!mngImportFile||!mngImportLabel.trim())?'default':'pointer',fontWeight:600}}>
+                      <button onClick={mngDoImport} disabled={!mngImportFile||!mngImportLabel.trim()} style={{width:'100%',background:(!mngImportFile||!mngImportLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!mngImportFile||!mngImportLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!mngImportFile||!mngImportLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'10px 0',cursor:(!mngImportFile||!mngImportLabel.trim())?'default':'pointer',fontWeight:600}}>
                         IMPORT
                       </button>
                     )}
-                    {mngImportErr&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:6}}>{mngImportErr}</div>}
+                    {mngImportErr&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:6}}>{mngImportErr}</div>}
                   </div>
                   {/* Request a new version */}
                   <div style={{marginTop:20,paddingTop:16}}>
-                    <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
-                    <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
+                    <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
+                    <div style={{fontFamily:FB,fontSize:U(13),color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
                   </div>
                   {/* Footer actions */}
                   <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:20,paddingTop:14,borderTop:`1px solid ${T.bd}`}}>
@@ -7689,7 +7689,7 @@ function App(){
                 }
                 (audioLoaded&&(audioModeRef.current==='fcbh'||audioModeRef.current==='local'))?handlePlayPause():loadChapterAudio();
               }}
-              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:12,transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
+              style={{position:'fixed',top:readFullScreen.current?Math.max(4,navH-44):Math.max(8,navH+8),right:14,zIndex:140,display:'flex',alignItems:'center',gap:0,padding:(audioPlaying||audioLoading||audioLoaded)?'7px 12px':'7px 9px',background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,outline:'none',WebkitTapHighlightColor:'transparent',borderRadius:6,color:audioPlaying||audioLoaded?T.gT:T.dim,cursor:audioLoading?'wait':'pointer',fontFamily:FB,fontSize:U(12),transition:'all .22s ease',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',flexShrink:0,overflow:'hidden',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',opacity:1}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:16,height:16,flexShrink:0}}>
                 {audioLoading
                   ?<Spinner/>
@@ -7710,21 +7710,21 @@ function App(){
               <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,380px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.7)'}}>
                 <div style={{height:3,background:T.accentLine}}/>
                 <div style={{padding:'24px 28px'}}>
-                  <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:14,textAlign:'center'}}>KJV Audio</div>
-                  <div style={{fontFamily:FB,fontSize:14,color:T.mut,lineHeight:1.7,marginBottom:20}}>
+                  <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:14,textAlign:'center'}}>KJV Audio</div>
+                  <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.7,marginBottom:20}}>
                     Currently using your device's built-in voice. For a professional audio Bible reading, download the free KJV MP3 pack in <span style={{color:T.gT,fontWeight:500}}>Settings → Audio Playback → KJV Audio</span>.
                   </div>
                   <label style={{display:'flex',alignItems:'center',gap:10,marginBottom:20,cursor:'pointer'}}>
                     <input type="checkbox" checked={kjvPromptNoShow} onChange={e=>setKjvPromptNoShow(e.target.checked)} style={{width:16,height:16,accentColor:T.g,cursor:'pointer'}}/>
-                    <span style={{fontFamily:FB,fontSize:13,color:T.dim}}>Don't show this again</span>
+                    <span style={{fontFamily:FB,fontSize:U(13),color:T.dim}}>Don't show this again</span>
                   </label>
                   <div style={{display:'flex',gap:10}}>
                     <button type="button" onClick={()=>{if(kjvPromptNoShow)localStorage.setItem('scrip:audio:kjvPromptDismissed','true');setShowKjvAudioPrompt(false);setAudioSource('local');try{localStorage.setItem('scrip:audio:source','local');}catch{}setAudioSettingsOpen(true);setReadMobileSheet('settings');}}
-                      style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>
+                      style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>
                       Go to Settings
                     </button>
                     <button type="button" onClick={()=>{if(kjvPromptNoShow)localStorage.setItem('scrip:audio:kjvPromptDismissed','true');setShowKjvAudioPrompt(false);const sv=readSelVerses.size>0?Math.min(...readSelVerses):(readVerses[0]?.verse||1);doStartSpeech(sv);}}
-                      style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',fontWeight:600,padding:'10px 0',cursor:'pointer'}}>
+                      style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',fontWeight:600,padding:'10px 0',cursor:'pointer'}}>
                       Play Anyway
                     </button>
                   </div>
@@ -7985,15 +7985,15 @@ function App(){
               // the thin red edge. They do the same job in the same app and were
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
-                style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
+                style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,minHeight:30,paddingRight:44}},
                   React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
                     (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
                     // The number is the heading of this panel — it was set smaller than
                     // the body text beneath it while the close button outweighed it.
-                    React.createElement('span',{style:{fontFamily:FS,fontSize:19,letterSpacing:'0.1em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
-                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:13,color:T.dim,background:T.bgCH,borderRadius:11,padding:'3px 9px'}},`×${totalCount}`)
+                    React.createElement('span',{style:{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.1em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
+                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,background:T.bgCH,borderRadius:11,padding:'3px 9px'}},`×${totalCount}`)
                   )
                 ),
                 strongsPopup.entry?(
@@ -8004,8 +8004,8 @@ function App(){
                     React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}},strongsPopup.entry.short_def),
                     strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
                     groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4,marginBottom:20}},
-                      React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.gM,marginBottom:4}},'KJV USAGE'),
-                      React.createElement('div',{style:{fontFamily:FS,fontSize:10,letterSpacing:'0.08em',color:T.dim,marginBottom:8}},`Total KJV Occurrences (×${totalCount})`),
+                      React.createElement('div',{style:{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.gM,marginBottom:4}},'KJV USAGE'),
+                      React.createElement('div',{style:{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',color:T.dim,marginBottom:8}},`Total KJV Occurrences (×${totalCount})`),
                       groupList.map(([key,{word,refs}])=>{
                         const isExpanded=strongsExpandedWords.has(key);
                         const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
@@ -8027,11 +8027,11 @@ function App(){
                         );
                       })
                     ),
-                    groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8}},'Loading verses…'),
-                    groupList.length===0&&!strongsPopup.versesLoading&&strongsPopup.versesOffline&&React.createElement('div',{style:{fontFamily:FB,fontSize:13,color:T.dim,paddingTop:8,lineHeight:1.5}},'KJV occurrences need a connection. The definition above is saved on your device.'),
+                    groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}},'Loading verses…'),
+                    groupList.length===0&&!strongsPopup.versesLoading&&strongsPopup.versesOffline&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8,lineHeight:1.5}},'KJV occurrences need a connection. The definition above is saved on your device.'),
                     React.createElement('div',{style:{textAlign:'center',paddingTop:24,paddingBottom:8,borderTop:`1px solid ${T.bd}`,marginTop:16}},
-                      React.createElement('div',{style:{fontSize:24,color:T.gM,marginBottom:6}},'·'),
-                      React.createElement('div',{style:{fontFamily:FB,fontSize:11,color:T.dim,letterSpacing:'0.06em'}},'End of entry')
+                      React.createElement('div',{style:{fontSize:UH(24),color:T.gM,marginBottom:6}},'·'),
+                      React.createElement('div',{style:{fontFamily:FB,fontSize:U(11),color:T.dim,letterSpacing:'0.06em'}},'End of entry')
                     )
                   )
                 ):(
@@ -8051,11 +8051,11 @@ function App(){
                     thing on screen when it is what identifies the verse. */}
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
                   <SheetBackBtn onClick={()=>setStrongsVersePreview(null)} T={T}/>
-                  <span style={{fontFamily:FS,fontSize:15,letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
+                  <span style={{fontFamily:FS,fontSize:U(15),letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
                   <span style={{width:27,flexShrink:0}}/>
                 </div>
                 {strongsVersePreview.loading
-                  ?<div style={{color:T.dim,fontFamily:FB,fontSize:13,textAlign:'center',padding:'12px 0'}}>Loading…</div>
+                  ?<div style={{color:T.dim,fontFamily:FB,fontSize:U(13),textAlign:'center',padding:'12px 0'}}>Loading…</div>
                   :<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
                     <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}}>{strongsVersePreview.vs}</sup>
                     <span dangerouslySetInnerHTML={{__html:processRedLetter(strongsVersePreview.text,readRedLetter,dark)}}/>
@@ -8063,7 +8063,7 @@ function App(){
                 }
                 <button type="button"
                   onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}}
-                  style={{width:'100%',marginTop:18,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:12,letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
+                  style={{width:'100%',marginTop:18,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
                   Go to passage
                 </button>
               </div>
@@ -8074,27 +8074,27 @@ function App(){
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
             <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
-                ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
+                ?<span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
-                  ?<span style={{fontFamily:FS,fontSize:13,letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
+                  ?<span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:11,color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:U(11),color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
-                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:12,textAlign:'center'}}>Sign in to bookmark</span>}
+                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(12),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:11,letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
-                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:13,fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
+                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
                     {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
                     <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
