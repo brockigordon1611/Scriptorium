@@ -437,7 +437,25 @@ export const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 export function normRef(raw){if(!raw)return raw;const m=raw.trim().match(/^([\d]*\s*[a-zA-Z]+\.?)\s+(\d+.*)/);if(!m)return raw.trim();let book=m[1].replace(/\./g,'').trim();const key=book.toLowerCase().replace(/\s+/g,'');if(ABBREVS[key])book=ABBREVS[key];else book=book.charAt(0).toUpperCase()+book.slice(1);return book+' '+m[2];}
 export function parseRef(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(.+)$/);return m?{book:m[1].trim(),chapter:m[2],verse:m[3].trim()}:null;}
 export function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(\d+)/);if(!m)return null;const b=BIBLE.find(x=>x.name.toLowerCase()===m[1].trim().toLowerCase());return b?{bookNum:b.n,chapter:parseInt(m[2]),verse:parseInt(m[3])}:null;}
-export function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];let out=esc(plain);words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(`(${bounded})`,cs?'g':'gi');out=out.replace(rx,'<mark class="sch">$1</mark>');});return out;}
+export function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];
+  // Every term is matched against the bare verse, and the marks are only built
+  // at the end. This used to run the terms one after another over its own
+  // output, so the second term could match inside the markup the first had just
+  // inserted: with partial matching on, "a" hits the a in class="sch", splits
+  // the tag down the middle, and the browser renders the wreckage as words.
+  // That is where ark class="sch">Trainark> on screen came from.
+  const hits=[];
+  words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(bounded,cs?'g':'gi');let m;while((m=rx.exec(plain))!==null){if(!m[0]){rx.lastIndex++;continue;}hits.push([m.index,m.index+m[0].length]);}});
+  if(!hits.length)return esc(plain);
+  // Overlaps merge into one mark rather than nesting — "the" and "he" both match
+  // the same three letters, and two opening tags inside one another was the
+  // other way this produced tags on screen.
+  hits.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const merged=[];
+  for(const h of hits){const last=merged[merged.length-1];if(last&&h[0]<=last[1])last[1]=Math.max(last[1],h[1]);else merged.push([h[0],h[1]]);}
+  let out='',i=0;
+  for(const[s,e]of merged){out+=esc(plain.slice(i,s))+'<mark class="sch">'+esc(plain.slice(s,e))+'</mark>';i=e;}
+  return out+esc(plain.slice(i));}
 export function processRedLetter(text,enabled,isDark){if(!text)return'';if(enabled){const c=isDark?'#ef5350':'#c62828';return text.replace(/<red>/g,`<span style="color:${c}">`).replace(/<\/red>/g,'</span>');}return text.replace(/<red>|<\/red>/g,'');}
 
 export function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
