@@ -1976,17 +1976,17 @@ async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getT
 // ══════════════════════════════════════════════════════════
 //  UI ATOMS
 // ══════════════════════════════════════════════════════════
-function Lbl({c,req,T}){return <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:500}}>{c}{req&&<span style={{color:'#d46868',marginLeft:4}}>*</span>}</div>;}
-function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}><div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:8,lineHeight:1}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/></div>);}
+function Lbl({c,req,T}){return <div style={{fontFamily:FS,fontSize:U(11),letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:500}}>{c}{req&&<span style={{color:'#d46868',marginLeft:4}}>*</span>}</div>;}
+function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}><div style={{flex:1,height:1,background:T.accentLine}}/><span style={{color:T.gD,fontSize:UL(8),lineHeight:1}}>✦</span><div style={{flex:1,height:1,background:T.accentLine}}/></div>);}
 function Inp({val,set,ph,T,type}){return <input className="s-btn" type={type||'text'} value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',outline:'none'}}/>;}
 function Sel({val,set,children,T,sm,dis}){return <select className="s-btn" value={val} onChange={e=>set(e.target.value)} disabled={dis} style={{width:sm?'auto':'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:val?T.mut:T.dim,fontFamily:FB,fontSize:sm?14:16,padding:sm?'5px 10px':'9px 13px',cursor:'pointer',opacity:dis?.4:1,outline:'none'}}>{children}</select>;}
 function TA({val,set,ph,T,rows}){return <textarea className="s-btn" value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} rows={rows||3} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',resize:'vertical',lineHeight:1.7,outline:'none'}}/>;}
-function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
-function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
-function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s-btn${danger?' s-danger':' s-ghost'}`} onClick={onClick} title={title} disabled={disabled} style={{background:danger?T.red:'transparent',border:`1px solid ${danger?T.redTxt+'33':T.bd+'40'}`,borderRadius:5,color:danger?T.redTxt:T.dim,padding:'4px 9px',fontSize:13,fontFamily:FB,lineHeight:1,fontWeight:500,opacity:disabled?.3:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
+function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
+function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
+function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s-btn${danger?' s-danger':' s-ghost'}`} onClick={onClick} title={title} disabled={disabled} style={{background:danger?T.red:'transparent',border:`1px solid ${danger?T.redTxt+'33':T.bd+'40'}`,borderRadius:5,color:danger?T.redTxt:T.dim,padding:'4px 9px',fontSize:U(13),fontFamily:FB,lineHeight:1,fontWeight:500,opacity:disabled?.3:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
 function PBtn({ch,onClick,T,sm,danger,disabled}){const bg=danger?T.red:T.gF;const bc=danger?T.redTxt+'55':T.gD;const tc=danger?T.redTxt:T.gT;return <button className="s-btn" onClick={onClick} disabled={disabled} style={{background:bg,border:`1px solid ${bc}`,borderRadius:6,color:tc,fontFamily:FS,fontSize:sm?9:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:sm?'6px 13px':'8px 18px',whiteSpace:'nowrap',fontWeight:600,opacity:disabled?.45:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
-function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={onClick} style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:9.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'8px 18px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
-function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:8.5,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
+function SBtn({ch,onClick,T}){return <button className="s-btn s-ghost" onClick={onClick} style={{background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.1em',textTransform:'uppercase',padding:'8px 18px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
+function Badge({type,label,dark}){const bc=(dark?BD:BL)[type]||(dark?BD.other:BL.other);return <span style={{fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 9px',borderRadius:4,border:`1px solid ${bc.bd}`,background:bc.bg,color:bc.txt,whiteSpace:'nowrap',flexShrink:0,fontWeight:500}}>{label}</span>;}
 // Shared close / back control. Several of these were bare glyphs with little or no
 // padding — a ~18px target against Apple's 44pt minimum, and with border:none they
 // did not read as buttons. Fixed 40px box with a visible border fixes both.
@@ -2014,7 +2014,7 @@ function Caret({open,size=12}){
 function SheetBackBtn({onClick,T,title='Back'}){
   return (
     <button type="button" onClick={onClick} title={title} aria-label={title}
-      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:12,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
       ←
     </button>
   );
@@ -2233,7 +2233,7 @@ function TimePicker({value,onSet,onCancel,T}){
       <div style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,330px)',boxShadow:'0 32px 80px rgba(0,0,0,0.7)',overflow:'hidden'}}>
         <div style={{height:3,background:T.accentLine}}/>
         <div style={{padding:'16px 18px 18px'}}>
-          <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,textAlign:'center',marginBottom:10}}>Daily reminder</div>
+          <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.14em',textTransform:'uppercase',color:T.gM,textAlign:'center',marginBottom:10}}>Daily reminder</div>
           <div style={{display:'flex',alignItems:'stretch',gap:4,marginBottom:16}}>
             <Wheel items={WHEEL_HOURS} value={h} onChange={setH} T={T}/>
             <Wheel items={WHEEL_MINUTES} value={m} onChange={setM} T={T} render={n=>String(n).padStart(2,'0')}/>
@@ -2241,9 +2241,9 @@ function TimePicker({value,onSet,onCancel,T}){
           </div>
           <div style={{display:'flex',gap:10}}>
             <button type="button" onClick={onCancel}
-              style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'11px 0',cursor:'pointer'}}>Cancel</button>
+              style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'11px 0',cursor:'pointer'}}>Cancel</button>
             <button type="button" onClick={()=>onSet(asValue())}
-              style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',fontWeight:600,padding:'11px 0',cursor:'pointer'}}>Set</button>
+              style={{flex:1,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',fontWeight:600,padding:'11px 0',cursor:'pointer'}}>Set</button>
           </div>
         </div>
       </div>
@@ -2284,7 +2284,7 @@ function BookWheel({books,value,lang,onJump,onClose,box,T}){
           the rule under it says so — but it reads the wheel's selection, so
           spinning changes it. Tapping it closes, the way tapping the label did. */}
       <div onClick={onClose} style={{height:ROW,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
-        fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',
+        fontFamily:FS,fontSize:U(11),fontWeight:600,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',
         overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
         {shortBook(bookName(BIBLE.find(x=>x.n===pick),lang))}
       </div>
@@ -2394,13 +2394,13 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
                 <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
               </div>
             )}
-            <span style={{fontFamily:FS,fontSize:22,fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
+            <span style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase'}}>{title}</span>
           </div>
         ):(
           <>
             <div style={{height:3,background:T.accentLine}}/>
             <div style={{background:T.bgCH,borderBottom:`1px solid ${T.bdA}`,padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-              <span style={{fontFamily:FS,fontSize:15,fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{title}</span>
+              <span style={{fontFamily:FS,fontSize:U(15),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{title}</span>
               <NavIconBtn ch="✕" onClick={onClose} T={T} title="Close"/>
             </div>
           </>
@@ -2428,8 +2428,8 @@ function ConfirmDialog({title,message,confirmLabel,cancelLabel,onConfirm,onCance
         {/* Scrolls rather than growing: a long message used to push the buttons
             off the bottom of the screen where they could not be reached. */}
         <div style={{padding:'22px 26px 16px',overflowY:'auto',flex:1,minHeight:0}}>
-          <div style={{fontFamily:FS,fontSize:14,fontWeight:600,letterSpacing:'0.06em',color:danger?'#f08080':T.gT,marginBottom:12}}>{title}</div>
-          <div style={{fontFamily:FB,fontSize:17,color:danger?'#c09090':T.mut,lineHeight:1.7}}>{message}</div>
+          <div style={{fontFamily:FS,fontSize:U(14),fontWeight:600,letterSpacing:'0.06em',color:danger?'#f08080':T.gT,marginBottom:12}}>{title}</div>
+          <div style={{fontFamily:FB,fontSize:UH(17),color:danger?'#c09090':T.mut,lineHeight:1.7}}>{message}</div>
           {children}
         </div>
         <div style={{display:'flex',justifyContent:'flex-end',gap:10,padding:'16px 26px',background:'rgba(0,0,0,0.2)',borderTop:`1px solid ${danger?'#4a1212':T.bdA}`,flexShrink:0}}>
@@ -2452,13 +2452,13 @@ function Legend({T,refLabel}){
   ];
   return(
     <div className="no-print" style={{display:'flex',alignItems:'center',padding:'7px 10px',background:T.bg2,borderBottom:`1px solid ${T.bd}`,overflowX:'auto',WebkitOverflowScrolling:'touch',flexShrink:0,scrollbarWidth:'none',msOverflowStyle:'none'}}>
-      <span style={{fontFamily:FS,fontSize:7,letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,marginRight:8,flexShrink:0}}>Key</span>
+      <span style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,marginRight:8,flexShrink:0}}>Key</span>
       <div style={{display:'flex',gap:5,alignItems:'center',minWidth:'max-content'}}>
         {items.map(({bg,txt,label,detail})=>(
           <div key={label} style={{display:'inline-flex',alignItems:'center',gap:4,background:bg,border:`1px solid ${txt}44`,borderRadius:20,padding:'4px 10px 4px 8px',flexShrink:0}}>
             <div style={{width:6,height:6,borderRadius:'50%',background:txt,flexShrink:0}}/>
-            <span style={{fontFamily:FS,fontSize:8.5,color:txt,fontWeight:600,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{label}</span>
-            {detail&&<span style={{fontFamily:FB,fontSize:9,color:txt+'aa',lineHeight:1,whiteSpace:'nowrap',fontStyle:'italic'}}>{detail}</span>}
+            <span style={{fontFamily:FS,fontSize:UL(8.5),color:txt,fontWeight:600,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{label}</span>
+            {detail&&<span style={{fontFamily:FB,fontSize:UL(9),color:txt+'aa',lineHeight:1,whiteSpace:'nowrap',fontStyle:'italic'}}>{detail}</span>}
           </div>
         ))}
       </div>
@@ -2468,7 +2468,7 @@ function Legend({T,refLabel}){
 
 function RefDD({bkN,setBkN,ch,setCh,vs,setVs,T,err}){
   const bk=BIBLE.find(b=>b.n===bkN)||null;const chC=bk?bk.v.length:0;const vsC=(bk&&ch)?bk.v[ch-1]||0:0;
-  const s=(a)=>({background:T.bgIn,border:`1px solid ${err?'#8a2020':T.bd}`,borderRadius:6,color:a?T.mut:T.dim,fontFamily:FB,fontSize:14,padding:'7px 8px',opacity:a?1:.5,outline:'none'});
+  const s=(a)=>({background:T.bgIn,border:`1px solid ${err?'#8a2020':T.bd}`,borderRadius:6,color:a?T.mut:T.dim,fontFamily:FB,fontSize:U(14),padding:'7px 8px',opacity:a?1:.5,outline:'none'});
   return(<div style={{display:'flex',gap:6}}>
     <select className="s-btn" value={bkN||''} onChange={e=>{setBkN(parseInt(e.target.value)||0);setCh(0);setVs(0);}} style={{...s(true),flex:1,minWidth:0}}><option value="">— Book —</option>{BIBLE.map(b=><option key={b.n} value={b.n}>{b.name}</option>)}</select>
     <select className="s-btn" value={ch||''} disabled={!bkN} onChange={e=>{setCh(parseInt(e.target.value)||0);setVs(0);}} style={{...s(!!bkN),width:62}}><option value="">Ch</option>{Array.from({length:chC},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}</select>
@@ -2503,16 +2503,16 @@ function RecoveryPanel({T,onDone}){
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:T.bg,padding:24}}>
       <style>{CSS}</style>
       <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
-        <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:T.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
-        <div style={{fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
+        <div style={{fontFamily:FS,fontSize:UH(26),fontWeight:700,color:T.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
+        <div style={{fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(14),lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
       <div className="modal-in fade-up stagger-1" style={{background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:14,width:'min(92vw,400px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:T.accentLine}}/>
         <div style={{padding:'28px 32px'}}>
-          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:6,textAlign:'center'}}>Set New Password</div>
-          <div style={{fontFamily:FB,fontSize:13,color:T.mut,textAlign:'center',marginBottom:22,lineHeight:1.6}}>Choose a new password for your account.</div>
-          {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:T.green,border:`1px solid ${T.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:T.greenTxt,lineHeight:1.6}}>{msg}</div>}
-          {err&&<div style={{marginBottom:16,padding:'10px 14px',background:T.red,border:`1px solid ${T.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:T.redTxt}}>{err}</div>}
+          <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.08em',marginBottom:6,textAlign:'center'}}>Set New Password</div>
+          <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,textAlign:'center',marginBottom:22,lineHeight:1.6}}>Choose a new password for your account.</div>
+          {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:T.green,border:`1px solid ${T.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:T.greenTxt,lineHeight:1.6}}>{msg}</div>}
+          {err&&<div style={{marginBottom:16,padding:'10px 14px',background:T.red,border:`1px solid ${T.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:T.redTxt}}>{err}</div>}
           {!msg&&<>
             <div style={{marginBottom:14}}>
               <Lbl c="New Password" T={T}/>
@@ -2527,7 +2527,7 @@ function RecoveryPanel({T,onDone}){
                 <input className="s-btn" type={showPw?'text':'password'} value={pw2} onChange={e=>setPw2(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doUpdate()} placeholder="••••••••" style={pwInputStyle}/>
               </div>
             </div>
-            <button type="button" onClick={doUpdate} disabled={busy} style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Update Password'}</button>
+            <button type="button" onClick={doUpdate} disabled={busy} style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',padding:'10px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Update Password'}</button>
           </>}
         </div>
       </div>
@@ -2603,19 +2603,19 @@ function AuthPanel({onAuth}){
       <style>{CSS}</style>
       <div className="fade-up" style={{textAlign:'center',marginBottom:32}}>
         {offlineVids&&offlineVids.length>0&&(
-          <div style={{fontFamily:FS,fontSize:11,letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{offlineVids.join(' / ')}</div>
+          <div style={{fontFamily:FS,fontSize:U(11),letterSpacing:'0.3em',textTransform:'uppercase',color:D.gD,marginBottom:10,fontWeight:500}}>{offlineVids.join(' / ')}</div>
         )}
-        <div style={{fontFamily:FS,fontSize:26,fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
-        <div style={{fontFamily:FB,fontStyle:'italic',color:D.gM,fontSize:14,lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
+        <div style={{fontFamily:FS,fontSize:UH(26),fontWeight:700,color:D.gT,letterSpacing:'0.08em',marginBottom:8}}>Scriptorium</div>
+        <div style={{fontFamily:FB,fontStyle:'italic',color:D.gM,fontSize:U(14),lineHeight:1.7}}>"The words of the LORD are pure words" — Psalm 12:6</div>
       </div>
 
       {/* Login card */}
       <div className="modal-in fade-up stagger-1" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:D.accentLine}}/>
         <div style={{padding:'22px 22px 20px'}}>
-          <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:18,textAlign:'center'}}>Sign In</div>
-          {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
-          {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
+          <div style={{fontFamily:FS,fontSize:U(16),fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:18,textAlign:'center'}}>Sign In</div>
+          {msg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.greenTxt,lineHeight:1.6}}>{msg}</div>}
+          {err&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.redTxt,wordBreak:'break-word'}}>{err}</div>}
           <div style={{marginBottom:12}}><Lbl c="Email" T={D}/><Inp val={email} set={setEmail} ph="you@example.com" T={D} type="email"/></div>
           <div style={{marginBottom:18}}>
             <Lbl c="Password" T={D}/>
@@ -2625,15 +2625,15 @@ function AuthPanel({onAuth}){
               <button type="button" onClick={()=>setShowPw(v=>!v)} style={eyeStyle} title={showPw?'Hide password':'Show password'} aria-label={showPw?'Hide password':'Show password'}><PwEye shown={showPw}/></button>
             </div>
           </div>
-          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'13px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
+          <button type="button" onClick={doSignIn} disabled={busy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:U(12),letterSpacing:'0.12em',textTransform:'uppercase',padding:'13px 0',fontWeight:600,cursor:busy?'default':'pointer',opacity:busy?.6:1}}>{busy?'…':'Sign In'}</button>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginTop:16}}>
-            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gT,fontFamily:FB,fontSize:13,fontWeight:600,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Create an account</button>
-            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FB,fontSize:13,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Forgot password?</button>
+            <button type="button" onClick={()=>setShowSignup(true)} style={{background:'none',border:'none',color:D.gT,fontFamily:FB,fontSize:U(13),fontWeight:600,cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Create an account</button>
+            <button type="button" onClick={()=>{setShowForgot(true);setForgotEmail(email);}} style={{background:'none',border:'none',color:D.dim,fontFamily:FB,fontSize:U(13),cursor:'pointer',padding:'2px 0',textDecoration:'underline',textUnderlineOffset:3,whiteSpace:'nowrap'}}>Forgot password?</button>
           </div>
         </div>
       </div>
       <div style={{marginTop:16,textAlign:'center'}}>
-        <button type="button" onClick={()=>setShowGuestWarning(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:13,letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Continue without an account</button>
+        <button type="button" onClick={()=>setShowGuestWarning(true)} style={{background:'none',border:'none',color:D.dim,fontFamily:FS,fontSize:U(13),letterSpacing:'0.08em',cursor:'pointer',fontWeight:400,textDecoration:'underline',padding:0}}>Continue without an account</button>
       </div>
 
       {/* Guest warning modal */}
@@ -2642,16 +2642,16 @@ function AuthPanel({onAuth}){
           <div className="modal-in" style={{background:D.bgCard,border:`1px solid ${D.bdA}`,borderRadius:14,width:'min(92vw,480px)',overflow:'hidden',boxShadow:'0 32px 80px rgba(0,0,0,0.8)'}}>
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
-              <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:16,textAlign:'center'}}>Guest Mode</div>
-              <div style={{fontFamily:FB,fontSize:14,color:D.mut,lineHeight:1.7,marginBottom:16}}>You can browse and read without an account, but:</div>
-              <ul style={{fontFamily:FB,fontSize:13,color:D.dim,lineHeight:1.9,margin:'0 0 20px 18px',padding:0}}>
+              <div style={{fontFamily:FS,fontSize:U(16),fontWeight:600,color:D.gT,letterSpacing:'0.08em',marginBottom:16,textAlign:'center'}}>Guest Mode</div>
+              <div style={{fontFamily:FB,fontSize:U(14),color:D.mut,lineHeight:1.7,marginBottom:16}}>You can browse and read without an account, but:</div>
+              <ul style={{fontFamily:FB,fontSize:U(13),color:D.dim,lineHeight:1.9,margin:'0 0 20px 18px',padding:0}}>
                 <li>No data saved between sessions</li>
                 <li>No study entries or bookmarks</li>
                 <li>No sync across devices</li>
                 <li>No personal Bible versions</li>
               </ul>
-              <button type="button" onClick={()=>{setShowGuestWarning(false);onAuth({id:'guest',email:'',guest:true});}} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:'pointer',marginBottom:10}}>Continue as Guest</button>
-              <button type="button" onClick={()=>setShowGuestWarning(false)} style={{width:'100%',background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>
+              <button type="button" onClick={()=>{setShowGuestWarning(false);onAuth({id:'guest',email:'',guest:true});}} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:U(12),letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:'pointer',marginBottom:10}}>Continue as Guest</button>
+              <button type="button" onClick={()=>setShowGuestWarning(false)} style={{width:'100%',background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>
             </div>
           </div>
         </div>
@@ -2664,11 +2664,11 @@ function AuthPanel({onAuth}){
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:22}}>
-                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
+                <div style={{fontFamily:FS,fontSize:U(16),fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Create Account</div>
                 <NavIconBtn ch="✕" onClick={closeSignup} T={D} title="Close"/>
               </div>
-              {suMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{suMsg}</div>}
-              {suErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt,wordBreak:'break-word'}}>{suErr}</div>}
+              {suMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.greenTxt,lineHeight:1.6}}>{suMsg}</div>}
+              {suErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.redTxt,wordBreak:'break-word'}}>{suErr}</div>}
               <div style={{marginBottom:14}}><Lbl c="Email" T={D}/><Inp val={suEmail} set={setSuEmail} ph="you@example.com" T={D} type="email"/></div>
               <div style={{marginBottom:22}}>
                 <Lbl c="Password" T={D}/>
@@ -2678,9 +2678,9 @@ function AuthPanel({onAuth}){
                   <button type="button" onClick={()=>setShowSuPw(v=>!v)} style={eyeStyle} title={showSuPw?'Hide password':'Show password'} aria-label={showSuPw?'Hide password':'Show password'}><PwEye shown={showSuPw}/></button>
                 </div>
               </div>
-              <button type="button" onClick={doSignUp} disabled={suBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:suBusy?'default':'pointer',opacity:suBusy?.6:1}}>{suBusy?'…':'Create Account'}</button>
+              <button type="button" onClick={doSignUp} disabled={suBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:U(12),letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:suBusy?'default':'pointer',opacity:suBusy?.6:1}}>{suBusy?'…':'Create Account'}</button>
               <div style={{textAlign:'center',marginTop:14}}>
-                <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline'}}>Already have an account? Sign in</button>
+                <button type="button" onClick={closeSignup} style={{background:'none',border:'none',color:D.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',cursor:'pointer',fontWeight:500,textDecoration:'underline'}}>Already have an account? Sign in</button>
               </div>
             </div>
           </div>
@@ -2694,17 +2694,17 @@ function AuthPanel({onAuth}){
             <div style={{height:3,background:D.accentLine}}/>
             <div style={{padding:'28px 32px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                <div style={{fontFamily:FS,fontSize:16,fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Reset Password</div>
+                <div style={{fontFamily:FS,fontSize:U(16),fontWeight:600,color:D.gT,letterSpacing:'0.08em'}}>Reset Password</div>
                 <NavIconBtn ch="✕" onClick={closeForgot} T={D} title="Close"/>
               </div>
-              <div style={{fontFamily:FB,fontSize:13,color:D.mut,marginBottom:20,lineHeight:1.6}}>Enter your email and we'll send you a link to reset your password.</div>
-              {forgotMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.greenTxt,lineHeight:1.6}}>{forgotMsg}</div>}
-              {forgotErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:14,color:D.redTxt}}>{forgotErr}</div>}
+              <div style={{fontFamily:FB,fontSize:U(13),color:D.mut,marginBottom:20,lineHeight:1.6}}>Enter your email and we'll send you a link to reset your password.</div>
+              {forgotMsg&&<div style={{marginBottom:16,padding:'10px 14px',background:D.green,border:`1px solid ${D.greenTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.greenTxt,lineHeight:1.6}}>{forgotMsg}</div>}
+              {forgotErr&&<div style={{marginBottom:16,padding:'10px 14px',background:D.red,border:`1px solid ${D.redTxt}40`,borderRadius:6,fontFamily:FB,fontSize:U(14),color:D.redTxt}}>{forgotErr}</div>}
               {!forgotMsg&&<>
                 <div style={{marginBottom:20}}><Lbl c="Email" T={D}/><Inp val={forgotEmail} set={setForgotEmail} ph="you@example.com" T={D} type="email"/></div>
-                <button type="button" onClick={doForgotPassword} disabled={forgotBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:12,letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:forgotBusy?'default':'pointer',opacity:forgotBusy?.6:1}}>{forgotBusy?'…':'Send Reset Link'}</button>
+                <button type="button" onClick={doForgotPassword} disabled={forgotBusy} style={{width:'100%',background:D.gF,border:`1px solid ${D.gD}`,borderRadius:6,color:D.gT,fontFamily:FS,fontSize:U(12),letterSpacing:'0.12em',textTransform:'uppercase',padding:'11px 0',fontWeight:600,cursor:forgotBusy?'default':'pointer',opacity:forgotBusy?.6:1}}>{forgotBusy?'…':'Send Reset Link'}</button>
               </>}
-              {forgotMsg&&<button type="button" onClick={closeForgot} style={{width:'100%',marginTop:4,background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:12,letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>}
+              {forgotMsg&&<button type="button" onClick={closeForgot} style={{width:'100%',marginTop:4,background:'none',border:`1px solid ${D.bd}`,borderRadius:6,color:D.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',padding:'10px 0',cursor:'pointer'}}>Back to Sign In</button>}
             </div>
           </div>
         </div>
@@ -2741,17 +2741,17 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
     <div style={{padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
       <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
-            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:11}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span>
+          <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
+            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span>
           </div>
-          {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:13,color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
+          {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
           {editNote&&(
             <div style={{marginTop:6}}>
               <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
-                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:13,padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(13),padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
               <div style={{display:'flex',gap:6,marginTop:4}}>
-                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
-                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
               </div>
             </div>
           )}
@@ -2759,12 +2759,12 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           {showCatPicker&&categories.length>0&&(
             <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
               <button onClick={()=>moveCat(null)}
-                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:UL(9),padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
                 None
               </button>
               {categories.map(c=>(
                 <button key={c.id} onClick={()=>moveCat(c.id)}
-                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:9,padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
                   {c.name}
                 </button>
               ))}
@@ -2772,10 +2772,10 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           )}
         </div>
         <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
-          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
+          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
           {user&&<>
             <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
-              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:11,padding:'4px 7px',cursor:'pointer',lineHeight:1}}>✎</button>
+              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'4px 7px',cursor:'pointer',lineHeight:1}}>✎</button>
             <IBtn T={T} ch="✕" danger onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"/>
           </>}
         </div>
@@ -2809,11 +2809,11 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0 6px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
         <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
-        <span style={{fontFamily:FS,fontSize:12,fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
-        <span style={{fontFamily:FS,fontSize:10,color:T.dim,marginRight:4}}>{bookmarks.length}</span>
+        <span style={{fontFamily:FS,fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
+        <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
           <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
-            style={{background:'none',border:'none',color:T.dim,fontSize:11,cursor:'pointer',padding:'0 3px',lineHeight:1}}>✎</button>
+            style={{background:'none',border:'none',color:T.dim,fontSize:U(11),cursor:'pointer',padding:'0 3px',lineHeight:1}}>✎</button>
           <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
             style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'0 3px',lineHeight:1,display:'flex',alignItems:'center'}}>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -2827,7 +2827,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
       {renaming&&(
         <div style={{marginBottom:8,padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
           <input value={nameVal} onChange={e=>setNameVal(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&saveRename()}
-            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'6px 8px',outline:'none',marginBottom:8}}/>
+            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:U(13),padding:'6px 8px',outline:'none',marginBottom:8}}/>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
               {CAT_COLORS.map((c,i)=>(
@@ -2835,14 +2835,14 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
                   style={{width:18,height:18,borderRadius:'50%',background:c,border:`2px solid ${i===colorIdx?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
               ))}
             </div>
-            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
+            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
           </div>
         </div>
       )}
       {open&&<div style={{paddingLeft:18}}>
         {bookmarks.length===0
-          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:13,padding:'6px 0 10px'}}>Empty category</div>
+          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(13),padding:'6px 0 10px'}}>Empty category</div>
           :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} T={T} versions={versions} onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate} categories={categories} user={user} showCatPicker={showCatPicker}/>)
         }
       </div>}
@@ -2880,8 +2880,8 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
-          <div style={{fontFamily:FS,fontSize:11,fontWeight:600,letterSpacing:'0.08em',color:T.gT,marginBottom:4}}>SIGN IN REQUIRED</div>
-          <div style={{fontFamily:FB,fontSize:13,color:T.mut,lineHeight:1.6}}>Bookmarks are saved to your account. Sign in to save and view bookmarks.</div>
+          <div style={{fontFamily:FS,fontSize:U(11),fontWeight:600,letterSpacing:'0.08em',color:T.gT,marginBottom:4}}>SIGN IN REQUIRED</div>
+          <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.6}}>Bookmarks are saved to your account. Sign in to save and view bookmarks.</div>
         </div>
       </div>}
 
@@ -2892,7 +2892,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
             <div style={{padding:'10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,marginBottom:8}}>
               <input value={newCatName} onChange={e=>setNewCatName(e.target.value)} autoFocus placeholder="Category name…"
                 onKeyDown={e=>e.key==='Enter'&&createCat()}
-                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:13,padding:'7px 8px',outline:'none',marginBottom:8}}/>
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:U(13),padding:'7px 8px',outline:'none',marginBottom:8}}/>
               <div style={{display:'flex',alignItems:'center',gap:6}}>
                 <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
                   {CAT_COLORS.map((c,i)=>(
@@ -2900,13 +2900,13 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
                       style={{width:20,height:20,borderRadius:'50%',background:c,border:`2px solid ${i===newCatColor?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
                   ))}
                 </div>
-                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
+                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
               </div>
             </div>
           ):(
             <button onClick={()=>setAddingCat(true)}
-              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
+              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
               + New Category
             </button>
           )}
@@ -2915,22 +2915,22 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
             <>
               <div style={{display:'flex',gap:8,marginBottom:6}}>
                 <button onClick={()=>setViewAll(v=>!v)}
-                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
                   {viewAll?'By Category':'View All'}
                 </button>
                 <button onClick={()=>setAssigningCats(v=>!v)}
-                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
                   {assigningCats?'Done Assigning':'Assign Categories'}
                 </button>
               </div>
               {!viewAll&&(
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={11}/> Expand All</span>
                   </button>
                   <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:10,letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
                     ▸ Collapse All
                   </button>
                 </div>
@@ -2940,7 +2940,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
         </div>
       )}
 
-      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>{user?'No bookmarks yet. In Reading Mode, tap any verse to bookmark it.':'No bookmarks. Sign in to save passages.'}</div>}
+      {bookmarks.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>{user?'No bookmarks yet. In Reading Mode, tap any verse to bookmark it.':'No bookmarks. Sign in to save passages.'}</div>}
 
       {/* Flat list */}
       {viewAll&&hasCats?(
@@ -2955,7 +2955,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
           ))}
           {uncategorized.length>0&&(
             <div style={{marginTop:hasCats?8:0}}>
-              {hasCats&&<div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
+              {hasCats&&<div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
               {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
             </div>
           )}
@@ -2968,17 +2968,17 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
 function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
   return(
     <Modal title="↺ Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
-      {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
+      {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
         return(
           <div key={r.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
             <div style={{flex:1}}>
-              <span style={{fontFamily:FS,fontSize:13,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bk?.name} {r.chapter}</span>
-              <span style={{fontFamily:FB,fontSize:13,color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
+              <span style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bk?.name} {r.chapter}</span>
+              <span style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
             </div>
-            <div style={{fontFamily:FB,fontSize:12,color:T.dim}}>{fmtDate(r.visited_at)}</div>
-            <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
+            <div style={{fontFamily:FB,fontSize:U(12),color:T.dim}}>{fmtDate(r.visited_at)}</div>
+            <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
           </div>
         );
       })}
@@ -3036,12 +3036,12 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
     finally{setImporting(null);}
   }
 
-  const inputStyle={width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:14,padding:'9px 11px',outline:'none',marginBottom:8};
+  const inputStyle={width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 11px',outline:'none',marginBottom:8};
 
   return(
     <Modal title="Bible Versions" onClose={onClose} onBack={onBack} wide T={T} topSheet={navH} isClosing={isClosing} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
       {/* Current versions */}
-      {vers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:15,color:T.dim}}>No versions added yet.</div>}
+      {vers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:U(15),color:T.dim}}>No versions added yet.</div>}
       {vers.map((v,i)=>{
         const dl=dlStates[v.id]||{};
         const isBuiltin=PUBLIC_VERSIONS.some(pv=>pv.id===v.id);
@@ -3051,51 +3051,51 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
           <div key={v.id} style={{padding:'11px 0',borderBottom:`1px solid ${T.bd}`}}>
             <div style={{display:'flex',alignItems:'center',gap:12}}>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:16,color:T.body,fontWeight:500}}>{v.label}</div>
-                <div style={{fontFamily:FS,fontSize:8.5,color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
+                <div style={{fontFamily:FB,fontSize:U(16),color:T.body,fontWeight:500}}>{v.label}</div>
+                <div style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,marginTop:2,letterSpacing:'0.08em'}}>{isBuiltin?v.id:v.label.toLowerCase()} · {v.lang}{i===0?' · default':''}</div>
               </div>
               {/* Built-in offline controls */}
               {isBuiltin&&onDownload&&(
-                dl.downloading?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
-                :dl.downloaded?<button onClick={()=>onDeleteLocal(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
-                :<button onClick={()=>onDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
+                dl.downloading?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{dl.total>0?`${Math.round((dl.progress/dl.total)*100)}%`:'…'}</span>
+                :dl.downloaded?<button onClick={()=>onDeleteLocal(v.id)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:'#62c484',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>✓ Offline</button>
+                :<button onClick={()=>onDownload(v.id)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>↓ Offline</button>
               )}
               {/* User-imported device status */}
               {!isBuiltin&&(
                 isReImporting
-                  ?<span style={{fontFamily:FS,fontSize:9,color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
-                  :avail===true?<span style={{fontFamily:FS,fontSize:9,color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
-                  :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:9,letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
+                  ?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
+                  :avail===true?<span style={{fontFamily:FS,fontSize:UL(9),color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
+                  :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
                     ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
                   </label>
-                  :<span style={{fontFamily:FS,fontSize:9,color:T.dim}}>…</span>
+                  :<span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>…</span>
               )}
-              <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:13,cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
+              <button onClick={()=>remove(v.id)} disabled={vers.length===1} style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,padding:'5px 11px',fontSize:U(13),cursor:vers.length===1?'default':'pointer',opacity:vers.length===1?0.4:1}}>✕</button>
             </div>
             {isBuiltin&&dl.downloading&&dl.total>0&&(
               <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
                 <div style={{height:'100%',width:`${Math.round((dl.progress/dl.total)*100)}%`,background:T.gT,borderRadius:1,transition:'width .2s'}}/>
               </div>
             )}
-            {dl.err&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:4}}>{dl.err}</div>}
+            {dl.err&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:4}}>{dl.err}</div>}
           </div>
         );
       })}
       {/* Add built-in versions */}
       {builtinAvail.length>0&&(
         <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-          <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
+          <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:10}}>BUILT-IN VERSIONS</div>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {builtinAvail.map(pv=>(
-              <button key={pv.id} onClick={()=>addBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:15,padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
+              <button key={pv.id} onClick={()=>addBuiltin(pv)} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FB,fontSize:U(15),padding:'8px 16px',cursor:'pointer'}}>＋ {pv.label}</button>
             ))}
           </div>
         </div>
       )}
       {/* Import your own Bible */}
       <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${T.bd}`}}>
-        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
-        <div style={{fontFamily:FB,fontSize:12,color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). The text stays on your device only — never uploaded.</div>
+        <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>IMPORT YOUR OWN BIBLE</div>
+        <div style={{fontFamily:FB,fontSize:U(12),color:T.dim,lineHeight:1.6,marginBottom:12}}>Import a Bible you legally own from e-Sword (.bblx) or MyBible (.SQLite3). The text stays on your device only — never uploaded.</div>
         <input value={importLabel} onChange={e=>setImportLabel(e.target.value)} placeholder="Label (e.g. RVR1960)" style={inputStyle}/>
         <select value={importLang} onChange={e=>setImportLang(e.target.value)} style={{...inputStyle,marginBottom:8}}>
           <option value="EN">English</option>
@@ -3109,28 +3109,28 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
           <option value="RU">Russian</option>
           <option value="OTHER">Other</option>
         </select>
-        <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:13,color:importFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+        <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:U(13),color:importFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
           {importFile?importFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
           <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
         </label>
         {importing==='new'?(
-          <div style={{fontFamily:FB,fontSize:13,color:T.gM,padding:'8px 0'}}>
+          <div style={{fontFamily:FB,fontSize:U(13),color:T.gM,padding:'8px 0'}}>
             Importing…{importProg[1]>0?` ${Math.round((importProg[0]/importProg[1])*100)}%`:''}
             <div style={{marginTop:6,height:2,background:T.bd,borderRadius:1,overflow:'hidden'}}>
               <div style={{height:'100%',width:importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'0%',background:T.gT,borderRadius:1,transition:'width .3s'}}/>
             </div>
           </div>
         ):(
-          <button onClick={doImport} disabled={!importFile||!importLabel.trim()} style={{width:'100%',background:(!importFile||!importLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!importFile||!importLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!importFile||!importLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:10,letterSpacing:'0.1em',padding:'10px 0',cursor:(!importFile||!importLabel.trim())?'default':'pointer',fontWeight:600,transition:'all .15s'}}>
+          <button onClick={doImport} disabled={!importFile||!importLabel.trim()} style={{width:'100%',background:(!importFile||!importLabel.trim())?T.bgIn:T.gF,border:`1px solid ${(!importFile||!importLabel.trim())?T.bd:T.gD}`,borderRadius:6,color:(!importFile||!importLabel.trim())?T.dim:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'10px 0',cursor:(!importFile||!importLabel.trim())?'default':'pointer',fontWeight:600,transition:'all .15s'}}>
             IMPORT
           </button>
         )}
-        {importErr&&<div style={{fontFamily:FB,fontSize:12,color:T.redTxt,marginTop:6}}>{importErr}</div>}
+        {importErr&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:6}}>{importErr}</div>}
       </div>
       {/* Request a new version */}
       <div style={{marginTop:20,paddingTop:16}}>
-        <div style={{fontFamily:FS,fontSize:8,color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
-        <div style={{fontFamily:FB,fontSize:13,color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
+        <div style={{fontFamily:FS,fontSize:UL(8),color:T.gM,letterSpacing:'0.14em',marginBottom:8}}>REQUEST A VERSION</div>
+        <div style={{fontFamily:FB,fontSize:U(13),color:T.dim,lineHeight:1.7}}>To request a new Bible version or translation to be added to Scriptorium, please contact the app creator.</div>
       </div>
     </Modal>
   );
@@ -3154,10 +3154,10 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
       style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:12,overflow:'hidden',boxShadow:`0 2px 8px rgba(0,0,0,${dark?.3:.06})`,animationDelay:`${delay}s`}}>
       <div style={{height:2,background:`linear-gradient(90deg, ${typeColor.bd}, ${typeColor.bd}60, transparent)`}}/>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'11px 18px',borderBottom:`1px solid ${T.bd}`}}>
-        <span dangerouslySetInnerHTML={{__html:hl(displayRef,q)}} style={{fontFamily:FS,fontSize:14.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}/>
+        <span dangerouslySetInnerHTML={{__html:hl(displayRef,q)}} style={{fontFamily:FS,fontSize:U(14.5),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}/>
         {entry.issueLabel&&<Badge type={entry.issueType} label={entry.issueLabel} dark={dark}/>}
         <div style={{marginLeft:'auto',display:'flex',gap:5}}>
-          {parsed&&onRead&&<button className="s-btn s-ghost" onClick={()=>onRead(parsed)} title="Read this chapter" style={{background:'none',border:`1px solid ${T.bd+'40'}`,borderRadius:5,color:T.dim,padding:'3px 8px',fontSize:12,fontFamily:FB}}>▤</button>}
+          {parsed&&onRead&&<button className="s-btn s-ghost" onClick={()=>onRead(parsed)} title="Read this chapter" style={{background:'none',border:`1px solid ${T.bd+'40'}`,borderRadius:5,color:T.dim,padding:'3px 8px',fontSize:U(12),fontFamily:FB}}>▤</button>}
           <IBtn T={T} ch="✎" onClick={()=>onEdit(entry.id)} title="Edit"/>
           <IBtn T={T} ch="⧉" onClick={()=>onDup(entry.id)} title="Duplicate"/>
           <IBtn T={T} ch="✕" onClick={()=>onDel(entry.id)} danger title="Delete"/>
@@ -3169,8 +3169,8 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
             const vd=entry.versions?.[v.id];if(!vd?.text)return null;
             const st=stSt(vd.status,T);
             return(<tr key={v.id} className="text-reveal" style={{background:st.bg,borderTop:vi>0?`1px solid ${T.bd}`:'none',animationDelay:`${vi*0.05}s`}}>
-              <td style={{padding:'9px 16px',whiteSpace:'nowrap',fontFamily:FS,fontSize:10,letterSpacing:'0.1em',textTransform:'uppercase',color:st.txt,width:66,verticalAlign:'top',fontWeight:600}}>{v.label}</td>
-              <td style={{padding:'9px 4px',fontFamily:FS,fontSize:9,color:T.dim,width:26,verticalAlign:'top',paddingTop:11,fontWeight:500}}>{v.lang}</td>
+              <td style={{padding:'9px 16px',whiteSpace:'nowrap',fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',textTransform:'uppercase',color:st.txt,width:66,verticalAlign:'top',fontWeight:600}}>{v.label}</td>
+              <td style={{padding:'9px 4px',fontFamily:FS,fontSize:UL(9),color:T.dim,width:26,verticalAlign:'top',paddingTop:11,fontWeight:500}}>{v.lang}</td>
               <td style={{padding:'9px 16px 9px 6px',fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,lineHeight:readLineHeight,color:st.txt,verticalAlign:'top'}} dangerouslySetInnerHTML={{__html:hl(vd.text,q)}}/>
             </tr>);
           })}
@@ -3178,8 +3178,8 @@ function EntryCard({entry,versions,q,dark,T,onEdit,onDup,onDel,pulse,idx,onRead,
       </table>
       {!det&&prev&&<div className="text-reveal" style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',fontSize:readFontSize,color:T.dim,padding:'8px 18px',borderTop:`1px solid ${T.bd}`}} dangerouslySetInnerHTML={{__html:hl(prev,q)}}/>}
       {hasDet&&(<>
-        <div className="s-btn s-ghost" onClick={()=>setDet(!det)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 18px',fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:T.dim,borderTop:`1px solid ${T.bd}`,background:T.bgCH,userSelect:'none',fontWeight:500}}>
-          <span style={{display:'inline-block',transition:'transform .2s',transform:det?'rotate(90deg)':'none',fontSize:8}}>▸</span> Details
+        <div className="s-btn s-ghost" onClick={()=>setDet(!det)} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 18px',fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',textTransform:'uppercase',color:T.dim,borderTop:`1px solid ${T.bd}`,background:T.bgCH,userSelect:'none',fontWeight:500}}>
+          <span style={{display:'inline-block',transition:'transform .2s',transform:det?'rotate(90deg)':'none',fontSize:UL(8)}}>▸</span> Details
         </div>
         {det&&(<div className="slide-down" style={{padding:'14px 20px',borderTop:`1px solid ${T.bd}`}}>
           {entry.notes&&<><Lbl c="Notes / Analysis" T={T}/><div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight,marginBottom:14}} dangerouslySetInnerHTML={{__html:hl(entry.notes,q)}}/></>}
@@ -3210,11 +3210,11 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
     <div className="section-enter" style={{marginBottom:28,animationDelay:`${delay}s`}}>
       <div className="s-btn" onClick={()=>setCol(!col)}
         style={{display:'flex',alignItems:'center',gap:8,background:T.bgSec,border:`1px solid ${T.bdA}`,borderRadius:col?10:'10px 10px 0 0',padding:'13px 12px',userSelect:'none',transition:'border-radius .2s',flexWrap:'wrap'}}>
-        <span style={{color:T.gM,fontSize:9,display:'inline-block',transition:'transform .2s',transform:col?'rotate(-90deg)':'none'}}>▼</span>
-        <span style={{fontFamily:FS,fontSize:12.5,fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1,minWidth:60}}>{sec.title}</span>
-        <span style={{fontFamily:FS,fontSize:9.5,color:T.dim,letterSpacing:'0.1em',fontWeight:500}}>{entries.length} {entries.length===1?'entry':'entries'}</span>
+        <span style={{color:T.gM,fontSize:UL(9),display:'inline-block',transition:'transform .2s',transform:col?'rotate(-90deg)':'none'}}>▼</span>
+        <span style={{fontFamily:FS,fontSize:U(12.5),fontWeight:600,color:T.gT,letterSpacing:'0.04em',flex:1,minWidth:60}}>{sec.title}</span>
+        <span style={{fontFamily:FS,fontSize:UL(9.5),color:T.dim,letterSpacing:'0.1em',fontWeight:500}}>{entries.length} {entries.length===1?'entry':'entries'}</span>
         <div style={{display:'flex',gap:5}} onClick={e=>e.stopPropagation()}>
-          <select className="s-btn hide-mobile" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:8.5,letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
+          <select className="s-btn hide-mobile" value={sortBy} onChange={e=>{e.stopPropagation();setSortBy(e.target.value);}} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.06em',padding:'3px 6px',outline:'none',cursor:'pointer'}}>
             <option value="default">Sort: Default</option><option value="bible">Sort: Bible Order</option><option value="issue">Sort: Issue Type</option><option value="status">Sort: Status</option>
           </select>
           <IBtn T={T} ch="↑" onClick={onMoveUp} disabled={isFirst}/>
@@ -3225,7 +3225,7 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
       </div>
       {!col&&(<div className="slide-down" style={{border:`1px solid ${T.bdA}`,borderTop:'none',borderRadius:'0 0 10px 10px',background:T.bg,padding:14}}>
         {sec.description&&<div className="text-reveal" style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',color:T.mut,fontSize:readFontSize,padding:'8px 14px 14px',borderBottom:`1px solid ${T.bd}`,marginBottom:14,lineHeight:readLineHeight}}>{sec.description}</div>}
-        {entries.length===0&&<div style={{textAlign:'center',padding:'28px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:15}}>No entries yet. Add one above.</div>}
+        {entries.length===0&&<div style={{textAlign:'center',padding:'28px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No entries yet. Add one above.</div>}
         {sorted.map((e,i)=><EntryCard key={e.id} entry={e} versions={versions} q={q} dark={dark} T={T} onEdit={onEdit} onDup={onDup} onDel={onDel} pulse={pulseId===e.id} idx={i} onRead={onRead} readFontSize={readFontSize} readLineHeight={readLineHeight} readFontFamily={readFontFamily}/>)}
       </div>)}
     </div>
@@ -3281,7 +3281,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
         <div>
           <Lbl c="Reference" T={T} req/>
           <RefDD bkN={bkN} setBkN={setBkN} ch={ch} setCh={setCh} vs={vs} setVs={setVs} T={T} err={refErr}/>
-          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'Auto-fill verse text for all versions'}</button>
+          <button className="s-btn" onClick={doFill} disabled={!bkN||!ch||!vs||filling} style={{marginTop:8,background:T.bgSec,border:`1px dashed ${T.gD}`,color:T.gM,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'6px 13px',borderRadius:5,opacity:(!bkN||!ch||!vs||filling)?.45:1,fontWeight:500}}>{filling?<><Spinner/> Filling…</>:'Auto-fill verse text for all versions'}</button>
         </div>
         <div><Lbl c="Section" T={T} req/><Sel val={secId} set={setSecId} T={T}><option value="" disabled>— Select a section —</option>{sections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</Sel></div>
       </div>
@@ -3299,8 +3299,8 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
       {versions.map(v=>(
         <div key={v.id} style={{marginBottom:16,padding:'14px 16px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <span style={{fontFamily:FS,fontSize:10.5,fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>{v.label}</span>
-            <select className="s-btn" value={vSt[v.id]||'faithful'} onChange={e=>setVSt(s=>({...s,[v.id]:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FS,fontSize:9,letterSpacing:'0.06em',padding:'4px 8px',outline:'none'}}>
+            <span style={{fontFamily:FS,fontSize:U(10.5),fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>{v.label}</span>
+            <select className="s-btn" value={vSt[v.id]||'faithful'} onChange={e=>setVSt(s=>({...s,[v.id]:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:5,color:T.mut,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.06em',padding:'4px 8px',outline:'none'}}>
               {STATUS_VALUES.map(s=><option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </div>
@@ -3337,16 +3337,16 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
     <div className="no-print" style={{borderTop:`1px solid ${T.bdS}`}}>
       <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 8px 4px 10px'}}>
         <button type="button" onClick={()=>setOpen(!open)}
-          style={{display:'flex',alignItems:'center',gap:6,background:'transparent',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:6,color:active>0?T.gT:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',fontWeight:active>0?600:500,flexShrink:0}}>
-          <span style={{display:'inline-block',transition:'transform .2s',transform:open?'rotate(90deg)':'none',fontSize:8,lineHeight:1}}>▸</span>
+          style={{display:'flex',alignItems:'center',gap:6,background:'transparent',border:'none',cursor:'pointer',padding:'4px 6px',borderRadius:6,color:active>0?T.gT:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',fontWeight:active>0?600:500,flexShrink:0}}>
+          <span style={{display:'inline-block',transition:'transform .2s',transform:open?'rotate(90deg)':'none',fontSize:UL(8),lineHeight:1}}>▸</span>
           <span>Filters</span>
-          {active>0&&<span style={{background:T.gF,border:`1px solid ${T.gD}`,color:T.gT,fontSize:8,padding:'1px 6px',borderRadius:10,fontWeight:700,letterSpacing:'0.04em'}}>{active}</span>}
+          {active>0&&<span style={{background:T.gF,border:`1px solid ${T.gD}`,color:T.gT,fontSize:UL(8),padding:'1px 6px',borderRadius:10,fontWeight:700,letterSpacing:'0.04em'}}>{active}</span>}
         </button>
         {!open&&filters.statuses.length>0&&<div style={{display:'flex',gap:3,overflowX:'auto',scrollbarWidth:'none'}}>
           {filters.statuses.map(s=>{const m=statusMeta[s];return m?(
             <div key={s} style={{display:'inline-flex',alignItems:'center',gap:3,background:m.bg,border:`1px solid ${m.txt}44`,borderRadius:20,padding:'2px 7px',flexShrink:0}}>
               <div style={{width:5,height:5,borderRadius:'50%',background:m.txt}}/>
-              <span style={{fontFamily:FS,fontSize:7.5,color:m.txt,fontWeight:600,whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
+              <span style={{fontFamily:FS,fontSize:UL(7.5),color:m.txt,fontWeight:600,whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
             </div>
           ):null;})}
         </div>}
@@ -3354,7 +3354,7 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
           <div style={{display:'flex',alignItems:'center',gap:4,marginLeft:'auto',flexShrink:0}}>
             {versions.map(v=>{const hidden=hiddenVers.includes(v.id);return(
               <button key={v.id} type="button" onClick={()=>togVer(v.id)}
-                style={{background:hidden?'transparent':T.gF,border:`1px solid ${hidden?T.bd:T.gD}`,borderRadius:6,color:hidden?T.dim:T.gT,fontFamily:FS,fontSize:7,letterSpacing:'0.07em',padding:'3px 7px',fontWeight:hidden?400:600,opacity:hidden?.5:1,cursor:'pointer',transition:'all .15s',textDecoration:hidden?'line-through':'none'}}>
+                style={{background:hidden?'transparent':T.gF,border:`1px solid ${hidden?T.bd:T.gD}`,borderRadius:6,color:hidden?T.dim:T.gT,fontFamily:FS,fontSize:UL(7),letterSpacing:'0.07em',padding:'3px 7px',fontWeight:hidden?400:600,opacity:hidden?.5:1,cursor:'pointer',transition:'all .15s',textDecoration:hidden?'line-through':'none'}}>
               {v.label}
             </button>);})}
             {(onExpand||onCollapse)&&<>
@@ -3368,7 +3368,7 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
       {open&&(
         <div className="slide-down" style={{padding:'12px 12px 14px',background:T.bgSec,borderTop:`1px solid ${T.bdS}`,display:'flex',flexDirection:'column',gap:14}}>
           <div>
-            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Status</div>
+            <div style={{fontFamily:FS,fontSize:UL(7.5),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Status</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
               {['faithful','corrupt','diff','partial','missing'].map(s=>{
                 const m=statusMeta[s];const on=filters.statuses.includes(s);
@@ -3376,33 +3376,33 @@ function FilterBar({filters,setFilters,versions,T,hiddenVers,togVer,onExpand,onC
                   <button key={s} type="button" onClick={()=>togS(s)}
                     style={{display:'inline-flex',alignItems:'center',gap:5,background:on?m.bg:'transparent',border:`1px solid ${on?m.txt+'66':T.bd}`,borderRadius:20,padding:'5px 11px 5px 9px',cursor:'pointer',transition:'all .15s'}}>
                     <div style={{width:7,height:7,borderRadius:'50%',background:on?m.txt:T.bd,flexShrink:0,transition:'background .15s'}}/>
-                    <span style={{fontFamily:FS,fontSize:9,color:on?m.txt:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
+                    <span style={{fontFamily:FS,fontSize:UL(9),color:on?m.txt:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em',whiteSpace:'nowrap'}}>{STATUS_LABELS[s]}</span>
                   </button>
                 ):null;
               })}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Issue Type</div>
+            <div style={{fontFamily:FS,fontSize:UL(7.5),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Issue Type</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
               {ISSUE_TYPES.map(t=>{const on=filters.issueTypes.includes(t);return(
                 <button key={t} type="button" onClick={()=>togI(t)}
                   style={{background:on?T.gF:'transparent',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:20,padding:'5px 11px',cursor:'pointer',transition:'all .15s'}}>
-                  <span style={{fontFamily:FS,fontSize:9,color:on?T.gT:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em'}}>{ISSUE_LABELS[t]||t}</span>
+                  <span style={{fontFamily:FS,fontSize:UL(9),color:on?T.gT:T.dim,fontWeight:on?600:400,letterSpacing:'0.04em'}}>{ISSUE_LABELS[t]||t}</span>
                 </button>
               );})}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:FS,fontSize:7.5,letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Version Alignment</div>
+            <div style={{fontFamily:FS,fontSize:UL(7.5),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,marginBottom:7,fontWeight:600}}>Version Alignment</div>
             <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-              <select value={filters.vA} onChange={e=>setFilters(f=>({...f,vA:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'6px 10px',outline:'none',flex:1,minWidth:80}}><option value="">— any —</option>{versions.map(v=><option key={v.id} value={v.id}>{v.label}</option>)}</select>
-              <span style={{color:T.gM,fontFamily:FS,fontSize:13,fontWeight:600}}>≠</span>
-              <select value={filters.vB} onChange={e=>setFilters(f=>({...f,vB:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:13,padding:'6px 10px',outline:'none',flex:1,minWidth:80}}><option value="">— any —</option>{versions.map(v=><option key={v.id} value={v.id}>{v.label}</option>)}</select>
+              <select value={filters.vA} onChange={e=>setFilters(f=>({...f,vA:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 10px',outline:'none',flex:1,minWidth:80}}><option value="">— any —</option>{versions.map(v=><option key={v.id} value={v.id}>{v.label}</option>)}</select>
+              <span style={{color:T.gM,fontFamily:FS,fontSize:U(13),fontWeight:600}}>≠</span>
+              <select value={filters.vB} onChange={e=>setFilters(f=>({...f,vB:e.target.value}))} style={{background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:7,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 10px',outline:'none',flex:1,minWidth:80}}><option value="">— any —</option>{versions.map(v=><option key={v.id} value={v.id}>{v.label}</option>)}</select>
             </div>
           </div>
           {active>0&&<button type="button" onClick={()=>setFilters({issueTypes:[],statuses:[],vA:'',vB:''})}
-            style={{alignSelf:'flex-start',background:'transparent',border:`1px solid ${T.bd}`,color:T.dim,fontFamily:FS,fontSize:9,letterSpacing:'0.08em',padding:'5px 12px',borderRadius:20,cursor:'pointer',fontWeight:500}}>
+            style={{alignSelf:'flex-start',background:'transparent',border:`1px solid ${T.bd}`,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 12px',borderRadius:20,cursor:'pointer',fontWeight:500}}>
             ✕ Clear all filters
           </button>}
         </div>
@@ -3417,13 +3417,13 @@ function NavBar({data,T,setQ,onScroll,inline}){
   function chapters(b){const s=new Set();for(const e of data.entries){const p=parseRef(e.reference);if(p&&p.book===b)s.add(p.chapter);}return[...s].sort((a,c)=>parseInt(a)-parseInt(c));}
   function verses(b,c){const o=[];for(const e of data.entries){const p=parseRef(e.reference);if(p&&p.book===b&&p.chapter===c)o.push({label:p.verse,ref:e.reference});}return o;}
   const bks=books();if(!bks.length)return null;const chs=bk?chapters(bk):[];const vss=(bk&&ch)?verses(bk,ch):[];
-  const dd=(a)=>({background:T.bgIn,border:`1px solid ${T.bd}`,color:a?T.mut:T.dim,fontFamily:FB,fontSize:13,padding:'4px 7px',borderRadius:5,opacity:a?1:.4,outline:'none'});
+  const dd=(a)=>({background:T.bgIn,border:`1px solid ${T.bd}`,color:a?T.mut:T.dim,fontFamily:FB,fontSize:U(13),padding:'4px 7px',borderRadius:5,opacity:a?1:.4,outline:'none'});
   const inner=(<>
-    <span style={{fontFamily:FS,fontSize:8.5,color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',flexShrink:0,fontWeight:600}}>Go to</span>
+    <span style={{fontFamily:FS,fontSize:UL(8.5),color:T.gM,letterSpacing:'0.1em',textTransform:'uppercase',flexShrink:0,fontWeight:600}}>Go to</span>
     <select className="s-btn" value={bk} onChange={e=>{setBk(e.target.value);setCh('');setVs('');setQ(e.target.value||'');}} style={dd(true)}><option value="">— Book —</option>{bks.map(b=><option key={b} value={b}>{b}</option>)}</select>
     <select className="s-btn" value={ch} disabled={!bk} onChange={e=>{setCh(e.target.value);setVs('');setQ(bk+' '+e.target.value);}} style={dd(!!bk)}><option value="">— Ch —</option>{chs.map(c=><option key={c} value={c}>{c}</option>)}</select>
     <select className="s-btn" value={vs} disabled={!ch} onChange={e=>{const r=e.target.value;setVs(r);if(r){setQ('');onScroll(r);}}} style={dd(!!ch)}><option value="">— Vs —</option>{vss.map(v=><option key={v.ref} value={v.ref}>{v.label}</option>)}</select>
-    {bk&&<button type="button" className="s-btn s-ghost" onClick={()=>{setBk('');setCh('');setVs('');setQ('');}} style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:10}}>✕</button>}
+    {bk&&<button type="button" className="s-btn s-ghost" onClick={()=>{setBk('');setCh('');setVs('');setQ('');}} style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:UL(10)}}>✕</button>}
   </>);
   if(inline)return <>{inner}</>;
   return(
@@ -3443,13 +3443,13 @@ function StatsModal({data,T,onClose}){
   const vStats=data.versions.map(v=>{let t=0,faithful=0,corrupt=0,differs=0,partial=0,absent=0;for(const e of data.entries){const vd=e.versions?.[v.id];if(vd?.text){t++;if(vd.status==='faithful'||vd.status==='reference')faithful++;else if(vd.status==='corrupt')corrupt++;else if(vd.status==='diff')differs++;else if(vd.status==='partial')partial++;else if(vd.status==='missing')absent++;}}return{v,t,faithful,corrupt,differs,partial,absent,pct:t>0?Math.round((faithful/t)*100):0};});
   const iC={};for(const e of data.entries)if(e.issueType)iC[e.issueType]=(iC[e.issueType]||0)+1;
   const iCol={manuscript:'#d46868',word:'#cc9a38',omission:'#9468c0',article:'#48b8b8',grammar:'#58a0c0',doctrine:'#b86828',name:'#b8a848',other:'#786248'};
-  const tc={padding:'7px 12px',fontFamily:FB,fontSize:14,borderBottom:`1px solid ${T.bd}`,color:T.body,textAlign:'center'};
-  const th={...tc,fontFamily:FS,fontSize:9,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,fontWeight:600,borderBottom:`2px solid ${T.bdA}`};
+  const tc={padding:'7px 12px',fontFamily:FB,fontSize:U(14),borderBottom:`1px solid ${T.bd}`,color:T.body,textAlign:'center'};
+  const th={...tc,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',textTransform:'uppercase',color:T.gM,fontWeight:600,borderBottom:`2px solid ${T.bdA}`};
   return(
     <Modal title="Statistics" onClose={onClose} wide T={T} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
-      <div style={{fontFamily:FB,fontSize:15,color:T.mut,marginBottom:14,lineHeight:1.7}}>{total} passage{total!==1?'s':''} across {data.sections.length} section{data.sections.length!==1?'s':''}, comparing {data.versions.length} version{data.versions.length!==1?'s':''}.</div>
+      <div style={{fontFamily:FB,fontSize:U(15),color:T.mut,marginBottom:14,lineHeight:1.7}}>{total} passage{total!==1?'s':''} across {data.sections.length} section{data.sections.length!==1?'s':''}, comparing {data.versions.length} version{data.versions.length!==1?'s':''}.</div>
       <OrnRule T={T}/>
-      <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Version Agreement with {refLabel}</div>
+      <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Version Agreement with {refLabel}</div>
       <div style={{overflowX:'auto',marginBottom:16}}>
         <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
           <thead><tr>{['Version','Passages','Faithful','Corrupt','Differs','Partial','Absent','Agreement'].map(h=><th key={h} style={th}>{h}</th>)}</tr></thead>
@@ -3458,12 +3458,12 @@ function StatsModal({data,T,onClose}){
       </div>
       {Object.keys(iC).length>0&&(<>
         <OrnRule T={T}/>
-        <div style={{fontFamily:FS,fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Issues by Type</div>
+        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,marginBottom:10,marginTop:12,fontWeight:600}}>Issues by Type</div>
         {Object.entries(iC).sort(([,a],[,b])=>b-a).map(([t,n])=>{const mx=Math.max(1,...Object.values(iC));return(
           <div key={t} style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
-            <span style={{fontFamily:FS,fontSize:10,color:T.dim,width:90,flexShrink:0,fontWeight:500}}>{ISSUE_LABELS[t]||t}</span>
+            <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,width:90,flexShrink:0,fontWeight:500}}>{ISSUE_LABELS[t]||t}</span>
             <div style={{flex:1,height:6,background:T.bgSec,borderRadius:3,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.round((n/mx)*100)}%`,background:iCol[t]||'#786248',borderRadius:3}}/></div>
-            <span style={{fontFamily:FB,fontSize:14,color:T.body,minWidth:24,textAlign:'right'}}>{n}</span>
+            <span style={{fontFamily:FB,fontSize:U(14),color:T.body,minWidth:24,textAlign:'right'}}>{n}</span>
           </div>);
         })}
       </>)}
@@ -3478,10 +3478,10 @@ function UndoToast({ud,onUndo,onDismiss,T}){
   if(!ud)return null;
   return(<div className="no-print fade-up" style={{position:'fixed',bottom:28,left:'50%',transform:'translateX(-50%)',zIndex:300,minWidth:340,background:T.bgCH,border:`1px solid ${T.g}40`,borderRadius:10,overflow:'hidden',boxShadow:`0 8px 40px rgba(0,0,0,0.5)`}}>
     <div style={{display:'flex',alignItems:'center',gap:14,padding:'13px 18px'}}>
-      <span style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.14em',textTransform:'uppercase',color:T.g,flexShrink:0,fontWeight:600}}>Deleted</span>
-      <span style={{fontFamily:FB,fontSize:15,color:T.mut,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ud.label}</span>
-      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:9.5,letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↺ Undo</button>
-      <button className="s-btn s-ghost" onClick={onDismiss} style={{background:'none',border:'none',color:T.dim,fontSize:14,padding:'2px 6px',flexShrink:0}}>✕</button>
+      <span style={{fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.14em',textTransform:'uppercase',color:T.g,flexShrink:0,fontWeight:600}}>Deleted</span>
+      <span style={{fontFamily:FB,fontSize:U(15),color:T.mut,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ud.label}</span>
+      <button className="s-btn" onClick={onUndo} style={{background:T.g,border:'none',color:'#0e0d0b',fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'5px 13px',borderRadius:4,fontWeight:600,flexShrink:0}}>↺ Undo</button>
+      <button className="s-btn s-ghost" onClick={onDismiss} style={{background:'none',border:'none',color:T.dim,fontSize:U(14),padding:'2px 6px',flexShrink:0}}>✕</button>
     </div>
     <div style={{height:3,background:T.bd}}><div style={{height:'100%',width:`${ud.pct}%`,background:T.g,transition:'width 0.1s linear'}}/></div>
   </div>);
@@ -3539,7 +3539,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'10px 0 2px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           <GripReach/>
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2,marginBottom:6}}/>
-          {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
+          {title&&<div style={{fontFamily:FS,fontSize:U(11),fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={edge.ref} className="sheet-scroll" style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
@@ -3550,7 +3550,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
         {fromTop&&<div {...dragHandlers}
           style={{position:'relative',display:'flex',flexDirection:'column',alignItems:'center',padding:'2px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}>
           <GripReach up/>
-          {title&&<div style={{fontFamily:FS,fontSize:11,fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
+          {title&&<div style={{fontFamily:FS,fontSize:U(11),fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:6}}>{title}</div>}
           <div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/>
         </div>}
         {fromTop&&<div style={{height:3,background:T.accentLine}}/>}
@@ -3576,13 +3576,13 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
               <span style={{fontSize:20}}>&#9888;</span>
             </div>
             <div>
-              <div style={{fontFamily:FS,fontSize:15,fontWeight:700,letterSpacing:'0.06em',color:'#f08080',marginBottom:3}}>Reset to Defaults</div>
-              <div style={{fontFamily:FS,fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'#8a3030',fontWeight:500}}>This action cannot be undone</div>
+              <div style={{fontFamily:FS,fontSize:U(15),fontWeight:700,letterSpacing:'0.06em',color:'#f08080',marginBottom:3}}>Reset to Defaults</div>
+              <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',color:'#8a3030',fontWeight:500}}>This action cannot be undone</div>
             </div>
           </div>
           <div style={{background:'#200808',border:'1px solid #6a1818',borderRadius:8,padding:'16px 18px',marginBottom:18}}>
-            <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',color:'#d46868',marginBottom:10,fontWeight:600}}>The following will be permanently deleted:</div>
-            <div style={{fontFamily:FB,fontSize:15,color:'#c09090',lineHeight:2}}>
+            <div style={{fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.12em',textTransform:'uppercase',color:'#d46868',marginBottom:10,fontWeight:600}}>The following will be permanently deleted:</div>
+            <div style={{fontFamily:FB,fontSize:U(15),color:'#c09090',lineHeight:2}}>
               &#x2022; All <strong style={{color:'#f08080'}}>{entryCount} comparison {entryCount===1?'entry':'entries'}</strong> and their verse texts<br/>
               &#x2022; All <strong style={{color:'#f08080'}}>{sectionCount} {sectionCount===1?'section':'sections'}</strong><br/>
               &#x2022; All <strong style={{color:'#f08080'}}>bookmarks</strong> and <strong style={{color:'#f08080'}}>reading history</strong><br/>
@@ -3591,13 +3591,13 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
             </div>
           </div>
           <div style={{background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:8,padding:'14px 18px',marginBottom:22}}>
-            <div style={{fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',color:'#62c484',marginBottom:8,fontWeight:600}}>The app will be restored to:</div>
-            <div style={{fontFamily:FB,fontSize:14,color:'#7ab890',lineHeight:1.9}}>
+            <div style={{fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.12em',textTransform:'uppercase',color:'#62c484',marginBottom:8,fontWeight:600}}>The app will be restored to:</div>
+            <div style={{fontFamily:FB,fontSize:U(14),color:'#7ab890',lineHeight:1.9}}>
               KJV + RVG versions &nbsp;&#xB7;&nbsp; 2 default sections &nbsp;&#xB7;&nbsp; Genesis 1:1 and John 3:16 sample entries &nbsp;&#xB7;&nbsp; Dark mode
             </div>
           </div>
           <div style={{marginBottom:6}}>
-            <div style={{fontFamily:FS,fontSize:9.5,color:'#c09090',letterSpacing:'0.1em',marginBottom:8,fontWeight:500}}>
+            <div style={{fontFamily:FS,fontSize:UL(9.5),color:'#c09090',letterSpacing:'0.1em',marginBottom:8,fontWeight:500}}>
               Type <strong style={{color:'#f08080',letterSpacing:'0.16em'}}>RESET</strong> to confirm:
             </div>
             <input
@@ -3606,7 +3606,7 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
               onKeyDown={e=>{if(e.key==='Enter'&&ready)onConfirm();}}
               placeholder="Type RESET here..."
               autoFocus
-              style={{width:'100%',background:'#0e0505',border:`2px solid ${ready?'#c83030':'#4a1a1a'}`,borderRadius:6,color:'#f08080',fontFamily:FS,fontSize:14,letterSpacing:'0.12em',padding:'10px 14px',outline:'none',transition:'border-color .2s',boxSizing:'border-box'}}
+              style={{width:'100%',background:'#0e0505',border:`2px solid ${ready?'#c83030':'#4a1a1a'}`,borderRadius:6,color:'#f08080',fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',padding:'10px 14px',outline:'none',transition:'border-color .2s',boxSizing:'border-box'}}
             />
           </div>
         </div>
@@ -3615,7 +3615,7 @@ function ResetConfirmModal({T,onConfirm,onCancel,entryCount,sectionCount}){
           <button
             onClick={()=>{if(ready)onConfirm();}}
             disabled={!ready}
-            style={{background:ready?'#8a1010':'#2a0808',border:`1px solid ${ready?'#c83030':'#4a1414'}`,borderRadius:6,color:ready?'#f08080':'#5a2020',fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 20px',fontWeight:700,cursor:ready?'pointer':'default',opacity:ready?1:.5,transition:'all .2s'}}>
+            style={{background:ready?'#8a1010':'#2a0808',border:`1px solid ${ready?'#c83030':'#4a1414'}`,borderRadius:6,color:ready?'#f08080':'#5a2020',fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 20px',fontWeight:700,cursor:ready?'pointer':'default',opacity:ready?1:.5,transition:'all .2s'}}>
             &#9888; Reset Everything
           </button>
         </div>
