@@ -1433,6 +1433,13 @@ const U =n=>`calc(${n}px * var(--ui-s,1))`;  // UI body copy: FB, 11-16px
 const UL=n=>`calc(${n}px * var(--ui-l,1))`;  // micro-labels: FS, 10px and under
 const UH=n=>`calc(${n}px * var(--ui-h,1))`;  // headings: 17px and up
 
+// Everything the Reading Appearance section owns, in one place. The state
+// initialisers and the reset button both read it, so the defaults cannot drift
+// apart the way two hand-kept copies of the same nine values would. Keys are
+// the localStorage name after the scrip: prefix.
+const AD={accent:'gold',accentCustom:'#c8a84e',fontSize:31,uiSize:100,lineHeight:1.2,
+  fontFamily:'serif',verseNums:'super',textAlign:'left',paraMode:false,redLetter:true};
+
 const CSS=`
 /* Fonts are bundled and loaded from public/fonts/fonts.css via index.html.
    Fetching them from Google here meant a first offline launch fell back to Georgia. */
@@ -3887,8 +3894,8 @@ function App(){
 
   // ── UI ──
   const[dark,setDark]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:dark')|| 'true');}catch{return true;}});
-  const[accent,setAccent]=useState(()=>{try{return localStorage.getItem('scrip:accent')||'gold';}catch{return 'gold';}});
-  const[customAccentHex,setCustomAccentHex]=useState(()=>{try{return localStorage.getItem('scrip:accentCustom')||'#c8a84e';}catch{return '#c8a84e';}});
+  const[accent,setAccent]=useState(()=>{try{return localStorage.getItem('scrip:accent')||AD.accent;}catch{return AD.accent;}});
+  const[customAccentHex,setCustomAccentHex]=useState(()=>{try{return localStorage.getItem('scrip:accentCustom')||AD.accentCustom;}catch{return AD.accentCustom;}});
   const[customPickerOpen,setCustomPickerOpen]=useState(false);
   const[pickerH,setPickerH]=useState(43);
   const[pickerS,setPickerS]=useState(53);
@@ -4133,17 +4140,36 @@ function App(){
   const[audioSettingsOpen,setAudioSettingsOpen]=useState(false);
   const[deleteAccountConfirm,setDeleteAccountConfirm]=useState(false);
   const[offlineDataOpen,setOfflineDataOpen]=useState(false);
-  const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
+  const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||AD.fontSize;}catch{return AD.fontSize;}});
   // Read separately from the reading size: a comfortable verse and a comfortable
   // set of labels are not the same want. 100 means the interface it shipped with.
-  const[uiSize,setUiSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:uiSize'))||100;}catch{return 100;}});
+  const[uiSize,setUiSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:uiSize'))||AD.uiSize;}catch{return AD.uiSize;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
-  const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.2;}catch{return 1.2;}});
-  const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
-  const[readVerseNums,setReadVerseNums]=useState(()=>{try{return localStorage.getItem('scrip:verseNums')||'super';}catch{return 'super';}});
-  const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||'left';}catch{return 'left';}});
-  const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return false;}});
-  const[readRedLetter,setReadRedLetter]=useState(()=>{try{const v=localStorage.getItem('scrip:redLetter');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
+  const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||AD.lineHeight;}catch{return AD.lineHeight;}});
+  const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||AD.fontFamily;}catch{return AD.fontFamily;}});
+  const[readVerseNums,setReadVerseNums]=useState(()=>{try{return localStorage.getItem('scrip:verseNums')||AD.verseNums;}catch{return AD.verseNums;}});
+  const[readTextAlign,setReadTextAlign]=useState(()=>{try{return localStorage.getItem('scrip:textAlign')||AD.textAlign;}catch{return AD.textAlign;}});
+  const[readParaMode,setReadParaMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:paraMode'))===true;}catch{return AD.paraMode;}});
+  const[readRedLetter,setReadRedLetter]=useState(()=>{try{const v=localStorage.getItem('scrip:redLetter');return v===null?AD.redLetter:JSON.parse(v)===true;}catch{return AD.redLetter;}});
+  // accent and accentCustom persist through their own effects, so setting the
+  // state is enough for those two. Everything else is written inline by the
+  // control that owns it, so the reset has to write those keys itself.
+  function resetAppearance(){
+    setAccent(AD.accent);setCustomAccentHex(AD.accentCustom);
+    setReadFontSize(AD.fontSize);setUiSize(AD.uiSize);setReadLineHeight(AD.lineHeight);
+    setReadFontFamily(AD.fontFamily);setReadVerseNums(AD.verseNums);setReadTextAlign(AD.textAlign);
+    setReadParaMode(AD.paraMode);setReadRedLetter(AD.redLetter);
+    try{
+      localStorage.setItem('scrip:fontSize',AD.fontSize);
+      localStorage.setItem('scrip:uiSize',AD.uiSize);
+      localStorage.setItem('scrip:lineHeight',AD.lineHeight);
+      localStorage.setItem('scrip:fontFamily',AD.fontFamily);
+      localStorage.setItem('scrip:verseNums',AD.verseNums);
+      localStorage.setItem('scrip:textAlign',AD.textAlign);
+      localStorage.setItem('scrip:paraMode',JSON.stringify(AD.paraMode));
+      localStorage.setItem('scrip:redLetter',JSON.stringify(AD.redLetter));
+    }catch{}
+  }
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
   // ── Audio playback state ──
   const[audioSource,setAudioSource]=useState(()=>{try{return localStorage.getItem('scrip:audio:source')||'auto';}catch{return 'auto';}});
@@ -6954,6 +6980,18 @@ function App(){
                 <span>Red Letter</span><span style={{fontSize:UL(8),opacity:0.7}}>{readRedLetter?'ON':'OFF'}</span>
               </button>
             </div>
+
+            {/* Last thing in the section, and quieter than the controls above it:
+                a ghost button rather than a filled one, so it reads as a way out
+                rather than another setting to try. */}
+            <button type="button" onClick={resetAppearance}
+              style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:7,
+                background:'transparent',border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,
+                fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'9px 10px',
+                marginBottom:14,cursor:'pointer',transition:'all .12s'}}>
+              <span style={{fontSize:UL(11),lineHeight:1}}>{'\u21ba'}</span>
+              <span>Reset Appearance Settings</span>
+            </button>
 
           </div>}
           {/* ── AUDIO SETTINGS ── */}
