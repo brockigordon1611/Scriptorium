@@ -1533,6 +1533,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   /* Scripture text: bigger, edge-to-edge */
   /* line-height now controlled by readLineHeight state */
   .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
+  /* The eighty pixels are the bottom bar's seat. With the bar gone there is
+     nothing to sit there, and leaving the gap would have meant sliding it away
+     to reveal a strip of nothing — so the results take the space back. */
+  .read-area.bar-away{padding-bottom:12px!important;}
   .read-area::-webkit-scrollbar{display:none;}
   .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:var(--ac-scrollbar-read,rgba(180,160,100,0.5));pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;}
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
@@ -7646,7 +7650,7 @@ function App(){
 
           {/* Verse content */}
 
-          <div ref={readRef} className="read-area" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className={"read-area"+(readingHidden?' bar-away':'')} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
               // The chapter is not on screen while search owns it, so a sideways
               // swipe here would move it with nothing to show for it.
@@ -8026,7 +8030,17 @@ function App(){
           )}
 
           {/* Bottom nav */}
-          <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`}}>
+          {/* Search owns the screen, so the chapter bar leaves it. Sliding on a
+              transform rather than unmounting: the compositor does the move, and
+              offsetHeight stays what it was for the three places that measure
+              this bar to lay other things out. pointer-events goes with it, so
+              the buttons cannot be hit through the gap on the way past or once
+              it has gone — which is the half of this that is not decoration:
+              tapping a chapter arrow from the results took you somewhere else
+              entirely. */}
+          <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,
+            transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
+            transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:11,letterSpacing:'0.08em',fontWeight:500,width:90,height:34,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
                 {'\u2039'} {readCh>1?`Ch ${readCh-1}`:readBook>1?bookName(BIBLE.find(b=>b.n===readBook-1),versionLang(readVid)):''}

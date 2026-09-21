@@ -111,6 +111,10 @@ textarea::placeholder{color:var(--ac-dim);opacity:1;}
   .full-mobile{width:100%!important;}
   .show-mobile{display:flex!important;}
   .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
+  /* The eighty pixels are the bottom bar's seat. With the bar gone there is
+     nothing to sit there, and leaving the gap would have meant sliding it away
+     to reveal a strip of nothing — so the results take the space back. */
+  .read-area.bar-away{padding-bottom:12px!important;}
   .read-area::-webkit-scrollbar{display:none;}
   .read-scrollbar{position:fixed;right:3px;width:3px;border-radius:2px;background:var(--ac-scrollbar-read,rgba(180,160,100,0.5));pointer-events:none;z-index:155;opacity:0;transition:opacity .4s ease;}
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
