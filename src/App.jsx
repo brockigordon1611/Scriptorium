@@ -3975,6 +3975,14 @@ function App(){
   const verseTouchStartY=useRef(0);
   const verseTouchScrolled=useRef(false);
   const readScrollToVerse=useRef(null);
+  // Set by a search result on its way out, read by whichever landing runs. A
+  // result lands you on the verse lit but with no strip: you are reading down a
+  // list of matches, and a panel over the text on every one of them is in the
+  // way of the thing you came to look at. The other arrivals — a typed
+  // reference, a cross-reference, a bookmark — are single deliberate acts, and
+  // they still open it. Consumed wherever it is read, so it cannot carry into a
+  // later arrival that never asked for it.
+  const landSilent=useRef(false);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
   // A verse selected by arriving at it is provisional. It is there to show you
@@ -5236,7 +5244,7 @@ function App(){
         // things you would want to do with it are the point of going. A verse
         // lit with no strip now means one thing only: the audio is reading it,
         // which the strip's own gate already excludes.
-        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([tv]));setStripOpen(true);autoSel.current=true;},80);}
+        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([tv]));const quiet=landSilent.current;landSilent.current=false;if(!quiet)setStripOpen(true);autoSel.current=true;},80);}
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
         if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
@@ -7756,7 +7764,7 @@ function App(){
                   </div>
                 )}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
-                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));setStripOpen(true);autoSel.current=true;},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
+                  <div key={`${r.book_num}-${r.chapter}-${r.verse}`} id={firstOfBook?`srch-bk-${r.book_num}`:undefined} className="reading-verse s-btn" onClick={()=>{if(readRef.current)searchResultScrollRef.current=readRef.current.scrollTop;searchTypedRef.current=false;abandonSearch();setSearchFieldOpen(false);setSearchFiltersOpen(false);setReadSearchResultsOpen(false);const sameChap=(r.book_num===readBook&&r.chapter===readCh);landSilent.current=true;if(sameChap){setTimeout(()=>{const el=document.getElementById(`rv-${r.verse}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([r.verse]));setStripOpen(false);landSilent.current=false;autoSel.current=true;},50);}else{readScrollToVerse.current=r.verse;setReadBook(r.book_num);setReadCh(r.chapter);}}} style={{padding:'10px 12px',marginBottom:6,borderRadius:6,border:`1px solid ${T.bd}`,background:T.bgCard,cursor:'pointer'}}>
                     <div style={{fontFamily:FS,fontSize:10,color:T.gM,marginBottom:4,letterSpacing:'0.08em',fontWeight:500}}>{bookName(b,versionLang(readVid))} {r.chapter}:{r.verse}</div>
                     <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:hl(r.text,readSearchQ,searchOpts)}}/>
                   </div>
