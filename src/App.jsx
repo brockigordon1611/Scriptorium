@@ -4573,7 +4573,9 @@ function App(){
     // than as a compression factor, because that is the thing actually agreed:
     // micro-labels 1.35x, headings 1.5x, everything else 1.6x. Expressed the
     // other way the caps never bound and the interface stopped short of them.
-    const t=Math.min(1,Math.max(0,(uiSize-100)/60)),at=hi=>(1+t*(hi-1)).toFixed(4);
+    // Below 100 the same ramps run backwards, so the labels give up the least:
+    // at 85% body copy is at 0.85 but a 9px label only reaches 8.2px.
+    const t=Math.min(1,Math.max(-0.25,(uiSize-100)/60)),at=hi=>(1+t*(hi-1)).toFixed(4);
     const el=document.getElementById('ui-scale-vars')||Object.assign(document.createElement('style'),{id:'ui-scale-vars'});
     el.textContent=`:root{--ui-s:${at(1.6)};--ui-l:${at(1.35)};--ui-h:${at(1.5)};}`;
     if(!el.parentNode)document.head.appendChild(el);
@@ -6548,7 +6550,7 @@ function App(){
                     <span style={{fontFamily:FB,fontSize:13,color:T.mut}}>Text Size</span>
                     <span style={{fontFamily:FS,fontSize:9,color:T.gM,letterSpacing:'0.1em'}}>{readFontSize}px</span>
                   </div>
-                  <input type="range" min="13" max="42" value={readFontSize}
+                  <input type="range" min="13" max="60" value={readFontSize}
                     onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                     style={{width:'100%',accentColor:T.gM,cursor:'pointer'}}/>
                   <div style={{display:'flex',justifyContent:'space-between',marginTop:2,marginBottom:8}}>
@@ -6809,7 +6811,7 @@ function App(){
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontFamily:FS,fontSize:U(9),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
-                <input type="range" min="100" max="160" step="5" value={uiSize}
+                <input type="range" min="85" max="160" step="5" value={uiSize}
                   onChange={e=>{const v=Number(e.target.value);setUiSize(v);try{localStorage.setItem('scrip:uiSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FS,fontSize:UH(15),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
@@ -6852,7 +6854,7 @@ function App(){
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontFamily:FB,fontSize:U(11),color:T.dim}}>A</span>
-                <input type="range" min="13" max="42" value={readFontSize}
+                <input type="range" min="13" max="60" value={readFontSize}
                   onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FB,fontSize:UH(20),color:T.dim}}>A</span>
