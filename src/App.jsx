@@ -3654,6 +3654,12 @@ function PinchZoom({src,alt,onZoomChange}){
     const gap=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
     const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
     const onStart=e=>{
+      // Promoted only while the fingers are down. Left on permanently, the image
+      // sits on a compositor layer rasterised at the size it had when the layer
+      // was made, and pinching stretches that bitmap instead of redrawing at the
+      // new scale — so zooming in got softer than the file warrants. Dropping it
+      // on release lets Safari rasterise again at the scale you settled on.
+      if(imgRef.current)imgRef.current.style.willChange='transform';
       const t=e.touches;
       if(t.length===2){
         e.preventDefault();
@@ -3681,6 +3687,7 @@ function PinchZoom({src,alt,onZoomChange}){
     };
     const onEnd=e=>{
       if(e.touches.length)return;
+      if(imgRef.current)imgRef.current.style.willChange='';
       const wasPinch=gest.current&&gest.current.mode==='pinch';
       gest.current=null;
       // A pinch that ends near 1x should settle exactly there, not at 1.01.
@@ -3712,7 +3719,7 @@ function PinchZoom({src,alt,onZoomChange}){
   return(
     <div ref={wrapRef} style={{flex:1,minHeight:0,width:'100%',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',touchAction:'none'}}>
       <img ref={imgRef} src={src} alt={alt} draggable={false}
-        style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block',transformOrigin:'center center',willChange:'transform',userSelect:'none',WebkitUserSelect:'none'}}/>
+        style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',display:'block',transformOrigin:'center center',userSelect:'none',WebkitUserSelect:'none'}}/>
     </div>
   );
 }
