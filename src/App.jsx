@@ -4134,6 +4134,9 @@ function App(){
   const[deleteAccountConfirm,setDeleteAccountConfirm]=useState(false);
   const[offlineDataOpen,setOfflineDataOpen]=useState(false);
   const[readFontSize,setReadFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:fontSize'))||31;}catch{return 31;}});
+  // Read separately from the reading size: a comfortable verse and a comfortable
+  // set of labels are not the same want. 100 means the interface it shipped with.
+  const[uiSize,setUiSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:uiSize'))||100;}catch{return 100;}});
   const[parallelFontSize,setParallelFontSize]=useState(()=>{try{return Number(localStorage.getItem('scrip:parallelFontSize'))||16;}catch{return 16;}});
   const[readLineHeight,setReadLineHeight]=useState(()=>{try{return Number(localStorage.getItem('scrip:lineHeight'))||1.2;}catch{return 1.2;}});
   const[readFontFamily,setReadFontFamily]=useState(()=>{try{return localStorage.getItem('scrip:fontFamily')||'serif';}catch{return 'serif';}});
@@ -4570,11 +4573,11 @@ function App(){
     // than as a compression factor, because that is the thing actually agreed:
     // micro-labels 1.35x, headings 1.5x, everything else 1.6x. Expressed the
     // other way the caps never bound and the interface stopped short of them.
-    const t=Math.min(1,Math.max(0,(readFontSize-31)/11)),at=hi=>(1+t*(hi-1)).toFixed(4);
+    const t=Math.min(1,Math.max(0,(uiSize-100)/60)),at=hi=>(1+t*(hi-1)).toFixed(4);
     const el=document.getElementById('ui-scale-vars')||Object.assign(document.createElement('style'),{id:'ui-scale-vars'});
     el.textContent=`:root{--ui-s:${at(1.6)};--ui-l:${at(1.35)};--ui-h:${at(1.5)};}`;
     if(!el.parentNode)document.head.appendChild(el);
-  },[readFontSize]);
+  },[uiSize]);
 
   // ── Audio playback functions ──
   const scrollToVerse=(v)=>{
@@ -6836,6 +6839,23 @@ function App(){
                   onChange={e=>{const v=Number(e.target.value);setReadFontSize(v);try{localStorage.setItem('scrip:fontSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FB,fontSize:UH(20),color:T.dim}}>A</span>
+              </div>
+            </div>
+
+            {/* App Text Size: labels, buttons and panels, on its own ramp and its
+                own key. The readout is a percentage because that is what it is --
+                nothing here has a single pixel size to name. */}
+            <div style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                <span style={{fontFamily:FB,fontSize:U(14),color:T.mut}}>App Text Size</span>
+                <span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,letterSpacing:'0.1em'}}>{uiSize}%</span>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontFamily:FS,fontSize:U(9),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
+                <input type="range" min="100" max="160" step="5" value={uiSize}
+                  onChange={e=>{const v=Number(e.target.value);setUiSize(v);try{localStorage.setItem('scrip:uiSize',v);}catch{}}}
+                  style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
+                <span style={{fontFamily:FS,fontSize:UH(15),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
               </div>
             </div>
 
