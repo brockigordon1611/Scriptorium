@@ -7442,7 +7442,7 @@ function App(){
       {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
       {fsActive&&tab==='read'&&<>
         <div style={{position:'fixed',top:0,left:0,right:0,height:'var(--sat,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
-        {chLineAbove&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
+        {(chLineAbove||readingHidden)&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
       </>}
 
       {/* ═══ READ TAB ═══ */}
@@ -7473,7 +7473,7 @@ function App(){
               <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
                 lang={lang} T={T} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
             )}
-            <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:fsActive?8:navH+8,transition:'top .18s ease',left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
+            <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:fsActive?'calc(max(var(--sat,0px),var(--sat-min,0px)) + 8px)':navH+8,transition:'top .18s ease',left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
               backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
