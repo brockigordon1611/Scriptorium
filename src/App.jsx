@@ -2750,37 +2750,11 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
 
   return(
     <div style={{padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
-      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
-            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span>
-          </div>
-          {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
-          {editNote&&(
-            <div style={{marginTop:6}}>
-              <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
-                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(13),padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
-              <div style={{display:'flex',gap:6,marginTop:4}}>
-                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer',fontWeight:600}}>Save</button>
-                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer'}}>Cancel</button>
-              </div>
-            </div>
-          )}
-          {/* Category picker — shown when panel-level assign mode is on */}
-          {showCatPicker&&categories.length>0&&(
-            <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
-              <button onClick={()=>moveCat(null)}
-                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
-                None
-              </button>
-              {categories.map(c=>(
-                <button key={c.id} onClick={()=>moveCat(c.id)}
-                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
+      {/* The reference and its controls share one line; the note takes the full
+          width beneath them, rather than a column pinched beside the buttons. */}
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{flex:1,minWidth:0,fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
+          {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span>
         </div>
         <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
           <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'8px 14px',fontWeight:500}}>Open</button>
@@ -2795,6 +2769,35 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           </>}
         </div>
       </div>
+      {!editNote&&displayNote&&(
+        <div style={{marginTop:8,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,padding:'9px 12px',
+          fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.55,whiteSpace:'pre-wrap'}}>{displayNote}</div>
+      )}
+      {editNote&&(
+        <div style={{marginTop:8}}>
+          <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
+            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 12px',outline:'none',resize:'vertical',lineHeight:1.55}}/>
+          <div style={{display:'flex',gap:6,marginTop:6}}>
+            <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer',fontWeight:600}}>Save</button>
+            <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer'}}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {/* Category picker — shown when panel-level assign mode is on */}
+      {showCatPicker&&categories.length>0&&(
+        <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:4}}>
+          <button onClick={()=>moveCat(null)}
+            style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+            None
+          </button>
+          {categories.map(c=>(
+            <button key={c.id} onClick={()=>moveCat(c.id)}
+              style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
       {showDelConfirm&&<ConfirmDialog T={T} danger
         title="Delete Bookmark"
         message={`Remove "${titleRef}"?\n\nTo move it to a different category instead, use Assign Categories at the top of the list.`}
@@ -2827,11 +2830,13 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
         <span style={{fontFamily:FS,fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
         <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
+          {/* Bare glyphs read as decoration beside the boxed controls on
+              the rows below; these wear the same borders. */}
           <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
-            style={{background:'none',border:'none',color:T.dim,fontSize:U(14),cursor:'pointer',padding:'4px 6px',lineHeight:1}}>✎</button>
+            style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(14),cursor:'pointer',padding:'6px 11px',lineHeight:1,flexShrink:0}}>✎</button>
           <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
-            style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'4px 6px',lineHeight:1,display:'flex',alignItems:'center'}}>
-            <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,cursor:'pointer',padding:'6px 10px',lineHeight:1,display:'flex',alignItems:'center',flexShrink:0}}>
+            <svg width="16" height="16" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
               <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
             </svg>
