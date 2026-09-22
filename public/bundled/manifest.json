@@ -2,7 +2,7 @@
   "generated": "2026-09-09T00:06:55.345Z",
   "datasets": {
     "kjv": {
-      "version": 1,
+      "version": 2,
       "rows": 31102,
       "files": [
         "kjv.json"
