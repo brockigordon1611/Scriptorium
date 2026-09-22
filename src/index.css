@@ -104,7 +104,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 .srch-field:focus{border-color:var(--srch-bd-on)!important;background:var(--srch-bg-on)!important;box-shadow:0 0 0 2px var(--srch-glow)!important;}
 @media (hover:hover){.reading-verse:hover{background:var(--ac-verse-hover,rgba(200,168,78,0.05));border-radius:4px;}}
 input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,168,78,0.27))!important;box-shadow:0 0 0 2px var(--ac-input-sh,rgba(200,168,78,0.08));}
-textarea::placeholder{color:var(--ac-dim);opacity:1;}
+textarea::placeholder{color:var(--ph,var(--ac-dim));opacity:1;}
 /* ── Mobile overrides (≤915px) ── */
 @media(max-width:915px){
   .hide-mobile{display:none!important;}
