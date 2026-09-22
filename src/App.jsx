@@ -4042,6 +4042,21 @@ function App(){
   // between arriving somewhere and touching anything.
   const autoSel=useRef(false);
   function clearAutoSel(){if(!autoSel.current)return;autoSel.current=false;setReadSelVerses(new Set());setStripOpen(false);}
+  // Light a verse and centre it. quiet leaves the copy/bookmark strip shut:
+  // some landings are a destination you asked for, and some are just where a
+  // link happened to put you.
+  function landOnVerse(v,quiet){
+    let tries=0;
+    const go=()=>{
+      const el=document.getElementById(`rv-${v}`);
+      if(!el&&tries++<20){setTimeout(go,40);return;}
+      if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+      setReadSelVerses(new Set([v]));
+      if(!quiet)setStripOpen(true);
+      autoSel.current=true;
+    };
+    setTimeout(go,80);
+  }
   function dismissStrip(){setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
   function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive&&!audioPlaying){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
@@ -5335,7 +5350,7 @@ function App(){
         // things you would want to do with it are the point of going. A verse
         // lit with no strip now means one thing only: the audio is reading it,
         // which the strip's own gate already excludes.
-        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;setTimeout(()=>{const el=document.getElementById(`rv-${tv}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([tv]));const quiet=landSilent.current;landSilent.current=false;if(!quiet)setStripOpen(true);autoSel.current=true;},80);}
+        if(readScrollToVerse.current){const tv=readScrollToVerse.current;readScrollToVerse.current=null;const quiet=landSilent.current;landSilent.current=false;landOnVerse(tv,quiet);}
         else{readRef.current?.scrollTo({top:0,behavior:'instant'});}
         if(readPendingSelVerses.current){const vs=readPendingSelVerses.current;readPendingSelVerses.current=null;setTimeout(()=>{const firstV=Math.min(...vs);const el=document.getElementById(`rv-${firstV}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(vs);setStripOpen(true);},80);}
       }
@@ -9232,7 +9247,16 @@ function App(){
         const labels=planYearLabels(planYear,lang);
         const done=new Set(planState.done);
         const pct=Math.round(done.size/PLAN_DAYS*100);
-        const open=(b,c,v)=>{setReadBook(b);setReadCh(c);if(v>1)readScrollToVerse.current=v;setTab('read');closeModal();};
+        // Always lands on the first verse of the reading, including verse 1,
+        // and always quietly: you followed a link to read a passage, not to act
+        // on a verse. Already in that chapter the chapter effect will not run
+        // again, so nothing would consume readScrollToVerse -- land it here.
+        const open=(b,c,v)=>{
+          const tv=v||1;
+          if(readBook===b&&readCh===c){readScrollToVerse.current=null;landOnVerse(tv,true);}
+          else{readScrollToVerse.current=tv;landSilent.current=true;setReadBook(b);setReadCh(c);}
+          setTab('read');closeModal();
+        };
         const planRemindOn=(time)=>{
           const v={on:true,time};
           setPlanRemind(v);
