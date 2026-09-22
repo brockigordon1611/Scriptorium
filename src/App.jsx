@@ -4035,6 +4035,8 @@ function App(){
   const landSeq=useRef(0);
   const[planStrip,setPlanStrip]=useState(null);
   const planStripRef=useRef(null);
+  const verseStripRef=useRef(null);
+  const[verseStripH,setVerseStripH]=useState(0);
   const[planStripH,setPlanStripH]=useState(0);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
@@ -5140,6 +5142,17 @@ function App(){
     const r1=requestAnimationFrame(()=>{r2=requestAnimationFrame(()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);});});
     return()=>{cancelAnimationFrame(r1);if(r2)cancelAnimationFrame(r2);};
   },[ready]);
+  // Measure the verse strip too: the plan row stacks on top of it rather than
+  // standing down for it, so it needs to know how tall it is.
+  useEffect(()=>{
+    if(!stripOpen){setVerseStripH(0);return;}
+    const measure=()=>{if(verseStripRef.current)setVerseStripH(verseStripRef.current.offsetHeight);};
+    measure();
+    const ro=new RObserver(measure);
+    if(verseStripRef.current)ro.observe(verseStripRef.current);
+    return()=>ro.disconnect();
+  },[stripOpen]);
+
   // Measure the plan strip, so the reading can be padded clear of it.
   useEffect(()=>{
     if(!planStrip){setPlanStripH(0);document.documentElement.style.removeProperty('--plan-strip');return;}
@@ -8157,39 +8170,37 @@ function App(){
               and wearing the same glass. It stands down while that strip is up:
               one thing at a time down there, and the strip is the one you just
               asked for. Session-lived, cleared by its own cross. */}
-          {planStrip&&tab==='read'&&!readingHidden&&!stripOpen&&!audioPlaying&&(
-            <div ref={planStripRef} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:151,
-              display:'flex',alignItems:'center',gap:6,padding:'5px 6px 5px 8px',boxSizing:'border-box',
-              background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:6,
-              backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',
+          {/* The day, shaped like its row in the plan: one checkbox, then the
+              passages. The checkbox is the plan's own -- ticking here ticks there.
+              Each piece wears the verse strip's glass and floats on its own, and
+              the row stacks above that strip rather than giving way to it. */}
+          {planStrip&&tab==='read'&&!readingHidden&&!audioPlaying&&(()=>{
+            const base=fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8);
+            const dayDone=new Set(planState.done).has(planStrip.day);
+            const glass={background:'var(--ac-glass-bg)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
+              boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,height:U(34),boxSizing:'border-box',flexShrink:0};
+            return (
+            <div ref={planStripRef} style={{position:'fixed',bottom:base+(stripOpen?verseStripH+8:0),left:14,right:14,zIndex:151,
+              display:'flex',flexWrap:'wrap',justifyContent:'center',alignItems:'center',gap:8,pointerEvents:'none',
               transition:'bottom .18s ease'}}>
-              <div style={{display:'flex',alignItems:'center',gap:6,overflowX:'auto',flex:1,minWidth:0,scrollbarWidth:'none',msOverflowStyle:'none'}}>
-                {planStrip.items.map((it,i)=>{
-                  const ticked=planStrip.done.includes(i);
-                  const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
-                  return (
-                    <div key={i} style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,borderRadius:20,
-                      background:here?`${T.g}14`:'transparent',border:`1px solid ${here?T.gD:T.bdS}`,padding:'2px 4px 2px 2px'}}>
-                      <button type="button" aria-label={(ticked?'Mark unread: ':'Mark read: ')+it.label}
-                        onClick={()=>setPlanStrip(p=>({...p,done:ticked?p.done.filter(x=>x!==i):[...p.done,i]}))}
-                        style={{width:U(20),height:U(20),flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
-                          background:'transparent',border:`1px solid ${ticked?T.gD:T.bd}`,borderRadius:'50%',padding:0,cursor:'pointer',
-                          color:ticked?T.gT:'transparent',fontSize:UL(10),lineHeight:1}}>✓</button>
-                      <button type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
-                        style={{background:'transparent',border:'none',padding:'2px 6px 2px 2px',cursor:'pointer',whiteSpace:'nowrap',
-                          fontFamily:FB,fontSize:U(12),letterSpacing:'0.02em',
-                          color:ticked?T.dim:(here?T.gT:T.mut),textDecoration:ticked?'line-through':'none'}}>{it.label}</button>
-                    </div>
-                  );
-                })}
-              </div>
-              <button type="button" aria-label="Clear the day's readings" onClick={()=>setPlanStrip(null)}
-                style={{flexShrink:0,width:U(26),height:U(26),display:'flex',alignItems:'center',justifyContent:'center',
-                  background:'transparent',border:'none',color:T.dim,fontSize:U(13),cursor:'pointer',padding:0}}>✕</button>
-            </div>
-          )}
+              <button type="button" onClick={()=>{planToggleDay(planStrip.day);if(!dayDone)setPlanStrip(null);}}
+                aria-label={dayDone?'Mark day as not read':'Mark day as read'}
+                style={{...glass,pointerEvents:'auto',width:U(34),display:'flex',alignItems:'center',justifyContent:'center',
+                  border:`1.5px solid ${dayDone?T.gD:T.bd}`,background:dayDone?T.gF:'var(--ac-glass-bg)',
+                  color:T.gT,fontSize:U(15),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
+              {planStrip.items.map((it,i)=>{
+                const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
+                return (
+                  <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
+                    style={{...glass,pointerEvents:'auto',border:`1px solid ${here?T.gD:`${T.gD}55`}`,padding:'0 12px',
+                      fontFamily:FS,fontSize:U(13),letterSpacing:'0.04em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
+                      color:dayDone?T.dim:(here?gTBright:T.mut),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
+                );
+              })}
+            </div>);
+          })()}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
-            <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
+            <div ref={verseStripRef} className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
                 ?<span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
