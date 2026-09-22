@@ -8178,25 +8178,29 @@ function App(){
             const base=fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8);
             const dayDone=new Set(planState.done).has(planStrip.day);
             const glass={background:'var(--ac-glass-bg)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-              boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,height:U(34),boxSizing:'border-box',flexShrink:0};
+              boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,height:30,boxSizing:'border-box',flexShrink:0};
             return (
             <div ref={planStripRef} style={{position:'fixed',bottom:base+(stripOpen?verseStripH+8:0),left:14,right:14,zIndex:151,
               display:'flex',flexWrap:'wrap',justifyContent:'center',alignItems:'center',gap:8,pointerEvents:'none',
               transition:'bottom .18s ease'}}>
-              <button type="button" onClick={()=>{planToggleDay(planStrip.day);if(!dayDone)setPlanStrip(null);}}
+              <button type="button" onClick={()=>planToggleDay(planStrip.day)}
                 aria-label={dayDone?'Mark day as not read':'Mark day as read'}
-                style={{...glass,pointerEvents:'auto',width:U(34),display:'flex',alignItems:'center',justifyContent:'center',
+                style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
                   border:`1.5px solid ${dayDone?T.gD:T.bd}`,background:dayDone?T.gF:'var(--ac-glass-bg)',
-                  color:T.gT,fontSize:U(15),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
+                  color:T.gT,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
                 return (
                   <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
                     style={{...glass,pointerEvents:'auto',border:`1px solid ${here?T.gD:`${T.gD}55`}`,padding:'0 12px',
-                      fontFamily:FS,fontSize:U(13),letterSpacing:'0.04em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
+                      fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
                       color:dayDone?T.dim:(here?gTBright:T.mut),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
                 );
               })}
+              <button type="button" aria-label="Hide the day's readings" onClick={()=>setPlanStrip(null)}
+                style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
+                  border:'1px solid rgba(200,60,60,0.35)',color:'#b86060',fontSize:U(13),fontWeight:600,
+                  lineHeight:1,padding:0,cursor:'pointer'}}>✕</button>
             </div>);
           })()}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
