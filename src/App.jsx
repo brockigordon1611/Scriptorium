@@ -2729,11 +2729,15 @@ const CAT_COLORS=['#62c484','#6ab0f5','#e4cc78','#f08080','#c488c8','#f0a060','#
 function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker}){
   const bk=BIBLE.find(b=>b.n===bm.book_num);
   const ver=versions.find(v=>v.id===bm.version_id);
+  const verLabel=ver?.label||(bm.version_id||'').toUpperCase();
   const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
+  // The label is whatever was typed in the save form, and it defaults to the
+  // reference. When it is something else it becomes the heading and the
+  // reference moves underneath, so the card still says where it points.
+  const titleRef=bm.label||ref;
   const isRangeRef=bm.label&&bk&&(bm.label.startsWith(bk.name)||(bk.nameES&&bm.label.startsWith(bk.nameES)));
-  const titleRef=isRangeRef?bm.label:ref;
-  const labelNote=isRangeRef?null:bm.label;
-  const displayNote=bm.note!=null?bm.note:labelNote;
+  const subRef=(isRangeRef||titleRef===ref)?null:ref;
+  const displayNote=bm.note!=null?bm.note:null;
 
   const[editNote,setEditNote]=useState(false);
   const[noteVal,setNoteVal]=useState(displayNote||'');
@@ -2749,8 +2753,9 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
       <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
-            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{ver?.label||(bm.version_id||'').toUpperCase()}</span>
+            {titleRef}{!subRef&&<> <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span></>}
           </div>
+          {subRef&&<div style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.08em',marginTop:2}}>{subRef} · {verLabel}</div>}
           {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
           {editNote&&(
             <div style={{marginTop:6}}>
@@ -4033,6 +4038,7 @@ function App(){
   // Retires an in-flight landing. Anything that starts a new one, or that
   // changes the chapter under an old one, bumps this.
   const landSeq=useRef(0);
+  const[bmDialog,setBmDialog]=useState(null);
   const[planStrip,setPlanStrip]=useState(null);
   const planStripRef=useRef(null);
   const verseStripRef=useRef(null);
@@ -5639,7 +5645,7 @@ function App(){
     const verses=new Set();
     try{
       // Try to extract range string after "BookName Ch:" from label
-      const labelMatch=(bm.label||'').match(/:(.+)$/);
+      const labelMatch=(bm.label||'').match(/\s\d+:([\d,\s-]+)$/);
       const rangeStr=labelMatch?labelMatch[1]:(bm.verse?String(bm.verse):'');
       if(rangeStr){
         for(const part of rangeStr.split(',')){
@@ -6130,16 +6136,34 @@ function App(){
     pin();
     return()=>window.removeEventListener('scroll',pin);
   },[searchFieldOpen]);
-  async function doReadBookmark(){
+  // Tapping Bookmark opens the form rather than saving. The fields used to
+  // sit in the strip, which meant filling them in before pressing the button
+  // that used them -- discoverable only if you already knew.
+  function doReadBookmark(){
     const sorted=[...readSelVerses].sort((a,b)=>a-b);
     const v=sorted[0];
     if(!user||!v)return;
-    // Build range string e.g. "5-9" or "3, 5-7"
     const ranges=[];let i=0;
     while(i<sorted.length){let s=sorted[i],e=s;while(i+1<sorted.length&&sorted[i+1]===e+1){i++;e=sorted[i];}ranges.push(s===e?`${s}`:`${s}-${e}`);i++;}
     const rangeRef=`${bookName(readBk,versionLang(readVid))} ${readCh}:${ranges.join(', ')}`;
-    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:v,label:readBmLabel||rangeRef,categoryId:readBmCat||null});
-    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);setReadBmLabel('');setReadBmCat('');setReadBmLabelFocused(false);dismissStrip();},1800);
+    setBmDialog({verse:v,ref:rangeRef,label:rangeRef,note:'',cat:'',newCat:'',busy:false});
+  }
+
+  async function saveBookmarkFromDialog(){
+    const d=bmDialog;
+    if(!d||d.busy)return;
+    setBmDialog(x=>({...x,busy:true}));
+    let catId=d.cat;
+    // A category typed here is created first, so the bookmark can point at it.
+    if(d.cat==='__new'&&d.newCat.trim()){
+      const made=await handleAddCategory(d.newCat.trim(),null);
+      catId=made?made.id:null;
+    }
+    if(catId==='__new'||!catId)catId=null;
+    await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:d.verse,
+      label:d.label.trim()||d.ref,note:d.note.trim()||null,categoryId:catId});
+    setBmDialog(null);
+    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);dismissStrip();},1400);
   }
 
   async function copySelectedVerses(){
@@ -6341,7 +6365,12 @@ function App(){
   async function handleAddBookmark(params){
     if(!user)return;
     if(user.guest){
-      const bm={id:'g-'+Date.now(),user_id:'guest',...params};
+      // Stored the way the database returns it: every reader -- the cards, the
+      // category grouping, openFromBookmark -- looks for snake_case, so a guest
+      // bookmark spread in camelCase resolved to no book and no version.
+      const bm={id:'g-'+Date.now(),user_id:'guest',version_id:params.versionId,book_num:params.bookNum,
+        chapter:params.chapter,verse:params.verse||null,label:params.label||null,
+        category_id:params.categoryId||null,note:params.note||null};
       setBookmarks(b=>[bm,...b]);return;
     }
     const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
@@ -8245,30 +8274,6 @@ function App(){
                       <button type="button" onClick={dismissStrip}
                         style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
-                    {/* Row 2: Bookmark notes + Category inline (category hidden when notes expanded) */}
-                    <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
-                      <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
-                        onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
-                        placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:floatText,'--ph':floatText,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FB,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
-                      {user&&bmCategories.length>0&&!readBmLabelFocused&&(
-                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,...floatFace,borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
-                          {/* Invisible native select — fills tap target, opens system picker */}
-                          <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
-                            style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0,cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none',border:'none',background:'transparent'}}>
-                            <option value="">Bookmark Category…</option>
-                            {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                          {/* Custom display — purely visual, no pointer events */}
-                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FB,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?T.gT:floatText,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
-                            {readBmCat?bmCategories.find(c=>String(c.id)===String(readBmCat))?.name||'Bookmark Category…':'Bookmark Category…'}
-                          </span>
-                          <div style={{position:'absolute',right:8,top:0,bottom:0,display:'flex',alignItems:'center',pointerEvents:'none'}}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M0 0L5 6L10 0" stroke={T.dim} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
               }
             </div>
@@ -9324,6 +9329,37 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {bmDialog&&(
+        <ConfirmDialog T={T} title="Save Bookmark" message={bmDialog.ref}
+          confirmLabel={bmDialog.busy?'Saving…':'Save'} cancelLabel="Cancel"
+          onConfirm={saveBookmarkFromDialog} onCancel={()=>setBmDialog(null)}>
+          <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:16}}>
+            <div>
+              <Lbl c="Label" T={T}/>
+              <Inp val={bmDialog.label} set={v=>setBmDialog(x=>({...x,label:v}))} ph={bmDialog.ref} T={T}/>
+            </div>
+            <div>
+              <Lbl c="Note" T={T}/>
+              <TA val={bmDialog.note} set={v=>setBmDialog(x=>({...x,note:v}))} ph="Anything worth remembering about this passage…" rows={3} T={T}/>
+            </div>
+            {user&&!user.guest&&(
+              <div>
+                <Lbl c="Category" T={T}/>
+                <Sel val={bmDialog.cat} set={v=>setBmDialog(x=>({...x,cat:v}))} T={T}>
+                  <option value="">No category</option>
+                  {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="__new">+ New category…</option>
+                </Sel>
+                {bmDialog.cat==='__new'&&(
+                  <div style={{marginTop:8}}>
+                    <Inp val={bmDialog.newCat} set={v=>setBmDialog(x=>({...x,newCat:v}))} ph="New category name" T={T}/>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </ConfirmDialog>
+      )}
       {/* Alongside the plan rather than inside the reading tab, since it belongs
           to the reminder rather than to whatever tab happens to be showing. */}
       {timePicker&&(
