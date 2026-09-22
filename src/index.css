@@ -110,7 +110,7 @@ textarea::placeholder{color:var(--ac-dim);opacity:1;}
   .hide-mobile{display:none!important;}
   .full-mobile{width:100%!important;}
   .show-mobile{display:flex!important;}
-  .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
+  .read-area{padding-bottom:calc(80px + var(--plan-strip,0px))!important;scrollbar-width:none;-ms-overflow-style:none;}
   /* The eighty pixels are the bottom bar's seat. With the bar gone there is
      nothing to sit there, and leaving the gap would have meant sliding it away
      to reveal a strip of nothing — so the results take the space back. */

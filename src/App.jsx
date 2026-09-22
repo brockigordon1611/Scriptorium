@@ -1278,7 +1278,7 @@ const _planLabels={};
 function planYearLabels(year,lang){
   const k=year+':'+lang;
   if(!_planLabels[k])_planLabels[k]=buildYearPlan(year).map(e=>
-    [...e.ot,...e.nt].map(r=>({b:r[0],c:r[1],v:r[2]||1,label:planRefLabel(r,lang)})));
+    [...e.ot,...e.nt].map(r=>({b:r[0],c:r[1],v:r[2]||1,c2:r[3]||r[1],label:planRefLabel(r,lang)})));
   return _planLabels[k];
 }
 function planDayOfYear(d=new Date()){
@@ -1549,7 +1549,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   .show-mobile{display:flex!important;}
   /* Scripture text: bigger, edge-to-edge */
   /* line-height now controlled by readLineHeight state */
-  .read-area{padding-bottom:80px!important;scrollbar-width:none;-ms-overflow-style:none;}
+  .read-area{padding-bottom:calc(80px + var(--plan-strip,0px))!important;scrollbar-width:none;-ms-overflow-style:none;}
   /* The eighty pixels are the bottom bar's seat. With the bar gone there is
      nothing to sit there, and leaving the gap would have meant sliding it away
      to reveal a strip of nothing — so the results take the space back. */
@@ -4033,6 +4033,9 @@ function App(){
   // Retires an in-flight landing. Anything that starts a new one, or that
   // changes the chapter under an old one, bumps this.
   const landSeq=useRef(0);
+  const[planStrip,setPlanStrip]=useState(null);
+  const planStripRef=useRef(null);
+  const[planStripH,setPlanStripH]=useState(0);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
   // A verse selected by arriving at it is provisional. It is there to show you
@@ -4061,6 +4064,16 @@ function App(){
       autoSel.current=true;
     };
     setTimeout(go,80);
+  }
+  // Following a reading, from the plan or from the strip. Passing items adopts
+  // that day; passing none keeps the day already on screen, so hopping between
+  // its passages does not reset the ticks.
+  function openPlanPassage(bk,ch,vs,day,items){
+    const tv=vs||1;
+    if(items)setPlanStrip(p=>(p&&p.day===day)?p:{day,items,done:[]});
+    if(readBook===bk&&readCh===ch){readScrollToVerse.current=null;landOnVerse(tv,true);}
+    else{readScrollToVerse.current=tv;landSilent.current=true;setReadBook(bk);setReadCh(ch);}
+    setTab('read');
   }
   function dismissStrip(){setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
   function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
@@ -5127,6 +5140,16 @@ function App(){
     const r1=requestAnimationFrame(()=>{r2=requestAnimationFrame(()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);});});
     return()=>{cancelAnimationFrame(r1);if(r2)cancelAnimationFrame(r2);};
   },[ready]);
+  // Measure the plan strip, so the reading can be padded clear of it.
+  useEffect(()=>{
+    if(!planStrip){setPlanStripH(0);document.documentElement.style.removeProperty('--plan-strip');return;}
+    const measure=()=>{if(planStripRef.current){const h=planStripRef.current.offsetHeight;setPlanStripH(h);document.documentElement.style.setProperty('--plan-strip',(h+8)+'px');}};
+    measure();
+    const ro=new RObserver(measure);
+    if(planStripRef.current)ro.observe(planStripRef.current);
+    return()=>{ro.disconnect();document.documentElement.style.removeProperty('--plan-strip');};
+  },[planStrip]);
+
   // Measure bottom bar height
   useEffect(()=>{
     const measure=()=>{if(bottomBarRef.current)setBottomBarH(bottomBarRef.current.offsetHeight);};
@@ -8130,6 +8153,41 @@ function App(){
           )}
 
           {/* Selection action strip */}
+          {/* The day's readings, floating in the same slot the verse strip uses
+              and wearing the same glass. It stands down while that strip is up:
+              one thing at a time down there, and the strip is the one you just
+              asked for. Session-lived, cleared by its own cross. */}
+          {planStrip&&tab==='read'&&!readingHidden&&!stripOpen&&!audioPlaying&&(
+            <div ref={planStripRef} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:151,
+              display:'flex',alignItems:'center',gap:6,padding:'5px 6px 5px 8px',boxSizing:'border-box',
+              background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:6,
+              backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',
+              transition:'bottom .18s ease'}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,overflowX:'auto',flex:1,minWidth:0,scrollbarWidth:'none',msOverflowStyle:'none'}}>
+                {planStrip.items.map((it,i)=>{
+                  const ticked=planStrip.done.includes(i);
+                  const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
+                  return (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:4,flexShrink:0,borderRadius:20,
+                      background:here?`${T.g}14`:'transparent',border:`1px solid ${here?T.gD:T.bdS}`,padding:'2px 4px 2px 2px'}}>
+                      <button type="button" aria-label={(ticked?'Mark unread: ':'Mark read: ')+it.label}
+                        onClick={()=>setPlanStrip(p=>({...p,done:ticked?p.done.filter(x=>x!==i):[...p.done,i]}))}
+                        style={{width:U(20),height:U(20),flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',
+                          background:'transparent',border:`1px solid ${ticked?T.gD:T.bd}`,borderRadius:'50%',padding:0,cursor:'pointer',
+                          color:ticked?T.gT:'transparent',fontSize:UL(10),lineHeight:1}}>✓</button>
+                      <button type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
+                        style={{background:'transparent',border:'none',padding:'2px 6px 2px 2px',cursor:'pointer',whiteSpace:'nowrap',
+                          fontFamily:FB,fontSize:U(12),letterSpacing:'0.02em',
+                          color:ticked?T.dim:(here?T.gT:T.mut),textDecoration:ticked?'line-through':'none'}}>{it.label}</button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" aria-label="Clear the day's readings" onClick={()=>setPlanStrip(null)}
+                style={{flexShrink:0,width:U(26),height:U(26),display:'flex',alignItems:'center',justifyContent:'center',
+                  background:'transparent',border:'none',color:T.dim,fontSize:U(13),cursor:'pointer',padding:0}}>✕</button>
+            </div>
+          )}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
             <div className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
@@ -9257,12 +9315,7 @@ function App(){
         // and always quietly: you followed a link to read a passage, not to act
         // on a verse. Already in that chapter the chapter effect will not run
         // again, so nothing would consume readScrollToVerse -- land it here.
-        const open=(b,c,v)=>{
-          const tv=v||1;
-          if(readBook===b&&readCh===c){readScrollToVerse.current=null;landOnVerse(tv,true);}
-          else{readScrollToVerse.current=tv;landSilent.current=true;setReadBook(b);setReadCh(c);}
-          setTab('read');closeModal();
-        };
+        const open=(b,c,v,day)=>{openPlanPassage(b,c,v,day,labels[day-1]);closeModal();};
         const planRemindOn=(time)=>{
           const v={on:true,time};
           setPlanRemind(v);
@@ -9289,7 +9342,7 @@ function App(){
         const Passages=({day})=>(
           <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:6}}>
             {labels[day-1].map((r,i)=>(
-              <button key={i} type="button" onClick={()=>open(r.b,r.c,r.v)}
+              <button key={i} type="button" onClick={()=>open(r.b,r.c,r.v,day)}
                 style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FB,fontSize:U(15),padding:'6px 11px',cursor:'pointer',whiteSpace:'nowrap'}}>
                 {r.label}
               </button>
