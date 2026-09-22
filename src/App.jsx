@@ -8204,6 +8204,11 @@ function App(){
                 aria-label={dayDone?'Mark day as not read':'Mark day as read'}
                 style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
                   ...(dayDone?floatOn:{}),
+                  // Read as a checkbox, not another pill. The cross reads as an
+                  // outline because its border is a bright base at low alpha; the
+                  // shared face uses a dark brown at the same alpha, which sinks
+                  // into the glass. This is the gold at the cross's weight.
+                  border:`1px solid ${T.g}59`,
                   color:dayDone?T.gT:floatText,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
