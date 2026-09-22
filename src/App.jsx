@@ -8209,7 +8209,7 @@ function App(){
                   // shared face uses a dark brown at the same alpha, which sinks
                   // into the glass. This is the gold at the cross's weight.
                   border:`1px solid ${T.g}59`,
-                  color:dayDone?T.gT:floatText,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
+                  color:dayDone?T.gT:T.dim,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>✓</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
                 return (
