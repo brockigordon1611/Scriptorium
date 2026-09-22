@@ -2749,7 +2749,7 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   function moveCat(catId){onUpdate(bm.id,{categoryId:catId||null});}
 
   return(
-    <div style={{padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
+    <div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 12px',marginBottom:8}}>
       {/* The reference and its controls share one line; the note takes the full
           width beneath them, rather than a column pinched beside the buttons. */}
       <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -2785,7 +2785,7 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
       )}
       {/* Category picker — shown when panel-level assign mode is on */}
       {showCatPicker&&categories.length>0&&(
-        <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:4}}>
+        <div style={{marginTop:8,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,padding:'8px 10px',display:'flex',flexWrap:'wrap',gap:5}}>
           <button onClick={()=>moveCat(null)}
             style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
             None
@@ -2821,10 +2821,13 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
     setRenaming(false);
   }
 
+  // The section is a card in the category's own colour, and the bookmarks are
+  // cards inside it -- a flat list of rows left it ambiguous where one group
+  // ended and the next began.
   return(
-    <div style={{marginBottom:4}}>
+    <div style={{border:`1px solid ${cat.color}55`,background:cat.color+'0a',borderRadius:10,marginBottom:10,overflow:'hidden'}}>
       {/* Section header row */}
-      <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 0 6px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
         <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
         <span style={{fontFamily:FS,fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
@@ -2845,7 +2848,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
       </div>
       {/* Rename form — stacked rows, no horizontal overflow */}
       {renaming&&(
-        <div style={{marginBottom:8,padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
+        <div style={{margin:'0 12px 10px',padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
           <input value={nameVal} onChange={e=>setNameVal(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&saveRename()}
             style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:U(13),padding:'6px 8px',outline:'none',marginBottom:8}}/>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
@@ -2860,9 +2863,9 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
           </div>
         </div>
       )}
-      {open&&<div style={{paddingLeft:18}}>
+      {open&&<div style={{padding:'10px 12px 2px',borderTop:`1px solid ${cat.color}33`}}>
         {bookmarks.length===0
-          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(13),padding:'6px 0 10px'}}>Empty category</div>
+          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(13),padding:'2px 0 8px'}}>Empty category</div>
           :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} T={T} versions={versions} onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate} categories={categories} user={user} showCatPicker={showCatPicker}/>)
         }
       </div>}
@@ -2973,12 +2976,20 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
               onRename={onUpdateCat} onDeleteCat={onDeleteCat}
               categories={categories} user={user} showCatPicker={assigningCats} catToggle={catToggle}/>
           ))}
-          {uncategorized.length>0&&(
-            <div style={{marginTop:hasCats?8:0}}>
-              {hasCats&&<div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'6px 0 4px'}}>Uncategorized</div>}
-              {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
+          {/* Uncategorized reads as the categories' sibling, so it gets a box
+              too -- a neutral one, since it has no colour of its own. Without
+              any categories there is nothing to be a sibling of, and the cards
+              stand on their own. */}
+          {uncategorized.length>0&&(hasCats?(
+            <div style={{border:`1px solid ${T.bd}`,borderRadius:10,marginTop:10,marginBottom:10}}>
+              <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'11px 12px 0'}}>Uncategorized</div>
+              <div style={{padding:'10px 12px 2px'}}>
+                {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
+              </div>
             </div>
-          )}
+          ):(
+            <>{uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}</>
+          ))}
         </>
       )}
     </Modal>
