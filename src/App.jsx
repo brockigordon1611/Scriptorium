@@ -4611,7 +4611,6 @@ function App(){
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(accent==='custom'?buildCustomPalette(customAccentHex):(ACCENTS[accent]||ACCENTS.gold))[dark?'dark':'light'];
   const T={...(dark?D:L),..._acc,accentLine:`linear-gradient(90deg,transparent,${_acc.gD},${_acc.g},${_acc.gD},transparent)`};
-  const gTBright=(h=>{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16),p=0.15;return `rgb(${Math.round(r+(255-r)*p)},${Math.round(g+(255-g)*p)},${Math.round(b+(255-b)*p)})`;})(T.gT);
 
   // ── CSS variable accent injection ──
   useEffect(()=>{
@@ -5902,6 +5901,10 @@ function App(){
   // different kind of thing altogether. Solid is kept for the one control
   // actually being used: the field under the cursor.
   const ctrlOnSoft={...ctrlOn,background:`${T.g}26`};
+  const floatFace={background:`linear-gradient(${T.g}0d,${T.g}0d),rgba(0,0,0,0.45)`,border:`1px solid ${T.gD}99`,
+    backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6};
+  const floatOn={...floatFace,background:`${T.g}26`,border:`1px solid ${T.g}66`,
+    boxShadow:`0 0 0 2px ${T.g}14,0 4px 14px rgba(0,0,0,0.22)`};
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
@@ -8177,8 +8180,8 @@ function App(){
           {planStrip&&tab==='read'&&!readingHidden&&!audioPlaying&&(()=>{
             const base=fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8);
             const dayDone=new Set(planState.done).has(planStrip.day);
-            const glass={background:'var(--ac-glass-bg)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
-              boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,height:30,boxSizing:'border-box',flexShrink:0};
+            const glass={...floatFace,
+              height:30,boxSizing:'border-box',flexShrink:0};
             return (
             <div ref={planStripRef} style={{position:'fixed',bottom:base+(stripOpen?verseStripH+8:0),left:14,right:14,zIndex:151,
               display:'flex',flexWrap:'wrap',justifyContent:'center',alignItems:'center',gap:8,pointerEvents:'none',
@@ -8186,15 +8189,15 @@ function App(){
               <button type="button" onClick={()=>planToggleDay(planStrip.day)}
                 aria-label={dayDone?'Mark day as not read':'Mark day as read'}
                 style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
-                  border:`1.5px solid ${dayDone?T.gD:T.bd}`,background:dayDone?T.gF:'var(--ac-glass-bg)',
-                  color:T.gT,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
+                  ...(dayDone?floatOn:{}),
+                  color:dayDone?T.gT:T.mut,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
                 return (
                   <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
-                    style={{...glass,pointerEvents:'auto',border:`1px solid ${here?T.gD:`${T.gD}55`}`,padding:'0 12px',
+                    style={{...glass,...(here?floatOn:{}),pointerEvents:'auto',padding:'0 12px',
                       fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
-                      color:dayDone?T.dim:(here?gTBright:T.mut),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
+                      color:dayDone?T.dim:(here?T.gT:T.mut),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
                 );
               })}
               <button type="button" aria-label="Hide the day's readings" onClick={()=>setPlanStrip(null)}
@@ -8212,17 +8215,17 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:U(11),color:gTBright,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,...floatFace,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(12),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,...floatFace,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
@@ -8233,9 +8236,9 @@ function App(){
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:gTBright,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:T.gT,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
-                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
+                        <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,...floatFace,borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
                           {/* Invisible native select — fills tap target, opens system picker */}
                           <select value={readBmCat} onChange={e=>setReadBmCat(e.target.value)}
                             style={{position:'absolute',inset:0,width:'100%',height:'100%',opacity:0,cursor:'pointer',boxSizing:'border-box',appearance:'none',WebkitAppearance:'none',border:'none',background:'transparent'}}>
@@ -8243,7 +8246,7 @@ function App(){
                             {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           {/* Custom display — purely visual, no pointer events */}
-                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?gTBright:T.dim,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
+                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?T.gT:T.dim,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
                             {readBmCat?bmCategories.find(c=>String(c.id)===String(readBmCat))?.name||'Bookmark Category…':'Bookmark Category…'}
                           </span>
                           <div style={{position:'absolute',right:8,top:0,bottom:0,display:'flex',alignItems:'center',pointerEvents:'none'}}>
