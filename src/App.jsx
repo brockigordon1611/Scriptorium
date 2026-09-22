@@ -5879,6 +5879,10 @@ function App(){
     setBookWheelOpen(false);
     if(readMobileSheet)closeReadSheet();
     closeModal();
+    // Search takes the screen, and the Strong's panel was staying over it:
+    // every other thing that owns the screen gets stood down here, and this
+    // one was simply missed.
+    if(strongsPopup)closeStrongsPopup();
     if(readFullScreen.current)exitFullScreen();
     if(tab!=='read')setTab('read');
     if(readSearchRes&&!readSearchResultsOpen&&tab==='read'){
@@ -9602,7 +9606,11 @@ function App(){
           {(()=>{
             const rdFont=fontFamilyMap[readFontFamily];
             const rdLH=Math.max(1.5,Math.min(readLineHeight,2.2));
-            const rdSz=Math.max(15,Math.min(readFontSize,22));
+            // Clamped so a reference document stays readable at either end of
+            // the slider, not pinned: the old ceiling of 22 was set when that was
+            // near the top of the range, and stopped responding once Scripture
+            // Size reached 60.
+            const rdSz=Math.max(14,Math.min(readFontSize,30));
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
                 <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
@@ -9611,7 +9619,7 @@ function App(){
             );
             const Row=({icon,children})=>(
               <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:9}}>
-                <span style={{fontSize:rdSz,flexShrink:0,width:22,textAlign:'center',marginTop:1}}>{icon}</span>
+                <span style={{fontSize:rdSz,flexShrink:0,width:Math.round(rdSz*1.35),textAlign:'center',marginTop:1}}>{icon}</span>
                 <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.mut,lineHeight:rdLH}}>{children}</span>
               </div>
             );
@@ -9644,13 +9652,16 @@ function App(){
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
                 <Row icon="⌕">
-                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Type a word or phrase and results are grouped by book.
+                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, from three letters on, with a running count of the verses and occurrences that matched.
+                </Row>
+                <Row icon="⚙">
+                  The <strong style={{color:T.gT}}>filter bar</strong> sets <strong style={{color:T.gT}}>Scope</strong> — All, OT or NT — and <strong style={{color:T.gT}}>Mode</strong> — All Words, Phrase or Any Word — with Case Sensitive and Partial Match beside them. A reset arrow appears once you change anything. Tap the filter button to pin the bar so it stays put while the results scroll.
                 </Row>
                 <Row icon="≡">
-                  A <strong style={{color:T.gT}}>book jump list</strong> appears on the right edge while scrolling through results — tap any abbreviation to jump straight to that book's results.
+                  Tap the <strong style={{color:T.gT}}>book name</strong> in the bar above the results to open a wheel and jump to any other book that matched.
                 </Row>
                 <Row icon="←">
-                  Tap the <strong style={{color:T.gT}}>←</strong> in the floating bar at the top of the results to dismiss them and return to where you were.
+                  Tap the <strong style={{color:T.gT}}>←</strong> in the bar above the results to dismiss them and return to where you were.
                 </Row>
 
                 {/* ── VERSE SELECTION & BOOKMARKS ── */}
@@ -9659,10 +9670,25 @@ function App(){
                   After selecting one or more verses a toolbar appears at the bottom. Tap <strong style={{color:T.gT}}>Copy</strong> to copy the verse text with its reference formatted for sharing.
                 </Row>
                 <Row icon="✦">
-                  Tap <strong style={{color:T.gT}}>Bookmark</strong> to save the selected passage. View and manage all bookmarks in <em>Settings → Bookmarks</em>.
+                  Tap <strong style={{color:T.gT}}>Bookmark</strong> to open the save form — write a note, choose a category, or create a category on the spot. The passage reference becomes the bookmark's title.
+                </Row>
+                <Row icon="▤">
+                  Manage bookmarks in <em>Study → Bookmarks</em>. Each category is a card in its own colour, and <strong style={{color:T.gT}}>Assign Categories</strong> at the top moves bookmarks between them without opening each one.
                 </Row>
                 <Row icon="▸">
-                  Tap <strong style={{color:T.gT}}>Play</strong> from the verse toolbar to start audio from that verse instead of the chapter beginning.
+                  With a verse selected, the <strong style={{color:T.gT}}>play button</strong> reads <em>Play from Verse N</em> and starts audio there instead of at the beginning of the chapter.
+                </Row>
+
+                {/* ── READING PLANS ── */}
+                <Hdg label="Reading Plans"/>
+                <Row icon="✦">
+                  Tap <strong style={{color:T.gT}}>Read</strong> in the bottom bar while you are already in the Read tab to open the <strong style={{color:T.gT}}>reading plan</strong>. Each day lists its passages with a checkbox to mark the day read.
+                </Row>
+                <Row icon="▸">
+                  Tap any passage to jump to it. That day's readings then float above the bottom bar as you read: the passage you are in is lit, tapping another jumps there, and the checkbox marks the day without taking the row away.
+                </Row>
+                <Row icon="✕">
+                  Close the row with its <strong style={{color:T.gT}}>✕</strong> whether or not you finished — marking the day read and putting the row away are separate. It stays until you close it or close the app.
                 </Row>
 
                 {/* ── AUDIO ── */}
@@ -9719,6 +9745,18 @@ function App(){
                   All 107,793 entries are included with the app and work with no connection.
                 </Row>
 
+                {/* ── ATLAS & CHARTS ── */}
+                <Hdg label="Atlas &amp; Charts"/>
+                <Row icon="⛶">
+                  <strong style={{color:T.gT}}>Maps</strong> in the Study tab holds seventeen engraved plates, running in the order the story does — from the descendants of Noah to the journeys of Christ and the apostles. Pinch to zoom; the scans hold their detail well past the point the old ones blurred.
+                </Row>
+                <Row icon="▦">
+                  <strong style={{color:T.gT}}>Charts</strong> holds Clarence Larkin's plates from <em>Dispensational Truth</em> (1918), grouped by section. Tap any chart to open it full screen and zoom.
+                </Row>
+                <Row icon="＋">
+                  Both screens take your own images as well — imported maps and charts sit above the built-in ones and stay on your device.
+                </Row>
+
                 {/* ── OFFLINE DATA ── */}
                 <Hdg label="Offline Data"/>
                 <Row icon="▤">
@@ -9731,8 +9769,9 @@ function App(){
                 {/* ── SETTINGS REFERENCE ── */}
                 <Hdg label="Settings Reference"/>
                 {[
-                  ['Accent Color','Changes the highlight color throughout the app — underlines, active borders, selected verse glow, and buttons.'],
-                  ['Text Size','Adjust the reading font size. Drag the slider from small to large.'],
+                  ['Accent Color','Changes the highlight color throughout the app — underlines, active borders, selected verse glow, and buttons. Pick a preset or mix your own.'],
+                  ['Scripture Size','The size of the verse text, from 13 to 60.'],
+                  ['Menus & Buttons','Scales everything else — navigation, labels, buttons, sheets and panels — from 85% to 150%. Set separately from Scripture Size, so large verses can sit in a compact interface, or the reverse.'],
                   ['Line Spacing','Controls vertical space between lines of text (Tight → Wide).'],
                   ['Font','Serif (Cormorant Garamond), Sans-Serif (Source Sans 3), or Monospace (Inconsolata).'],
                   ['Alignment','Left-aligned or fully justified text.'],
@@ -9742,6 +9781,7 @@ function App(){
                   ["Strong's",'Activates Hebrew/Greek root underlines on every word. KJV only.'],
                   ['Fullscreen','Auto-hides the top navigation bar when scrolling down.'],
                   ['Theme','Light or Dark mode. Follows your system setting by default.'],
+                  ['Reset Appearance Settings','Puts everything in Reading Appearance back to its default, including both size sliders.'],
                 ].map(([k,v])=>(
                   <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',marginBottom:8}}>
                     <span style={{fontFamily:FS,fontSize:Math.max(10,rdSz-4),color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:110,fontWeight:600}}>{k}</span>
@@ -9753,8 +9793,9 @@ function App(){
                 <Hdg label="Gestures & Shortcuts"/>
                 <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',alignItems:'center',fontFamily:rdFont,fontSize:rdSz,color:T.mut}}>
                   <Chip>Swipe down</Chip><span style={{marginRight:16}}>Dismiss any bottom sheet or modal</span>
-                  <Chip>Tap verse</Chip><span style={{marginRight:16}}>Select / deselect a verse</span>
-                  <Chip>Tap + hold</Chip><span>Select verse range</span>
+                  <Chip>Tap verse</Chip><span style={{marginRight:16}}>Select it — tap another to add it to the selection</span>
+                  <Chip>Tap again</Chip><span style={{marginRight:16}}>Deselect that verse</span>
+                  <Chip>Hold a word</Chip><span>Open Strong's for it</span>
                 </div>
               </div>
             );
@@ -9804,10 +9845,20 @@ function App(){
                 <Li><strong style={{color:T.gT}}>Reina-Valera Gómez (RVG)</strong> — © Dr. Humberto Gómez Caballero. Licensed under Creative Commons CC BY-NC-ND 3.0. Used for personal, non-commercial study only. For commercial or distribution licensing, contact the copyright holder directly.</Li>
                 <Li><strong style={{color:T.gT}}>Purificada 1602 (1602P)</strong> — © 2007–2024 Iglesia Bautista Bíblica de la Gracia, Monterrey, Mexico. Textual restoration based on the 1602 Reina-Valera. Used for study and research purposes without modification.</Li>
 
+                {/* MAPS & CHARTS */}
+                <Hdg label="Maps &amp; Charts"/>
+                <Li><strong style={{color:T.gT}}>Scripture Atlas</strong> — The seventeen plates are engraved maps from historical Bible atlases, long out of copyright by age. The high-resolution scans are from the David Rumsey Map Collection, retrieved through its Internet Archive mirror, and are reproduced here for personal, non-commercial study.</Li>
+                <Li><strong style={{color:T.gT}}>Larkin's Charts</strong> — Clarence Larkin, <em>Dispensational Truth, or God's Plan and Purpose in the Ages</em> (1918). Public domain.</Li>
+
                 {/* AUDIO */}
                 <Hdg label="Audio Attribution"/>
                 <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streamed and downloadable audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT}}>www.faithcomesbyhearing.com</span> for more information.</Li>
                 <Li><strong style={{color:T.gT}}>Browser Text-to-Speech</strong> — Synthesized audio is generated by your device's built-in speech engine and is not derived from any recorded performance.</Li>
+
+                {/* USER CONTENT */}
+                <Hdg label="Content You Add"/>
+                <P>Scriptorium can import Bible modules (e-Sword .bblx and .bbli, MyBible .SQLite3), maps, charts and local audio from your own device. Imported verse text is written to this device only and is never uploaded — the app registers nothing about it beyond its name, language and verse count, so that the same version can be recognised when you sign in elsewhere.</P>
+                <P>You are responsible for holding the rights to anything you import, and for observing the licence of any version you add. Imported content is never shared with other users or redistributed by this app.</P>
 
                 {/* ATTRIBUTION */}
                 <Hdg label="Attribution Requirements"/>
@@ -9816,7 +9867,7 @@ function App(){
                 {/* DISCLAIMER */}
                 <Hdg label="Disclaimer of Warranties"/>
                 <P>Scriptorium is provided "as is" without warranty of any kind, express or implied. While every effort is made to ensure textual accuracy, no guarantee is made that verse text, Strong's data, or dictionary entries are free from error. Users are responsible for verifying all content against authoritative printed sources.</P>
-                <P>This app does not store, transmit, or sell personal study data beyond what is required for account sync. See our Privacy Policy for details.</P>
+                <P>This app does not store, transmit, or sell personal study data beyond what is required for account sync. The full Privacy Policy is at <span style={{color:T.gT}}>brockigordon1611.github.io/Scriptorium/docs/privacy.html</span>.</P>
 
                 {/* VERSION */}
                 <div style={{marginTop:28,paddingTop:16,borderTop:`1px solid ${T.bdS}`,display:'flex',alignItems:'center',gap:12}}>
