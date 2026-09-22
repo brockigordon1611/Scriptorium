@@ -1264,11 +1264,11 @@ function buildYearPlan(year){
 }
 // A reading is [book, fromChapter, fromVerse, toChapter, toVerse]. Verse 0 means
 // the whole chapter; one that spans a whole book is shown as just its name.
-function planRefLabel(r,lang){
+function planRefLabel(r,lang,short){
   const[b,c1,v1,c2,v2]=r;
   const bk=BIBLE.find(x=>x.n===b);
   if(!bk)return'';
-  const nm=bookName(bk,lang),last=bk.v.length;
+  const full=bookName(bk,lang),nm=short?shortBook(full):full,last=bk.v.length;
   if(c1===1&&c2===last&&!v1&&!v2)return nm;
   if(!v1&&!v2)return c1===c2?`${nm} ${c1}`:`${nm} ${c1}\u2013${c2}`;
   if(c1===c2)return `${nm} ${c1}:${v1||1}\u2013${v2||bk.v[c2-1]}`;
@@ -1278,7 +1278,7 @@ const _planLabels={};
 function planYearLabels(year,lang){
   const k=year+':'+lang;
   if(!_planLabels[k])_planLabels[k]=buildYearPlan(year).map(e=>
-    [...e.ot,...e.nt].map(r=>({b:r[0],c:r[1],v:r[2]||1,c2:r[3]||r[1],label:planRefLabel(r,lang)})));
+    [...e.ot,...e.nt].map(r=>({b:r[0],c:r[1],v:r[2]||1,c2:r[3]||r[1],label:planRefLabel(r,lang),short:planRefLabel(r,lang,true)})));
   return _planLabels[k];
 }
 function planDayOfYear(d=new Date()){
@@ -8191,13 +8191,13 @@ function App(){
               passages. The checkbox is the plan's own -- ticking here ticks there.
               Each piece wears the verse strip's glass and floats on its own, and
               the row stacks above that strip rather than giving way to it. */}
-          {planStrip&&tab==='read'&&!readingHidden&&!audioPlaying&&(()=>{
+          {planStrip&&tab==='read'&&!readingHidden&&(()=>{
             const base=fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8);
             const dayDone=new Set(planState.done).has(planStrip.day);
             const glass={...floatFace,
               height:30,boxSizing:'border-box',flexShrink:0};
             return (
-            <div ref={planStripRef} style={{position:'fixed',bottom:base+(stripOpen?verseStripH+8:0),left:14,right:14,zIndex:151,
+            <div ref={planStripRef} style={{position:'fixed',bottom:base+(stripOpen&&!audioPlaying?verseStripH+8:0),left:14,right:14,zIndex:134,
               display:'flex',flexWrap:'wrap',justifyContent:'center',alignItems:'center',gap:8,pointerEvents:'none',
               transition:'bottom .18s ease'}}>
               <button type="button" onClick={()=>planToggleDay(planStrip.day)}
@@ -8211,7 +8211,7 @@ function App(){
                   <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
                     style={{...glass,...(here?floatOn:{}),pointerEvents:'auto',padding:'0 12px',
                       fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
-                      color:dayDone?T.dim:(here?T.gT:floatText),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
+                      color:dayDone?T.dim:(here?T.gT:floatText),textDecoration:dayDone?'line-through':'none'}}>{it.short}</button>
                 );
               })}
               <button type="button" aria-label="Hide the day's readings" onClick={()=>setPlanStrip(null)}
@@ -8230,7 +8230,7 @@ function App(){
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontFamily:FB,fontSize:U(12),color:floatText,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
-                        {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
+                        {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${shortBook(bookName(readBk,versionLang(readVid)))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
