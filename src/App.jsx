@@ -4030,6 +4030,9 @@ function App(){
   // they still open it. Consumed wherever it is read, so it cannot carry into a
   // later arrival that never asked for it.
   const landSilent=useRef(false);
+  // Retires an in-flight landing. Anything that starts a new one, or that
+  // changes the chapter under an old one, bumps this.
+  const landSeq=useRef(0);
   const readPendingSelVerses=useRef(null); // Set of verse numbers to select after chapter loads
   const prevReadStateRef=useRef({vid:null,book:null,ch:null}); // track previous vid/book/ch for version-change detection
   // A verse selected by arriving at it is provisional. It is there to show you
@@ -4046,8 +4049,10 @@ function App(){
   // some landings are a destination you asked for, and some are just where a
   // link happened to put you.
   function landOnVerse(v,quiet){
+    const mine=++landSeq.current;
     let tries=0;
     const go=()=>{
+      if(mine!==landSeq.current)return;
       const el=document.getElementById(`rv-${v}`);
       if(!el&&tries++<20){setTimeout(go,40);return;}
       if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
@@ -5339,6 +5344,7 @@ function App(){
     prevReadStateRef.current={vid:readVid,book:readBook,ch:readCh};
     setReadSelVerses(new Set());
     autoSel.current=false;
+    landSeq.current++;
     // Close strip immediately so it doesn't flash empty while new chapter loads
     if(!readPendingSelVerses.current)setStripOpen(false);
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
@@ -5936,7 +5942,7 @@ function App(){
     if(ref.book_num===readBook&&ref.chapter===readCh){
       setTimeout(()=>{const el=document.getElementById(`rv-${v}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});if(ref.verse)setReadSelVerses(new Set([v]));}},60);
     } else {
-      readScrollToVerse.current=v;setReadBook(ref.book_num);setReadCh(ref.chapter);
+      readScrollToVerse.current=v;landSilent.current=true;setReadBook(ref.book_num);setReadCh(ref.chapter);
     }
   }
   // The bar is one row collapsed and two expanded, and two things are sized
