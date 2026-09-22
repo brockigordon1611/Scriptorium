@@ -8234,7 +8234,7 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FB,fontSize:U(12),color:floatText,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FB,fontSize:U(12),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${shortBook(bookName(readBk,versionLang(readVid)))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
