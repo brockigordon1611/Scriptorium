@@ -2731,13 +2731,13 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   const ver=versions.find(v=>v.id===bm.version_id);
   const verLabel=ver?.label||(bm.version_id||'').toUpperCase();
   const ref=`${bk?.name||'?'} ${bm.chapter}${bm.verse?':'+bm.verse:''}`;
-  // The label is whatever was typed in the save form, and it defaults to the
-  // reference. When it is something else it becomes the heading and the
-  // reference moves underneath, so the card still says where it points.
-  const titleRef=bm.label||ref;
+  // The heading is always the reference. The label column carries it too,
+  // spelled across a range ("Galatians 4:2-3"), so prefer that spelling when
+  // the column holds one. A label written before the save form existed held a
+  // note instead, and still reads as one.
   const isRangeRef=bm.label&&bk&&(bm.label.startsWith(bk.name)||(bk.nameES&&bm.label.startsWith(bk.nameES)));
-  const subRef=(isRangeRef||titleRef===ref)?null:ref;
-  const displayNote=bm.note!=null?bm.note:null;
+  const titleRef=isRangeRef?bm.label:ref;
+  const displayNote=bm.note!=null?bm.note:(isRangeRef?null:bm.label);
 
   const[editNote,setEditNote]=useState(false);
   const[noteVal,setNoteVal]=useState(displayNote||'');
@@ -2753,17 +2753,16 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
       <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
-            {titleRef}{!subRef&&<> <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span></>}
+            {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span>
           </div>
-          {subRef&&<div style={{fontFamily:FS,fontSize:UL(10),color:T.gM,letterSpacing:'0.08em',marginTop:2}}>{subRef} · {verLabel}</div>}
           {!editNote&&displayNote&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginTop:3,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{displayNote}</div>}
           {editNote&&(
             <div style={{marginTop:6}}>
               <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
                 style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(13),padding:'6px 8px',outline:'none',resize:'vertical',lineHeight:1.5}}/>
               <div style={{display:'flex',gap:6,marginTop:4}}>
-                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer',fontWeight:600}}>Save</button>
-                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'4px 10px',cursor:'pointer'}}>Cancel</button>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer'}}>Cancel</button>
               </div>
             </div>
           )}
@@ -2771,12 +2770,12 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           {showCatPicker&&categories.length>0&&(
             <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:4}}>
               <button onClick={()=>moveCat(null)}
-                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:UL(9),padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
                 None
               </button>
               {categories.map(c=>(
                 <button key={c.id} onClick={()=>moveCat(c.id)}
-                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'3px 10px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
                   {c.name}
                 </button>
               ))}
@@ -2784,11 +2783,15 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
           )}
         </div>
         <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
-          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Open</button>
+          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'8px 14px',fontWeight:500}}>Open</button>
           {user&&<>
             <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
-              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'4px 7px',cursor:'pointer',lineHeight:1}}>✎</button>
-            <IBtn T={T} ch="✕" danger onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"/>
+              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(14),padding:'6px 11px',cursor:'pointer',lineHeight:1}}>✎</button>
+            {/* Not the shared IBtn: that one is sized for denser rows than
+                this, and would sit small beside the pencil. */}
+            <button className="s-btn s-danger" onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"
+              style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FB,
+                fontSize:U(15),padding:'6px 12px',lineHeight:1,fontWeight:500,cursor:'pointer'}}>✕</button>
           </>}
         </div>
       </div>
@@ -2825,10 +2828,10 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
         <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
           <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
-            style={{background:'none',border:'none',color:T.dim,fontSize:U(11),cursor:'pointer',padding:'0 3px',lineHeight:1}}>✎</button>
+            style={{background:'none',border:'none',color:T.dim,fontSize:U(14),cursor:'pointer',padding:'4px 6px',lineHeight:1}}>✎</button>
           <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
-            style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'0 3px',lineHeight:1,display:'flex',alignItems:'center'}}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            style={{background:'none',border:'none',color:T.dim,cursor:'pointer',padding:'4px 6px',lineHeight:1,display:'flex',alignItems:'center'}}>
+            <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
               <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
             </svg>
@@ -2847,8 +2850,8 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
                   style={{width:18,height:18,borderRadius:'50%',background:c,border:`2px solid ${i===colorIdx?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
               ))}
             </div>
-            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'4px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),padding:'4px 10px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
+            <button onClick={()=>setRenaming(false)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),padding:'7px 14px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+            <button onClick={saveRename} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),padding:'7px 14px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Save</button>
           </div>
         </div>
       )}
@@ -2912,13 +2915,13 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
                       style={{width:20,height:20,borderRadius:'50%',background:c,border:`2px solid ${i===newCatColor?T.gT:'transparent'}`,cursor:'pointer',padding:0,flexShrink:0}}/>
                   ))}
                 </div>
-                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),padding:'5px 10px',cursor:'pointer',flexShrink:0}}>Cancel</button>
-                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 12px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
+                <button onClick={()=>{setAddingCat(false);setNewCatName('');}} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),padding:'8px 14px',cursor:'pointer',flexShrink:0}}>Cancel</button>
+                <button onClick={createCat} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'8px 16px',cursor:'pointer',fontWeight:600,flexShrink:0}}>Create</button>
               </div>
             </div>
           ):(
             <button onClick={()=>setAddingCat(true)}
-              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'7px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
+              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',padding:'11px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
               + New Category
             </button>
           )}
@@ -2927,22 +2930,22 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
             <>
               <div style={{display:'flex',gap:8,marginBottom:6}}>
                 <button onClick={()=>setViewAll(v=>!v)}
-                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
                   {viewAll?'By Category':'View All'}
                 </button>
                 <button onClick={()=>setAssigningCats(v=>!v)}
-                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'7px 0',cursor:'pointer'}}>
+                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
                   {assigningCats?'Done Assigning':'Assign Categories'}
                 </button>
               </div>
               {!viewAll&&(
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={11}/> Expand All</span>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'10px 0',cursor:'pointer'}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={13}/> Expand All</span>
                   </button>
                   <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',padding:'6px 0',cursor:'pointer'}}>
+                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'10px 0',cursor:'pointer'}}>
                     ▸ Collapse All
                   </button>
                 </div>
@@ -6146,7 +6149,7 @@ function App(){
     const ranges=[];let i=0;
     while(i<sorted.length){let s=sorted[i],e=s;while(i+1<sorted.length&&sorted[i+1]===e+1){i++;e=sorted[i];}ranges.push(s===e?`${s}`:`${s}-${e}`);i++;}
     const rangeRef=`${bookName(readBk,versionLang(readVid))} ${readCh}:${ranges.join(', ')}`;
-    setBmDialog({verse:v,ref:rangeRef,label:rangeRef,note:'',cat:'',newCat:'',busy:false});
+    setBmDialog({verse:v,ref:rangeRef,note:'',cat:'',newCat:'',busy:false});
   }
 
   async function saveBookmarkFromDialog(){
@@ -6160,8 +6163,11 @@ function App(){
       catId=made?made.id:null;
     }
     if(catId==='__new'||!catId)catId=null;
+    // The label is always the reference. It is not the reader's to change, but
+    // it is still written: the verse column holds one number, and the range a
+    // bookmark covers survives only in the label's spelling of it.
     await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:d.verse,
-      label:d.label.trim()||d.ref,note:d.note.trim()||null,categoryId:catId});
+      label:d.ref,note:d.note.trim()||null,categoryId:catId});
     setBmDialog(null);
     setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);dismissStrip();},1400);
   }
@@ -8233,46 +8239,46 @@ function App(){
                 aria-label={dayDone?'Mark day as not read':'Mark day as read'}
                 style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
                   ...(dayDone?floatOn:{}),
-                  color:dayDone?T.gT:`${T.dim}99`,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>✓</button>
+                  color:dayDone?T.gT:`${T.dim}99`,fontSize:U(14),lineHeight:1,padding:0,cursor:'pointer'}}>✓</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
                 return (
                   <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
                     style={{...glass,...(here?floatOn:{}),pointerEvents:'auto',padding:'0 12px',
-                      fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
+                      fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
                       color:dayDone?T.dim:(here?T.gT:floatText),textDecoration:dayDone?'line-through':'none'}}>{it.short}</button>
                 );
               })}
               <button type="button" aria-label="Hide the day's readings" onClick={()=>setPlanStrip(null)}
                 style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
-                  border:'1px solid rgba(200,60,60,0.35)',color:'#b86060',fontSize:U(13),fontWeight:600,
+                  border:'1px solid rgba(200,60,60,0.35)',color:'#b86060',fontSize:U(14),fontWeight:600,
                   lineHeight:1,padding:0,cursor:'pointer'}}>✕</button>
             </div>);
           })()}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
             <div ref={verseStripRef} className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
               {readBmOk
-                ?<span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
+                ?<span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
-                  ?<span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
+                  ?<span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FB,fontSize:U(12),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${shortBook(bookName(readBk,versionLang(readVid)))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
-                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(12),textAlign:'center'}}>Sign in to bookmark</span>}
+                        :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(13),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
-                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
+                        style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(14),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                     </div>
                   </div>
               }
@@ -9334,10 +9340,6 @@ function App(){
           confirmLabel={bmDialog.busy?'Saving…':'Save'} cancelLabel="Cancel"
           onConfirm={saveBookmarkFromDialog} onCancel={()=>setBmDialog(null)}>
           <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:16}}>
-            <div>
-              <Lbl c="Label" T={T}/>
-              <Inp val={bmDialog.label} set={v=>setBmDialog(x=>({...x,label:v}))} ph={bmDialog.ref} T={T}/>
-            </div>
             <div>
               <Lbl c="Note" T={T}/>
               <TA val={bmDialog.note} set={v=>setBmDialog(x=>({...x,note:v}))} ph="Anything worth remembering about this passage…" rows={3} T={T}/>
