@@ -5901,10 +5901,13 @@ function App(){
   // different kind of thing altogether. Solid is kept for the one control
   // actually being used: the field under the cursor.
   const ctrlOnSoft={...ctrlOn,background:`${T.g}26`};
-  const floatFace={background:`linear-gradient(${T.g}0d,${T.g}0d),rgba(0,0,0,0.45)`,border:`1px solid ${T.gD}99`,
+  // The play button's face, which is the one that already sits right over the
+  // text: the plain dark glass and the faint edge, not the filters' gold wash
+  // and 99 border. Those belong on an opaque bar. Lit means the text turns
+  // gold and the edge firms up slightly -- the face itself never changes.
+  const floatFace={background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,
     backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6};
-  const floatOn={...floatFace,background:`${T.g}26`,border:`1px solid ${T.g}66`,
-    boxShadow:`0 0 0 2px ${T.g}14,0 4px 14px rgba(0,0,0,0.22)`};
+  const floatOn={...floatFace,border:`1px solid ${T.gD}`};
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
@@ -8190,7 +8193,7 @@ function App(){
                 aria-label={dayDone?'Mark day as not read':'Mark day as read'}
                 style={{...glass,pointerEvents:'auto',width:32,display:'flex',alignItems:'center',justifyContent:'center',
                   ...(dayDone?floatOn:{}),
-                  color:dayDone?T.gT:T.mut,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
+                  color:dayDone?T.gT:T.dim,fontSize:U(13),lineHeight:1,padding:0,cursor:'pointer'}}>{dayDone?'✓':''}</button>
               {planStrip.items.map((it,i)=>{
                 const here=readBook===it.b&&readCh>=it.c&&readCh<=it.c2;
                 return (
@@ -8215,17 +8218,17 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FS,fontSize:U(11),color:T.mut,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,...floatFace,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,...floatFace,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(12),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,...floatFace,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,...floatFace,borderRadius:6,color:T.mut,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
@@ -8236,7 +8239,7 @@ function App(){
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:T.gT,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:T.mut,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
                         <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,...floatFace,borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
                           {/* Invisible native select — fills tap target, opens system picker */}
