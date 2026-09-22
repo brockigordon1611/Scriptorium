@@ -4636,7 +4636,7 @@ function App(){
     // other way the caps never bound and the interface stopped short of them.
     // Below 100 the same ramps run backwards, so the labels give up the least:
     // at 85% body copy is at 0.85 but a 9px label only reaches 8.2px.
-    const t=Math.min(1,Math.max(-0.25,(uiSize-100)/60)),at=hi=>(1+t*(hi-1)).toFixed(4);
+    const t=Math.min(1,Math.max(-0.25,(Math.min(150,Math.max(85,uiSize))-100)/60)),at=hi=>(1+t*(hi-1)).toFixed(4);
     const el=document.getElementById('ui-scale-vars')||Object.assign(document.createElement('style'),{id:'ui-scale-vars'});
     el.textContent=`:root{--ui-s:${at(1.6)};--ui-l:${at(1.35)};--ui-h:${at(1.5)};}`;
     if(!el.parentNode)document.head.appendChild(el);
@@ -6894,7 +6894,7 @@ function App(){
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <span style={{fontFamily:FS,fontSize:U(9),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
-                <input type="range" min="85" max="160" step="5" value={uiSize}
+                <input type="range" min="85" max="150" step="5" value={uiSize}
                   onChange={e=>{const v=Number(e.target.value);setUiSize(v);try{localStorage.setItem('scrip:uiSize',v);}catch{}}}
                   style={{flex:1,accentColor:T.gM,cursor:'pointer'}}/>
                 <span style={{fontFamily:FS,fontSize:UH(15),color:T.dim,letterSpacing:'0.1em'}}>Aa</span>
@@ -9379,12 +9379,12 @@ function App(){
             subHeader={<>
               {/* The title is centred on the row itself, so the reminder on one
                   side and the day count on the other never pull it off centre. */}
-              <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:7}}>
+              <div style={{position:'relative',display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:7}}>
                 {/* Everything but the switch is out of flow, so the row's height is
                     the switch's height whether the time is showing or not — turning
                     the reminder on moves nothing. The time sits in the header's own
                     bottom padding, well clear of the centred title above it. */}
-                <div style={{position:'relative',display:'inline-flex'}}>
+                <div style={{position:'relative',display:'inline-flex',flex:'1 1 0',minWidth:0}}>
                   {Capacitor.isNativePlatform()&&(<>
                     {/* Switching on asks for the time first, and only switches on if
                         a time is actually chosen. The invisible native picker this
@@ -9410,8 +9410,8 @@ function App(){
                     )}
                   </>)}
                 </div>
-                <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',fontFamily:FS,fontSize:U(11.5),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
-                <span style={{fontFamily:FB,fontSize:U(13),color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
+                <span style={{flex:'0 1 auto',minWidth:0,textAlign:'center',overflow:'hidden',textOverflow:'ellipsis',fontFamily:FS,fontSize:U(11.5),letterSpacing:'0.12em',textTransform:'uppercase',color:T.gM,whiteSpace:'nowrap',pointerEvents:'none'}}>The Bible in a year</span>
+                <span style={{flex:'1 1 0',textAlign:'right',fontFamily:FB,fontSize:U(13),color:T.dim,whiteSpace:'nowrap'}}>{done.size} of {PLAN_DAYS} days</span>
               </div>
               <div style={{height:4,background:T.bgSec,borderRadius:2,overflow:'hidden'}}>
                 <div style={{width:`${pct}%`,height:'100%',background:T.gD,transition:'width .25s'}}/>
