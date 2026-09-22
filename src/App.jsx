@@ -5907,7 +5907,7 @@ function App(){
   // gold and the edge firms up slightly -- the face itself never changes.
   const floatFace={background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,
     backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6};
-  const floatOn={...floatFace,border:`1px solid ${T.gD}`};
+  const floatOn={...floatFace};
   // Halfway between mut and dim. These labels want to sit below body copy but
   // still read as text you can tap, and neither token on its own does that:
   // mut is a shade loud against the play button, dim is too faint to read.
@@ -8210,7 +8210,7 @@ function App(){
                 return (
                   <button key={i} type="button" onClick={()=>openPlanPassage(it.b,it.c,it.v,planStrip.day)}
                     style={{...glass,...(here?floatOn:{}),pointerEvents:'auto',padding:'0 12px',
-                      fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
+                      fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',fontWeight:600,whiteSpace:'nowrap',cursor:'pointer',
                       color:dayDone?T.dim:(here?T.gT:floatText),textDecoration:dayDone?'line-through':'none'}}>{it.label}</button>
                 );
               })}
@@ -8229,17 +8229,17 @@ function App(){
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FS,fontSize:U(11),color:floatText,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                      <span style={{fontFamily:FB,fontSize:U(12),color:floatText,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${bookName(readBk,versionLang(readVid))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>✦</span><span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(12),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(12),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>⧉</span><span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
@@ -8250,7 +8250,7 @@ function App(){
                       <textarea value={readBmLabel} onChange={e=>setReadBmLabel(e.target.value)}
                         onFocus={()=>setReadBmLabelFocused(true)} onBlur={()=>setReadBmLabelFocused(false)}
                         placeholder="Bookmark notes…" rows={1}
-                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:floatText,'--ph':floatText,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FS,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
+                        style={{flex:'1 1 0',minWidth:0,...floatFace,borderRadius:6,color:floatText,'--ph':floatText,fontFamily:readBmLabelFocused?fontFamilyMap[readFontFamily]:FB,fontSize:readBmLabelFocused?readFontSize:10,letterSpacing:'0.05em',padding:readBmLabelFocused?'10px':'0 8px',outline:'none',height:readBmLabelFocused?140:30,boxSizing:'border-box',resize:'none',overflow:readBmLabelFocused?'auto':'hidden',lineHeight:readBmLabelFocused?readLineHeight:'30px',transition:'height 0.22s ease, font-size 0.18s ease, padding 0.18s ease'}}/>
                       {user&&bmCategories.length>0&&!readBmLabelFocused&&(
                         <div style={{flex:'1 1 0',minWidth:0,position:'relative',height:30,...floatFace,borderRadius:6,overflow:'hidden',display:'flex',alignItems:'center'}}>
                           {/* Invisible native select — fills tap target, opens system picker */}
@@ -8260,7 +8260,7 @@ function App(){
                             {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           {/* Custom display — purely visual, no pointer events */}
-                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?T.gT:floatText,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
+                          <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:FB,fontSize:UL(10),letterSpacing:'0.05em',color:readBmCat?T.gT:floatText,padding:'0 24px 0 8px',pointerEvents:'none',userSelect:'none'}}>
                             {readBmCat?bmCategories.find(c=>String(c.id)===String(readBmCat))?.name||'Bookmark Category…':'Bookmark Category…'}
                           </span>
                           <div style={{position:'absolute',right:8,top:0,bottom:0,display:'flex',alignItems:'center',pointerEvents:'none'}}>
