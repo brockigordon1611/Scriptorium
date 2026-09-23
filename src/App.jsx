@@ -2404,6 +2404,27 @@ function EdgeFades({fade,height=96,top=true,bottom=true}){
 const SHEET_DISMISS_PX=55;
 const SHEET_FLICK_V=0.35; // px per ms
 const SHEET_FLICK_PX=18;
+// A sheet title is one line. The row between the back button and its mirror
+// is fixed, the words are not, and Menus & Buttons scales the type, so a title
+// too long for the row shrinks just enough to fit rather than wrapping under
+// itself; one that fits is left at full size. Measured on every render, so the
+// slider, a new title and a rotated phone all re-fit it.
+function FitTitle({style,children}){
+  const ref=useRef(null);
+  useLayoutEffect(()=>{
+    const el=ref.current;if(!el)return;
+    const fit=()=>{
+      el.style.fontSize=style.fontSize;
+      const room=el.clientWidth,need=el.scrollWidth;
+      if(room>0&&need>room+0.5)el.style.fontSize=`calc(${style.fontSize} * ${(room/need).toFixed(4)})`;
+    };
+    fit();
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+    window.addEventListener('resize',fit);
+    return()=>window.removeEventListener('resize',fit);
+  });
+  return <div ref={ref} style={{...style,whiteSpace:'nowrap',overflow:'hidden'}}>{children}</div>;
+}
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(-1,onClose); // top sheet: leaves upwards
   const modalOverlayRef=React.useRef(null);
@@ -2434,7 +2455,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
                 <SheetBackBtn onClick={onBack||onClose} T={T} title={onBack?'Back':'Close'}/>
               </div>
             )}
-            <span style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>{title}</span>
+            <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>{title}</FitTitle>
           </div>
         ):(
           <>
@@ -6892,7 +6913,7 @@ function App(){
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Menu</div>
+            <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Menu</FitTitle>
           </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
@@ -6946,7 +6967,7 @@ function App(){
                 ←
               </button>
             </div>
-            <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</div>
+            <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</FitTitle>
           </div>
           {/* Bookmarks + Recent Passages */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
@@ -7647,7 +7668,7 @@ function App(){
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Select Version</div>
+                    <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Select Version</FitTitle>
                   </div>
                   {(data?.versions||[]).map(v=>(
                     <button key={v.id} type="button" className="s-btn s-ghost" onClick={()=>{setReadVid(v.id);closeReadSheet();}}
@@ -7672,7 +7693,7 @@ function App(){
                         ←
                       </button>
                     </div>
-                    <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Bible Versions</div>
+                    <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Bible Versions</FitTitle>
                   </div>
                   {/* Current versions list */}
                   {manageVers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:U(15),color:T.dim}}>No versions added yet.</div>}
@@ -8561,7 +8582,7 @@ function App(){
                     ←
                   </button>
                 </div>
-                <div style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Search</div>
+                <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Search</FitTitle>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                 <input value={q} onChange={e=>setQ(e.target.value)}
