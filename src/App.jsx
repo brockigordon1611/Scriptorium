@@ -9705,20 +9705,20 @@ function App(){
           {(()=>{
             const rdFont=fontFamilyMap[readFontFamily];
             const rdLH=Math.max(1.5,Math.min(readLineHeight,2.2));
-            // Clamped so a reference document stays readable at either end of
-            // the slider, not pinned: the old ceiling of 22 was set when that was
-            // near the top of the range, and stopped responding once Scripture
-            // Size reached 60.
-            const rdSz=Math.max(14,Math.min(readFontSize,30));
+            // A reference panel, so it follows Menus & Buttons like every other
+            // panel. It took its size from Scripture Size, whose default is 31:
+            // clamped at 22 it read large, and at 30 it read enormous. It keeps
+            // the reader's font and line spacing, which are about taste.
+            const rdSz=U(15);
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
-                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
-                <div style={{flex:1,height:1,background:T.bd}}/>
+                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,minWidth:0}}>{label}</div>
+                <div style={{flex:'1 0 16px',height:1,background:T.bd}}/>
               </div>
             );
             const Row=({icon,children})=>(
               <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:9}}>
-                <span style={{fontSize:rdSz,flexShrink:0,width:Math.round(rdSz*1.35),textAlign:'center',marginTop:1}}>{icon}</span>
+                <span style={{fontSize:rdSz,flexShrink:0,width:U(22),textAlign:'center',marginTop:1}}>{icon}</span>
                 <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.mut,lineHeight:rdLH}}>{children}</span>
               </div>
             );
@@ -9882,9 +9882,9 @@ function App(){
                   ['Theme','Light or Dark mode. Follows your system setting by default.'],
                   ['Reset Appearance Settings','Puts everything in Reading Appearance back to its default, including both size sliders.'],
                 ].map(([k,v])=>(
-                  <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',marginBottom:8}}>
-                    <span style={{fontFamily:FS,fontSize:Math.max(10,rdSz-4),color:T.gT,letterSpacing:'0.06em',flexShrink:0,minWidth:110,fontWeight:600}}>{k}</span>
-                    <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.dim,lineHeight:rdLH}}>{v}</span>
+                  <div key={k} style={{display:'flex',flexWrap:'wrap',columnGap:10,rowGap:2,alignItems:'baseline',marginBottom:8}}>
+                    <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,letterSpacing:'0.06em',flexShrink:0,width:U(124),fontWeight:600}}>{k}</span>
+                    <span style={{fontFamily:rdFont,fontSize:rdSz,color:T.dim,lineHeight:rdLH,flex:'1 1 180px',minWidth:0}}>{v}</span>
                   </div>
                 ))}
 
@@ -9907,8 +9907,8 @@ function App(){
           {(()=>{
             const Hdg=({label})=>(
               <div style={{display:'flex',alignItems:'center',gap:10,margin:'22px 0 10px'}}>
-                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,whiteSpace:'nowrap'}}>{label}</div>
-                <div style={{flex:1,height:1,background:T.bd}}/>
+                <div style={{fontFamily:FS,fontSize:U(12),letterSpacing:'0.18em',textTransform:'uppercase',color:T.gM,fontWeight:700,minWidth:0}}>{label}</div>
+                <div style={{flex:'1 0 16px',height:1,background:T.bd}}/>
               </div>
             );
             const P=({children})=>(
@@ -9951,7 +9951,7 @@ function App(){
 
                 {/* AUDIO */}
                 <Hdg label="Audio Attribution"/>
-                <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streamed and downloadable audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT}}>www.faithcomesbyhearing.com</span> for more information.</Li>
+                <Li><strong style={{color:T.gT}}>Faith Comes By Hearing (FCBH)</strong> — Streamed and downloadable audio provided by Faith Comes By Hearing (Hosanna/FCBH), Albuquerque, NM. Audio content is copyright © its respective rights holders and is streamed for personal, non-commercial listening only. Visit <span style={{color:T.gT,overflowWrap:'anywhere'}}>www.faithcomesbyhearing.com</span> for more information.</Li>
                 <Li><strong style={{color:T.gT}}>Browser Text-to-Speech</strong> — Synthesized audio is generated by your device's built-in speech engine and is not derived from any recorded performance.</Li>
 
                 {/* USER CONTENT */}
@@ -9966,7 +9966,7 @@ function App(){
                 {/* DISCLAIMER */}
                 <Hdg label="Disclaimer of Warranties"/>
                 <P>Scriptorium is provided "as is" without warranty of any kind, express or implied. While every effort is made to ensure textual accuracy, no guarantee is made that verse text, Strong's data, or dictionary entries are free from error. Users are responsible for verifying all content against authoritative printed sources.</P>
-                <P>This app does not store, transmit, or sell personal study data beyond what is required for account sync. The full Privacy Policy is at <span style={{color:T.gT}}>brockigordon1611.github.io/Scriptorium/docs/privacy.html</span>.</P>
+                <P>This app does not store, transmit, or sell personal study data beyond what is required for account sync. The full Privacy Policy is at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/docs/privacy.html</span>.</P>
 
                 {/* VERSION */}
                 <div style={{marginTop:28,paddingTop:16,borderTop:`1px solid ${T.bdS}`,display:'flex',alignItems:'center',gap:12}}>
