@@ -4264,9 +4264,7 @@ function App(){
   const[bmHover,setBmHover]=useState(false);
   const longPressTimer=useRef(null);
   const longPressFired=useRef(false);
-  const wasTouchEvent=useRef(false);
   const verseTouchStartY=useRef(0);
-  const verseTouchScrolled=useRef(false);
   const readScrollToVerse=useRef(null);
   // Set by a search result on its way out, read by whichever landing runs. A
   // result lands you on the verse lit but with no strip: you are reading down a
@@ -4324,13 +4322,26 @@ function App(){
     else{readScrollToVerse.current=tv;landSilent.current=true;setReadBook(bk);setReadCh(ch);}
     setTab('read');
   }
-  function dismissStrip(){setHlPickerOpen(false);setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
-  function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
-  function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive&&!audioPlaying){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
-  function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
+  // The strip slides away before the selection clears. A verse tapped during
+  // that slide used to be wiped by it -- lit for a moment, then gone -- so a
+  // tap now cancels the pending clear and starts a fresh selection instead.
+  const stripDismissT=useRef(null);
+  function dismissStrip(){setHlPickerOpen(false);setCopyHover(false);setBmHover(false);setStripClosing(true);clearTimeout(stripDismissT.current);stripDismissT.current=setTimeout(()=>{stripDismissT.current=null;setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
+  function cancelDismiss(){if(!stripDismissT.current)return false;clearTimeout(stripDismissT.current);stripDismissT.current=null;setStripClosing(false);return true;}
+  function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=cancelDismiss()||autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
+  // A tap is decided by the click iOS sends, not by touchend. The two used to
+  // disagree: touchend called a finger that drifted 8px a scroll and did
+  // nothing, while iOS still called it a tap and flashed the verse; and a click
+  // that arrived after the 300ms guard (a Strong's chapter re-rendering) toggled
+  // the verse a second time, undoing the first. Either way the verse flickered
+  // and stayed as it was. iOS sends no click for a scroll, or for a touch that
+  // stops one, so the click alone is the right test. Touch still owns the long
+  // press, and the click that follows one is ignored.
+  function verseTouchStart(v,e){longPressFired.current=false;_wlpFired=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive&&!audioPlaying){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
+  function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
   function handleVerseToggle(v){autoSel.current=false;const willEmpty=readSelVerses.has(v)&&readSelVerses.size===1;setReadSelVerses(s=>{const ns=new Set(s);ns.has(v)?ns.delete(v):ns.add(v);return ns;});if(willEmpty&&stripOpen)dismissStrip();}
-  function verseTouchEnd(v){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}if(!longPressFired.current&&!verseTouchScrolled.current&&!audioPlaying){if(readSelVerses.has(v)){if(stripOpen)handleVerseToggle(v);else openStrip(v);}else{openStrip(v);}}setTimeout(()=>{wasTouchEvent.current=false;},300);}
-  function verseClick(v){if(wasTouchEvent.current)return;if(audioPlaying)return;if(readFullScreen.current)exitFullScreen();if(readSelVerses.has(v)){if(stripOpen)handleVerseToggle(v);else openStrip(v);}else{openStrip(v);}}
+  function verseTouchEnd(){if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}
+  function verseClick(v){if(longPressFired.current||_wlpFired)return;if(audioPlaying)return;if(readFullScreen.current)exitFullScreen();if(readSelVerses.has(v)&&stripOpen&&!stripDismissT.current)handleVerseToggle(v);else openStrip(v);}
   // Leaving the reading page is leaving it: anything the navigation lit goes
   // with it, so coming back does not find an old jump still highlighted.
   useEffect(()=>{if(tab!=='read')clearAutoSel();},[tab]);
@@ -8351,7 +8362,7 @@ function App(){
                     const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <span key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
-                        onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
+                        onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={verseTouchEnd}
                         onClick={()=>{if(audioPlaying){if(audioModeRef.current==='speech'){seekWebSpeechToVerse(v);}else{const _ts=audioTimestampsRef.current;if(_ts&&_ts[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=_ts[v];currentVerseRef.current=v;setCurrentVerse(v);}}}else{verseClick(v);}}}
                         style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
@@ -8371,7 +8382,7 @@ function App(){
                     const isAudio=audioPlaying&&currentVerse===v;
                     return(
                       <div key={v} data-verse={v} id={`rv-${v}`} className="reading-verse"
-                        onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={()=>verseTouchEnd(v)}
+                        onTouchStart={e=>verseTouchStart(v,e)} onTouchMove={e=>verseTouchMove(e)} onTouchEnd={verseTouchEnd}
                         onClick={()=>{if(audioPlaying){if(audioModeRef.current==='speech'){seekWebSpeechToVerse(v);}else{const _ts=audioTimestampsRef.current;if(_ts&&_ts[v]!==undefined&&audioElRef.current){audioElRef.current.currentTime=_ts[v];currentVerseRef.current=v;setCurrentVerse(v);}}}else{verseClick(v);}}}
                         style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',boxShadow:isAudio?`0 0 0 1.5px var(--ac-audio-ring)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px var(--ac-sel-glow)`:'none',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
