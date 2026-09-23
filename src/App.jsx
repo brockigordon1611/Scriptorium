@@ -2984,7 +2984,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
   );
 }
 
-function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing}){
+function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing}){
   const[newCatName,setNewCatName]=useState('');
   const[newCatColor,setNewCatColor]=useState(0);
   const[addingCat,setAddingCat]=useState(false);
@@ -3004,7 +3004,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
   const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
 
   return(
-    <Modal title="Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
@@ -3105,7 +3105,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
 // colour and by version. Each row shows the verse's words in the version it was
 // highlighted in: highlights are about the text, where bookmarks are about the
 // place. The words load a chapter at a time, four at once, for what is shown.
-function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosing}){
+function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,isClosing}){
   const[colorF,setColorF]=useState('all');
   const[verF,setVerF]=useState('all');
   const[verMenu,setVerMenu]=useState(false);
@@ -3134,7 +3134,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosi
   },[need.join(',')]);
   const chip=on=>({background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:12,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'6px 12px',cursor:'pointer',fontWeight:on?600:400});
   return(
-    <Modal title="Highlights" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {highlights.length===0?(
         <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
       ):(<>
@@ -3144,10 +3144,10 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosi
             <button key={c.key} type="button" aria-label={`Show ${c.label.toLowerCase()} only`} aria-pressed={colorF===c.key} onClick={()=>setColorF(f=>f===c.key?'all':c.key)}
               style={{width:U(26),height:U(26),borderRadius:'50%',background:c.dot,border:`2px solid ${colorF===c.key?T.gT:'transparent'}`,opacity:colorF==='all'||colorF===c.key?1:0.35,padding:0,cursor:'pointer',boxSizing:'border-box',flexShrink:0}}/>
           ))}
-          {/* By version, once there is more than one: a small dropdown at the end
-              of the colour row. Not a native select -- below 16px iOS zooms the
-              page to it, and 16px is too large for this row. */}
-          {verIds.length>1&&(
+          {/* By version: a small dropdown at the end of the colour row, listing
+              only the versions that hold highlights. Not a native select --
+              below 16px iOS zooms the page to it, and 16px is too large here. */}
+          {verIds.length>0&&(
             <div style={{marginLeft:'auto',position:'relative'}}>
               <button type="button" aria-haspopup="listbox" aria-expanded={verMenu} onClick={()=>setVerMenu(o=>!o)}
                 style={{...chip(verF!=='all'),display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap'}}>
@@ -3199,9 +3199,9 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosi
   );
 }
 
-function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
+function RecentsPanel({T,recents,onOpen,onClose,onBack,versions,navH,isClosing}){
   return(
-    <Modal title="Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
@@ -4143,6 +4143,7 @@ function App(){
   const[modal,setModal]=useState(null);
   const[modalClosing,setModalClosing]=useState(false);
   const _topSheetTypes=['versions','bookmarks','highlights','recents','help'];
+  const studyBack=modal?.from==='study'?()=>closeModal(()=>setReadMobileSheet('studyTools')):undefined;
   function closeModal(then){
     if(_topSheetTypes.includes(modal?.type)){
       setModalClosing(true);
@@ -5939,7 +5940,7 @@ function App(){
     const here=h=>h.version_id===vid&&h.book_num===b&&h.chapter===c&&verses.includes(h.verse);
     const next=prev.filter(h=>!here(h));
     if(color){const now=new Date().toISOString();for(const v of verses){const old=prev.find(h=>here(h)&&h.verse===v);next.push({version_id:vid,book_num:b,chapter:c,verse:v,color,created_at:old?.created_at||now});}}
-    setHighlights(next);setHlPickerOpen(false);
+    setHighlights(next);dismissStrip();
     if(user.guest)return;
     try{if(color)await dbSetHighlights(user.id,vid,b,c,verses,color);else await dbRemoveHighlights(user.id,vid,b,c,verses);}
     catch(err){console.error('highlight:',err);setHighlights(prev);window.alert("Couldn't save that highlight \u2014 check your connection and try again.");}
@@ -6842,7 +6843,7 @@ function App(){
             const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
-            const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='recents';
+            const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='highlights'||modal?.type==='recents';
             const studyIsActive=studyActive||studyModalOpen||((readMobileSheet==='studyTools')&&!readSheetClosing);
             const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen; // settings/search/version/nav, or search results visible
             const readIsActive=tab==='read'&&!studyIsActive;
@@ -7162,7 +7163,7 @@ function App(){
               {icon:'◐',label:'Highlights',type:'highlights'},
               {icon:'↺',label:'Recent Passages',type:'recents'},
             ].map(t=>(
-              <div key={t.type} onClick={()=>{closeReadSheet();setModal({type:t.type});}} style={{flex:1,padding:'7px 4px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',gap:3,minWidth:0}}>
+              <div key={t.type} onClick={()=>{closeReadSheet();setModal({type:t.type,from:'study'});}} style={{flex:1,padding:'7px 4px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',gap:3,minWidth:0}}>
                 <span style={{fontFamily:FS,fontSize:U(15),color:T.gT,lineHeight:1}}>{t.icon}</span>
                 <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut,lineHeight:1.2}}>{t.label}</div>
               </div>
@@ -9668,9 +9669,11 @@ function App(){
           onConfirm={confirmDel} onCancel={()=>setModal(null)}/>
       )}
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing} user={user}/>}
-      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
-      {modal?.type==='highlights'&&<HighlightsPanel T={T} dark={dark} highlights={highlights} versions={data.versions} onOpen={openFromHighlight} onClose={closeModal} navH={navH} isClosing={modalClosing}/>}
-      {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
+      {/* Opened from the Study tiles, back returns to Study Tools; from anywhere
+          else it closes, as before. */}
+      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onBack={studyBack} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='highlights'&&<HighlightsPanel T={T} dark={dark} highlights={highlights} versions={data.versions} onOpen={openFromHighlight} onClose={closeModal} onBack={studyBack} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} onBack={studyBack} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {verDelAsk&&(()=>{
         const n=verDelAsk.names,one=n.length===1;
