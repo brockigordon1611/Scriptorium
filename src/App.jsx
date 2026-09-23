@@ -4662,6 +4662,13 @@ function App(){
   const[parallelChapters,setParallelChapters]=useState({});
   const[parallelLoading,setParallelLoading]=useState(false);
   const[parallelMobileSheet,setParallelMobileSheet]=useState(null);
+  // The Strong's panel belongs to the word it was opened from. Anything else
+  // that takes the screen -- a sheet, a menu, a dialog -- stands it down, the
+  // way search always has; otherwise it sat over whatever was opened. Keyed on
+  // the menus only, so it acts as one opens and never fights the panel itself.
+  useEffect(()=>{
+    if(strongsPopup&&(readMobileSheet||mobileSheet||modal||parallelMobileSheet))closeStrongsPopup();
+  },[readMobileSheet,mobileSheet,modal,parallelMobileSheet]);
   // The utterance callbacks are built once per chapter, so they would otherwise
   // go on seeing whatever was open at the moment playback started. A ref read at
   // call time sees what is open now.
