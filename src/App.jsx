@@ -2407,23 +2407,35 @@ const SHEET_FLICK_PX=18;
 // A sheet title is one line. The row between the back button and its mirror
 // is fixed, the words are not, and Menus & Buttons scales the type, so a title
 // too long for the row shrinks just enough to fit rather than wrapping under
-// itself; one that fits is left at full size. Measured on every render, so the
-// slider, a new title and a rotated phone all re-fit it.
+// itself; one that fits is left at full size. Re-fitted on every render, on
+// resize, and whenever a font finishes loading, so a face that arrives after
+// the first measure cannot leave it too wide.
+// The word is centred as a block rather than aligned as text: text wider than
+// its box starts at the left edge and runs off the right, so a pixel of
+// mismeasure pushed the whole title sideways. Centred this way it spills
+// evenly both sides and is never clipped.
 function FitTitle({style,children}){
-  const ref=useRef(null);
+  const box=useRef(null),word=useRef(null);
   useLayoutEffect(()=>{
-    const el=ref.current;if(!el)return;
+    const el=box.current,w=word.current;if(!el||!w)return;
     const fit=()=>{
       el.style.fontSize=style.fontSize;
-      const room=el.clientWidth,need=el.scrollWidth;
-      if(room>0&&need>room+0.5)el.style.fontSize=`calc(${style.fontSize} * ${(room/need).toFixed(4)})`;
+      const room=el.clientWidth,need=w.offsetWidth;
+      if(room>0&&need>room)el.style.fontSize=`calc(${style.fontSize} * ${((room-1)/need).toFixed(4)})`;
     };
     fit();
-    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+    const f=document.fonts;
+    if(f){f.ready.then(fit);f.addEventListener&&f.addEventListener('loadingdone',fit);}
     window.addEventListener('resize',fit);
-    return()=>window.removeEventListener('resize',fit);
+    return()=>{window.removeEventListener('resize',fit);if(f&&f.removeEventListener)f.removeEventListener('loadingdone',fit);};
   });
-  return <div ref={ref} style={{...style,whiteSpace:'nowrap',overflow:'hidden'}}>{children}</div>;
+  return(
+    <div ref={box} style={{...style,display:'flex',justifyContent:'center',whiteSpace:'nowrap'}}>
+      {/* Letter-spacing trails the last letter as well; the same space before
+          the first puts the letters themselves on the centre line. */}
+      <span ref={word} style={{paddingLeft:style.letterSpacing}}>{children}</span>
+    </div>
+  );
 }
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(-1,onClose); // top sheet: leaves upwards
@@ -2953,7 +2965,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
   const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
 
   return(
-    <Modal title="✦ Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Bookmarks" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
@@ -3052,7 +3064,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
 
 function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
   return(
-    <Modal title="↺ Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
