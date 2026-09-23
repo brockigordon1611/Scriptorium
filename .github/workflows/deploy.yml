@@ -39,8 +39,10 @@ jobs:
           VITE_SUPA_ANON: ${{ secrets.VITE_SUPA_ANON }}
           GITHUB_PAGES: true
 
+      # Also at the site root, where the App Store listing links them. The build
+      # already serves the same files under /docs/; public/docs is the one copy.
       - name: Copy docs pages into build
-        run: cp docs/privacy.html dist/privacy.html && cp docs/support.html dist/support.html
+        run: cp public/docs/privacy.html dist/privacy.html && cp public/docs/support.html dist/support.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
