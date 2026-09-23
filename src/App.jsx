@@ -4551,6 +4551,13 @@ function App(){
   const navRef=useRef(null);
   const [navH,setNavH]=useState(0);
   const [bottomBarH,setBottomBarH]=useState(0);
+  // The install screen replaces the whole tree rather than covering it, so what
+  // was measured from the mounted app -- both bars, the chapter on screen -- is
+  // stale when the tree comes back. Declared up here so those effects can
+  // depend on it: an update that bumps a bundled dataset put a signed-in user
+  // straight into that swap, and left every sheet hidden under the nav.
+  const[bundledInstall,setBundledInstall]=useState(null); // {done,total}
+  const installing=!!(bundledInstall&&bundledInstall.total>0);
   const swipeTouchX=useRef(null);
   const swipeTouchY=useRef(null);
   const swipeTouchT=useRef(null);
@@ -5156,7 +5163,7 @@ function App(){
     if(navRef.current)ro.observe(navRef.current);
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
-  },[]);
+  },[ready,installing]);
   // Re-measure nav height after loading completes (navRef is null during loading screen).
   // Double rAF ensures WKWebView has resolved env(safe-area-inset-top) before measuring.
   useEffect(()=>{
@@ -5165,7 +5172,7 @@ function App(){
     let r2;
     const r1=requestAnimationFrame(()=>{r2=requestAnimationFrame(()=>{if(navRef.current)setNavH(navRef.current.getBoundingClientRect().height);});});
     return()=>{cancelAnimationFrame(r1);if(r2)cancelAnimationFrame(r2);};
-  },[ready]);
+  },[ready,installing]);
   // Measure the verse strip too: the plan row stacks on top of it rather than
   // standing down for it, so it needs to know how tall it is.
   useEffect(()=>{
@@ -5195,7 +5202,7 @@ function App(){
     if(bottomBarRef.current)ro.observe(bottomBarRef.current);
     window.addEventListener('resize',measure);
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
-  },[ready]);
+  },[ready,installing]);
   // ── Dictionary lookup (local IndexedDB → Supabase RPC → external API) ──
   useEffect(()=>{
     if(dictTimerRef.current)clearTimeout(dictTimerRef.current);
@@ -5356,7 +5363,6 @@ function App(){
   // ── Install the datasets shipped inside the app (once per device) ──
   // Runs before anything needs them, so a first launch is offline-ready without
   // the user ever visiting the download screen.
-  const[bundledInstall,setBundledInstall]=useState(null); // {done,total}
   useEffect(()=>{
     let cancelled=false;
     (async()=>{
@@ -5394,7 +5400,7 @@ function App(){
 
   // ── Load reading chapter ──
   useEffect(()=>{
-    if(!readVid||!ready)return;
+    if(!readVid||!ready||installing)return;
     let cancelled=false;
     // If only the version changed (same book+chapter), preserve any highlighted verses
     const prev=prevReadStateRef.current;
@@ -5435,14 +5441,14 @@ function App(){
       if(!cancelled)setReadVerses([]);
     });
     return()=>{cancelled=true;};
-  },[readVid,readBook,readCh,ready]);
+  },[readVid,readBook,readCh,ready,installing]);
 
   // ── Persist Strong's mode ──
   useEffect(()=>{localStorage.setItem('scrip:strongsMode',JSON.stringify(strongsMode));},[strongsMode]);
 
   // ── Load Strong's data for current chapter ──
   useEffect(()=>{
-    if(!strongsMode||!ready||readVid!=='kjv'){setStrongsData(d=>Object.keys(d).length?{}:d);return;}
+    if(!strongsMode||!ready||installing||readVid!=='kjv'){setStrongsData(d=>Object.keys(d).length?{}:d);return;}
     let cancelled=false;
     setStrongsLoading(true);
     dbGetStrongsForChapter(readBook,readCh).then(rows=>{
@@ -5457,7 +5463,7 @@ function App(){
       setStrongsLoading(false);
     }).catch(()=>{if(!cancelled){setStrongsData({});setStrongsLoading(false);}});
     return()=>{cancelled=true;};
-  },[strongsMode,readBook,readCh,ready,readVid]);
+  },[strongsMode,readBook,readCh,ready,readVid,installing]);
 
   // ── Native passive scroll listener (avoids non-passive React onScroll blocking compositor) ──
   useEffect(()=>{
@@ -6511,6 +6517,12 @@ function App(){
   const visibleVersions=data.versions.filter(v=>!hiddenVers.includes(v.id));
   // Lock background scroll areas when any sheet/modal is open (prevents iOS scroll-through on fixed overlays)
   const anySheetOpen=!!(readMobileSheet||mobileSheet||modal||parallelMobileSheet);
+  // Red letter has two sources: <red> tags in the text, and the WOJ table of
+  // verses spoken by Christ for texts that carry none -- which is every text
+  // here, KJV included. Only the plain path consulted the table, so with
+  // Strong's on, and now that every KJV chapter has Strong's data, nothing was
+  // ever red. Every path that renders a reading verse goes through this.
+  const wojWrap=(bk,ch,v,text)=>readRedLetter&&text&&!text.includes('<red>')&&isWOJ(bk,ch,v)?`<red>${text}</red>`:text;
 
   return(
     <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -8065,7 +8077,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent'}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                         {' '}
                       </span>
@@ -8085,7 +8097,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(text,strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(readRedLetter&&text&&!text.includes('<red>')&&isWOJ(readBook,readCh,v)?`<red>${text}</red>`:text,readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                       </div>
                     );
@@ -8225,7 +8237,7 @@ function App(){
                   ?<div style={{color:T.dim,fontFamily:FB,fontSize:U(13),textAlign:'center',padding:'12px 0'}}>Loading…</div>
                   :<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
                     <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}}>{strongsVersePreview.vs}</sup>
-                    <span dangerouslySetInnerHTML={{__html:processRedLetter(strongsVersePreview.text,readRedLetter,dark)}}/>
+                    <span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(strongsVersePreview.bn,strongsVersePreview.ch,strongsVersePreview.vs,strongsVersePreview.text),readRedLetter,dark)}}/>
                   </div>
                 }
                 <button type="button"
