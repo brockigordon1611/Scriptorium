@@ -547,13 +547,16 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
     .filter(r=>Number.isInteger(r.book_num)&&r.book_num>=1&&r.book_num<=66);
   if(!mapped.length)throw new Error('No valid Bible verses found in file');
   const versionId=existingVersionId||`user-${userId||'local'}-${Date.now()}`;
+  // A replacement starts clean: writing over the old copy would keep any verse
+  // the new file lacks.
+  if(existingVersionId)await idbDeleteVersionLocal(versionId);
   const BATCH=2000;
   for(let i=0;i<mapped.length;i+=BATCH){
     await idbPutVerses(versionId,mapped.slice(i,i+BATCH));
     if(onProgress)onProgress(Math.min(i+BATCH,mapped.length),mapped.length);
   }
   await idbPutMeta(`dl:${versionId}`,true);
-  // Register metadata in Supabase for new versions only (re-imports skip this)
+  // A new version registers; a replacement keeps its registration and updates the count.
   if(userId&&!existingVersionId){
     const token=getToken();
     await fetch(`${SUPA_URL}/rest/v1/bible_versions`,{
@@ -561,8 +564,38 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
       headers:{...sbHeaders(token),'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify({id:versionId,label,lang:lang||'EN',is_public:false,owner_id:userId,verse_count:mapped.length}),
     }).catch(()=>{});
+  }else if(userId&&existingVersionId){
+    const token=getToken();
+    await fetch(`${SUPA_URL}/rest/v1/bible_versions?id=eq.${encodeURIComponent(versionId)}`,{
+      method:'PATCH',
+      headers:{...sbHeaders(token),'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({verse_count:mapped.length}),
+    }).catch(()=>{});
   }
   return{id:versionId,label,lang:lang||'EN',isRef:false};
+}
+// Versions this reader imported, by the id importBblxFile gives them. Nothing
+// outside that prefix -- a built-in, a public version, anyone else's -- is ever
+// replaced or deleted by the two functions below.
+function isOwnImport(versionId,userId){return typeof versionId==='string'&&versionId.startsWith(`user-${userId||'local'}-`);}
+// Importing under a name and language already in the list is importing that
+// version again. Matched on the name the reader gives, not the filename, since
+// the name is what the list was showing twice.
+function findOwnImport(list,label,lang,userId){
+  const l=String(label||'').trim().toLowerCase(),g=String(lang||'EN').toUpperCase();
+  return(list||[]).find(v=>isOwnImport(v.id,userId)&&String(v.label||'').trim().toLowerCase()===l&&String(v.lang||'EN').toUpperCase()===g)||null;
+}
+// Taking an imported version off the list used to leave its registration, and
+// the loader -- which lists every version you own -- put it straight back. The
+// registration goes first, so a failure leaves the text on this device intact.
+async function deleteImportedVersion(versionId,user){
+  const uid=user?.id;
+  if(!isOwnImport(versionId,uid))return;
+  if(uid&&!user.guest){
+    const r=await fetch(`${SUPA_URL}/rest/v1/bible_versions?id=eq.${encodeURIComponent(versionId)}`,{method:'DELETE',headers:sbHeaders(getToken())});
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+  }
+  await idbDeleteVersionLocal(versionId).catch(()=>{});
 }
 
 // ── Data shipped inside the app ───────────────────────────────────────────
@@ -3040,18 +3073,25 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
   const[importing,setImporting]=useState(null); // null | 'new' | versionId
   const[importProg,setImportProg]=useState([0,0]);
   const[importErr,setImportErr]=useState('');
+  const[importNote,setImportNote]=useState('');
+  // Imports register the moment they finish, before Save, so one imported and
+  // taken off again in the same sitting has to be remembered to be deleted.
+  const importedHere=useRef(new Map()); // id -> label
 
   function remove(id){setVers(v=>v.filter(x=>x.id!==id));}
   function addBuiltin(pv){setVers(v=>[...v,{id:pv.id,label:pv.label,lang:pv.lang,isRef:false}]);}
-  function doSave(){let v=[...vers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};onSave(v);}
+  function doSave(){let v=[...vers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};onSave(v,[...importedHere.current].map(([id,label])=>({id,label})));}
 
   async function doImport(){
     if(!importFile||!importLabel.trim())return;
-    setImportErr('');setImporting('new');setImportProg([0,0]);
+    // Same name and language as one already imported: replace it, don't add a twin.
+    const match=findOwnImport(vers,importLabel,importLang,user?.id);
+    setImportErr('');setImportNote('');setImporting(match?match.id:'new');setImportProg([0,0]);
     try{
-      const v=await importBblxFile({file:importFile,label:importLabel.trim(),lang:importLang,userId:user?.id,onProgress:(d,t)=>setImportProg([d,t])});
-      setVers(vs=>[...vs,v]);
+      const v=await importBblxFile({file:importFile,label:match?match.label:importLabel.trim(),lang:match?match.lang:importLang,userId:user?.id,existingVersionId:match?.id,onProgress:(d,t)=>setImportProg([d,t])});
+      if(!match){setVers(vs=>[...vs,v]);importedHere.current.set(v.id,v.label);}
       setLocalAvail(a=>({...a,[v.id]:true}));
+      if(match)setImportNote(`Replaced your existing ${match.label}.`);
       setImportLabel('');setImportFile(null);
     }catch(e){setImportErr(e.message);}
     finally{setImporting(null);}
@@ -3157,6 +3197,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
           </button>
         )}
         {importErr&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:6}}>{importErr}</div>}
+        {importNote&&<div style={{fontFamily:FB,fontSize:U(12),color:T.greenTxt,marginTop:6}}>{importNote}</div>}
       </div>
       {/* Request a new version */}
       <div style={{marginTop:20,paddingTop:16}}>
@@ -3954,6 +3995,8 @@ function App(){
   const[mngImporting,setMngImporting]=useState(null);
   const[mngImportProg,setMngImportProg]=useState([0,0]);
   const[mngImportErr,setMngImportErr]=useState('');
+  const[mngImportNote,setMngImportNote]=useState('');
+  const mngImportedHere=useRef(new Map()); // id -> label, imported since the view opened
   // The close animation runs 260ms before the sheet unmounts, and that timer
   // used to belong to nobody: open another sheet inside the window and it
   // landed on the new one, unmounting the menu just opened — which had been
@@ -4001,21 +4044,25 @@ function App(){
   function openManageView(){
     setManageVers(clone(data.versions));
     setVersionSheetView('manage');
-    setMngImportErr('');setMngImportFile(null);setMngImportLabel('');
+    setMngImportErr('');setMngImportNote('');setMngImportFile(null);setMngImportLabel('');
+    mngImportedHere.current=new Map();
     // Check local availability for user-imported versions
     const uv=data.versions.filter(v=>!PUBLIC_VERSIONS.some(pv=>pv.id===v.id));
     uv.forEach(v=>{idbIsDownloaded(v.id).then(ok=>setMngLocalAvail(a=>({...a,[v.id]:ok})));});
   }
   function manageRemove(id){setManageVers(v=>v.filter(x=>x.id!==id));}
   function manageAddBuiltin(pv){setManageVers(v=>[...v,{id:pv.id,label:pv.label,lang:pv.lang,isRef:false}]);}
-  function manageDoSave(){let v=[...manageVers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};saveVersions(v);setVersionSheetView('list');}
+  async function manageDoSave(){let v=[...manageVers];if(!v.some(x=>x.isRef)&&v.length)v[0]={...v[0],isRef:true};if(await saveVersions(v,[...mngImportedHere.current].map(([id,label])=>({id,label}))))setVersionSheetView('list');}
   async function mngDoImport(){
     if(!mngImportFile||!mngImportLabel.trim())return;
-    setMngImportErr('');setMngImporting('new');setMngImportProg([0,0]);
+    // Same name and language as one already imported: replace it, don't add a twin.
+    const match=findOwnImport(manageVers,mngImportLabel,mngImportLang,user?.id);
+    setMngImportErr('');setMngImportNote('');setMngImporting(match?match.id:'new');setMngImportProg([0,0]);
     try{
-      const v=await importBblxFile({file:mngImportFile,label:mngImportLabel.trim(),lang:mngImportLang,userId:user?.id,onProgress:(d,t)=>setMngImportProg([d,t])});
-      setManageVers(vs=>[...vs,v]);
+      const v=await importBblxFile({file:mngImportFile,label:match?match.label:mngImportLabel.trim(),lang:match?match.lang:mngImportLang,userId:user?.id,existingVersionId:match?.id,onProgress:(d,t)=>setMngImportProg([d,t])});
+      if(!match){setManageVers(vs=>[...vs,v]);mngImportedHere.current.set(v.id,v.label);}
       setMngLocalAvail(a=>({...a,[v.id]:true}));
+      if(match)setMngImportNote(`Replaced your existing ${match.label}.`);
       setMngImportLabel('');setMngImportFile(null);
     }catch(e){setMngImportErr(e.message);}
     finally{setMngImporting(null);}
@@ -5660,11 +5707,15 @@ function App(){
     if(parallelBk<66){setParallelBk(b=>b+1);setParallelCh(1);setParallelVs(1);}
   }
   function jumpToFromCard(parsed){setReadBook(parsed.bookNum);setReadCh(parsed.chapter);setTab('read');}
+  // A bookmark or a recent can outlive the version it was made in; it opens in
+  // the reference version rather than on an empty page.
+  const usableVid=vid=>(data?.versions||[]).some(v=>v.id===vid)?vid:((data?.versions||[]).find(v=>v.isRef)?.id||data?.versions?.[0]?.id||vid);
   function openFromBookmark(bm){
+    const vid=usableVid(bm.version_id);
     setModal(null);
     setReadBook(bm.book_num);
     setReadCh(bm.chapter);
-    setReadVid(bm.version_id);
+    setReadVid(vid);
     setTab('read');
     // Parse verse selection from label (e.g. "Genesis 1:3-5, 7") or fall back to single verse field
     const verses=new Set();
@@ -5683,7 +5734,7 @@ function App(){
     }catch{}
     if(verses.size>0){
       // If already on this book/chapter/version, the chapter effect won't re-fire — apply immediately
-      if(bm.version_id===readVid&&bm.book_num===readBook&&bm.chapter===readCh){
+      if(vid===readVid&&bm.book_num===readBook&&bm.chapter===readCh){
         setTimeout(()=>{
           const firstV=Math.min(...verses);
           const el=document.getElementById(`rv-${firstV}`);
@@ -5696,7 +5747,7 @@ function App(){
       }
     }
   }
-  function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(r.version_id);setTab('read');}
+  function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(usableVid(r.version_id));setTab('read');}
 
   // `live` marks a search the reader did not ask for — one the debounce below
   // fired while they were still typing. Those skip everything that only makes
@@ -6387,11 +6438,28 @@ function App(){
     setModal(null);setSaveStatus('saved');showUndo(label,snap);
   }
 
-  async function saveVersions(vers){
+  // Answered by the delete confirmation below: true to go ahead.
+  const[verDelAsk,setVerDelAsk]=useState(null); // {names,resolve}
+  // Returns false if the reader backs out, so the editor stays open.
+  async function saveVersions(vers,importedHere=[]){
+    const keep=new Set(vers.map(v=>v.id));
+    const saved=data?.versions||[];
+    const pool=[...saved,...importedHere.filter(x=>!saved.some(v=>v.id===x.id))];
+    const removed=pool.filter(v=>!keep.has(v.id)&&isOwnImport(v.id,user?.id));
+    if(removed.length&&!(await new Promise(resolve=>setVerDelAsk({names:removed.map(v=>v.label),resolve}))))return false;
     setSaveStatus('saving');
     try{await dbSaveVersions(projectId,vers);setData(d=>({...d,versions:vers}));}
     catch(err){console.error('saveVersions:',err);}
+    // The list is saved first. A delete that fails afterwards only means the
+    // version comes back the way it always did -- nothing is lost.
+    const failed=[];
+    for(const v of removed){try{await deleteImportedVersion(v.id,user);}catch(err){console.error('deleteImportedVersion:',err);failed.push(v.label);}}
+    if(failed.length)window.alert(`Couldn't finish deleting ${failed.join(', ')} — check your connection and remove ${failed.length===1?'it':'them'} again.`);
+    // Reading or comparing a version that is gone would load nothing.
+    if(!keep.has(readVid)){const ref=vers.find(v=>v.isRef)||vers[0];if(ref)setReadVid(ref.id);}
+    setParallelVids(p=>p.filter(id=>keep.has(id)));
     setModal(null);setSaveStatus('saved');
+    return true;
   }
 
   async function handleAddBookmark(params){
@@ -7683,6 +7751,7 @@ function App(){
                       </button>
                     )}
                     {mngImportErr&&<div style={{fontFamily:FB,fontSize:U(12),color:T.redTxt,marginTop:6}}>{mngImportErr}</div>}
+                    {mngImportNote&&<div style={{fontFamily:FB,fontSize:U(12),color:T.greenTxt,marginTop:6}}>{mngImportNote}</div>}
                   </div>
                   {/* Request a new version */}
                   <div style={{marginTop:20,paddingTop:16}}>
@@ -9367,6 +9436,17 @@ function App(){
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
+      {verDelAsk&&(()=>{
+        const n=verDelAsk.names,one=n.length===1;
+        const answer=ok=>{const r=verDelAsk.resolve;setVerDelAsk(null);r(ok);};
+        return(
+          <ConfirmDialog T={T} danger
+            title={one?`Delete ${n[0]}?`:`Delete ${n.length} versions?`}
+            message={`${one?n[0]:n.join(', ')} will be deleted from this device and removed from your list on every device. Scriptorium can't restore ${one?'it':'them'} — you would need the original file to import ${one?'it':'them'} again.`}
+            confirmLabel="Delete" cancelLabel="Keep"
+            onConfirm={()=>answer(true)} onCancel={()=>answer(false)}/>
+        );
+      })()}
       {bmDialog&&(
         <ConfirmDialog T={T} title="Save Bookmark" message={bmDialog.ref}
           confirmLabel={bmDialog.busy?'Saving…':'Save'} cancelLabel="Cancel"
