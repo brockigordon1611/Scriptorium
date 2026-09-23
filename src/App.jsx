@@ -2016,11 +2016,11 @@ async function dbDeleteCategory(id){const token=getToken();const t=await sbFrom(
 // Strong's underlines and red letter all read through; each has a dark and a
 // light strength, and none sits near red, which would fight red letter.
 const HL_COLORS=[
-  {key:'yellow',label:'Yellow',dot:'#e4c448',dark:'rgba(228,196,72,0.30)',light:'rgba(240,196,40,0.38)'},
-  {key:'green', label:'Green', dot:'#62c484',dark:'rgba(98,196,132,0.26)',light:'rgba(70,180,110,0.28)'},
-  {key:'blue',  label:'Blue',  dot:'#6aaaeb',dark:'rgba(106,170,235,0.28)',light:'rgba(80,150,230,0.26)'},
-  {key:'purple',label:'Purple',dot:'#aa82dc',dark:'rgba(170,130,220,0.30)',light:'rgba(150,110,215,0.26)'},
-  {key:'orange',label:'Orange',dot:'#eb9650',dark:'rgba(235,150,80,0.28)',light:'rgba(240,145,60,0.30)'},
+  {key:'yellow',label:'Yellow',dot:'#e4c448',dark:'rgba(228,196,72,0.20)',light:'rgba(240,196,40,0.26)'},
+  {key:'green', label:'Green', dot:'#62c484',dark:'rgba(98,196,132,0.18)',light:'rgba(70,180,110,0.19)'},
+  {key:'blue',  label:'Blue',  dot:'#6aaaeb',dark:'rgba(106,170,235,0.19)',light:'rgba(80,150,230,0.18)'},
+  {key:'purple',label:'Purple',dot:'#aa82dc',dark:'rgba(170,130,220,0.20)',light:'rgba(150,110,215,0.18)'},
+  {key:'orange',label:'Orange',dot:'#eb9650',dark:'rgba(235,150,80,0.19)',light:'rgba(240,145,60,0.21)'},
 ];
 const hlByKey=Object.fromEntries(HL_COLORS.map(c=>[c.key,c]));
 const HL_URL=`${SUPA_URL}/rest/v1/highlights`;
@@ -3108,6 +3108,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
 function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosing}){
   const[colorF,setColorF]=useState('all');
   const[verF,setVerF]=useState('all');
+  const[verMenu,setVerMenu]=useState(false);
   const[texts,setTexts]=useState({});
   const asked=useRef(new Set()),alive=useRef(true);
   useEffect(()=>()=>{alive.current=false;},[]);
@@ -3137,20 +3138,32 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosi
       {highlights.length===0?(
         <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
       ):(<>
-        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:verIds.length>1?8:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:14}}>
           <button type="button" onClick={()=>setColorF('all')} style={chip(colorF==='all')}>All</button>
           {HL_COLORS.map(c=>(
             <button key={c.key} type="button" aria-label={`Show ${c.label.toLowerCase()} only`} aria-pressed={colorF===c.key} onClick={()=>setColorF(f=>f===c.key?'all':c.key)}
-              style={{width:U(28),height:U(28),borderRadius:'50%',background:c.dot,border:`2px solid ${colorF===c.key?T.gT:'transparent'}`,opacity:colorF==='all'||colorF===c.key?1:0.35,padding:0,cursor:'pointer',boxSizing:'border-box',flexShrink:0}}/>
+              style={{width:U(26),height:U(26),borderRadius:'50%',background:c.dot,border:`2px solid ${colorF===c.key?T.gT:'transparent'}`,opacity:colorF==='all'||colorF===c.key?1:0.35,padding:0,cursor:'pointer',boxSizing:'border-box',flexShrink:0}}/>
           ))}
+          {/* By version, once there is more than one: a small dropdown at the end
+              of the colour row. Not a native select -- below 16px iOS zooms the
+              page to it, and 16px is too large for this row. */}
+          {verIds.length>1&&(
+            <div style={{marginLeft:'auto',position:'relative'}}>
+              <button type="button" aria-haspopup="listbox" aria-expanded={verMenu} onClick={()=>setVerMenu(o=>!o)}
+                style={{...chip(verF!=='all'),display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap'}}>
+                {verF==='all'?'Version':verLabel(verF)}<span aria-hidden="true" style={{fontSize:UL(9),lineHeight:1}}>▾</span>
+              </button>
+              {verMenu&&(
+                <div role="listbox" style={{position:'absolute',right:0,top:'calc(100% + 6px)',zIndex:5,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:8,boxShadow:'0 8px 24px rgba(0,0,0,0.35)',padding:4,minWidth:'100%',display:'flex',flexDirection:'column'}}>
+                  {[['all','All versions'],...verIds.map(id=>[id,verLabel(id)])].map(([id,l])=>(
+                    <button key={id} type="button" role="option" aria-selected={verF===id} onClick={()=>{setVerF(id);setVerMenu(false);}}
+                      style={{textAlign:'left',background:verF===id?T.gF:'none',border:'none',borderRadius:6,color:verF===id?T.gT:T.mut,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'9px 12px',cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        {/* By version, once there is more than one to choose between. */}
-        {verIds.length>1&&(
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-            <button type="button" onClick={()=>setVerF('all')} style={chip(verF==='all')}>All versions</button>
-            {verIds.map(id=><button key={id} type="button" onClick={()=>setVerF(id)} style={chip(verF===id)}>{verLabel(id)}</button>)}
-          </div>
-        )}
         {shown.length===0&&<div style={{textAlign:'center',padding:'24px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights match these filters.</div>}
         {HL_COLORS.map(c=>{
           const rows=shown.filter(h=>h.color===c.key);
@@ -7141,18 +7154,17 @@ function App(){
             </div>
             <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</FitTitle>
           </div>
-          {/* Bookmarks, Highlights, Recent Passages: three across, so each tile
-              stacks its icon above its name rather than beside it. */}
+          {/* Bookmarks, Highlights, Recent Passages: three across, each its icon
+              over its name and nothing else, so the row stays short. */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
             {[
-              {icon:'✦',label:'Bookmarks',sub:'Saved verses',type:'bookmarks'},
-              {icon:'◐',label:'Highlights',sub:'Marked verses',type:'highlights'},
-              {icon:'↺',label:'Recent Passages',sub:'History',type:'recents'},
+              {icon:'✦',label:'Bookmarks',type:'bookmarks'},
+              {icon:'◐',label:'Highlights',type:'highlights'},
+              {icon:'↺',label:'Recent Passages',type:'recents'},
             ].map(t=>(
-              <div key={t.type} onClick={()=>{closeReadSheet();setModal({type:t.type});}} style={{flex:1,padding:'9px 6px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:3,minWidth:0}}>
-                <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,lineHeight:1}}>{t.icon}</span>
+              <div key={t.type} onClick={()=>{closeReadSheet();setModal({type:t.type});}} style={{flex:1,padding:'7px 4px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',gap:3,minWidth:0}}>
+                <span style={{fontFamily:FS,fontSize:U(15),color:T.gT,lineHeight:1}}>{t.icon}</span>
                 <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut,lineHeight:1.2}}>{t.label}</div>
-                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>{t.sub}</div>
               </div>
             ))}
           </div>
@@ -8572,11 +8584,16 @@ function App(){
                           style={{background:'none',border:'none',fontFamily:FB,fontSize:U(13),fontWeight:600,letterSpacing:'0.06em',color:anyHL?floatText:T.dim,cursor:'pointer',padding:'0 2px'}}>Remove</button>
                       </div>
                     )}
-                    {/* Row 1: verse badge + highlight + Bookmark + Copy + dismiss */}
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
+                    {/* Row 1: verse badge, then the buttons as one group. The row wraps:
+                        when a long selection's reference leaves no room beside it, the
+                        whole group drops beneath the reference together, rather than
+                        the ✕ being pushed off the screen. A reference longer than the
+                        bar wraps inside its own box. */}
+                    <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6}}>
+                      <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flex:'0 1 auto',maxWidth:'100%',...floatFace,borderRadius:6,padding:'5px 10px',minHeight:30,lineHeight:1.3,overflowWrap:'anywhere',boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'normal'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${shortBook(bookName(readBk,versionLang(readVid)))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
+                      <div style={{display:'flex',alignItems:'center',gap:6,flex:'1 1 auto'}}>
                       {/* Compact: a colour dot, not a word. It shows the selection's colour
                           when every selected verse shares one, and all five when not. */}
                       {user&&(
@@ -8587,16 +8604,17 @@ function App(){
                       )}
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
-                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0 4px',whiteSpace:'nowrap',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                           <span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(13),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
-                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                        style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0 4px',whiteSpace:'nowrap',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
                         style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(14),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
+                      </div>
                     </div>
                   </div>
               }
