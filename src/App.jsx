@@ -594,6 +594,8 @@ async function deleteImportedVersion(versionId,user){
   if(uid&&!user.guest){
     const r=await fetch(`${SUPA_URL}/rest/v1/bible_versions?id=eq.${encodeURIComponent(versionId)}`,{method:'DELETE',headers:sbHeaders(getToken())});
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    // Its highlights go with it; nothing could show them again.
+    await sbFetch(`${HL_URL}?user_id=eq.${uid}&version_id=eq.${encodeURIComponent(versionId)}`,{method:'DELETE',headers:sbHeaders(getToken()),signal:sbSignal()},getToken()).catch(()=>{});
   }
   await idbDeleteVersionLocal(versionId).catch(()=>{});
 }
@@ -2009,6 +2011,43 @@ async function dbLoadCategories(userId){const token=getToken();const t=await sbF
 async function dbAddCategory(userId,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.insert({user_id:userId,name,color:color||'#62c484'});return r.data?.[0];}
 async function dbUpdateCategory(id,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const patch={};if(name!==undefined)patch.name=name;if(color!==undefined)patch.color=color;await t.update(patch,{id});}
 async function dbDeleteCategory(id){const token=getToken();const t=await sbFrom('bookmark_categories',token);await t.delete({id});}
+// ── Highlights ──
+// One colour per verse, per version. Bands are translucent so the words, the
+// Strong's underlines and red letter all read through; each has a dark and a
+// light strength, and none sits near red, which would fight red letter.
+const HL_COLORS=[
+  {key:'yellow',label:'Yellow',dot:'#e4c448',dark:'rgba(228,196,72,0.30)',light:'rgba(240,196,40,0.38)'},
+  {key:'green', label:'Green', dot:'#62c484',dark:'rgba(98,196,132,0.26)',light:'rgba(70,180,110,0.28)'},
+  {key:'blue',  label:'Blue',  dot:'#6aaaeb',dark:'rgba(106,170,235,0.28)',light:'rgba(80,150,230,0.26)'},
+  {key:'purple',label:'Purple',dot:'#aa82dc',dark:'rgba(170,130,220,0.30)',light:'rgba(150,110,215,0.26)'},
+  {key:'orange',label:'Orange',dot:'#eb9650',dark:'rgba(235,150,80,0.28)',light:'rgba(240,145,60,0.30)'},
+];
+const hlByKey=Object.fromEntries(HL_COLORS.map(c=>[c.key,c]));
+const HL_URL=`${SUPA_URL}/rest/v1/highlights`;
+// A page at a time: the server returns at most a thousand rows per request.
+async function dbLoadHighlights(userId){
+  const token=getToken(),out=[];
+  for(let from=0;;from+=1000){
+    const r=await sbFetch(`${HL_URL}?select=version_id,book_num,chapter,verse,color,created_at&user_id=eq.${userId}&order=book_num.asc,chapter.asc,verse.asc&limit=1000&offset=${from}`,{headers:sbHeaders(token),signal:sbSignal()},token);
+    const{data,error}=await sbBody(r);
+    if(error)throw new Error('highlights load failed');
+    out.push(...data);
+    if(data.length<1000)return out;
+  }
+}
+// Every selected verse in one request. A verse that already has a colour takes
+// the new one: the table allows one colour per verse, per version.
+async function dbSetHighlights(userId,versionId,bookNum,chapter,verses,color){
+  const token=getToken(),now=new Date().toISOString();
+  const rows=verses.map(verse=>({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse,color,updated_at:now}));
+  const r=await sbFetch(`${HL_URL}?on_conflict=user_id,version_id,book_num,chapter,verse`,{method:'POST',headers:{...sbHeaders(token),'Prefer':'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(rows),signal:sbSignal()},token);
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
+}
+async function dbRemoveHighlights(userId,versionId,bookNum,chapter,verses){
+  const token=getToken();
+  const r=await sbFetch(`${HL_URL}?user_id=eq.${userId}&version_id=eq.${encodeURIComponent(versionId)}&book_num=eq.${bookNum}&chapter=eq.${chapter}&verse=in.(${verses.join(',')})`,{method:'DELETE',headers:sbHeaders(token),signal:sbSignal()},token);
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
+}
 async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
 async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
 
@@ -3062,6 +3101,91 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onUpdate
   );
 }
 
+// Every highlight, grouped by colour like bookmark categories, filtered by
+// colour and by version. Each row shows the verse's words in the version it was
+// highlighted in: highlights are about the text, where bookmarks are about the
+// place. The words load a chapter at a time, four at once, for what is shown.
+function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,navH,isClosing}){
+  const[colorF,setColorF]=useState('all');
+  const[verF,setVerF]=useState('all');
+  const[texts,setTexts]=useState({});
+  const asked=useRef(new Set()),alive=useRef(true);
+  useEffect(()=>()=>{alive.current=false;},[]);
+  const verIds=[...new Set(highlights.map(h=>h.version_id))];
+  const verLabel=id=>versions.find(v=>v.id===id)?.label||(String(id).startsWith('user-')?'Imported':String(id).toUpperCase());
+  const shown=highlights
+    .filter(h=>(colorF==='all'||h.color===colorF)&&(verF==='all'||h.version_id===verF))
+    .slice().sort((a,b)=>a.book_num-b.book_num||a.chapter-b.chapter||a.verse-b.verse||String(a.version_id).localeCompare(String(b.version_id)));
+  const need=[...new Set(shown.map(h=>`${h.version_id}|${h.book_num}|${h.chapter}`))].filter(k=>!asked.current.has(k));
+  useEffect(()=>{
+    if(!need.length)return;
+    need.forEach(k=>asked.current.add(k));
+    let i=0;
+    const work=async()=>{
+      while(alive.current&&i<need.length){
+        const k=need[i++];const[vid,b,c]=k.split('|');
+        let rows=[];try{rows=await dbGetChapter(vid,+b,+c);}catch{}
+        if(!alive.current)return;
+        setTexts(t=>{const n={...t,[`${k}|loaded`]:true};for(const r of rows)n[`${k}|${r.verse}`]=String(r.text||'').replace(/<[^>]+>/g,'');return n;});
+      }
+    };
+    Promise.all([work(),work(),work(),work()]);
+  },[need.join(',')]);
+  const chip=on=>({background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:12,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'6px 12px',cursor:'pointer',fontWeight:on?600:400});
+  return(
+    <Modal title="Highlights" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+      {highlights.length===0?(
+        <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
+      ):(<>
+        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:verIds.length>1?8:14}}>
+          <button type="button" onClick={()=>setColorF('all')} style={chip(colorF==='all')}>All</button>
+          {HL_COLORS.map(c=>(
+            <button key={c.key} type="button" aria-label={`Show ${c.label.toLowerCase()} only`} aria-pressed={colorF===c.key} onClick={()=>setColorF(f=>f===c.key?'all':c.key)}
+              style={{width:U(28),height:U(28),borderRadius:'50%',background:c.dot,border:`2px solid ${colorF===c.key?T.gT:'transparent'}`,opacity:colorF==='all'||colorF===c.key?1:0.35,padding:0,cursor:'pointer',boxSizing:'border-box',flexShrink:0}}/>
+          ))}
+        </div>
+        {/* By version, once there is more than one to choose between. */}
+        {verIds.length>1&&(
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+            <button type="button" onClick={()=>setVerF('all')} style={chip(verF==='all')}>All versions</button>
+            {verIds.map(id=><button key={id} type="button" onClick={()=>setVerF(id)} style={chip(verF===id)}>{verLabel(id)}</button>)}
+          </div>
+        )}
+        {shown.length===0&&<div style={{textAlign:'center',padding:'24px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights match these filters.</div>}
+        {HL_COLORS.map(c=>{
+          const rows=shown.filter(h=>h.color===c.key);
+          if(!rows.length)return null;
+          return(
+            <div key={c.key} style={{border:`1px solid ${c.dot}55`,background:c.dot+'0a',borderRadius:10,marginBottom:10,overflow:'hidden'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',borderBottom:`1px solid ${c.dot}33`}}>
+                <span style={{width:10,height:10,borderRadius:'50%',background:c.dot,flexShrink:0}}/>
+                <span style={{fontFamily:FS,fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1,textTransform:'uppercase'}}>{c.label}</span>
+                <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim}}>{rows.length}</span>
+              </div>
+              {rows.map((h,i)=>{
+                const bk=BIBLE.find(b=>b.n===h.book_num),ck=`${h.version_id}|${h.book_num}|${h.chapter}`,words=texts[`${ck}|${h.verse}`];
+                return(
+                  <div key={`${ck}|${h.verse}`} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderTop:i?`1px solid ${c.dot}22`:'none'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bookName(bk,versions.find(v=>v.id===h.version_id)?.lang||versionLang(h.version_id))||'?'} {h.chapter}:{h.verse} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel(h.version_id)}</span></div>
+                      <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.5,marginTop:2,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+                        {words!=null
+                          ?<span style={{background:dark?c.dark:c.light,borderRadius:2,WebkitBoxDecorationBreak:'clone',boxDecorationBreak:'clone'}}>{words}</span>
+                          :<span style={{fontStyle:'italic',color:T.dim}}>{texts[`${ck}|loaded`]?'Text not on this device':'…'}</span>}
+                      </div>
+                    </div>
+                    <button className="s-btn s-ghost" onClick={()=>onOpen(h)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'8px 14px',fontWeight:500,flexShrink:0}}>Open</button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </>)}
+    </Modal>
+  );
+}
+
 function RecentsPanel({T,recents,onOpen,onClose,versions,navH,isClosing}){
   return(
     <Modal title="Recent Passages" onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
@@ -4005,7 +4129,7 @@ function App(){
   const[hiddenVers,setHiddenVers]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:hidden')||'[]');}catch{return[];}});
   const[modal,setModal]=useState(null);
   const[modalClosing,setModalClosing]=useState(false);
-  const _topSheetTypes=['versions','bookmarks','recents','help'];
+  const _topSheetTypes=['versions','bookmarks','highlights','recents','help'];
   function closeModal(then){
     if(_topSheetTypes.includes(modal?.type)){
       setModalClosing(true);
@@ -4116,6 +4240,10 @@ function App(){
   const[readVid,setReadVid]=useState(null); // set after data loads
   const[readVerses,setReadVerses]=useState([]);
   const[readSelVerses,setReadSelVerses]=useState(()=>new Set()); // multi-select
+  // Every highlight the reader has, and this chapter's as verse -> colour.
+  const[highlights,setHighlights]=useState([]); // [{version_id,book_num,chapter,verse,color,created_at}]
+  const[hlPickerOpen,setHlPickerOpen]=useState(false);
+  const chapterHL=useMemo(()=>{const m={};for(const h of highlights)if(h.version_id===readVid&&h.book_num===readBook&&h.chapter===readCh)m[h.verse]=h.color;return m;},[highlights,readVid,readBook,readCh]);
   const[stripOpen,setStripOpen]=useState(false);
   const[stripClosing,setStripClosing]=useState(false);
   const[copyHover,setCopyHover]=useState(false);
@@ -4182,7 +4310,7 @@ function App(){
     else{readScrollToVerse.current=tv;landSilent.current=true;setReadBook(bk);setReadCh(ch);}
     setTab('read');
   }
-  function dismissStrip(){setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
+  function dismissStrip(){setHlPickerOpen(false);setCopyHover(false);setBmHover(false);setStripClosing(true);setTimeout(()=>{setReadSelVerses(new Set());setStripOpen(false);setStripClosing(false);},160);}
   function openStrip(v){if(readFullScreen.current)exitFullScreen();setCopyHover(false);setBmHover(false);const fresh=autoSel.current;autoSel.current=false;setReadSelVerses(s=>{const ns=fresh?new Set():new Set(s);ns.add(v);return ns;});setStripOpen(true);}
   function verseTouchStart(v,e){longPressFired.current=false;wasTouchEvent.current=true;verseTouchScrolled.current=false;verseTouchStartY.current=e.touches[0].clientY;if(!_wlpActive&&!audioPlaying){longPressTimer.current=setTimeout(()=>{longPressFired.current=true;longPressTimer.current=null;openStrip(v);},500);}}
   function verseTouchMove(e){if(Math.abs(e.touches[0].clientY-verseTouchStartY.current)>8){verseTouchScrolled.current=true;if(longPressTimer.current){clearTimeout(longPressTimer.current);longPressTimer.current=null;}}}
@@ -5382,7 +5510,7 @@ function App(){
       setData(pd);
       setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||PUBLIC_VERSIONS[0]?.id||'kjv');
       setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));
-      setBookmarks([]);setRecents([]);setBmCategories([]);
+      setBookmarks([]);setRecents([]);setBmCategories([]);setHighlights([]);
       setLoadMsg('');setReady(true);
       idbGetAllResources().then(all=>{
         setResources(all.filter(r=>r.category==='other'||!r.category));
@@ -5435,6 +5563,7 @@ function App(){
       setParallelVids(pd.versions.map(v=>v.id));
       setLoadMsg('');setReady(true);
       dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
+      dbLoadHighlights(user.id).then(setHighlights).catch(()=>{});
       dbLoadRecents(user.id).then(setRecents).catch(()=>{});
       dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
       idbGetAllResources().then(all=>{
@@ -5788,6 +5917,29 @@ function App(){
     }
   }
   function openFromRecent(r){setModal(null);setReadBook(r.book_num);setReadCh(r.chapter);setReadVid(usableVid(r.version_id));setTab('read');}
+  // Colour every selected verse, or clear them. The page changes at once and
+  // the write follows; a write that fails puts the previous colours back.
+  async function applyHighlight(color){
+    const verses=[...readSelVerses].sort((a,b)=>a-b);
+    if(!verses.length||!user)return;
+    const vid=readVid,b=readBook,c=readCh,prev=highlights;
+    const here=h=>h.version_id===vid&&h.book_num===b&&h.chapter===c&&verses.includes(h.verse);
+    const next=prev.filter(h=>!here(h));
+    if(color){const now=new Date().toISOString();for(const v of verses){const old=prev.find(h=>here(h)&&h.verse===v);next.push({version_id:vid,book_num:b,chapter:c,verse:v,color,created_at:old?.created_at||now});}}
+    setHighlights(next);setHlPickerOpen(false);
+    if(user.guest)return;
+    try{if(color)await dbSetHighlights(user.id,vid,b,c,verses,color);else await dbRemoveHighlights(user.id,vid,b,c,verses);}
+    catch(err){console.error('highlight:',err);setHighlights(prev);window.alert("Couldn't save that highlight \u2014 check your connection and try again.");}
+  }
+  // Lands on the verse in the version it was highlighted in, quietly: the
+  // verse is lit and the band shows, without opening the verse bar over it.
+  function openFromHighlight(h){
+    const vid=usableVid(h.version_id);
+    setModal(null);
+    if(vid===readVid&&h.book_num===readBook&&h.chapter===readCh){readScrollToVerse.current=null;landOnVerse(h.verse,true);}
+    else{readScrollToVerse.current=h.verse;landSilent.current=true;setReadVid(vid);setReadBook(h.book_num);setReadCh(h.chapter);}
+    setTab('read');
+  }
 
   // `live` marks a search the reader did not ask for — one the debounce below
   // fired while they were still typing. Those skip everything that only makes
@@ -6495,6 +6647,7 @@ function App(){
     const failed=[];
     for(const v of removed){try{await deleteImportedVersion(v.id,user);}catch(err){console.error('deleteImportedVersion:',err);failed.push(v.label);}}
     if(failed.length)window.alert(`Couldn't finish deleting ${failed.join(', ')} — check your connection and remove ${failed.length===1?'it':'them'} again.`);
+    {const gone=new Set(removed.filter(v=>!failed.includes(v.label)).map(v=>v.id));if(gone.size)setHighlights(hs=>hs.filter(h=>!gone.has(h.version_id)));}
     // Reading or comparing a version that is gone would load nothing.
     if(!keep.has(readVid)){const ref=vers.find(v=>v.isRef)||vers[0];if(ref)setReadVid(ref.id);}
     setParallelVids(p=>p.filter(id=>keep.has(id)));
@@ -6555,7 +6708,7 @@ function App(){
       // Delete bookmarks and recents for this user
       const bmT=await sbFrom('bookmarks',token);await bmT.delete({user_id:user.id});
       const rpT=await sbFrom('recent_passages',token);await rpT.delete({user_id:user.id});
-      setBookmarks([]);setRecents([]);setBmCategories([]);
+      setBookmarks([]);setRecents([]);setBmCategories([]);setHighlights([]);
       // Reset UI prefs
       setHiddenVers([]);setQ('');setFilters({issueTypes:[],statuses:[],vA:'',vB:''});setDark(true);setTab('read');
       localStorage.setItem('scrip:dark','true');localStorage.setItem('scrip:hidden','[]');
@@ -6631,6 +6784,12 @@ function App(){
   // Strong's on, and now that every KJV chapter has Strong's data, nothing was
   // ever red. Every path that renders a reading verse goes through this.
   const wojWrap=(bk,ch,v,text)=>readRedLetter&&text&&!text.includes('<red>')&&isWOJ(bk,ch,v)?`<red>${text}</red>`:text;
+  // The highlight is a band behind the words, not the verse's box: selection and
+  // audio already use the box, and all three have to show at once.
+  const hlStyle=v=>{const c=chapterHL[v];return c?{background:dark?hlByKey[c].dark:hlByKey[c].light,borderRadius:3,WebkitBoxDecorationBreak:'clone',boxDecorationBreak:'clone'}:{};};
+  const selCols=[...readSelVerses].map(v=>chapterHL[v]);
+  const selHL=selCols.length&&selCols.every(c=>c&&c===selCols[0])?selCols[0]:null;
+  const anyHL=selCols.some(Boolean);
 
   return(
     <div style={{fontFamily:FB,background:T.bg,position:'fixed',inset:0,color:T.body,fontSize:16,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -6929,6 +7088,7 @@ function App(){
           </div>
           {[
             {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
+            {icon:'◐',label:'Highlights',fn:()=>{closeMobileSheet();setModal({type:'highlights'});}},
             {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
             {icon:dark?'☀︎':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
             {icon:'⋯',label:'Help & Reference',fn:()=>{closeMobileSheet();setModal({type:'help'});}},
@@ -6981,22 +7141,20 @@ function App(){
             </div>
             <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</FitTitle>
           </div>
-          {/* Bookmarks + Recent Passages */}
+          {/* Bookmarks, Highlights, Recent Passages: three across, so each tile
+              stacks its icon above its name rather than beside it. */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
-            <div onClick={()=>{closeReadSheet();setModal({type:'bookmarks'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,flexShrink:0}}>✦</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut}}>Bookmarks</div>
-                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Saved verses</div>
+            {[
+              {icon:'✦',label:'Bookmarks',sub:'Saved verses',type:'bookmarks'},
+              {icon:'◐',label:'Highlights',sub:'Marked verses',type:'highlights'},
+              {icon:'↺',label:'Recent Passages',sub:'History',type:'recents'},
+            ].map(t=>(
+              <div key={t.type} onClick={()=>{closeReadSheet();setModal({type:t.type});}} style={{flex:1,padding:'9px 6px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:3,minWidth:0}}>
+                <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,lineHeight:1}}>{t.icon}</span>
+                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut,lineHeight:1.2}}>{t.label}</div>
+                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>{t.sub}</div>
               </div>
-            </div>
-            <div onClick={()=>{closeReadSheet();setModal({type:'recents'});}} style={{flex:1,padding:'9px 10px',background:T.bgSec,border:`1.5px solid ${T.bd}`,borderRadius:10,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:UH(18),color:T.gT,flexShrink:0}}>↺</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:FB,fontSize:U(12),fontWeight:600,color:T.mut}}>Recent Passages</div>
-                <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>History</div>
-              </div>
-            </div>
+            ))}
           </div>
           {[
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
@@ -8185,7 +8343,7 @@ function App(){
                         style={{cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',borderRadius:isAudio?4:sel?Math.round(readFontSize*0.15):0,padding:sel?`${Math.round(readFontSize*0.08)}px ${Math.round(readFontSize*0.1)}px`:0,boxShadow:sel?`0 0 0 ${Math.max(1,Math.round(readFontSize*0.04))}px ${T.gD}`:'none',transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent'}}>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent',...hlStyle(v)}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                         {' '}
@@ -8205,7 +8363,7 @@ function App(){
                         style={{padding:'2px 4px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',borderRadius:5,background:isAudio?'var(--ac-audio-bg)':sel?T.gF:'transparent',boxShadow:isAudio?`0 0 0 1.5px var(--ac-audio-ring)`:sel?`0 0 0 1.5px ${T.gD}, 0 1px 6px var(--ac-sel-glow)`:'none',marginBottom:1,transition:'all .2s'}}>
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
-                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
+                        <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,...hlStyle(v)}}>
                           {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                       </div>
@@ -8403,20 +8561,39 @@ function App(){
                 :readCopyOk
                   ?<span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
-                    {/* Row 1: verse badge + Bookmark + Copy + dismiss */}
+                    {/* The colours, above the bar, while the highlight button is open. */}
+                    {hlPickerOpen&&user&&(
+                      <div style={{...floatFace,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,padding:'7px 10px'}}>
+                        {HL_COLORS.map(c=>(
+                          <button key={c.key} type="button" aria-label={`Highlight ${c.label.toLowerCase()}`} onClick={()=>applyHighlight(c.key)}
+                            style={{width:U(28),height:U(28),borderRadius:'50%',background:c.dot,border:`2px solid ${selHL===c.key?T.gT:'transparent'}`,padding:0,cursor:'pointer',flexShrink:0,boxSizing:'border-box'}}/>
+                        ))}
+                        <button type="button" onClick={()=>applyHighlight(null)}
+                          style={{background:'none',border:'none',fontFamily:FB,fontSize:U(13),fontWeight:600,letterSpacing:'0.06em',color:anyHL?floatText:T.dim,cursor:'pointer',padding:'0 2px'}}>Remove</button>
+                      </div>
+                    )}
+                    {/* Row 1: verse badge + highlight + Bookmark + Copy + dismiss */}
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontFamily:FB,fontSize:U(13),color:T.gT,letterSpacing:'0.08em',fontWeight:600,flexShrink:0,...floatFace,borderRadius:6,padding:'0 10px',height:30,boxSizing:'border-box',display:'flex',alignItems:'center',whiteSpace:'nowrap'}}>
                         {(()=>{const a=[...readSelVerses].sort((a,b)=>a-b);const r=[];let i=0;while(i<a.length){let j=i;while(j+1<a.length&&a[j+1]===a[j]+1)j++;r.push(j>i?`${a[i]}-${a[j]}`:String(a[i]));i=j+1;}return `${shortBook(bookName(readBk,versionLang(readVid)))} ${readCh}:${r.join(', ')}`;})()}
                       </span>
+                      {/* Compact: a colour dot, not a word. It shows the selection's colour
+                          when every selected verse shares one, and all five when not. */}
+                      {user&&(
+                        <button type="button" aria-label="Highlight" aria-expanded={hlPickerOpen} onClick={()=>setHlPickerOpen(o=>!o)}
+                          style={{...floatFace,...(hlPickerOpen?{border:`1px solid ${T.gM}`}:{}),borderRadius:6,flexShrink:0,width:34,height:30,boxSizing:'border-box',padding:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <span style={{width:U(14),height:U(14),borderRadius:'50%',display:'block',background:selHL?hlByKey[selHL].dot:'conic-gradient(#e4c448 0 20%,#62c484 0 40%,#6aaaeb 0 60%,#aa82dc 0 80%,#eb9650 0)',opacity:selHL?1:0.8}}/>
+                        </button>
+                      )}
                       {user
                         ?<button type="button" onClick={()=>doReadBookmark()}
                           style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,cursor:'pointer',height:30,boxSizing:'border-box',transition:'color .15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-                          <span>✦</span><span>Bookmark</span>
+                          <span>Bookmark</span>
                         </button>
                         :<span style={{flex:1,fontFamily:FB,fontStyle:'italic',color:T.gM,fontSize:U(13),textAlign:'center'}}>Sign in to bookmark</span>}
                       <button type="button" onClick={()=>copySelectedVerses()}
                         style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-                        <span>⧉</span><span>Copy</span>
+                        <span>Copy</span>
                       </button>
                       <button type="button" onClick={dismissStrip}
                         style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(14),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
@@ -9474,6 +9651,7 @@ function App(){
       )}
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing} user={user}/>}
       {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='highlights'&&<HighlightsPanel T={T} dark={dark} highlights={highlights} versions={data.versions} onOpen={openFromHighlight} onClose={closeModal} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
       {verDelAsk&&(()=>{
@@ -9482,7 +9660,7 @@ function App(){
         return(
           <ConfirmDialog T={T} danger
             title={one?`Delete ${n[0]}?`:`Delete ${n.length} versions?`}
-            message={`${one?n[0]:n.join(', ')} will be deleted from this device and removed from your list on every device. Scriptorium can't restore ${one?'it':'them'} — you would need the original file to import ${one?'it':'them'} again.`}
+            message={`${one?n[0]:n.join(', ')} and any highlights in ${one?'it':'them'} will be deleted from this device and removed from your list on every device. Scriptorium can't restore ${one?'it':'them'} — you would need the original file to import ${one?'it':'them'} again.`}
             confirmLabel="Delete" cancelLabel="Keep"
             onConfirm={()=>answer(true)} onCancel={()=>answer(false)}/>
         );
@@ -9809,6 +9987,15 @@ function App(){
                 </Row>
                 <Row icon="▸">
                   With a verse selected, the <strong style={{color:T.gT}}>play button</strong> reads <em>Play from Verse N</em> and starts audio there instead of at the beginning of the chapter.
+                </Row>
+
+                {/* ── HIGHLIGHTS ── */}
+                <Hdg label="Highlights"/>
+                <Row icon="◐">
+                  Tap the <strong style={{color:T.gT}}>colour button</strong> beside the verse reference in the bar to highlight the selected verses in one of five colours, or tap <strong style={{color:T.gT}}>Remove</strong> to clear them. A highlight belongs to the version you made it in, so switching versions shows that version's own.
+                </Row>
+                <Row icon="▤">
+                  See every highlight in <em>Study → Highlights</em>, grouped by colour and shown in the words of its version. Filter by colour or by version, and tap <strong style={{color:T.gT}}>Open</strong> to go straight to the verse.
                 </Row>
 
                 {/* ── READING PLANS ── */}
