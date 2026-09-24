@@ -3633,7 +3633,9 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
-  return(<>
+  // One block, not a fragment: the popup scrolls a flex column, and loose
+  // cards in it shrank to nothing instead of scrolling.
+  return(<div style={{flexShrink:0}}>
     <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
       {lead}
       <span style={{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,flexShrink:0,lineHeight:1}}>{num}</span>
@@ -3690,7 +3692,7 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
         );
       })}
     </>}
-  </>);
+  </div>);
 }
 
 // The frame the popups over the page share: dimmed and blurred behind, the
