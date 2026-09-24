@@ -328,6 +328,17 @@ function idbOpen(){
   });
 }
 function _idbReq(r){return new Promise((res,rej)=>{r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});}
+// A write is done when its transaction completes. One that aborts -- which is
+// what a write refused for space does, with no error event -- has to fail too,
+// or whoever awaits it waits for good: that is how the bundled install could
+// hold the loading screen up indefinitely.
+function _txDone(tx){
+  return new Promise((res,rej)=>{
+    tx.oncomplete=()=>res();
+    tx.onerror=e=>rej(e.target.error||tx.error||new Error('IndexedDB write failed'));
+    tx.onabort=()=>rej(tx.error||new Error('IndexedDB write aborted'));
+  });
+}
 
 // ── Bible verses ──────────────────────────────────────────
 async function idbGetChapterLocal(versionId,bookNum,chapter){
@@ -349,7 +360,7 @@ async function idbPutVerses(versionId,rows){
   const tx=db.transaction('verses','readwrite');
   const st=tx.objectStore('verses');
   for(const r of rows)st.put({pk:`${versionId}|${r.book_num}|${r.chapter}|${r.verse}`,version_id:versionId,book_num:r.book_num,chapter:r.chapter,verse:r.verse,text:r.text});
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 
 // ── Strong's lexicon ──────────────────────────────────────
@@ -401,7 +412,7 @@ async function idbPutStrongsEntries(rows){
   const tx=db.transaction('strongs_lex','readwrite');
   const st=tx.objectStore('strongs_lex');
   for(const r of rows)st.put({...r,word_lower:(r.transliteration||r.short_def||'').toLowerCase()});
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbClearStrongs(){
   const db=await idbOpen();
@@ -410,7 +421,7 @@ async function idbClearStrongs(){
   tx.objectStore('strongs_map').clear();
   tx.objectStore('strongs_occ').clear();
   tx.objectStore('strongs_kjvw').clear();
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 // Strong's word mapping is 785,856 rows. Storing one IndexedDB record per word
 // would be punishingly slow to write and read, so we group by chapter — 1,189
@@ -420,14 +431,14 @@ async function idbPutStrongsMapChapters(records){
   const tx=db.transaction('strongs_map','readwrite');
   const st=tx.objectStore('strongs_map');
   for(const rec of records)st.put(rec);
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbPutStrongsOcc(records){
   const db=await idbOpen();
   const tx=db.transaction('strongs_occ','readwrite');
   const st=tx.objectStore('strongs_occ');
   for(const rec of records)st.put(rec);
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 // Expand back into the exact shape get_strongs_verses returns, so the popup and
 // the Strong's tab render identically whether the data came from here or the server.
@@ -468,18 +479,18 @@ async function idbPutWebsterEntries(rows){
   const tx=db.transaction('webster','readwrite');
   const st=tx.objectStore('webster');
   for(const r of rows)st.add({...r,word_lower:(r.word||'').toLowerCase()});
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbClearWebster(){
   const db=await idbOpen();
   const tx=db.transaction('webster','readwrite');
   tx.objectStore('webster').clear();
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 
 // ── Meta / download flags ─────────────────────────────────
 async function idbGetMeta(key){try{const db=await idbOpen();const r=await _idbReq(db.transaction('meta','readonly').objectStore('meta').get(key));return r?.value;}catch{return undefined;}}
-async function idbPutMeta(key,value){const db=await idbOpen();const tx=db.transaction('meta','readwrite');tx.objectStore('meta').put({key,value});return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});}
+async function idbPutMeta(key,value){const db=await idbOpen();const tx=db.transaction('meta','readwrite');tx.objectStore('meta').put({key,value});return _txDone(tx);}
 async function idbIsDownloaded(id){return(await idbGetMeta(`dl:${id}`))===true;}
 
 // ── Bible version delete ──────────────────────────────────
@@ -491,11 +502,9 @@ async function idbDeleteVersionLocal(versionId){
   const st=tx.objectStore('verses');
   // Use PK range directly — faster than going through the by_chapter index
   const range=IDBKeyRange.bound(`${versionId}|`,`${versionId}|\uffff`);
-  await new Promise((res,rej)=>{
-    const req=st.openCursor(range);
-    req.onsuccess=e=>{const c=e.target.result;if(c){c.delete();c.continue();}};
-    tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);
-  });
+  const req=st.openCursor(range);
+  req.onsuccess=e=>{const c=e.target.result;if(c){c.delete();c.continue();}};
+  await _txDone(tx);
 }
 
 // ── Generic batch downloader ──────────────────────────────
@@ -644,7 +653,7 @@ async function idbPutCommentaryRecords(recs){
   const tx=db.transaction('commentary','readwrite');
   const st=tx.objectStore('commentary');
   for(const r of recs)st.put(r);
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbGetCommentaryChapter(cid,b,c){
   const db=await idbOpen();
@@ -655,7 +664,7 @@ async function idbDeleteCommentary(cid){
   const tx=db.transaction('commentary','readwrite');
   const req=tx.objectStore('commentary').index('by_cid').openKeyCursor(IDBKeyRange.only(cid));
   req.onsuccess=e=>{const c=e.target.result;if(!c)return;tx.objectStore('commentary').delete(c.primaryKey);c.continue();};
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbListCommentaries(){
   const db=await idbOpen();
@@ -730,12 +739,12 @@ const BUNDLED_DATASETS={
   webster:{clear:()=>idbClearStore('webster'),flags:['dl:webster'],
     load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutWebsterEntries(rows.slice(i,i+2000));return rows.length;}},
   // The Treasury's description rides along for its information page.
-  tske:{clear:()=>idbDeleteCommentary(TSKE_ID),flags:[],
+  tske:{clear:()=>idbDeleteCommentary(TSKE_ID),flags:[],background:true,
     load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${TSKE_ID}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}},
 };
 // Installs any bundled dataset the device doesn't already hold at the shipped
 // version. Returns true if it wrote anything.
-async function installBundledDatasets(onProgress){
+async function installBundledDatasets(onProgress,{background=false}={}){
   let man;
   try{man=await _bundledJson('manifest.json');}
   catch(e){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:String(e&&e.message||e),at:Date.now()}).catch(()=>{});return false;}
@@ -743,6 +752,9 @@ async function installBundledDatasets(onProgress){
   if(!ds){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:'no datasets in manifest',at:Date.now()}).catch(()=>{});return false;}
   const jobs=[];
   for(const name of Object.keys(BUNDLED_DATASETS)){
+    // Two passes: what the app needs to open, behind the install screen, and
+    // what it does not, once it is open.
+    if(!!BUNDLED_DATASETS[name].background!==background)continue;
     const d=ds[name];
     if(!d||!Array.isArray(d.files))continue;
     const have=await idbGetMeta(`bundled:${name}`).catch(()=>null);
@@ -811,13 +823,13 @@ async function idbPutStrongsKjvw(records){
   const tx=db.transaction('strongs_kjvw','readwrite');
   const st=tx.objectStore('strongs_kjvw');
   for(const rec of records)st.put(rec);
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function idbClearStore(name){
   const db=await idbOpen();
   const tx=db.transaction(name,'readwrite');
   tx.objectStore(name).clear();
-  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+  return _txDone(tx);
 }
 async function buildKjvWordIndex(onProgress,signal){
   const db=await idbOpen();
@@ -2050,6 +2062,7 @@ async function dbLoadOrCreateProject(userId){
   const token=getToken();
   const t=await sbFrom('projects',token);
   const r=await t.select('*',{user_id:userId},{order:'created_at.asc',limit:1});
+  if(r.error)throw new Error('project lookup failed');
   if(r.data?.length)return r.data[0];
   // Create project
   const ins=await t.insert({user_id:userId,title:'My Study'});
@@ -2155,11 +2168,11 @@ async function dbSaveVersions(projectId,versions){
   await t.delete({project_id:projectId});
   if(versions.length){const t2=await sbFrom('project_versions',token);await t2.insert(versions.map((v,i)=>({project_id:projectId,version_id:v.id,label:v.label,lang:v.lang||'EN',is_ref:!!v.isRef,position:i})));}
 }
-async function dbLoadBookmarks(userId){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});return r.data||[];}
+async function dbLoadBookmarks(userId){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});if(r.error)throw new Error('bookmarks load failed');return r.data||[];}
 async function dbAddBookmark(userId,{versionId,bookNum,chapter,verse,label,categoryId,note}){const token=getToken();const t=await sbFrom('bookmarks',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse:verse||null,label:label||null,category_id:categoryId||null,note:note||null});return r.data?.[0];}
 async function dbUpdateBookmark(id,{note,categoryId,label}){const token=getToken();const t=await sbFrom('bookmarks',token);const patch={};if(note!==undefined)patch.note=note||null;if(categoryId!==undefined)patch.category_id=categoryId||null;if(label!==undefined)patch.label=label||null;await t.update(patch,{id});}
 async function dbDeleteBookmark(id){const token=getToken();const t=await sbFrom('bookmarks',token);await t.delete({id});}
-async function dbLoadCategories(userId){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.select('*',{user_id:userId},{order:'sort_order.asc,created_at.asc'});return r.data||[];}
+async function dbLoadCategories(userId){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.select('*',{user_id:userId},{order:'sort_order.asc,created_at.asc'});if(r.error)throw new Error('categories load failed');return r.data||[];}
 async function dbAddCategory(userId,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const r=await t.insert({user_id:userId,name,color:color||'#62c484'});return r.data?.[0];}
 async function dbUpdateCategory(id,{name,color}){const token=getToken();const t=await sbFrom('bookmark_categories',token);const patch={};if(name!==undefined)patch.name=name;if(color!==undefined)patch.color=color;await t.update(patch,{id});}
 async function dbDeleteCategory(id){const token=getToken();const t=await sbFrom('bookmark_categories',token);await t.delete({id});}
@@ -2200,7 +2213,7 @@ async function dbRemoveHighlights(userId,versionId,bookNum,chapter,verses){
   const r=await sbFetch(`${HL_URL}?user_id=eq.${userId}&version_id=eq.${encodeURIComponent(versionId)}&book_num=eq.${bookNum}&chapter=eq.${chapter}&verse=in.(${verses.join(',')})`,{method:'DELETE',headers:sbHeaders(token),signal:sbSignal()},token);
   if(!r.ok)throw new Error(`HTTP ${r.status}`);
 }
-async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});return r.data||[];}
+async function dbLoadRecents(userId){const token=getToken();const t=await sbFrom('recent_passages',token);const r=await t.select('*',{user_id:userId},{order:'visited_at.desc',limit:20});if(r.error)throw new Error('recents load failed');return r.data||[];}
 async function dbRecordRecent(userId,versionId,bookNum,chapter){const token=getToken();await sbRpc('upsert_recent_passage',{p_user_id:userId,p_version_id:versionId,p_book_num:bookNum,p_chapter:chapter},token);}
 
 
@@ -3292,7 +3305,7 @@ function splitReciprocal(m){
 
 // Study → Commentaries. It opens on the chapter being read, and at the verse
 // that was selected; its own arrows move on from there without moving Read.
-function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen}){
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed}){
   const cm=list.find(c=>c.id===cid)||list[0];
   const[rec,setRec]=useState(undefined); // undefined while loading, null for none
   const[intro,setIntro]=useState(null);
@@ -3313,7 +3326,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
       .then(([r,i])=>{if(alive){setRec(r);setIntro(i?.o||null);}})
       .catch(()=>{if(alive){setRec(null);setIntro(null);}});
     return()=>{alive=false;};
-  },[cm.id,book,ch]);
+  },[cm.id,book,ch,installed]);
   useEffect(()=>{
     let alive=true;
     setTexts({});
@@ -3412,7 +3425,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         {rec===undefined&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
         {rec===null&&(
           <div style={{textAlign:'center',padding:'36px 12px',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15),lineHeight:1.6}}>
-            {cm.builtin?'The Treasury of Scripture Knowledge isn’t on this device yet. It installs when Scriptorium starts, so closing and reopening the app will finish it.':`${cm.title} has no notes on ${heading}.`}
+            {cm.builtin?'The Treasury of Scripture Knowledge is being set up on this device. It will appear here in a moment.':`${cm.title} has no notes on ${heading}.`}
           </div>
         )}
         {rec&&<>
@@ -5958,9 +5971,26 @@ function App(){
     return()=>{document.removeEventListener('visibilitychange',wake);off&&off();};
   },[]);
 
+  // Bookmarks, highlights, recent passages and categories are the reader's own
+  // and need nothing from the project, so they load as soon as the reader is
+  // known -- and a request that fails is tried again. They used to wait for the
+  // project, load once, and be skipped outright if the project failed: the app
+  // then opened with every list empty, looking as if all of it had been deleted.
+  const listsFor=useRef(null);
+  function loadUserLists(uid){
+    listsFor.current=uid;
+    const waits=[2000,5000,12000,30000];
+    const load=(fn,set)=>{
+      let n=0;
+      const go=()=>fn(uid).then(v=>{if(listsFor.current===uid)set(v);}).catch(()=>{if(listsFor.current===uid&&n<waits.length)setTimeout(go,waits[n++]);});
+      go();
+    };
+    load(dbLoadBookmarks,setBookmarks);load(dbLoadHighlights,setHighlights);
+    load(dbLoadRecents,setRecents);load(dbLoadCategories,setBmCategories);
+  }
   // ── Load project on auth ──
   useEffect(()=>{
-    if(!user)return;
+    if(!user){listsFor.current=null;return;}
     if(user.guest){
       const pd={versions:PUBLIC_VERSIONS,sections:[],entries:[]};
       setProjectId('guest-local');
@@ -5978,10 +6008,17 @@ function App(){
       }).catch(()=>{});
       return;
     }
+    listsFor.current=null;
     (async()=>{
       setReady(false);setLoadMsg('Loading project…');
-      let proj;
-      try{proj=await dbLoadOrCreateProject(user.id);}catch(e){proj=null;}
+      loadUserLists(user.id);
+      // A slow first request is not a missing project: try a few times before
+      // opening without it.
+      let proj=null;
+      for(const wait of [0,1500,4000]){
+        if(wait)await new Promise(r=>setTimeout(r,wait));
+        try{proj=await dbLoadOrCreateProject(user.id);break;}catch(e){proj=null;}
+      }
       if(!proj){setData({versions:PUBLIC_VERSIONS,sections:[],entries:[]});setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||'kjv');setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));setLoadMsg('');setReady(true);return;}
       setProjectId(proj.id);
       setLoadMsg('Loading study data…');
@@ -6019,10 +6056,6 @@ function App(){
       setReadVid(pd.versions.find(v=>v.isRef)?.id||pd.versions[0]?.id||'kjv');
       setParallelVids(pd.versions.map(v=>v.id));
       setLoadMsg('');setReady(true);
-      dbLoadBookmarks(user.id).then(setBookmarks).catch(()=>{});
-      dbLoadHighlights(user.id).then(setHighlights).catch(()=>{});
-      dbLoadRecents(user.id).then(setRecents).catch(()=>{});
-      dbLoadCategories(user.id).then(setBmCategories).catch(()=>{});
       idbGetAllResources().then(all=>{
         setResources(all.filter(r=>r.category==='other'||!r.category));
         setUserMaps(all.filter(r=>r.category==='maps'));
@@ -6049,6 +6082,24 @@ function App(){
     })();
     return()=>{cancelled=true;};
   },[]);
+
+  // The Treasury is not needed to open the app. It installs once the app is up
+  // and the reader's own data has gone first, with no install screen; it used to
+  // sit behind that screen, where 14 MB of writes on a full database held the
+  // app shut and crowded out the requests for the reader's bookmarks.
+  const[bgInstalled,setBgInstalled]=useState(0);
+  const bgInstall=useRef(false);
+  useEffect(()=>{
+    if(!ready||installing||bgInstall.current)return;
+    const t=setTimeout(()=>{
+      if(bgInstall.current)return;
+      bgInstall.current=true;
+      installBundledDatasets(null,{background:true})
+        .then(did=>{if(did)setBgInstalled(n=>n+1);})
+        .catch(e=>console.warn('Background install failed:',e));
+    },4000);
+    return()=>clearTimeout(t);
+  },[ready,installing]);
 
   // ── Install bundled default resources (once per device, regardless of login) ──
   useEffect(()=>{
@@ -9211,7 +9262,7 @@ function App(){
         <CommentaryPage T={T} navH={navH} vid={readVid} lang={versionLang(readVid)} book={cmBook} ch={cmCh} focus={cmFocus}
           list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
-          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen}/>
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}/>
       )}
 
       {/* ═══ COMPARE TAB ═══ */}
