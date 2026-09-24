@@ -9,6 +9,29 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { MEEK_WEEKS } from './meekPlan.js';
 import { cmtiToMarkup, dropSelfLine, markupRuns } from './commentary.js';
 
+// ── Boot timeline ──
+// What the app did as it started and when, kept for the last few launches in
+// localStorage ('scrip:boot'). A slow start on a phone happens where no console
+// can see it; this lets it be read back off the device afterwards. Times are ms
+// since the page began loading; `at` is the wall clock at that moment.
+const BOOT={at:Date.now()-Math.round(typeof performance!=='undefined'?performance.now():0),marks:[],errors:[]};
+function bootSave(){try{const all=JSON.parse(localStorage.getItem('scrip:boot')||'[]').filter(b=>b.at!==BOOT.at);all.unshift(BOOT);localStorage.setItem('scrip:boot',JSON.stringify(all.slice(0,6)));}catch{}}
+function bootMark(name,detail){
+  try{
+    if(BOOT.marks.length>80)return;
+    const m=[name,Math.round(performance.now())];
+    if(detail!==undefined)m.push(String(detail).slice(0,200));
+    if(typeof document!=='undefined'&&document.visibilityState!=='visible')m.push('hidden');
+    BOOT.marks.push(m);bootSave();
+  }catch{}
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('error',e=>{BOOT.errors.push([Math.round(performance.now()),String(e.message||e.error).slice(0,300)]);bootSave();});
+  window.addEventListener('unhandledrejection',e=>{BOOT.errors.push([Math.round(performance.now()),String(e.reason&&e.reason.message||e.reason).slice(0,300)]);bootSave();});
+  document.addEventListener('visibilitychange',()=>bootMark(document.visibilityState));
+}
+bootMark('js');
+
 // Opens a link without leaving the app. On device this is an in-app Safari
 // sheet with a Done button that returns to the exact spot; the FCBH download
 // used to hand the user to Safari and leave them to find their own way back.
@@ -261,17 +284,24 @@ const Auth = {
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
 const IDB_VER=8;
-let _idbInst=null;
+let _idbInst=null,_idbOpening=null;
 
 function idbOpen(){
   if(_idbInst)return Promise.resolve(_idbInst);
+  // Everything at startup asks at once; they share the one open rather than
+  // each opening a connection of its own.
+  if(_idbOpening)return _idbOpening;
   // Private-browsing modes can leave this undefined; reject so callers take
   // their existing error paths instead of throwing out of the promise.
   const idb=typeof window!=='undefined'?window.indexedDB:null;
   if(!idb)return Promise.reject(new Error('IndexedDB unavailable'));
-  return new Promise((resolve,reject)=>{
+  return _idbOpening=new Promise((resolve,reject)=>{
     const req=idb.open(IDB_NAME,IDB_VER);
+    bootMark('idb-open-start');
+    // Another holder of an older version keeps an upgrade waiting; say so.
+    req.onblocked=()=>bootMark('idb-blocked');
     req.onupgradeneeded=e=>{
+      bootMark('idb-upgrade',`${e.oldVersion}->${e.newVersion}`);
       const db=e.target.result;
       // v1 stores
       if(!db.objectStoreNames.contains('verses')){
@@ -319,12 +349,14 @@ function idbOpen(){
       }
     };
     req.onsuccess=e=>{
+      bootMark('idb-open');
       _idbInst=e.target.result;
       // Another tab opening a newer version waits on this one until it lets go.
       _idbInst.onversionchange=()=>{try{_idbInst.close();}catch{}_idbInst=null;};
+      _idbOpening=null;
       resolve(_idbInst);
     };
-    req.onerror=e=>reject(e.target.error);
+    req.onerror=e=>{bootMark('idb-error',e.target.error&&e.target.error.message);_idbOpening=null;reject(e.target.error);};
   });
 }
 function _idbReq(r){return new Promise((res,rej)=>{r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});}
@@ -745,6 +777,7 @@ const BUNDLED_DATASETS={
 // Installs any bundled dataset the device doesn't already hold at the shipped
 // version. Returns true if it wrote anything.
 async function installBundledDatasets(onProgress,{background=false}={}){
+  bootMark(background?'bg-install-check':'install-check');
   let man;
   try{man=await _bundledJson('manifest.json');}
   catch(e){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:String(e&&e.message||e),at:Date.now()}).catch(()=>{});return false;}
@@ -761,7 +794,8 @@ async function installBundledDatasets(onProgress,{background=false}={}){
     if(have===d.version)continue;
     jobs.push([name,d]);
   }
-  if(!jobs.length){await idbPutMeta('bundled:status',{ok:true,stage:'already-installed',installed:[],at:Date.now()}).catch(()=>{});return false;}
+  if(!jobs.length){bootMark(background?'bg-install-none':'install-none');await idbPutMeta('bundled:status',{ok:true,stage:'already-installed',installed:[],at:Date.now()}).catch(()=>{});return false;}
+  bootMark(background?'bg-install-jobs':'install-jobs',jobs.map(([n,d])=>`${n}@${d.version}`).join(','));
   const total=jobs.reduce((s,[,d])=>s+(d.rows||1),0);
   let done=0,touchedStrongs=false;
   const installed=[];
@@ -778,10 +812,12 @@ async function installBundledDatasets(onProgress,{background=false}={}){
     installed.push(name);
     if(inst.strongs)touchedStrongs=true;
     }catch(e){
+      bootMark('install-failed',`${name}: ${e&&e.message||e}`);
       await idbPutMeta('bundled:status',{ok:false,stage:name,error:String(e&&e.message||e),installed,at:Date.now()}).catch(()=>{});
       throw e;
     }
   }
+  bootMark(background?'bg-install-done':'install-done',installed.join(','));
   await idbPutMeta('bundled:status',{ok:true,stage:'installed',installed,at:Date.now()}).catch(()=>{});
   // Stamp the payload version, or the freshness check would clear what we just wrote.
   if(touchedStrongs)await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION);
@@ -4624,6 +4660,7 @@ function App(){
   // ── Auth ──
   const[user,setUser]=useState(null);
   const[authChecked,setAuthChecked]=useState(false);
+  const bootChapter=useRef(false);
   const[authWelcome,setAuthWelcome]=useState(false);
   const[recoveryMode,setRecoveryMode]=useState(false);
 
@@ -5300,6 +5337,8 @@ function App(){
   // straight into that swap, and left every sheet hidden under the nav.
   const[bundledInstall,setBundledInstall]=useState(null); // {done,total}
   const installing=!!(bundledInstall&&bundledInstall.total>0);
+  useEffect(()=>{if(installing)bootMark('install-screen');},[installing]);
+  useEffect(()=>{if(ready)bootMark('ready');},[ready]);
   const swipeTouchX=useRef(null);
   const swipeTouchY=useRef(null);
   const swipeTouchT=useRef(null);
@@ -6035,7 +6074,8 @@ function App(){
         if(p.type==='recovery')setRecoveryMode(true);
       }
     }
-    Auth.getSession().then(s=>{setUser(s?.user||null);setAuthChecked(true);});
+    bootMark('auth-start');
+    Auth.getSession().then(s=>{bootMark('auth',s?.user?'signed in':'no session');setUser(s?.user||null);setAuthChecked(true);});
     // Coming back after a long spell in the background is the moment the token
     // is most likely to be stale. The 401 retry would cover it either way; this
     // just means the first thing the reader does is not the request that has to
@@ -6090,10 +6130,12 @@ function App(){
       // A slow first request is not a missing project: try a few times before
       // opening without it.
       let proj=null;
+      bootMark('project-start');
       for(const wait of [0,1500,4000]){
         if(wait)await new Promise(r=>setTimeout(r,wait));
-        try{proj=await dbLoadOrCreateProject(user.id);break;}catch(e){proj=null;}
+        try{proj=await dbLoadOrCreateProject(user.id);break;}catch(e){proj=null;bootMark('project-retry',e&&e.message);}
       }
+      bootMark(proj?'project':'project-failed');
       if(!proj){setData({versions:PUBLIC_VERSIONS,sections:[],entries:[]});setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||'kjv');setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));setLoadMsg('');setReady(true);return;}
       setProjectId(proj.id);
       setLoadMsg('Loading study data…');
@@ -6215,6 +6257,7 @@ function App(){
     dbGetChapter(readVid,readBook,readCh).then(rows=>{
       if(!cancelled){
         setReadVerses(rows);
+        if(!bootChapter.current){bootChapter.current=true;bootMark('chapter',`${readVid} ${readBook}:${readCh} ${rows.length}v`);}
         // Landing on a verse selects it, and a selected verse shows its strip.
         // Anything that arrives here has been asked for by name — a search
         // result, a typed reference, a cross-reference, a bookmark — so the
