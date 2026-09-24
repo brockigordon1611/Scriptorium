@@ -1837,6 +1837,17 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 function normRef(raw){if(!raw)return raw;const m=raw.trim().match(/^([\d]*\s*[a-zA-Z]+\.?)\s+(\d+.*)/);if(!m)return raw.trim();let book=m[1].replace(/\./g,'').trim();const key=book.toLowerCase().replace(/\s+/g,'');if(ABBREVS[key])book=ABBREVS[key];else book=book.charAt(0).toUpperCase()+book.slice(1);return book+' '+m[2];}
 function parseRef(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(.+)$/);return m?{book:m[1].trim(),chapter:m[2],verse:m[3].trim()}:null;}
 function parseRefDD(ref){if(!ref)return null;const m=ref.match(/^(.+?)\s+(\d+):(\d+)/);if(!m)return null;const b=BIBLE.find(x=>x.name.toLowerCase()===m[1].trim().toLowerCase());return b?{bookNum:b.n,chapter:parseInt(m[2]),verse:parseInt(m[3])}:null;}
+// A search term as a pattern, the same for choosing verses, counting
+// occurrences and highlighting them. Whole-word matching goes by letters in any
+// script: \b counts only A-Z, so a word ending in an accented letter ("está")
+// was never a whole word. Spaces in a phrase match any run of white space.
+const SEARCH_ESC=/[.*+?^${}()|[\]\\]/g;
+function searchRx(term,opts,global=true){
+  let pat=String(term).trim().replace(SEARCH_ESC,'\\$&').replace(/\s+/g,'\\s+');
+  if(opts&&opts.partial===false)pat=`(?<![\\p{L}\\p{N}])${pat}(?![\\p{L}\\p{N}])`;
+  return new RegExp(pat,(global?'g':'')+(opts&&opts.caseSensitive?'':'i')+'u');
+}
+const searchPlain=t=>String(t||'').replace(/<[^>]+>/g,'');
 function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'');if(!q)return esc(plain);const cs=opts&&opts.caseSensitive;const words=(opts&&opts.mode&&opts.mode!=='phrase')?q.split(/\s+/).filter(Boolean):[q];
   // Every term is matched against the bare verse, and the marks are only built
   // at the end. This used to run the terms one after another over its own
@@ -1845,7 +1856,7 @@ function hl(text,q,opts){if(!text)return'';const plain=text.replace(/<[^>]+>/g,'
   // the tag down the middle, and the browser renders the wreckage as words.
   // That is where ark class="sch">Trainark> on screen came from.
   const hits=[];
-  words.forEach(w=>{const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');const bounded=(opts&&opts.partial===false)?`\\b${pat}\\b`:pat;const rx=new RegExp(bounded,cs?'g':'gi');let m;while((m=rx.exec(plain))!==null){if(!m[0]){rx.lastIndex++;continue;}hits.push([m.index,m.index+m[0].length]);}});
+  words.forEach(w=>{const rx=searchRx(w,opts);let m;while((m=rx.exec(plain))!==null){if(!m[0]){rx.lastIndex++;continue;}hits.push([m.index,m.index+m[0].length]);}});
   if(!hits.length)return esc(plain);
   // Overlaps merge into one mark rather than nesting — "the" and "he" both match
   // the same three letters, and two opening tags inside one another was the
@@ -3666,13 +3677,20 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
       {groupList.map(([key,{word,refs}])=>{
         const open=expanded.has(key);
         const times=[...refs.values()].reduce((s,c)=>s+c,0);
+        // Where the KJV has no English for the word, the gloss is STEPBible's,
+        // in angle brackets ("<to>", "<obj.>", "to <the>"): in the original,
+        // not in the translation. Those words are set in italics, and a
+        // rendering made only of them says so.
+        const parts=String(word||'').split(/(<[^>]*>)/).filter(Boolean);
+        const implied=parts.every(p=>/^<[^>]*>$/.test(p)||!p.trim());
+        const shown=parts.map((p,i)=>/^<[^>]*>$/.test(p)?<i key={i} style={{fontWeight:600}}>{p.slice(1,-1)}</i>:p);
         const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
         return(
           <div key={key} style={card}>
             <div role="button" tabIndex={0} aria-expanded={open} onClick={()=>onToggle(key)}
               style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-              <span style={{fontFamily:fam,fontSize:Math.round(px*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{word}</span>
-              <span style={{...small,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}</span>
+              <span style={{fontFamily:fam,fontSize:Math.round(px*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{shown}</span>
+              <span style={{...small,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}{implied?' · not translated':''}</span>
               <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
             </div>
             {open&&(
@@ -6822,17 +6840,15 @@ function App(){
           return scanLocal(await localRows(),q);
         }
       }
+      // The phrase honours Partial Match as the words do: it used to match
+      // anywhere, so with Partial Match off "rod" still listed every Herod.
+      // Matched against the bare verse, as the highlight and the count are.
+      const phraseRx=searchRx(query,opts,false),wordRx=words.map(w=>searchRx(w,opts,false));
       function matches(text){
-        const chk=w=>{
-          if(opts.partial===false){
-            const rx=new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`,cs?'':'i');
-            return rx.test(text);
-          }
-          return cs?text.includes(w):text.toLowerCase().includes(w.toLowerCase());
-        };
-        if(opts.mode==='phrase') return cs?text.includes(query):text.toLowerCase().includes(query.toLowerCase());
-        if(opts.mode==='all') return words.every(w=>chk(w));
-        return words.some(w=>chk(w));
+        const t=searchPlain(text);
+        if(opts.mode==='phrase')return phraseRx.test(t);
+        if(opts.mode==='all')return wordRx.every(rx=>rx.test(t));
+        return wordRx.some(rx=>rx.test(t));
       }
       let results=[];
       if(opts.mode==='any'&&words.length>1){
@@ -6865,13 +6881,10 @@ function App(){
         setReadSearchOccurrences(null);
       } else {
         const occWords=opts.mode==='phrase'?[query]:words;
-        const occRx=occWords.map(w=>{
-          const pat=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-          return new RegExp(opts.partial===false?`\\b${pat}\\b`:pat,cs?'g':'gi');
-        });
+        const occRx=occWords.map(w=>searchRx(w,opts));
         let occ=0;
         results.forEach(r=>{
-          const txt=r.text||'';
+          const txt=searchPlain(r.text);
           for(const rx of occRx){const m=txt.match(rx);if(m)occ+=m.length;}
         });
         setReadSearchOccurrences(occ);
