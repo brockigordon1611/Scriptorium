@@ -3389,7 +3389,7 @@ function splitReciprocal(m){
 
 // Study → Commentaries. It opens on the chapter being read, and at the verse
 // that was selected; its own arrows move on from there without moving Read.
-function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose}){
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose,verLabel}){
   // The commentary is read like the text it comments on, so it follows
   // Scripture Size -- a little over half of it: 19px at the default of 31.
   const px=Math.max(14,Math.min(36,Math.round(readFont.size*0.6)));
@@ -3588,35 +3588,10 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
       {/* A reference, read where it is tapped. The same card as the Strong's
           verse preview, taking a range. */}
       {preview&&(
-        <div onClick={()=>setPreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'70vh',display:'flex',flexDirection:'column',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
-            <div style={{display:'flex',alignItems:'center',gap:10,padding:'18px 20px 12px',flexShrink:0}}>
-              <SheetBackBtn onClick={()=>setPreview(null)} T={T}/>
-              <span style={{fontFamily:FS,fontSize:U(15),letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{cmRefLabel(preview.ref,lang,true)}</span>
-              <span style={{width:27,flexShrink:0}}/>
-            </div>
-            <div style={{overflowY:'auto',padding:'0 20px',flex:1,minHeight:0}}>
-              {preview.rows===null
-                ?<div style={{color:T.dim,fontFamily:FB,fontSize:U(13),textAlign:'center',padding:'12px 0'}}>Loading…</div>
-                :preview.rows.length===0
-                  ?<div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'12px 0'}}>This passage isn’t in the version you’re reading.</div>
-                  :<div style={{fontFamily:readFont.family,fontSize:readFont.size,color:T.body,lineHeight:readFont.lineHeight}}>
-                    {preview.rows.map(r=>(
-                      <span key={`${r.c}:${r.v}`}>
-                        <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFont.size*0.55),verticalAlign:'super'}}>{r.c!==preview.ref.c?`${r.c}:${r.v}`:r.v}</sup>
-                        <span dangerouslySetInnerHTML={{__html:verseHtml(preview.ref.b,r.c,r.v,r.text)}}/>{' '}
-                      </span>
-                    ))}
-                  </div>}
-            </div>
-            <div style={{padding:'16px 20px 22px',flexShrink:0}}>
-              <button type="button" onClick={()=>{const r=preview.ref;setPreview(null);onGo(r);}}
-                style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
-                Go to passage
-              </button>
-            </div>
-          </div>
-        </div>
+        <VersePreview T={T} title={cmRefLabel(preview.ref,lang,true)} sub={verLabel} readFont={readFont}
+          loading={preview.rows===null}
+          rows={(preview.rows||[]).map(r=>({key:`${r.c}:${r.v}`,label:r.c!==preview.ref.c?`${r.c}:${r.v}`:r.v,html:verseHtml(preview.ref.b,r.c,r.v,r.text)}))}
+          onClose={()=>setPreview(null)} onGo={()=>{const r=preview.ref;setPreview(null);onGo(r);}}/>
       )}
 
       {info&&(
@@ -3641,6 +3616,170 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         </div>
       )}
     </div>
+  );
+}
+
+// The commentary text size, for the pieces laid out like Commentaries: a
+// little over half of Scripture Size, 19px at the default of 31.
+const cmPx=size=>Math.max(14,Math.min(36,Math.round(size*0.6)));
+
+// A Strong's entry laid out as Commentaries lays out a verse: the number and
+// what it is on one line over the gold rule, the word as a card holding its
+// definition, and each English rendering as a card that opens to its verses.
+// The popup over Read and the Strong's Concordance page both draw it, so the
+// two cannot drift apart.
+function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,reserveRight=0}){
+  const px=cmPx(readFont.size),fam=readFont.family;
+  const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
+  return(<>
+    <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
+      {lead}
+      <span style={{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,flexShrink:0,lineHeight:1}}>{num}</span>
+      <span style={{...small,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,flex:1}}>
+        {["Strong's",langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')}
+      </span>
+      {trail}
+    </div>
+    <div style={{height:1,background:T.accentLine,margin:'8px 0 12px',flexShrink:0}}/>
+    {!entry?<div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading…</div>:<>
+      {/* The word: the original and its transliteration in the band, then the
+          definition -- larger than the rest, being what the reader came for --
+          and the derivation under a hairline. */}
+      <div style={card}>
+        <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+          <span style={{fontFamily:fam,fontSize:Math.round(px*1.6),color:T.gT,lineHeight:1.2}}>{entry.original_word}</span>
+          <span style={{fontFamily:fam,fontSize:px,color:T.mut,fontStyle:'italic'}}>{entry.transliteration}{entry.pronunciation?` (${entry.pronunciation})`:''}</span>
+        </div>
+        <div style={{padding:'12px 14px 10px'}}>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*1.3),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
+          {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
+        </div>
+      </div>
+      {groupList.length>0&&<div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>}
+      {/* Each English rendering is a card, folded until tapped, like a verse's
+          Reciprocal list. The word is in the reading font: Cinzel has no lower
+          case, and "God", "god" and "LORD" are different words. */}
+      {groupList.map(([key,{word,refs}])=>{
+        const open=expanded.has(key);
+        const times=[...refs.values()].reduce((s,c)=>s+c,0);
+        const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
+        return(
+          <div key={key} style={card}>
+            <div role="button" tabIndex={0} aria-expanded={open} onClick={()=>onToggle(key)}
+              style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
+              <span style={{fontFamily:fam,fontSize:Math.round(px*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{word}</span>
+              <span style={{...small,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}</span>
+              <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
+            </div>
+            {open&&(
+              <div style={{padding:'10px 14px 8px',fontFamily:fam,fontSize:Math.round(px*1.1),lineHeight:1.6,color:T.body}}>
+                {refArr.map(({bn,ch,vs,cnt})=>(
+                  <span key={`${bn}-${ch}-${vs}`} style={{display:'inline-block',marginRight:16,marginBottom:4,whiteSpace:'nowrap'}}>
+                    <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onRef(bn,ch,vs);}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onRef(bn,ch,vs);}}}
+                      style={{color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer'}}>
+                      {shortBook(bookName(BIBLE[bn-1],lang))} {ch}:{vs}
+                    </span>
+                    {cnt>1&&<span style={{color:T.dim}}> ×{cnt}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>}
+  </>);
+}
+
+// The frame the popups over the page share: dimmed and blurred behind, the
+// card held inside the screen's safe area, a fixed head and foot, and only
+// the middle scrolling. Sized by vh, a long verse ran the card off the
+// screen on the phone; held to the overlay's own height, it cannot.
+function PopFrame({T,onClose,head,foot,children,maxWidth=460,zIndex=250}){
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box',
+      padding:'max(20px, calc(env(safe-area-inset-top) + 12px)) 16px max(20px, calc(env(safe-area-inset-bottom) + 12px))',animation:'fadeIn .15s ease both'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:T.bg,border:`1px solid ${T.bdA}`,borderRadius:16,width:'100%',maxWidth,maxHeight:'100%',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
+        <div style={{height:3,background:T.accentLine,flexShrink:0}}/>
+        <div style={{flexShrink:0}}>{head}</div>
+        <div style={{flex:1,minHeight:0,overflowY:'auto',overscrollBehavior:'contain',WebkitOverflowScrolling:'touch',padding:'12px 16px 4px'}}>{children}</div>
+        {foot&&<div style={{flexShrink:0,padding:'12px 16px 16px'}}>{foot}</div>}
+      </div>
+    </div>
+  );
+}
+// The heading the popups share, as Commentaries heads a chapter: a small line
+// saying what it is over the title, and the gold rule.
+function PopHead({T,sub,title,onBack}){
+  return(
+    <div style={{position:'relative',padding:'14px 16px 0',textAlign:'center'}}>
+      {onBack&&<div style={{position:'absolute',left:16,top:14}}><SheetBackBtn onClick={onBack} T={T}/></div>}
+      <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,minHeight:12,padding:'0 44px'}}>{sub}</div>
+      <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:3,padding:'0 44px'}}>{title}</div>
+      <div style={{height:1,background:T.accentLine,marginTop:10}}/>
+    </div>
+  );
+}
+// Verses as a card, a row each: the number in gold, the words beside it.
+function VerseRows({T,rows,readFont,size}){
+  const px=cmPx(readFont.size),fs=size||Math.round(px*1.2);
+  return(
+    <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden'}}>
+      {rows.map((r,i)=>(
+        <div key={r.key} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'10px 14px',borderTop:i?`1px solid ${T.bdS}`:'none'}}>
+          <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,flexShrink:0,minWidth:18,lineHeight:`${Math.round(fs*1.5)}px`}}>{r.label}</span>
+          <span style={{fontFamily:readFont.family,fontSize:fs,color:T.body,lineHeight:1.5,minWidth:0,overflowWrap:'anywhere'}} dangerouslySetInnerHTML={{__html:r.html}}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+// A passage read where its reference was tapped -- a Strong's occurrence or a
+// commentary's cross-reference.
+function VersePreview({T,title,sub,rows,loading,emptyText,onClose,onGo,readFont}){
+  const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
+  return(
+    <PopFrame T={T} onClose={onClose}
+      head={<PopHead T={T} sub={sub} title={title} onBack={onClose}/>}
+      foot={<button type="button" onClick={onGo}
+        style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>Go to passage</button>}>
+      {loading?note('Loading…'):rows.length===0?note(emptyText||'This passage isn’t in the version you’re reading.'):<VerseRows T={T} rows={rows} readFont={readFont}/>}
+      <div style={{height:8}}/>
+    </PopFrame>
+  );
+}
+// Saving a bookmark, laid out as Commentaries is: the reference as the
+// heading, the verses being saved as a card, then the note and the category.
+function BookmarkDialog({T,d,rows,readFont,categories,canCategorize,onChange,onSave,onCancel}){
+  const px=cmPx(readFont.size);
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,margin:'16px 2px 7px'};
+  const chip=(on,color)=>({background:on?(color?color+'28':T.gF):'none',border:`1.5px solid ${on?(color||T.gD):T.bd}`,borderRadius:14,color:on?(color||T.gT):T.dim,fontFamily:FS,fontSize:U(11),padding:'8px 14px',cursor:'pointer',fontWeight:on?600:400});
+  // 16px at least, or iOS zooms the page to the field.
+  const field={width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:8,color:T.body,fontFamily:readFont.family,fontSize:Math.max(16,px),padding:'10px 12px',outline:'none',lineHeight:1.5};
+  const btn=primary=>({flex:primary?1:'none',background:primary?T.gF:'none',border:`1px solid ${primary?T.gD:T.bd}`,borderRadius:8,color:primary?T.gT:T.dim,cursor:d.busy?'default':'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 18px',fontWeight:600,opacity:d.busy&&primary?0.6:1});
+  return(
+    <PopFrame T={T} onClose={onCancel} zIndex={500}
+      head={<PopHead T={T} sub="Save bookmark" title={d.ref} onBack={onCancel}/>}
+      foot={<div style={{display:'flex',gap:8}}>
+        <button type="button" onClick={onCancel} style={btn(false)}>Cancel</button>
+        <button type="button" onClick={onSave} disabled={d.busy} style={btn(true)}>{d.busy?'Saving…':'Save'}</button>
+      </div>}>
+      {rows.length>0&&<VerseRows T={T} rows={rows} readFont={readFont} size={px}/>}
+      <div style={{...small,marginTop:rows.length?16:4}}>Note</div>
+      <textarea value={d.note} onChange={e=>onChange({note:e.target.value})} rows={3} placeholder="Anything worth remembering about this passage…" style={{...field,resize:'vertical'}}/>
+      {canCategorize&&<>
+        <div style={small}>Category</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          <button type="button" onClick={()=>onChange({cat:''})} style={chip(!d.cat)}>None</button>
+          {categories.map(c=><button key={c.id} type="button" onClick={()=>onChange({cat:c.id})} style={chip(d.cat===c.id,c.color)}>{c.name}</button>)}
+          <button type="button" onClick={()=>onChange({cat:'__new'})} style={chip(d.cat==='__new')}>＋ New</button>
+        </div>
+        {d.cat==='__new'&&<input value={d.newCat} onChange={e=>onChange({newCat:e.target.value})} placeholder="New category name" autoFocus style={{...field,marginTop:8}}/>}
+      </>}
+      <div style={{height:8}}/>
+    </PopFrame>
   );
 }
 
@@ -9079,13 +9218,6 @@ function App(){
             const _FUNC=new Set(['the','a','an','in','of','from','without','upon','unto','to','for','by','with','at','into','on','and','or','but','nor','so','yet','it','its','he','she','we','they','his','her','their','our','my','thy','thine','mine','ye','thou','thee','him','them','me','us','this','that','these','those','who','whom','whose','which','what','there','here','then','when','where','not','no','as','if','though']);
             const groupList=Object.entries(groups).filter(([k])=>!_FUNC.has(k)).sort((a,b)=>[...b[1].refs.values()].reduce((s,c)=>s+c,0)-[...a[1].refs.values()].reduce((s,c)=>s+c,0));
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
-            // Sized as Commentaries is: a little over half of Scripture Size.
-            const spPx=Math.max(14,Math.min(36,Math.round(readFontSize*0.6)));
-            const spFam=fontFamilyMap[readFontFamily];
-            const spLang=versionLang(readVid);
-            const spLangName=strongsPopup.entry?.language==='hebrew'?'Hebrew':strongsPopup.entry?.language==='greek'?'Greek':null;
-            const spCard={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
-            const spSmall={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
 
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
@@ -9110,65 +9242,14 @@ function App(){
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
-                // One line, from the left: the number, then what it is -- the
-                // Commentaries heading laid on its side, so it sits level with the
-                // close button over the gold rule instead of taking rows of its own.
-                React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:44,minWidth:0,flexShrink:0}},
-                  (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
-                  React.createElement('span',{style:{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,flexShrink:0,lineHeight:1}},strongsPopup.strongs_number),
-                  React.createElement('span',{style:{...spSmall,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}},
-                    ["Strong's",spLangName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · '))
-                ),
-                React.createElement('div',{style:{height:1,background:T.accentLine,margin:'8px 0 12px',flexShrink:0}}),
-                strongsPopup.entry?(
+                React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
+                  expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
+                  onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
+                  derivation:strongsPopup.entry?.full_def?renderDerivation(strongsPopup.entry.full_def):null,
+                  readFont:{family:fontFamilyMap[readFontFamily],size:readFontSize},lang:versionLang(readVid),reserveRight:44,
+                  lead:(strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}})}),
+                strongsPopup.entry&&(
                   React.createElement('div',null,
-                    // The word, laid out as a verse is in Commentaries: the original
-                    // and its transliteration in the band, then the definition --
-                    // larger than the rest, being what the reader came for -- and
-                    // the derivation under a hairline.
-                    <div key="word" style={spCard}>
-                      <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
-                        <span style={{fontFamily:spFam,fontSize:Math.round(spPx*1.6),color:T.gT,lineHeight:1.2}}>{strongsPopup.entry.original_word}</span>
-                        <span style={{fontFamily:spFam,fontSize:spPx,color:T.mut,fontStyle:'italic'}}>{strongsPopup.entry.transliteration}{strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:''}</span>
-                      </div>
-                      <div style={{padding:'12px 14px 10px'}}>
-                        <div style={{fontFamily:spFam,fontSize:Math.round(spPx*1.3),color:T.body,lineHeight:1.45}}>{String(strongsPopup.entry.short_def||'').trim()}</div>
-                        {strongsPopup.entry.full_def&&<div style={{fontFamily:spFam,fontSize:Math.round(spPx*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
-                      </div>
-                    </div>,
-                    groupList.length>0&&<div key="usage" style={{...spSmall,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>,
-                    // Each English rendering is a card, folded until tapped, like a
-                    // verse's Reciprocal list; open, its references read like a
-                    // commentary's.
-                    groupList.map(([key,{word,refs}])=>{
-                      const open=strongsExpandedWords.has(key);
-                      const times=[...refs.values()].reduce((s,c)=>s+c,0);
-                      const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
-                      return(
-                        <div key={key} style={spCard}>
-                          <div role="button" tabIndex={0} aria-expanded={open}
-                            onClick={()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
-                            style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-                            <span style={{fontFamily:spFam,fontSize:Math.round(spPx*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{word}</span>
-                            <span style={{...spSmall,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}</span>
-                            <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
-                          </div>
-                          {open&&(
-                            <div style={{padding:'10px 14px 8px',fontFamily:spFam,fontSize:Math.round(spPx*1.1),lineHeight:1.6,color:T.body}}>
-                              {refArr.map(({bn,ch,vs,cnt})=>(
-                                <span key={`${bn}-${ch}-${vs}`} style={{display:'inline-block',marginRight:16,marginBottom:4,whiteSpace:'nowrap'}}>
-                                  <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();openStrongsVersePreview(bn,ch,vs);}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openStrongsVersePreview(bn,ch,vs);}}}
-                                    style={{color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer'}}>
-                                    {shortBook(bookName(BIBLE[bn-1],spLang))} {ch}:{vs}
-                                  </span>
-                                  {cnt>1&&<span style={{color:T.dim}}> ×{cnt}</span>}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }),
                     groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}},'Loading verses…'),
                     groupList.length===0&&!strongsPopup.versesLoading&&strongsPopup.versesOffline&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8,lineHeight:1.5}},'KJV occurrences need a connection. The definition above is saved on your device.'),
                     React.createElement('div',{style:{textAlign:'center',paddingTop:24,paddingBottom:8,borderTop:`1px solid ${T.bd}`,marginTop:16}},
@@ -9176,41 +9257,11 @@ function App(){
                       React.createElement('div',{style:{fontFamily:FB,fontSize:U(11),color:T.dim,letterSpacing:'0.06em'}},'End of entry')
                     )
                   )
-                ):(
-                  React.createElement('div',{style:{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}},'Loading...')
                 )
               )
             )
           );
           })()}
-
-          {strongsVersePreview&&(
-            <div onClick={()=>setStrongsVersePreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
-              <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'60vh',overflow:'auto',padding:'20px 20px 28px',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
-                {/* Back matches the arrow used by every modal header. The action moved
-                    out of this row: a full label plus the reference plus a button did not
-                    fit across a phone, and squeezing it made the reference the smallest
-                    thing on screen when it is what identifies the verse. */}
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-                  <SheetBackBtn onClick={()=>setStrongsVersePreview(null)} T={T}/>
-                  <span style={{fontFamily:FS,fontSize:U(15),letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{strongsVersePreview.label}</span>
-                  <span style={{width:27,flexShrink:0}}/>
-                </div>
-                {strongsVersePreview.loading
-                  ?<div style={{color:T.dim,fontFamily:FB,fontSize:U(13),textAlign:'center',padding:'12px 0'}}>Loading…</div>
-                  :<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight}}>
-                    <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFontSize*0.68),verticalAlign:'super'}}>{strongsVersePreview.vs}</sup>
-                    <span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(strongsVersePreview.bn,strongsVersePreview.ch,strongsVersePreview.vs,strongsVersePreview.text),readRedLetter,dark)}}/>
-                  </div>
-                }
-                <button type="button"
-                  onClick={()=>{setReadBook(strongsVersePreview.bn);setReadCh(strongsVersePreview.ch);setStrongsPopup(null);setStrongsVersePreview(null);setTab('read');}}
-                  style={{width:'100%',marginTop:18,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
-                  Go to passage
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Selection action strip */}
           {/* The day's readings, floating in the same slot the verse strip uses
@@ -9432,7 +9483,7 @@ function App(){
 
       {/* ═══ COMMENTARIES TAB ═══ */}
       {tab==='commentaries'&&(
-        <CommentaryPage T={T} navH={navH} vid={readVid} lang={versionLang(readVid)} book={cmBook} ch={cmCh} focus={cmFocus}
+        <CommentaryPage T={T} navH={navH} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)} book={cmBook} ch={cmCh} focus={cmFocus}
           list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}
@@ -9600,53 +9651,14 @@ function App(){
             }
             return(
               <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'16px 18px 32px'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontFamily:FS,fontSize:U(13),letterSpacing:'0.12em',color:T.gT,fontWeight:600}}>{te.strongs_number}</span>
-                    {totalCount>0&&<span style={{fontFamily:FB,fontSize:U(12),color:T.dim,background:T.bgCH,borderRadius:10,padding:'2px 7px'}}>×{totalCount}</span>}
-                  </div>
-                  <NavIconBtn ch="✕" onClick={()=>{setStrongsTabEntry(null);}} T={T} title="Close"/>
-                </div>
-                {!e?(
-                  <div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading…</div>
-                ):(
+                <StrongsEntry T={T} num={te.strongs_number} entry={e} groupList={groupList} totalCount={totalCount}
+                  expanded={strongsExpandedWords} onToggle={key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
+                  onRef={(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs)}
+                  derivation={e?.full_def?renderDerivation(e.full_def):null}
+                  readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} lang={versionLang(readVid)}
+                  trail={<NavIconBtn ch="✕" onClick={()=>{setStrongsTabEntry(null);}} T={T} title="Close"/>}/>
+                {e&&(
                   <>
-                    <div style={{fontSize:Math.max(24,Math.round(readFontSize*1.1)),color:T.body,marginBottom:4,fontFamily:fontFamilyMap[readFontFamily]}}>{e.original_word}</div>
-                    <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,marginBottom:2}}>{e.transliteration}{e.pronunciation?` (${e.pronunciation})`:''}</div>
-                    <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,marginBottom:12,fontStyle:'italic'}}>{e.language==='hebrew'?'Hebrew':'Greek'}</div>
-                    <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}}>{e.short_def}</div>
-                    {e.full_def&&<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}}>{renderDerivation(e.full_def)}</div>}
-                    {groupList.length>0&&(
-                      <div style={{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4}}>
-                        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.gM,marginBottom:4}}>KJV USAGE</div>
-                        <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',color:T.dim,marginBottom:8}}>Total KJV Occurrences (×{totalCount})</div>
-                        {groupList.map(([key,{word,refs}])=>{
-                          const isExpanded=strongsExpandedWords.has(key);
-                          const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
-                          const bkName=bn=>BIBLE[bn-1]?.name||'';
-                          return(
-                            <div key={key} style={{marginBottom:8}}>
-                              <div onClick={()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
-                                style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}}>
-                                <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,fontWeight:600}}>{word}</span>
-                                <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim}}>(×{[...refs.values()].reduce((s,c)=>s+c,0)})</span>
-                                <span style={{marginLeft:'auto',color:T.dim,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={isExpanded} size={13}/></span>
-                              </div>
-                              {isExpanded&&(
-                                <div style={{paddingLeft:8,paddingBottom:4}}>
-                                  {refArr.map(({bn,ch,vs,cnt})=>(
-                                    <span key={`${bn}-${ch}-${vs}`} onClick={()=>{setReadBook(bn);setReadCh(ch);readScrollToVerse.current=vs;setTab('read');}}
-                                      style={{display:'inline-block',fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.gT,cursor:'pointer',marginRight:10,marginBottom:4,textDecoration:'underline dotted'}}>
-                                      {bkName(bn)} {ch}:{vs}{cnt>1?` ×${cnt}`:''}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                     {groupList.length===0&&te.versesLoading&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}}>Loading verses…</div>}
                     {groupList.length===0&&!te.versesLoading&&te.versesOffline&&<div style={{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8,lineHeight:1.5}}>KJV occurrences need a connection. The definition above is saved on your device.</div>}
                   </>
@@ -10388,32 +10400,22 @@ function App(){
             onConfirm={()=>answer(true)} onCancel={()=>answer(false)}/>
         );
       })()}
+      {/* A Strong's occurrence, read where it was tapped: in the popup over Read,
+          or on the Strong's Concordance page. */}
+      {strongsVersePreview&&(
+        <VersePreview T={T} title={strongsVersePreview.label} sub={readVerLabel} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+          loading={strongsVersePreview.loading}
+          rows={strongsVersePreview.loading||!strongsVersePreview.text?[]:[{key:'v',label:strongsVersePreview.vs,html:processRedLetter(wojWrap(strongsVersePreview.bn,strongsVersePreview.ch,strongsVersePreview.vs,strongsVersePreview.text),readRedLetter,dark)}]}
+          onClose={()=>setStrongsVersePreview(null)}
+          onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);
+            if(p.bn===readBook&&p.ch===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(p.vs,true);}
+            else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
+      )}
       {bmDialog&&(
-        <ConfirmDialog T={T} title="Save Bookmark" message={bmDialog.ref}
-          confirmLabel={bmDialog.busy?'Saving…':'Save'} cancelLabel="Cancel"
-          onConfirm={saveBookmarkFromDialog} onCancel={()=>setBmDialog(null)}>
-          <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:16}}>
-            <div>
-              <Lbl c="Note" T={T}/>
-              <TA val={bmDialog.note} set={v=>setBmDialog(x=>({...x,note:v}))} ph="Anything worth remembering about this passage…" rows={3} T={T}/>
-            </div>
-            {user&&!user.guest&&(
-              <div>
-                <Lbl c="Category" T={T}/>
-                <Sel val={bmDialog.cat} set={v=>setBmDialog(x=>({...x,cat:v}))} T={T}>
-                  <option value="">No category</option>
-                  {bmCategories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  <option value="__new">+ New category…</option>
-                </Sel>
-                {bmDialog.cat==='__new'&&(
-                  <div style={{marginTop:8}}>
-                    <Inp val={bmDialog.newCat} set={v=>setBmDialog(x=>({...x,newCat:v}))} ph="New category name" T={T}/>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </ConfirmDialog>
+        <BookmarkDialog T={T} d={bmDialog} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+          rows={[...readSelVerses].sort((x,y)=>x-y).map(v=>{const r=readVerses.find(x=>x.verse===v);return r?{key:v,label:v,html:processRedLetter(wojWrap(readBook,readCh,v,r.text),readRedLetter,dark)}:null;}).filter(Boolean)}
+          categories={bmCategories} canCategorize={!!(user&&!user.guest)}
+          onChange={patch=>setBmDialog(x=>({...x,...patch}))} onSave={saveBookmarkFromDialog} onCancel={()=>setBmDialog(null)}/>
       )}
       {/* Alongside the plan rather than inside the reading tab, since it belongs
           to the reminder rather than to whatever tab happens to be showing. */}
