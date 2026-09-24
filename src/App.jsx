@@ -3120,8 +3120,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
   return(
     <div style={{border:`1px solid ${cat.color}66`,background:T.bgCard,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:open||renaming?`1px solid ${cat.color}44`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
-        <span aria-hidden="true" style={{color:T.gM,fontSize:UL(9),transform:open?'rotate(90deg)':'none',transition:'transform .15s',flexShrink:0}}>▶</span>
-        <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
+        <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
         <span style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gT,flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cat.name}</span>
         <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
@@ -3272,7 +3271,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
                     <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={13}/> Expand All</span>
                   </button>
                   <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})} style={toggle(false)}>
-                    ▸ Collapse All
+                    <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={true} size={13}/> Collapse All</span>
                   </button>
                 </div>
               )}
@@ -3335,8 +3334,10 @@ function CmLines({text,T,lang,onRef,px,family=FB,color}){
     return(
       <div key={i} style={{fontFamily:family,fontSize:px,color:color||T.body,lineHeight:1.55,marginBottom:5,overflowWrap:'anywhere'}}>
         {runs.map((r,j)=>r.ref
-          ?<button key={j} type="button" onClick={()=>onRef(r.ref)}
-              style={{display:'inline',background:'none',border:'none',padding:0,margin:0,font:'inherit',fontWeight:r.b?700:'inherit',color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>{cmRefLabel(r.ref,lang)}</button>
+          // Inline text rather than a button: a button is a box the line can
+          // break after, which left commas starting lines.
+          ?<span key={j} role="button" tabIndex={0} onClick={()=>onRef(r.ref)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onRef(r.ref);}}}
+              style={{fontWeight:r.b?700:'inherit',color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>{cmRefLabel(r.ref,lang)}</span>
           :<span key={j} style={r.b||r.i?{fontWeight:r.b?700:undefined,fontStyle:r.i?'italic':undefined,color:r.b?T.gT:undefined}:undefined}>{r.text}</span>)}
       </div>
     );
@@ -3372,6 +3373,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   // The page's own jumps -- to a verse, to a chapter's top -- are not the reader
   // scrolling, and must not count toward full screen.
   const ownScroll=useRef(0);
+  const ruleRef=useRef(null);
   useEffect(()=>{
     let alive=true;
     setRec(undefined);setRecipOpen(new Set());setIntroOpen(false);
@@ -3391,8 +3393,14 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
     return()=>{alive=false;};
   },[vid,book,ch]);
   // Land on the verse it was opened from; a new chapter starts at its top.
+  // Only those move the page. Choosing a verse by tapping it, or tapping it
+  // again to let it go, leaves the page where it is -- letting go used to read
+  // as 'no verse' and sent the page back to the top of the chapter.
+  const shownRec=useRef(null);
   useEffect(()=>{
-    if(rec===undefined||focus?.tap)return;
+    if(rec===undefined)return;
+    const newChapter=shownRec.current!==rec;shownRec.current=rec;
+    if(!newChapter&&(!focus||focus.tap))return;
     const el=scrollRef.current;if(!el)return;
     const at=focus&&document.getElementById(`cm-v-${focus.v}`);
     // Measured against the list itself (offsetTop counts from the page), and
@@ -3436,7 +3444,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
   return(
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-      <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current)}
+      <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current,ruleRef.current?.getBoundingClientRect().bottom)}
         style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
         onClick={()=>menu&&setMenu(false)}
         onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
@@ -3451,7 +3459,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
           <span aria-hidden="true" style={{fontSize:UL(8)}}>▾</span>
         </button>
         <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{heading}</div>
-        <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+        <div ref={ruleRef} style={{height:1,background:T.accentLine,marginTop:8}}/>
         {menu&&(
           <div role="menu" onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% - 4px)',left:0,right:0,zIndex:20,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
             {list.map(c=>(
@@ -3490,7 +3498,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
             <div style={card}>
               <button type="button" aria-expanded={introOpen} onClick={()=>setIntroOpen(o=>!o)}
                 style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:'none',padding:'10px 14px',cursor:'pointer',textAlign:'left'}}>
-                <span aria-hidden="true" style={{color:T.gM,fontSize:UL(9),transform:introOpen?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
+                <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={introOpen} size={12}/></span>
                 <span style={{...small,color:T.gT,flex:1}}>Introduction to {bookName(bk,lang)}</span>
               </button>
               {introOpen&&<div style={{padding:'12px 14px 8px'}}><CmLines text={intro} T={T} lang={lang} onRef={openPreview} px={px} family={readFont.family}/></div>}
@@ -3517,7 +3525,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
                     <div style={{borderTop:`1px solid ${T.bdS}`,marginTop:4,paddingTop:4}}>
                       <button type="button" aria-expanded={open} onClick={()=>setRecipOpen(s=>{const x=new Set(s);x.has(v)?x.delete(v):x.add(v);return x;})}
                         style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'none',border:'none',padding:'6px 0',cursor:'pointer',textAlign:'left'}}>
-                        <span aria-hidden="true" style={{color:T.gM,fontSize:UL(8),transform:open?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
+                        <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={11}/></span>
                         <span style={{...small,color:T.gM}}>Reciprocal</span>
                         <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>{n}</span>
                       </button>
@@ -6452,7 +6460,13 @@ function App(){
   // Auto full screen, by the same rules as Read: down past the threshold hides
   // the bars, back up (or to the top) brings them back.
   const cmLastY=useRef(0),cmDelta=useRef(0);
-  function cmScroll(sy,own){
+  const[cmLineAbove,setCmLineAbove]=useState(false);
+  useEffect(()=>{setCmLineAbove(false);},[cmBook,cmCh,cmId]);
+  function cmScroll(sy,own,lineBottom){
+    if(lineBottom!=null){
+      if(!safeAreaTopRef.current)safeAreaTopRef.current=measureSafeAreaTop();
+      setCmLineAbove(lineBottom<=safeAreaTopRef.current);
+    }
     const dy=sy-cmLastY.current;cmLastY.current=sy;
     if(own){cmDelta.current=0;return;}
     if(sy<=5){if(readFullScreen.current)exitFullScreen();cmDelta.current=0;return;}
@@ -8581,7 +8595,9 @@ function App(){
       {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
       {fsActive&&(tab==='read'||tab==='commentaries')&&<>
         <div style={{position:'fixed',top:0,left:0,right:0,height:'var(--sat,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
-        {(chLineAbove||readingHidden)&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
+        {/* Each page pins its own line: Read's chapter rule, or the rule under
+            the commentary's heading. */}
+        {(tab==='read'?(chLineAbove||readingHidden):cmLineAbove)&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
       </>}
 
       {/* ═══ READ TAB ═══ */}
@@ -9020,6 +9036,13 @@ function App(){
             const _FUNC=new Set(['the','a','an','in','of','from','without','upon','unto','to','for','by','with','at','into','on','and','or','but','nor','so','yet','it','its','he','she','we','they','his','her','their','our','my','thy','thine','mine','ye','thou','thee','him','them','me','us','this','that','these','those','who','whom','whose','which','what','there','here','then','when','where','not','no','as','if','though']);
             const groupList=Object.entries(groups).filter(([k])=>!_FUNC.has(k)).sort((a,b)=>[...b[1].refs.values()].reduce((s,c)=>s+c,0)-[...a[1].refs.values()].reduce((s,c)=>s+c,0));
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
+            // Sized as Commentaries is: a little over half of Scripture Size.
+            const spPx=Math.max(14,Math.min(36,Math.round(readFontSize*0.6)));
+            const spFam=fontFamilyMap[readFontFamily];
+            const spLang=versionLang(readVid);
+            const spLangName=strongsPopup.entry?.language==='hebrew'?'Hebrew':strongsPopup.entry?.language==='greek'?'Greek':null;
+            const spCard={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
+            const spSmall={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
 
             return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
@@ -9044,46 +9067,66 @@ function App(){
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
               React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
-                React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,minHeight:30,paddingRight:44}},
-                  React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
-                    (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
-                    // The number is the heading of this panel — it was set smaller than
-                    // the body text beneath it while the close button outweighed it.
-                    React.createElement('span',{style:{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.1em',color:T.gT,fontWeight:600}},strongsPopup.strongs_number),
-                    totalCount>0&&React.createElement('span',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,background:T.bgCH,borderRadius:11,padding:'3px 9px'}},`×${totalCount}`)
-                  )
+                // One line, from the left: the number, then what it is -- the
+                // Commentaries heading laid on its side, so it sits level with the
+                // close button over the gold rule instead of taking rows of its own.
+                React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:44,minWidth:0,flexShrink:0}},
+                  (strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}}),
+                  React.createElement('span',{style:{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,flexShrink:0,lineHeight:1}},strongsPopup.strongs_number),
+                  React.createElement('span',{style:{...spSmall,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}},
+                    ["Strong's",spLangName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · '))
                 ),
+                React.createElement('div',{style:{height:1,background:T.accentLine,margin:'8px 0 12px',flexShrink:0}}),
                 strongsPopup.entry?(
                   React.createElement('div',null,
-                    React.createElement('div',{style:{fontSize:Math.max(24,Math.round(readFontSize*1.1)),color:T.body,marginBottom:4,fontFamily:fontFamilyMap[readFontFamily]}},strongsPopup.entry.original_word),
-                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,marginBottom:2}},strongsPopup.entry.transliteration+(strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:'')),
-                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim,marginBottom:12,fontStyle:'italic'}},strongsPopup.entry.language==='hebrew'?'Hebrew':'Greek'),
-                    React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,marginBottom:12}},strongsPopup.entry.short_def),
-                    strongsPopup.entry.full_def&&React.createElement('div',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.88),color:T.mut,lineHeight:readLineHeight,marginBottom:12}},renderDerivation(strongsPopup.entry.full_def)),
-                    groupList.length>0&&React.createElement('div',{style:{borderTop:`1px solid ${T.bd}`,paddingTop:10,marginTop:4,marginBottom:20}},
-                      React.createElement('div',{style:{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.gM,marginBottom:4}},'KJV USAGE'),
-                      React.createElement('div',{style:{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.08em',color:T.dim,marginBottom:8}},`Total KJV Occurrences (×${totalCount})`),
-                      groupList.map(([key,{word,refs}])=>{
-                        const isExpanded=strongsExpandedWords.has(key);
-                        const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
-                        const getBookName=bn=>bookName(BIBLE[bn-1],versionLang(readVid));
-                        return React.createElement('div',{key,style:{marginBottom:8}},
-                          React.createElement('div',{onClick:()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
-                            style:{display:'flex',alignItems:'center',gap:6,cursor:'pointer',padding:'4px 0'}},
-                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,fontWeight:600}},word),
-                            React.createElement('span',{style:{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.dim}},`(×${[...refs.values()].reduce((s,c)=>s+c,0)})`),
-                            React.createElement('span',{style:{marginLeft:'auto',color:T.dim,display:'inline-flex',alignItems:'center',flexShrink:0}},React.createElement(Caret,{open:isExpanded,size:13}))
-                          ),
-                          isExpanded&&React.createElement('div',{style:{paddingLeft:8,paddingBottom:4}},
-                            refArr.map(({bn,ch,vs,cnt})=>
-                              React.createElement('span',{key:`${bn}-${ch}-${vs}`,onClick:e=>{e.stopPropagation();openStrongsVersePreview(bn,ch,vs);},
-                                style:{display:'inline-block',fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.gT,cursor:'pointer',marginRight:10,marginBottom:4,textDecoration:'underline dotted'}},
-                                `${getBookName(bn)} ${ch}:${vs}`+(cnt>1?` ×${cnt}`:''))
-                            )
-                          )
-                        );
-                      })
-                    ),
+                    // The word, laid out as a verse is in Commentaries: the original
+                    // and its transliteration in the band, then the definition --
+                    // larger than the rest, being what the reader came for -- and
+                    // the derivation under a hairline.
+                    <div key="word" style={spCard}>
+                      <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+                        <span style={{fontFamily:spFam,fontSize:Math.round(spPx*1.6),color:T.gT,lineHeight:1.2}}>{strongsPopup.entry.original_word}</span>
+                        <span style={{fontFamily:spFam,fontSize:spPx,color:T.mut,fontStyle:'italic'}}>{strongsPopup.entry.transliteration}{strongsPopup.entry.pronunciation?` (${strongsPopup.entry.pronunciation})`:''}</span>
+                      </div>
+                      <div style={{padding:'12px 14px 10px'}}>
+                        <div style={{fontFamily:spFam,fontSize:Math.round(spPx*1.3),color:T.body,lineHeight:1.45}}>{String(strongsPopup.entry.short_def||'').trim()}</div>
+                        {strongsPopup.entry.full_def&&<div style={{fontFamily:spFam,fontSize:Math.round(spPx*0.9),color:T.mut,lineHeight:1.55,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
+                      </div>
+                    </div>,
+                    groupList.length>0&&<div key="usage" style={{...spSmall,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>,
+                    // Each English rendering is a card, folded until tapped, like a
+                    // verse's Reciprocal list; open, its references read like a
+                    // commentary's.
+                    groupList.map(([key,{word,refs}])=>{
+                      const open=strongsExpandedWords.has(key);
+                      const times=[...refs.values()].reduce((s,c)=>s+c,0);
+                      const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
+                      return(
+                        <div key={key} style={spCard}>
+                          <div role="button" tabIndex={0} aria-expanded={open}
+                            onClick={()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
+                            style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
+                            <span style={{fontFamily:FS,fontSize:Math.round(spPx*0.85),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{word}</span>
+                            <span style={{...spSmall,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}</span>
+                            <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
+                          </div>
+                          {open&&(
+                            <div style={{padding:'10px 14px 10px',fontFamily:spFam,fontSize:spPx,lineHeight:1.55,color:T.body,overflowWrap:'anywhere'}}>
+                              {refArr.map(({bn,ch,vs,cnt},i)=>(
+                                <React.Fragment key={`${bn}-${ch}-${vs}`}>
+                                  {i>0?', ':''}
+                                  <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();openStrongsVersePreview(bn,ch,vs);}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openStrongsVersePreview(bn,ch,vs);}}}
+                                    style={{color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>
+                                    {shortBook(bookName(BIBLE[bn-1],spLang))} {ch}:{vs}
+                                  </span>
+                                  {cnt>1&&<span style={{color:T.dim}}> ×{cnt}</span>}
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }),
                     groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}},'Loading verses…'),
                     groupList.length===0&&!strongsPopup.versesLoading&&strongsPopup.versesOffline&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8,lineHeight:1.5}},'KJV occurrences need a connection. The definition above is saved on your device.'),
                     React.createElement('div',{style:{textAlign:'center',paddingTop:24,paddingBottom:8,borderTop:`1px solid ${T.bd}`,marginTop:16}},
