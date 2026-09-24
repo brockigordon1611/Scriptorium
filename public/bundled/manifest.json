@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-09T00:06:55.345Z",
+  "generated": "2026-09-24T15:18:34.290Z",
   "datasets": {
     "kjv": {
       "version": 2,
@@ -39,6 +39,13 @@
         "webster-3.json",
         "webster-4.json",
         "webster-5.json"
+      ]
+    },
+    "tske": {
+      "version": 1,
+      "rows": 1224,
+      "files": [
+        "tske.json"
       ]
     }
   }

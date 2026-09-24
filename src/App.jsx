@@ -7,6 +7,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { MEEK_WEEKS } from './meekPlan.js';
+import { cmtiToMarkup, dropSelfLine, markupRuns } from './commentary.js';
 
 // Opens a link without leaving the app. On device this is an in-app Safari
 // sheet with a Done button that returns to the exact spot; the FCBH download
@@ -259,7 +260,7 @@ const Auth = {
 //  LOCAL-FIRST: IndexedDB Bible text cache
 // ══════════════════════════════════════════════════════════
 const IDB_NAME='scriptorium';
-const IDB_VER=7;
+const IDB_VER=8;
 let _idbInst=null;
 
 function idbOpen(){
@@ -307,8 +308,22 @@ function idbOpen(){
       if(!db.objectStoreNames.contains('strongs_kjvw')){
         db.createObjectStore('strongs_kjvw',{keyPath:'sn'});
       }
+      // v8 stores — commentaries, one record per chapter keyed 'id|book|chapter'
+      // (chapter 0 is the book's introduction), and the list of the reader's own
+      if(!db.objectStoreNames.contains('commentary')){
+        const cm=db.createObjectStore('commentary',{keyPath:'pk'});
+        cm.createIndex('by_cid','cid',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('commentaries')){
+        db.createObjectStore('commentaries',{keyPath:'id'});
+      }
     };
-    req.onsuccess=e=>{_idbInst=e.target.result;resolve(_idbInst);};
+    req.onsuccess=e=>{
+      _idbInst=e.target.result;
+      // Another tab opening a newer version waits on this one until it lets go.
+      _idbInst.onversionchange=()=>{try{_idbInst.close();}catch{}_idbInst=null;};
+      resolve(_idbInst);
+    };
     req.onerror=e=>reject(e.target.error);
   });
 }
@@ -526,7 +541,7 @@ function eswordBookToNum(b){return b<=390?b/10:(b-470)/10+40;}
 async function importBblxFile({file,label,lang,userId,existingVersionId,onProgress}){
   // Lazily load sql.js WASM only when needed (~644 KB, loaded once)
   const initSqlJs=(await import('sql.js')).default;
-  const SQL=await initSqlJs({locateFile:()=>'/sql-wasm.wasm'});
+  const SQL=await initSqlJs({locateFile:()=>`${BUNDLED_BASE}sql-wasm.wasm`});
   const buf=await file.arrayBuffer();
   const db=new SQL.Database(new Uint8Array(buf));
   // Try standard e-Sword Bible table; some files use a "verses" table
@@ -612,6 +627,97 @@ async function _bundledJson(name){
   if(!r.ok)throw new Error(`bundled/${name} HTTP ${r.status}`);
   return r.json();
 }
+// ── Commentaries ──────────────────────────────────────────────────────────
+// The Treasury of Scripture Knowledge ships in the bundle; a reader's own
+// e-Sword commentaries are imported into the same store under their own id.
+// Records hold src/commentary.js markup: `o` is the chapter's (or, at chapter
+// 0, the book's) own note, `v` is [verse, markup, endVerse?, endChapter?].
+const TSKE_ID='tske';
+const TSKE={id:TSKE_ID,title:'Treasury of Scripture Knowledge',abbr:'TSKe',builtin:true};
+// The licence asks for this notice with every copy.
+const TSKE_NOTICE=['Copyright 2010-2014, Timothy S. Morton (www.BibleAnalyzer.com). All Rights Reserved.',
+  'The original Treasury of Scripture Knowledge is in the public domain. This greatly enhanced and expanded edition is protected by a derivative copyright to ensure its free and open distribution. Thus permission is granted by the copyright holder to allow this text to be used under the following conditions:',
+  'This text, including any additions or improvements that may be made to the text, must be distributed free of charge. If this text is in any way encrypted or placed in a proprietary format, it must also be provided separately, with any additions or improvements, in an open format, by the same party (by download is sufficient). The text can be bundled with items that are sold (CD-Rom, etc.) on the condition it is freely offered separately, with any additions or improvements, by the same party, in an open format (by download is sufficient). This copyright notice must be included with all distributions.',
+  'There is no warranty expressed or implied in regard to this text.'];
+async function idbPutCommentaryRecords(recs){
+  const db=await idbOpen();
+  const tx=db.transaction('commentary','readwrite');
+  const st=tx.objectStore('commentary');
+  for(const r of recs)st.put(r);
+  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+async function idbGetCommentaryChapter(cid,b,c){
+  const db=await idbOpen();
+  return(await _idbReq(db.transaction('commentary','readonly').objectStore('commentary').get(`${cid}|${b}|${c}`)))||null;
+}
+async function idbDeleteCommentary(cid){
+  const db=await idbOpen();
+  const tx=db.transaction('commentary','readwrite');
+  const req=tx.objectStore('commentary').index('by_cid').openKeyCursor(IDBKeyRange.only(cid));
+  req.onsuccess=e=>{const c=e.target.result;if(!c)return;tx.objectStore('commentary').delete(c.primaryKey);c.continue();};
+  return new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=e=>rej(e.target.error);});
+}
+async function idbListCommentaries(){
+  const db=await idbOpen();
+  return(await _idbReq(db.transaction('commentaries','readonly').objectStore('commentaries').getAll()))||[];
+}
+async function idbPutCommentaryMeta(meta){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('commentaries','readwrite').objectStore('commentaries').put(meta));
+}
+async function idbDeleteCommentaryMeta(id){
+  const db=await idbOpen();
+  return _idbReq(db.transaction('commentaries','readwrite').objectStore('commentaries').delete(id));
+}
+// A reader's e-Sword .cmti, into the store the Treasury uses, through the same
+// conversion scripts/export-tsk.mjs builds the Treasury with.
+async function importCommentaryFile(file){
+  const initSqlJs=(await import('sql.js')).default;
+  const SQL=await initSqlJs({locateFile:()=>`${BUNDLED_BASE}sql-wasm.wasm`});
+  let db;
+  try{db=new SQL.Database(new Uint8Array(await file.arrayBuffer()));}
+  catch{throw new Error(`${file.name} could not be opened. Is it an e-Sword commentary?`);}
+  const id=`cmt-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+  // Named entities the converter has no table for, decoded by the browser.
+  const pad=document.createElement('textarea');
+  const decodeNamed=e=>{pad.innerHTML=e;return pad.value;};
+  const convert=h=>cmtiToMarkup(h,decodeNamed);
+  try{
+    const tables=new Set((db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[]).map(r=>String(r[0])));
+    if(!['BookCommentary','ChapterCommentary','VerseCommentary'].some(t=>tables.has(t)))
+      throw new Error(`${file.name} has no book, chapter or verse notes, so it isn't an e-Sword commentary Scriptorium can read.`);
+    const q=sql=>{try{return db.exec(sql)[0]?.values||[];}catch{return[];}};
+    const detail=col=>{const v=q(`SELECT ${col} FROM Details LIMIT 1`)[0]?.[0];return v?String(v).trim():'';};
+    const title=detail('Title')||file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ').trim()||'Commentary';
+    const abbr=detail('Abbreviation');
+    const info=convert(detail('Information')||detail('Description')||detail('Comments'));
+    const recs=new Map();
+    const rec=(b,c)=>{const pk=`${id}|${b}|${c}`;if(!recs.has(pk))recs.set(pk,{pk,cid:id,b,c,o:'',v:[]});return recs.get(pk);};
+    const inBible=(b,c)=>b>=1&&b<=66&&c>=0&&c<=(BIBLE[b-1]?.v?.length||0);
+    if(tables.has('BookCommentary'))for(const[b,t]of q('SELECT Book, Comments FROM BookCommentary'))if(inBible(b,0)){const m=convert(t);if(m)rec(b,0).o=m;}
+    if(tables.has('ChapterCommentary'))for(const[b,c,t]of q('SELECT Book, Chapter, Comments FROM ChapterCommentary'))if(inBible(b,c)&&c>0){const m=convert(t);if(m)rec(b,c).o=m;}
+    if(tables.has('VerseCommentary'))for(const[b,c1,c2,v1,v2,t]of q('SELECT Book, ChapterBegin, ChapterEnd, VerseBegin, VerseEnd, Comments FROM VerseCommentary ORDER BY Book, ChapterBegin, VerseBegin')){
+      if(!inBible(b,c1)||c1<1)continue;
+      const m=dropSelfLine(convert(t),b,c1,v1);
+      if(!m)continue;
+      const e=[v1,m];
+      if(c2>c1)e.push(v2,c2);else if(v2>v1)e.push(v2);
+      rec(b,c1).v.push(e);
+    }
+    const all=[...recs.values()];
+    if(!all.length)throw new Error(`${file.name} opened, but none of its notes are on a book of the Bible.`);
+    for(let i=0;i<all.length;i+=100)await idbPutCommentaryRecords(all.slice(i,i+100));
+    const meta={id,title,abbr,info,importedAt:Date.now(),chapters:all.length};
+    await idbPutCommentaryMeta(meta);
+    return meta;
+  }catch(e){
+    await idbDeleteCommentary(id).catch(()=>{});
+    throw e;
+  }finally{
+    try{db.close();}catch{}
+  }
+}
+
 const BUNDLED_DATASETS={
   kjv:{clear:()=>idbDeleteVersionLocal('kjv'),flags:['dl:kjv'],
     load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutVerses('kjv',rows.slice(i,i+2000));return rows.length;}},
@@ -623,6 +729,9 @@ const BUNDLED_DATASETS={
     load:async f=>{const recs=await _bundledJson(f);for(let i=0;i<recs.length;i+=500)await idbPutStrongsOcc(recs.slice(i,i+500));return recs.length;}},
   webster:{clear:()=>idbClearStore('webster'),flags:['dl:webster'],
     load:async f=>{const rows=await _bundledJson(f);for(let i=0;i<rows.length;i+=2000)await idbPutWebsterEntries(rows.slice(i,i+2000));return rows.length;}},
+  // The Treasury's description rides along for its information page.
+  tske:{clear:()=>idbDeleteCommentary(TSKE_ID),flags:[],
+    load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${TSKE_ID}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}},
 };
 // Installs any bundled dataset the device doesn't already hold at the shipped
 // version. Returns true if it wrote anything.
@@ -1011,7 +1120,7 @@ function htmlToParas(html){
 }
 async function _importSqliteResource(file,id,baseName,ext,category){
   const initSqlJs=(await import('sql.js')).default;
-  const SQL=await initSqlJs({locateFile:()=>'/sql-wasm.wasm'});
+  const SQL=await initSqlJs({locateFile:()=>`${BUNDLED_BASE}sql-wasm.wasm`});
   const buf=await file.arrayBuffer();
   const db=new SQL.Database(new Uint8Array(buf));
   let chapters=[],title=baseName;
@@ -3148,6 +3257,274 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
 // colour and by version. Each row shows the verse's words in the version it was
 // highlighted in: highlights are about the text, where bookmarks are about the
 // place. The words load a chapter at a time, four at once, for what is shown.
+// A reference as the page prints it, in the reading version's language:
+// "Prov. 8:22–24" inline, the full book name as a preview's title.
+function cmRefLabel(r,lang,full){
+  const n=bookName(BIBLE[r.b-1],lang)||'?';
+  const tail=r.c2!==r.c?`–${r.c2}:${r.v2}`:r.v2!==r.v?`–${r.v2}`:'';
+  return `${full?n:shortBook(n)} ${r.c}:${r.v}${tail}`;
+}
+// Commentary markup, one paragraph a line, references as links. A line that is
+// nothing but bold is a heading: the Treasury's OVERVIEW and RECIPROCAL.
+function CmLines({text,T,lang,onRef,size=15,color}){
+  if(!text)return null;
+  return text.split('\n').map((line,i)=>{
+    const runs=markupRuns(line);
+    if(runs.length===1&&runs[0].b&&!runs[0].ref)
+      return <div key={i} style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,fontWeight:600,margin:i?'12px 0 5px':'0 0 5px'}}>{runs[0].text.trim()}</div>;
+    return(
+      <div key={i} style={{fontFamily:FB,fontSize:U(size),color:color||T.body,lineHeight:1.6,marginBottom:5,overflowWrap:'anywhere'}}>
+        {runs.map((r,j)=>r.ref
+          ?<button key={j} type="button" onClick={()=>onRef(r.ref)}
+              style={{display:'inline',background:'none',border:'none',padding:0,margin:0,font:'inherit',fontWeight:r.b?700:'inherit',color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>{cmRefLabel(r.ref,lang)}</button>
+          :<span key={j} style={r.b||r.i?{fontWeight:r.b?700:undefined,fontStyle:r.i?'italic':undefined,color:r.b?T.gT:undefined}:undefined}>{r.text}</span>)}
+      </div>
+    );
+  });
+}
+// The Treasury marks where a verse's own cross-references end and the verses
+// that point back to it begin. Those can run to dozens, so they start folded.
+function splitReciprocal(m){
+  const lines=m.split('\n');
+  const at=lines.findIndex(l=>/^<b>\s*RECIPROCAL\s*<\/b>$/i.test(l));
+  return at<0?[m,'']:[lines.slice(0,at).join('\n'),lines.slice(at+1).join('\n')];
+}
+
+// Study → Commentaries. It opens on the chapter being read, and at the verse
+// that was selected; its own arrows move on from there without moving Read.
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen}){
+  const cm=list.find(c=>c.id===cid)||list[0];
+  const[rec,setRec]=useState(undefined); // undefined while loading, null for none
+  const[intro,setIntro]=useState(null);
+  const[introOpen,setIntroOpen]=useState(false);
+  const[texts,setTexts]=useState({});
+  const[recipOpen,setRecipOpen]=useState(()=>new Set());
+  const[menu,setMenu]=useState(false);
+  const[info,setInfo]=useState(null);
+  const[preview,setPreview]=useState(null);
+  const[busy,setBusy]=useState(false);
+  const[msg,setMsg]=useState(null);
+  const scrollRef=useRef(null);
+  const swipe=useRef(null);
+  useEffect(()=>{
+    let alive=true;
+    setRec(undefined);setRecipOpen(new Set());setIntroOpen(false);
+    Promise.all([idbGetCommentaryChapter(cm.id,book,ch),ch===1?idbGetCommentaryChapter(cm.id,book,0):null])
+      .then(([r,i])=>{if(alive){setRec(r);setIntro(i?.o||null);}})
+      .catch(()=>{if(alive){setRec(null);setIntro(null);}});
+    return()=>{alive=false;};
+  },[cm.id,book,ch]);
+  useEffect(()=>{
+    let alive=true;
+    setTexts({});
+    dbGetChapter(vid,book,ch).then(rows=>{
+      if(!alive)return;
+      const m={};for(const r of rows)m[r.verse]=String(r.text||'').replace(/<[^>]+>/g,'');
+      setTexts(m);
+    }).catch(()=>{});
+    return()=>{alive=false;};
+  },[vid,book,ch]);
+  // Land on the verse it was opened from; a new chapter starts at its top.
+  useEffect(()=>{
+    if(rec===undefined)return;
+    const el=scrollRef.current;if(!el)return;
+    const at=focus&&document.getElementById(`cm-v-${focus}`);
+    // Measured against the list itself: offsetTop counts from the page.
+    el.scrollTop=at?Math.max(0,at.getBoundingClientRect().top-el.getBoundingClientRect().top+el.scrollTop-10):0;
+  },[rec,focus]);
+  async function openPreview(ref){
+    setPreview({ref,rows:null});
+    try{
+      const rows=[];
+      // A range is read to its end, three chapters at most.
+      for(let c=ref.c;c<=Math.min(ref.c2,ref.c+2);c++){
+        for(const r of await dbGetChapter(vid,ref.b,c)){
+          if((c>ref.c||r.verse>=ref.v)&&(c<ref.c2||r.verse<=ref.v2))rows.push({c,v:r.verse,text:r.text});
+        }
+      }
+      setPreview(p=>p&&p.ref===ref?{ref,rows}:p);
+    }catch{
+      setPreview(p=>p&&p.ref===ref?{ref,rows:[]}:p);
+    }
+  }
+  async function showInfo(c){
+    setMenu(false);
+    if(c.builtin){const m=await idbGetMeta(`commentary:${c.id}`).catch(()=>null);setInfo({c,info:m?.info||'',notice:TSKE_NOTICE});}
+    else setInfo({c,info:c.info||'',notice:null});
+  }
+  async function pickFile(f){
+    if(!f)return;
+    setMsg(null);
+    if(!/\.cmti$/i.test(f.name)){setMsg({err:true,text:`${f.name} isn't an e-Sword commentary. Choose a .cmti file.`});return;}
+    setBusy(true);
+    try{const meta=await onImport(f);setMenu(false);setMsg({text:`Added “${meta.title}”.`});}
+    catch(e){setMsg({err:true,text:String(e?.message||e)});}
+    setBusy(false);
+  }
+  const bk=BIBLE[book-1];
+  const heading=`${bookName(bk,lang)} ${ch}`;
+  const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
+  return(
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+      {/* The commentary's name above the chapter, where Read puts the version. */}
+      <div style={{textAlign:'center',padding:'12px 14px 2px',flexShrink:0,position:'relative'}}>
+        <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={()=>{setMenu(o=>!o);setMsg(null);}}
+          style={{...small,display:'inline-flex',alignItems:'center',gap:6,background:menu?T.gF:'none',border:`1px solid ${menu?T.gD:'transparent'}`,borderRadius:12,color:T.gM,padding:'4px 10px',cursor:'pointer',maxWidth:'100%'}}>
+          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cm.title}</span>
+          <span aria-hidden="true" style={{fontSize:UL(8)}}>▾</span>
+        </button>
+        <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{heading}</div>
+        <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+        {menu&&(
+          <div role="menu" style={{position:'absolute',top:'calc(100% - 4px)',left:14,right:14,zIndex:20,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
+            {list.map(c=>(
+              <div key={c.id} style={{display:'flex',alignItems:'center',gap:6,borderRadius:8,background:c.id===cm.id?T.gF:'none'}}>
+                <button type="button" role="menuitemradio" aria-checked={c.id===cm.id} onClick={()=>{onPick(c.id);setMenu(false);}}
+                  style={{flex:1,minWidth:0,textAlign:'left',background:'none',border:'none',padding:'10px 10px',cursor:'pointer'}}>
+                  <div style={{fontFamily:FB,fontSize:U(15),fontWeight:600,color:c.id===cm.id?T.gT:T.body,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.title}</div>
+                  <div style={{...small,fontSize:UL(8),color:T.dim,marginTop:2,fontWeight:500}}>{c.builtin?'Included':'Imported · on this device'}</div>
+                </button>
+                <button type="button" aria-label={`About ${c.title}`} onClick={()=>showInfo(c)}
+                  style={{width:34,height:34,flexShrink:0,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(13),cursor:'pointer'}}>i</button>
+                {!c.builtin&&(
+                  <button type="button" aria-label={`Delete ${c.title}`} onClick={()=>{if(window.confirm(`Delete “${c.title}” from this device?`))onDelete(c.id);}}
+                    style={{width:34,height:34,flexShrink:0,marginRight:4,background:'none',border:`1px solid ${T.redTxt}55`,borderRadius:8,color:T.redTxt,fontSize:U(13),cursor:'pointer'}}>✕</button>
+                )}
+              </div>
+            ))}
+            <label style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginTop:6,padding:'10px 12px',border:`1px dashed ${T.gD}`,borderRadius:8,color:busy?T.dim:T.gT,cursor:busy?'default':'pointer',...small,fontSize:UL(9)}}>
+              {busy?'Importing…':'＋ Import e-Sword commentary (.cmti)'}
+              <input type="file" accept={Capacitor.getPlatform()==='ios'?undefined:'.cmti'} style={{display:'none'}} disabled={busy}
+                onChange={e=>{const f=e.target.files?.[0];e.target.value='';pickFile(f);}}/>
+            </label>
+          </div>
+        )}
+        {msg&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(13),color:msg.err?T.redTxt:T.gM}}>{msg.text}</div>}
+      </div>
+
+      <div ref={scrollRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+        onClick={()=>menu&&setMenu(false)}
+        onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
+        onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
+        onTouchEnd={e=>{const s=swipe.current;swipe.current=null;if(!s||s.dir!=='h')return;const dx=e.changedTouches[0].clientX-s.x;if(Math.abs(dx)<60&&Math.abs(dx)/Math.max(1,Date.now()-s.t)<0.35)return;onStep(dx<0?1:-1);}}>
+        {rec===undefined&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
+        {rec===null&&(
+          <div style={{textAlign:'center',padding:'36px 12px',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15),lineHeight:1.6}}>
+            {cm.builtin?'The Treasury of Scripture Knowledge isn’t on this device yet. It installs when Scriptorium starts, so closing and reopening the app will finish it.':`${cm.title} has no notes on ${heading}.`}
+          </div>
+        )}
+        {rec&&<>
+          {intro&&(
+            <div style={card}>
+              <button type="button" aria-expanded={introOpen} onClick={()=>setIntroOpen(o=>!o)}
+                style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:T.bgSec,border:'none',padding:'10px 14px',cursor:'pointer',textAlign:'left'}}>
+                <span aria-hidden="true" style={{color:T.gM,fontSize:UL(9),transform:introOpen?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
+                <span style={{...small,color:T.gT,flex:1}}>Introduction to {bookName(bk,lang)}</span>
+              </button>
+              {introOpen&&<div style={{padding:'12px 14px 8px'}}><CmLines text={intro} T={T} lang={lang} onRef={openPreview}/></div>}
+            </div>
+          )}
+          {rec.o&&<div style={{...card,padding:'12px 14px 8px'}}><CmLines text={rec.o} T={T} lang={lang} onRef={openPreview}/></div>}
+          {rec.v.map(([v,m,ve,ce])=>{
+            const[main,back]=splitReciprocal(m);
+            const open=recipOpen.has(v);
+            const n=back?back.split('\n').length:0;
+            const label=ce?`${v}–${ce}:${ve}`:ve?`${v}–${ve}`:`${v}`;
+            const words=ve&&!ce?Array.from({length:ve-v+1},(_,k)=>texts[v+k]).filter(Boolean).join(' '):texts[v];
+            return(
+              <div key={`${v}-${ve||''}`} id={`cm-v-${v}`} style={{...card,border:`1px solid ${focus===v?T.gD:T.bd}`}}>
+                <div style={{display:'flex',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+                  <span style={{fontFamily:FS,fontSize:U(13),fontWeight:700,color:T.gT,flexShrink:0,minWidth:18}}>{label}</span>
+                  <span style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.5,fontStyle:words?'normal':'italic'}}>{words||'…'}</span>
+                </div>
+                <div style={{padding:'10px 14px 6px'}}>
+                  {main?<CmLines text={main} T={T} lang={lang} onRef={openPreview}/>
+                    :<div style={{fontFamily:FB,fontSize:U(14),fontStyle:'italic',color:T.dim,marginBottom:6}}>No cross-references of its own.</div>}
+                  {n>0&&(
+                    <div style={{borderTop:`1px solid ${T.bdS}`,marginTop:4,paddingTop:4}}>
+                      <button type="button" aria-expanded={open} onClick={()=>setRecipOpen(s=>{const x=new Set(s);x.has(v)?x.delete(v):x.add(v);return x;})}
+                        style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'none',border:'none',padding:'6px 0',cursor:'pointer',textAlign:'left'}}>
+                        <span aria-hidden="true" style={{color:T.gM,fontSize:UL(8),transform:open?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
+                        <span style={{...small,color:T.gM}}>Reciprocal</span>
+                        <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>{n}</span>
+                      </button>
+                      {open&&<div style={{paddingTop:2}}><CmLines text={back} T={T} lang={lang} onRef={openPreview} size={14} color={T.mut}/></div>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </>}
+      </div>
+
+      <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <button type="button" onClick={()=>onStep(-1)} disabled={book===1&&ch===1} style={{...navBtn,opacity:book===1&&ch===1?0.4:1}}>‹ Prev</button>
+        <span style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{shortBook(bookName(bk,lang))} {ch}</span>
+        <button type="button" onClick={()=>onStep(1)} disabled={book===66&&ch===(bk?.v?.length||1)} style={{...navBtn,opacity:book===66&&ch===(bk?.v?.length||1)?0.4:1}}>Next ›</button>
+      </div>
+
+      {/* A reference, read where it is tapped. The same card as the Strong's
+          verse preview, taking a range. */}
+      {preview&&(
+        <div onClick={()=>setPreview(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:440,maxHeight:'70vh',display:'flex',flexDirection:'column',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'18px 20px 12px',flexShrink:0}}>
+              <SheetBackBtn onClick={()=>setPreview(null)} T={T}/>
+              <span style={{fontFamily:FS,fontSize:U(15),letterSpacing:'0.1em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{cmRefLabel(preview.ref,lang,true)}</span>
+              <span style={{width:27,flexShrink:0}}/>
+            </div>
+            <div style={{overflowY:'auto',padding:'0 20px',flex:1,minHeight:0}}>
+              {preview.rows===null
+                ?<div style={{color:T.dim,fontFamily:FB,fontSize:U(13),textAlign:'center',padding:'12px 0'}}>Loading…</div>
+                :preview.rows.length===0
+                  ?<div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'12px 0'}}>This passage isn’t in the version you’re reading.</div>
+                  :<div style={{fontFamily:readFont.family,fontSize:readFont.size,color:T.body,lineHeight:readFont.lineHeight}}>
+                    {preview.rows.map(r=>(
+                      <span key={`${r.c}:${r.v}`}>
+                        <sup style={{color:T.gM,fontWeight:600,marginRight:4,fontFamily:FS,fontSize:Math.round(readFont.size*0.55),verticalAlign:'super'}}>{r.c!==preview.ref.c?`${r.c}:${r.v}`:r.v}</sup>
+                        <span dangerouslySetInnerHTML={{__html:verseHtml(preview.ref.b,r.c,r.v,r.text)}}/>{' '}
+                      </span>
+                    ))}
+                  </div>}
+            </div>
+            <div style={{padding:'16px 20px 22px',flexShrink:0}}>
+              <button type="button" onClick={()=>{const r=preview.ref;setPreview(null);onGo(r);}}
+                style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>
+                Go to passage
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {info&&(
+        <div onClick={()=>setInfo(null)} style={{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px 20px',animation:'fadeIn .15s ease both'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:T.bg,borderRadius:16,width:'100%',maxWidth:520,maxHeight:'80vh',display:'flex',flexDirection:'column',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'18px 20px 12px',flexShrink:0}}>
+              <SheetBackBtn onClick={()=>setInfo(null)} T={T}/>
+              <span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.08em',color:T.gT,fontWeight:600,flex:1,textAlign:'center'}}>{info.c.title}</span>
+              <span style={{width:27,flexShrink:0}}/>
+            </div>
+            <div style={{overflowY:'auto',padding:'0 20px 22px',flex:1,minHeight:0}}>
+              {info.notice&&(
+                <div style={{border:`1px solid ${T.gD}`,background:T.gF,borderRadius:10,padding:'12px 14px',marginBottom:14}}>
+                  {info.notice.map((p,i)=><p key={i} style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:i?'8px 0 0':0}}>{p}</p>)}
+                  <p style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:'8px 0 0'}}>This edition is offered in an open format, as the licence asks, at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/bundled/tske.json</span></p>
+                </div>
+              )}
+              {info.info?<CmLines text={info.info} T={T} lang={lang} onRef={r=>{setInfo(null);openPreview(r);}} size={14} color={T.mut}/>
+                :!info.notice&&<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14)}}>This commentary came with no description.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,isClosing}){
   const[colorF,setColorF]=useState('all');
   const[verF,setVerF]=useState('all');
@@ -4533,6 +4910,7 @@ function App(){
   const[openResChapter,setOpenResChapter]=useState(0);
   const[resImporting,setResImporting]=useState(false);
   const[resImportErr,setResImportErr]=useState('');
+  const[resNote,setResNote]=useState('');
   // ── Multi-format resources per section ──
   const[userMaps,setUserMaps]=useState([]);
   const[userCharts,setUserCharts]=useState([]);
@@ -4884,6 +5262,17 @@ function App(){
   useEffect(()=>{msChRef.current=readCh;},[readCh]);
 
   // ── Parallel Verses state ──
+  // ── Commentaries ──
+  // Its own place in the Bible, set from Read each time the page is opened, so
+  // its arrows can wander without moving the chapter you are reading.
+  const[cmImports,setCmImports]=useState([]);
+  const[cmId,setCmId]=useState(()=>{try{return localStorage.getItem('scrip:cmId')||TSKE_ID;}catch{return TSKE_ID;}});
+  const[cmBook,setCmBook]=useState(1);
+  const[cmCh,setCmCh]=useState(1);
+  const[cmFocus,setCmFocus]=useState(null);
+  useEffect(()=>{idbListCommentaries().then(l=>setCmImports(l.sort((a,b)=>b.importedAt-a.importedAt))).catch(()=>{});},[]);
+  useEffect(()=>{try{localStorage.setItem('scrip:cmId',cmId);}catch{}},[cmId]);
+  const cmList=useMemo(()=>[TSKE,...cmImports],[cmImports]);
   const[parallelVids,setParallelVids]=useState([]);
   const[parallelBk,setParallelBk]=useState(1);
   const[parallelCh,setParallelCh]=useState(1);
@@ -5929,6 +6318,26 @@ function App(){
   const readVerLabel=data?.versions.find(v=>v.id===readVid)?.label||readVid?.toUpperCase()||'';
   function readPrevCh(){if(readCh>1)setReadCh(c=>c-1);else if(readBook>1){const nb=readBook-1;setReadBook(nb);setReadCh(BIBLE.find(b=>b.n===nb)?.v?.length||1);}}
   function readNextCh(){if(readCh<readTotalCh)setReadCh(c=>c+1);else if(readBook<66){setReadBook(b=>b+1);setReadCh(1);}}
+  // ── Commentary helpers ──
+  function cmStep(d){
+    setCmFocus(null);
+    if(d<0){if(cmCh>1)setCmCh(c=>c-1);else if(cmBook>1){const nb=cmBook-1;setCmBook(nb);setCmCh(BIBLE[nb-1]?.v?.length||1);}}
+    else{const tot=BIBLE[cmBook-1]?.v?.length||1;if(cmCh<tot)setCmCh(c=>c+1);else if(cmBook<66){setCmBook(b=>b+1);setCmCh(1);}}
+  }
+  // Followed out of the commentary, a reference lands the way a highlight does:
+  // the verse lit, and the verse bar left shut.
+  function cmGo(r){
+    if(r.b===readBook&&r.c===readCh){readScrollToVerse.current=null;landOnVerse(r.v,true);}
+    else{readScrollToVerse.current=r.v;landSilent.current=true;setReadBook(r.b);setReadCh(r.c);}
+    setTab('read');
+  }
+  async function cmImport(f){const meta=await importCommentaryFile(f);setCmImports(l=>[meta,...l]);setCmId(meta.id);return meta;}
+  async function cmDelete(id){
+    await idbDeleteCommentary(id).catch(()=>{});
+    await idbDeleteCommentaryMeta(id).catch(()=>{});
+    setCmImports(l=>l.filter(c=>c.id!==id));
+    if(cmId===id)setCmId(TSKE_ID);
+  }
   // ── Parallel helpers ──
   const parallelBkData=BIBLE.find(b=>b.n===parallelBk);
   const parallelTotalCh=parallelBkData?.v?.length||1;
@@ -6894,7 +7303,7 @@ function App(){
           </div>
           {/* ── 6-button nav bar ── */}
           {(()=>{
-            const studyActive=['parallel','compare','strongs','dictionary','maps','charts','other'].includes(tab);
+            const studyActive=['parallel','compare','commentaries','strongs','dictionary','maps','charts','other'].includes(tab);
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
             const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='highlights'||modal?.type==='recents';
@@ -7226,6 +7635,7 @@ function App(){
           {[
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
+            {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?Math.min(...readSelVerses):null);setTab('commentaries');closeReadSheet();}},
             {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');closeReadSheet();}},
             {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');closeReadSheet();}},
             {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');closeReadSheet();}},
@@ -8796,6 +9206,14 @@ function App(){
         </div>
       )}
 
+      {/* ═══ COMMENTARIES TAB ═══ */}
+      {tab==='commentaries'&&(
+        <CommentaryPage T={T} navH={navH} vid={readVid} lang={versionLang(readVid)} book={cmBook} ch={cmCh} focus={cmFocus}
+          list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
+          verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen}/>
+      )}
+
       {/* ═══ COMPARE TAB ═══ */}
       {tab==='compare'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
@@ -9619,17 +10037,19 @@ function App(){
                     onChange={async e=>{
                       const f=e.target.files[0];if(!f)return;
                       e.target.value='';
-                      setResImporting(true);setResImportErr('');
+                      setResImporting(true);setResImportErr('');setResNote('');
                       try{
                         checkPicked(f,'other');
-                        const res=await importUserResource(f,'other');
-                        setResources(prev=>[res,...prev]);
+                        // A commentary has a page of its own, which follows the passage.
+                        if(/\.cmti$/i.test(f.name)){const c=await cmImport(f);setResNote(`\u201c${c.title}\u201d is in Study \u2192 Commentaries.`);}
+                        else{const res=await importUserResource(f,'other');setResources(prev=>[res,...prev]);}
                       }catch(ex){setResImportErr(String(ex.message||ex));}
                       setResImporting(false);
                     }}/>
                 </label>
               </div>
               {resImportErr&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(11),color:T.redTxt}}>{resImportErr}</div>}
+              {resNote&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(12),color:T.gM}}>{resNote}</div>}
             </div>
             </>
           ):(
@@ -10133,6 +10553,21 @@ function App(){
                   The full concordance is included with the app, so lookups work with no connection from the moment you install it — 14,197 Hebrew and Greek entries, plus the word-by-word mapping behind the underlines and every KJV occurrence.
                 </Row>
 
+                {/* ── COMMENTARIES ── */}
+                <Hdg label="Commentaries"/>
+                <Row icon="¶">
+                  <strong style={{color:T.gT}}>Commentaries</strong> in Study opens the chapter you are reading in the <strong style={{color:T.gT}}>Treasury of Scripture Knowledge</strong>: an overview of the chapter, then each verse's key words with the passages that explain them. Select a verse first and it opens at that verse.
+                </Row>
+                <Row icon="⊙">
+                  Tap any reference to read it without leaving the page, and <strong style={{color:T.gT}}>Go to passage</strong> to open it in Read. <strong style={{color:T.gT}}>Reciprocal</strong>, under a verse, lists the verses that point back to it.
+                </Row>
+                <Row icon="＋">
+                  Your own e-Sword commentaries (.cmti) can be imported from the menu under the commentary's name, or from Other Resources. They stay on your device.
+                </Row>
+                <Row icon="✓">
+                  The Treasury is included with the app and works with no connection.
+                </Row>
+
                 {/* ── WEBSTER'S 1828 ── */}
                 <Hdg label="Webster's 1828 Dictionary"/>
                 <Row icon="W">
@@ -10237,6 +10672,12 @@ function App(){
                 <Li><strong style={{color:T.gT}}>Strong's Hebrew & Greek Lexicon</strong> — James Strong, <em>Exhaustive Concordance of the Bible</em> (1890). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — Noah Webster (1828). Public domain.</Li>
 
+                {/* TSKe -- its licence requires this notice with every copy */}
+                <Hdg label="Treasury of Scripture Knowledge"/>
+                <P><strong style={{color:T.gT}}>The Treasury of Scripture Knowledge, Enhanced (TSKe)</strong>, v1.85 with Self References, by Timothy S. Morton of Bible Analyzer. The original nineteenth-century Treasury of Scripture Knowledge, on which it is built, is in the public domain.</P>
+                {TSKE_NOTICE.map((t,i)=><P key={i}>{t}</P>)}
+                <P>As the licence asks, this edition is offered free and in an open format: plain JSON, at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/bundled/tske.json</span></P>
+
                 {/* THIRD-PARTY VERSIONS */}
                 <Hdg label="Third-Party Bible Versions"/>
                 <Li><strong style={{color:T.gT}}>Reina-Valera Gómez (RVG)</strong> — © Dr. Humberto Gómez Caballero. Licensed under Creative Commons CC BY-NC-ND 3.0. Used for personal, non-commercial study only. For commercial or distribution licensing, contact the copyright holder directly.</Li>
@@ -10254,7 +10695,7 @@ function App(){
 
                 {/* USER CONTENT */}
                 <Hdg label="Content You Add"/>
-                <P>Scriptorium can import Bible modules (e-Sword .bblx and .bbli, MyBible .SQLite3), maps, charts and local audio from your own device. Imported verse text is written to this device only and is never uploaded — the app registers nothing about it beyond its name, language and verse count, so that the same version can be recognised when you sign in elsewhere.</P>
+                <P>Scriptorium can import Bible modules (e-Sword .bblx and .bbli, MyBible .SQLite3), e-Sword commentaries (.cmti), maps, charts and local audio from your own device. Imported commentaries stay on the device they were imported on. Imported verse text is written to this device only and is never uploaded — the app registers nothing about it beyond its name, language and verse count, so that the same version can be recognised when you sign in elsewhere.</P>
                 <P>You are responsible for holding the rights to anything you import, and for observing the licence of any version you add. Imported content is never shared with other users or redistributed by this app.</P>
 
                 {/* ATTRIBUTION */}

@@ -54,7 +54,10 @@ const write = (name, data) => {
 };
 
 fs.mkdirSync(OUT, { recursive: true });
-const manifest = { generated: new Date().toISOString(), datasets: {} };
+// Datasets this script does not build (the TSK, from scripts/export-tsk.mjs)
+// are carried over rather than dropped.
+const previous = (() => { try { return JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.json'), 'utf8')).datasets || {}; } catch { return {}; } })();
+const manifest = { generated: new Date().toISOString(), datasets: { ...previous } };
 
 // ── KJV text ───────────────────────────────────────────────────────────────
 console.log('KJV text');
@@ -62,7 +65,7 @@ console.log('KJV text');
   const rows = await fetchAll('bible_verses', 'book_num,chapter,verse,text',
     { filter: 'version_id=eq.kjv', order: 'book_num.asc,chapter.asc,verse.asc', label: 'kjv' });
   const f = write('kjv.json', rows);
-  manifest.datasets.kjv = { version: 1, rows: rows.length, files: [f.file] };
+  manifest.datasets.kjv = { version: 2, rows: rows.length, files: [f.file] };
 }
 
 // ── Strong's lexicon ───────────────────────────────────────────────────────
@@ -141,6 +144,6 @@ console.log("Webster's 1828");
   manifest.datasets.webster = { version: 1, rows: rows.length, files };
 }
 
-fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2));
+fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 const total = fs.readdirSync(OUT).reduce((s, f) => s + fs.statSync(path.join(OUT, f)).size, 0);
 console.log(`\nmanifest.json written. Total ${(total / 1048576).toFixed(1)} MB in public/bundled/`);
