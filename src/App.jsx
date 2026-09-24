@@ -9090,7 +9090,7 @@ function App(){
                       </div>
                       <div style={{padding:'12px 14px 10px'}}>
                         <div style={{fontFamily:spFam,fontSize:Math.round(spPx*1.3),color:T.body,lineHeight:1.45}}>{String(strongsPopup.entry.short_def||'').trim()}</div>
-                        {strongsPopup.entry.full_def&&<div style={{fontFamily:spFam,fontSize:Math.round(spPx*0.9),color:T.mut,lineHeight:1.55,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
+                        {strongsPopup.entry.full_def&&<div style={{fontFamily:spFam,fontSize:Math.round(spPx*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{renderDerivation(strongsPopup.entry.full_def)}</div>}
                       </div>
                     </div>,
                     groupList.length>0&&<div key="usage" style={{...spSmall,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>,
@@ -9106,21 +9106,20 @@ function App(){
                           <div role="button" tabIndex={0} aria-expanded={open}
                             onClick={()=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
                             style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-                            <span style={{fontFamily:FS,fontSize:Math.round(spPx*0.85),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{word}</span>
+                            <span style={{fontFamily:spFam,fontSize:Math.round(spPx*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{word}</span>
                             <span style={{...spSmall,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}</span>
                             <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
                           </div>
                           {open&&(
-                            <div style={{padding:'10px 14px 10px',fontFamily:spFam,fontSize:spPx,lineHeight:1.55,color:T.body,overflowWrap:'anywhere'}}>
-                              {refArr.map(({bn,ch,vs,cnt},i)=>(
-                                <React.Fragment key={`${bn}-${ch}-${vs}`}>
-                                  {i>0?', ':''}
+                            <div style={{padding:'10px 14px 8px',fontFamily:spFam,fontSize:Math.round(spPx*1.1),lineHeight:1.6,color:T.body}}>
+                              {refArr.map(({bn,ch,vs,cnt})=>(
+                                <span key={`${bn}-${ch}-${vs}`} style={{display:'inline-block',marginRight:16,marginBottom:4,whiteSpace:'nowrap'}}>
                                   <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();openStrongsVersePreview(bn,ch,vs);}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openStrongsVersePreview(bn,ch,vs);}}}
-                                    style={{color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>
+                                    style={{color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer'}}>
                                     {shortBook(bookName(BIBLE[bn-1],spLang))} {ch}:{vs}
                                   </span>
                                   {cnt>1&&<span style={{color:T.dim}}> ×{cnt}</span>}
-                                </React.Fragment>
+                                </span>
                               ))}
                             </div>
                           )}
