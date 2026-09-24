@@ -941,6 +941,23 @@ async function importResourceFile(file){
 }
 
 // ── Unified multi-format resource importer ────────────────
+// iOS greys out every file the picker's `accept` list does not name, and it
+// only recognises the common extensions -- .txt, .md, .pdf, the images. The
+// e-Sword and MySword ones (.cmti, .lexi, .dcti, .devi, .refi, .dzip) it
+// cannot place, so a list mixing the two let the common files through and
+// greyed out the modules these pickers exist for. The Bible picker names only
+// module extensions and is unaffected, so it keeps its list. On iOS these
+// pickers now show every file, and the extension is checked here instead.
+const RES_ACCEPT={
+  lexicon:'.lexi,.txt,.md,.pdf,.dzip',
+  dict:'.dcti,.txt,.md,.pdf,.dzip',
+  other:'.txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.cmti,.devi,.refi,.dzip',
+};
+const pickerAccept=kind=>Capacitor.getPlatform()==='ios'?undefined:RES_ACCEPT[kind];
+function checkPicked(file,kind){
+  const ok=RES_ACCEPT[kind].split(','),ext='.'+String(file.name||'').split('.').pop().toLowerCase();
+  if(!ok.includes(ext))throw new Error(`${file.name} can't be imported here. Choose a ${ok.filter(x=>x!=='.jpeg').join(', ')} file.`);
+}
 async function importUserResource(file,category){
   const name=file.name||'untitled';
   const ext=name.split('.').pop().toLowerCase();
@@ -985,12 +1002,21 @@ async function importUserResource(file,category){
   throw new Error(`Unsupported file type: .${ext}`);
 }
 
+// Module HTML to the resource reader's text: paragraphs apart by a blank line,
+// entities decoded (the book introductions carry Greek and Hebrew as entities).
+function htmlToParas(html){
+  const s=String(html||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|li|div|h\d)>/gi,'\n\n');
+  const text=new DOMParser().parseFromString(s,'text/html').body.textContent||'';
+  return text.replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
 async function _importSqliteResource(file,id,baseName,ext,category){
   const initSqlJs=(await import('sql.js')).default;
   const SQL=await initSqlJs({locateFile:()=>'/sql-wasm.wasm'});
   const buf=await file.arrayBuffer();
   const db=new SQL.Database(new Uint8Array(buf));
-  let chapters=[];
+  let chapters=[],title=baseName;
+  const tables=new Set((db.exec("SELECT name FROM sqlite_master WHERE type='table'")[0]?.values||[]).map(r=>String(r[0])));
+  const detailsTitle=()=>{try{const t=db.exec('SELECT Title FROM Details LIMIT 1')[0]?.values[0]?.[0];return t?String(t).trim():'';}catch{return '';}};
   try{
     if(ext==='lexi'){
       let rows;
@@ -1002,7 +1028,24 @@ async function _importSqliteResource(file,id,baseName,ext,category){
       try{rows=db.exec('SELECT Topic, Definition FROM Dictionary ORDER BY Topic');}
       catch{rows=db.exec('SELECT Topic, Details FROM Dictionary ORDER BY Topic');}
       if(rows[0])chapters=rows[0].values.map(([t,d])=>({title:String(t||''),body:String(d||'')}));
+    } else if(ext==='cmti'&&tables.has('VerseCommentary')){
+      // e-Sword's own layout: notes on a whole book, on a chapter, and on a verse
+      // or range, each as HTML. A book's is a page of its own ahead of chapter 1;
+      // a chapter's opens that chapter's page.
+      title=detailsTitle()||baseName;
+      const q=sql=>db.exec(sql)[0]?.values||[];
+      const bookName_=bn=>BIBLE[bn-1]?.name||`Book ${bn}`;
+      const pages=new Map(),page=(bn,ch)=>{const k=`${bn}|${ch}`;if(!pages.has(k))pages.set(k,{bn,ch,title:ch?`${bookName_(bn)} ${ch}`:`${bookName_(bn)} \u2014 Introduction`,parts:[]});return pages.get(k);};
+      for(const[bn,c]of q('SELECT Book, Comments FROM BookCommentary')){const t=htmlToParas(c);if(t)page(bn,0).parts.push(t);}
+      for(const[bn,ch,c]of q('SELECT Book, Chapter, Comments FROM ChapterCommentary ORDER BY Book,Chapter')){const t=htmlToParas(c);if(t)page(bn,ch).parts.push(t);}
+      for(const[bn,c1,v1,c2,v2,c]of q('SELECT Book, ChapterBegin, VerseBegin, ChapterEnd, VerseEnd, Comments FROM VerseCommentary ORDER BY Book,ChapterBegin,VerseBegin')){
+        const t=htmlToParas(c);if(!t)continue;
+        const span=c2>c1?`${v1}\u2013${c2}:${v2}`:v2>v1?`${v1}\u2013${v2}`:`${v1}`;
+        page(bn,c1).parts.push(`[${span}] ${t}`);
+      }
+      chapters=[...pages.values()].sort((a,b)=>a.bn-b.bn||a.ch-b.ch).map(pg=>({title:pg.title,body:pg.parts.join('\n\n')}));
     } else if(ext==='cmti'){
+      // The older single-table layout.
       let rows;
       try{rows=db.exec('SELECT BookNumber, ChapterNumber, VerseNumber, CommentaryText FROM Commentary ORDER BY BookNumber,ChapterNumber,VerseNumber');}
       catch{rows=db.exec('SELECT Book, Chapter, Verse, Text FROM Commentary ORDER BY Book,Chapter,Verse');}
@@ -1027,7 +1070,7 @@ async function _importSqliteResource(file,id,baseName,ext,category){
       try{refRows=db.exec('SELECT Chapter, Content FROM Reference ORDER BY rowid');}catch{}
       if(refRows?.[0]?.values?.length){
         // Pull proper title from Details table
-        try{const dtl=db.exec('SELECT Title FROM Details LIMIT 1');if(dtl[0]?.values[0]?.[0])title=String(dtl[0].values[0][0]).split('(')[0].trim()||baseName;}catch{}
+        title=detailsTitle().split('(')[0].trim()||baseName;
         const stripHtml=s=>String(s||'').replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').trim();
         chapters=refRows[0].values.map(([ch,content])=>({title:String(ch||''),body:stripHtml(content)}));
       } else {
@@ -1053,7 +1096,7 @@ async function _importSqliteResource(file,id,baseName,ext,category){
   if(!chapters.length)throw new Error('No data found in this file. Make sure it is a valid MySword database.');
   const chapterJson=new TextEncoder().encode(JSON.stringify(chapters)).buffer;
   await idbPutResourceBlob(id,chapterJson);
-  const meta={id,title:baseName,ext,category,importedAt:Date.now(),kind:'sqlite',entryCount:chapters.length};
+  const meta={id,title,ext,category,importedAt:Date.now(),kind:'sqlite',entryCount:chapters.length};
   await idbPutResource(meta);
   return meta;
 }
@@ -3004,7 +3047,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
   const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
 
   return(
-    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
@@ -3134,7 +3177,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
   },[need.join(',')]);
   const chip=on=>({background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:12,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'6px 12px',cursor:'pointer',fontWeight:on?600:400});
   return(
-    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {highlights.length===0?(
         <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
       ):(<>
@@ -3201,7 +3244,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
 
 function RecentsPanel({T,recents,onOpen,onClose,onBack,versions,navH,isClosing}){
   return(
-    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
@@ -9080,11 +9123,12 @@ function App(){
                     </div>
                     <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'9px 16px',cursor:lexImporting?'default':'pointer',opacity:lexImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
                       {lexImporting?'Importing…':'＋ Upload Lexicon'}
-                      <input type="file" accept=".lexi,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={lexImporting}
+                      <input type="file" accept={pickerAccept('lexicon')} style={{display:'none'}} disabled={lexImporting}
                         onChange={async e=>{
                           const f=e.target.files[0];if(!f)return;e.target.value='';
                           setLexImporting(true);setLexImportErr('');
                           try{
+                            checkPicked(f,'lexicon');
                             const res=await importUserResource(f,'lexicon');
                             const meta={id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount||res.chapters?.length||0};
                             setUserLexicons(prev=>[meta,...prev]);
@@ -9283,11 +9327,12 @@ function App(){
                     </div>
                     <label style={{display:'inline-flex',alignItems:'center',gap:7,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'9px 16px',cursor:dictImporting?'default':'pointer',opacity:dictImporting?0.5:1,fontWeight:600,flexShrink:0,whiteSpace:'nowrap'}}>
                       {dictImporting?'Importing…':'＋ Upload Dictionary'}
-                      <input type="file" accept=".dcti,.txt,.md,.pdf,.dzip" style={{display:'none'}} disabled={dictImporting}
+                      <input type="file" accept={pickerAccept('dict')} style={{display:'none'}} disabled={dictImporting}
                         onChange={async e=>{
                           const f=e.target.files[0];if(!f)return;e.target.value='';
                           setDictImporting(true);setDictImportErr('');
                           try{
+                            checkPicked(f,'dict');
                             const res=await importUserResource(f,'dict');
                             const meta={id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount||res.chapters?.length||0};
                             setUserDicts(prev=>[meta,...prev]);
@@ -9570,12 +9615,13 @@ function App(){
                 </div>
                 <label style={{display:'inline-flex',alignItems:'center',gap:6,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',padding:'8px 14px',cursor:'pointer',fontWeight:600,flexShrink:0,opacity:resImporting?0.5:1}}>
                   {resImporting?'Importing…':'＋ Import Resource'}
-                  <input type="file" accept=".txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.cmti,.devi,.refi,.dzip" style={{display:'none'}} disabled={resImporting}
+                  <input type="file" accept={pickerAccept('other')} style={{display:'none'}} disabled={resImporting}
                     onChange={async e=>{
                       const f=e.target.files[0];if(!f)return;
                       e.target.value='';
                       setResImporting(true);setResImportErr('');
                       try{
+                        checkPicked(f,'other');
                         const res=await importUserResource(f,'other');
                         setResources(prev=>[res,...prev]);
                       }catch(ex){setResImportErr(String(ex.message||ex));}
