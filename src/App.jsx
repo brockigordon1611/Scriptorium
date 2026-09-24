@@ -2594,10 +2594,13 @@ function FadeScroll({children,T,fadeKey,height=36,className,style,wrapStyle}){
     </div>
   );
 }
-function EdgeFades({fade,height=96,top=true,bottom=true}){
+// `soft` is a lighter hint for lists of cards, where the full-strength fade
+// swallowed most of a card at each edge.
+function EdgeFades({fade,height=96,top=true,bottom=true,soft=false}){
+  const on=soft?0.7:1;
   return(<>
-    {top&&<div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?1:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>}
-    {bottom&&<div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?1:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>}
+    {top&&<div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?on:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>}
+    {bottom&&<div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?on:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>}
   </>);
 }
 
@@ -2687,7 +2690,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
-          {fade&&<EdgeFades fade={edge}/>}
+          {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96} soft={fade==='soft'}/>}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div {...dragHandlers} style={{position:'relative',display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><GripReach up/><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
@@ -3169,7 +3172,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
   const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
 
   return(
-    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
@@ -3279,14 +3282,14 @@ function cmRefLabel(r,lang,full){
 }
 // Commentary markup, one paragraph a line, references as links. A line that is
 // nothing but bold is a heading: the Treasury's OVERVIEW and RECIPROCAL.
-function CmLines({text,T,lang,onRef,size=15,color}){
+function CmLines({text,T,lang,onRef,px,family=FB,color}){
   if(!text)return null;
   return text.split('\n').map((line,i)=>{
     const runs=markupRuns(line);
     if(runs.length===1&&runs[0].b&&!runs[0].ref)
-      return <div key={i} style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,fontWeight:600,margin:i?'12px 0 5px':'0 0 5px'}}>{runs[0].text.trim()}</div>;
+      return <div key={i} style={{fontFamily:FS,fontSize:Math.max(10,Math.round(px*0.58)),letterSpacing:'0.16em',textTransform:'uppercase',color:T.gM,fontWeight:600,margin:i?'12px 0 5px':'0 0 5px'}}>{runs[0].text.trim()}</div>;
     return(
-      <div key={i} style={{fontFamily:FB,fontSize:U(size),color:color||T.body,lineHeight:1.6,marginBottom:5,overflowWrap:'anywhere'}}>
+      <div key={i} style={{fontFamily:family,fontSize:px,color:color||T.body,lineHeight:1.55,marginBottom:5,overflowWrap:'anywhere'}}>
         {runs.map((r,j)=>r.ref
           ?<button key={j} type="button" onClick={()=>onRef(r.ref)}
               style={{display:'inline',background:'none',border:'none',padding:0,margin:0,font:'inherit',fontWeight:r.b?700:'inherit',color:T.gT,textDecoration:'underline dotted',textDecorationColor:T.gD,textUnderlineOffset:3,cursor:'pointer',whiteSpace:'nowrap'}}>{cmRefLabel(r.ref,lang)}</button>
@@ -3305,7 +3308,10 @@ function splitReciprocal(m){
 
 // Study → Commentaries. It opens on the chapter being read, and at the verse
 // that was selected; its own arrows move on from there without moving Read.
-function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed}){
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav}){
+  // The commentary is read like the text it comments on, so it follows
+  // Scripture Size -- a little over half of it: 19px at the default of 31.
+  const px=Math.max(14,Math.min(36,Math.round(readFont.size*0.6)));
   const cm=list.find(c=>c.id===cid)||list[0];
   const[rec,setRec]=useState(undefined); // undefined while loading, null for none
   const[intro,setIntro]=useState(null);
@@ -3319,10 +3325,13 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const[msg,setMsg]=useState(null);
   const scrollRef=useRef(null);
   const swipe=useRef(null);
+  // The page's own jumps -- to a verse, to a chapter's top -- are not the reader
+  // scrolling, and must not count toward full screen.
+  const ownScroll=useRef(0);
   useEffect(()=>{
     let alive=true;
     setRec(undefined);setRecipOpen(new Set());setIntroOpen(false);
-    Promise.all([idbGetCommentaryChapter(cm.id,book,ch),ch===1?idbGetCommentaryChapter(cm.id,book,0):null])
+    Promise.all([idbGetCommentaryChapter(cm.id,book,ch),idbGetCommentaryChapter(cm.id,book,0)])
       .then(([r,i])=>{if(alive){setRec(r);setIntro(i?.o||null);}})
       .catch(()=>{if(alive){setRec(null);setIntro(null);}});
     return()=>{alive=false;};
@@ -3341,9 +3350,11 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   useEffect(()=>{
     if(rec===undefined)return;
     const el=scrollRef.current;if(!el)return;
-    const at=focus&&document.getElementById(`cm-v-${focus}`);
-    // Measured against the list itself: offsetTop counts from the page.
-    el.scrollTop=at?Math.max(0,at.getBoundingClientRect().top-el.getBoundingClientRect().top+el.scrollTop-10):0;
+    const at=focus&&document.getElementById(`cm-v-${focus.v}`);
+    // Measured against the list itself (offsetTop counts from the page), and
+    // clear of the nav, which floats over the top of the list.
+    ownScroll.current=Date.now()+250;
+    el.scrollTop=at?Math.max(0,at.getBoundingClientRect().top-el.getBoundingClientRect().top+el.scrollTop-navH-10):0;
   },[rec,focus]);
   async function openPreview(ref){
     setPreview({ref,rows:null});
@@ -3380,10 +3391,17 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
   return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+      <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current)}
+        style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
+        onClick={()=>menu&&setMenu(false)}
+        onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
+        onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
+        onTouchEnd={e=>{const s=swipe.current;swipe.current=null;if(!s||s.dir!=='h')return;const dx=e.changedTouches[0].clientX-s.x;if(Math.abs(dx)<60&&Math.abs(dx)/Math.max(1,Date.now()-s.t)<0.35)return;onStep(dx<0?1:-1);}}>
+      <div style={{maxWidth:760,margin:'0 auto',padding:'0 14px'}}>
       {/* The commentary's name above the chapter, where Read puts the version. */}
-      <div style={{textAlign:'center',padding:'12px 14px 2px',flexShrink:0,position:'relative'}}>
-        <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={()=>{setMenu(o=>!o);setMsg(null);}}
+      <div style={{textAlign:'center',padding:'12px 0 2px',position:'relative'}}>
+        <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(o=>!o);setMsg(null);}}
           style={{...small,display:'inline-flex',alignItems:'center',gap:6,background:menu?T.gF:'none',border:`1px solid ${menu?T.gD:'transparent'}`,borderRadius:12,color:T.gM,padding:'4px 10px',cursor:'pointer',maxWidth:'100%'}}>
           <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cm.title}</span>
           <span aria-hidden="true" style={{fontSize:UL(8)}}>▾</span>
@@ -3391,7 +3409,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{heading}</div>
         <div style={{height:1,background:T.accentLine,marginTop:8}}/>
         {menu&&(
-          <div role="menu" style={{position:'absolute',top:'calc(100% - 4px)',left:14,right:14,zIndex:20,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
+          <div role="menu" onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% - 4px)',left:0,right:0,zIndex:20,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
             {list.map(c=>(
               <div key={c.id} style={{display:'flex',alignItems:'center',gap:6,borderRadius:8,background:c.id===cm.id?T.gF:'none'}}>
                 <button type="button" role="menuitemradio" aria-checked={c.id===cm.id} onClick={()=>{onPick(c.id);setMenu(false);}}
@@ -3416,12 +3434,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         )}
         {msg&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(13),color:msg.err?T.redTxt:T.gM}}>{msg.text}</div>}
       </div>
-
-      <div ref={scrollRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
-        onClick={()=>menu&&setMenu(false)}
-        onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
-        onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
-        onTouchEnd={e=>{const s=swipe.current;swipe.current=null;if(!s||s.dir!=='h')return;const dx=e.changedTouches[0].clientX-s.x;if(Math.abs(dx)<60&&Math.abs(dx)/Math.max(1,Date.now()-s.t)<0.35)return;onStep(dx<0?1:-1);}}>
+      <div style={{paddingTop:10}}>
         {rec===undefined&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
         {rec===null&&(
           <div style={{textAlign:'center',padding:'36px 12px',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15),lineHeight:1.6}}>
@@ -3436,10 +3449,10 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
                 <span aria-hidden="true" style={{color:T.gM,fontSize:UL(9),transform:introOpen?'rotate(90deg)':'none',transition:'transform .15s'}}>▶</span>
                 <span style={{...small,color:T.gT,flex:1}}>Introduction to {bookName(bk,lang)}</span>
               </button>
-              {introOpen&&<div style={{padding:'12px 14px 8px'}}><CmLines text={intro} T={T} lang={lang} onRef={openPreview}/></div>}
+              {introOpen&&<div style={{padding:'12px 14px 8px'}}><CmLines text={intro} T={T} lang={lang} onRef={openPreview} px={px} family={readFont.family}/></div>}
             </div>
           )}
-          {rec.o&&<div style={{...card,padding:'12px 14px 8px'}}><CmLines text={rec.o} T={T} lang={lang} onRef={openPreview}/></div>}
+          {rec.o&&<div style={{...card,padding:'12px 14px 8px'}}><CmLines text={rec.o} T={T} lang={lang} onRef={openPreview} px={px} family={readFont.family}/></div>}
           {rec.v.map(([v,m,ve,ce])=>{
             const[main,back]=splitReciprocal(m);
             const open=recipOpen.has(v);
@@ -3447,14 +3460,14 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
             const label=ce?`${v}–${ce}:${ve}`:ve?`${v}–${ve}`:`${v}`;
             const words=ve&&!ce?Array.from({length:ve-v+1},(_,k)=>texts[v+k]).filter(Boolean).join(' '):texts[v];
             return(
-              <div key={`${v}-${ve||''}`} id={`cm-v-${v}`} style={{...card,border:`1px solid ${focus===v?T.gD:T.bd}`}}>
+              <div key={`${v}-${ve||''}`} id={`cm-v-${v}`} style={{...card,border:`1px solid ${focus?.v===v?T.gD:T.bd}`}}>
                 <div style={{display:'flex',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
-                  <span style={{fontFamily:FS,fontSize:U(13),fontWeight:700,color:T.gT,flexShrink:0,minWidth:18}}>{label}</span>
-                  <span style={{fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.5,fontStyle:words?'normal':'italic'}}>{words||'…'}</span>
+                  <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,flexShrink:0,minWidth:18,lineHeight:1.5}}>{label}</span>
+                  <span style={{fontFamily:readFont.family,fontSize:px,color:T.mut,lineHeight:1.5,fontStyle:words?'normal':'italic'}}>{words||'…'}</span>
                 </div>
                 <div style={{padding:'10px 14px 6px'}}>
-                  {main?<CmLines text={main} T={T} lang={lang} onRef={openPreview}/>
-                    :<div style={{fontFamily:FB,fontSize:U(14),fontStyle:'italic',color:T.dim,marginBottom:6}}>No cross-references of its own.</div>}
+                  {main?<CmLines text={main} T={T} lang={lang} onRef={openPreview} px={px} family={readFont.family}/>
+                    :<div style={{fontFamily:readFont.family,fontSize:px,fontStyle:'italic',color:T.dim,marginBottom:6}}>No cross-references of its own.</div>}
                   {n>0&&(
                     <div style={{borderTop:`1px solid ${T.bdS}`,marginTop:4,paddingTop:4}}>
                       <button type="button" aria-expanded={open} onClick={()=>setRecipOpen(s=>{const x=new Set(s);x.has(v)?x.delete(v):x.add(v);return x;})}
@@ -3463,7 +3476,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
                         <span style={{...small,color:T.gM}}>Reciprocal</span>
                         <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>{n}</span>
                       </button>
-                      {open&&<div style={{paddingTop:2}}><CmLines text={back} T={T} lang={lang} onRef={openPreview} size={14} color={T.mut}/></div>}
+                      {open&&<div style={{paddingTop:2}}><CmLines text={back} T={T} lang={lang} onRef={openPreview} px={Math.round(px*0.92)} family={readFont.family} color={T.mut}/></div>}
                     </div>
                   )}
                 </div>
@@ -3472,10 +3485,14 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
           })}
         </>}
       </div>
+      </div>
+      </div>
 
-      <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      {/* Slides away with the nav in full screen, as Read's bottom bar does. */}
+      <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',transform:fs?'translateY(100%)':'none',transition:'transform .18s ease'}}>
         <button type="button" onClick={()=>onStep(-1)} disabled={book===1&&ch===1} style={{...navBtn,opacity:book===1&&ch===1?0.4:1}}>‹ Prev</button>
-        <span style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>{shortBook(bookName(bk,lang))} {ch}</span>
+        {/* The book, chapter and verse picker, as Parallel's is. */}
+        <button type="button" onClick={onNav} style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'8px 8px'}}>{shortBook(bookName(bk,lang))} {ch}</button>
         <button type="button" onClick={()=>onStep(1)} disabled={book===66&&ch===(bk?.v?.length||1)} style={{...navBtn,opacity:book===66&&ch===(bk?.v?.length||1)?0.4:1}}>Next ›</button>
       </div>
 
@@ -3528,7 +3545,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
                   <p style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:'8px 0 0'}}>This edition is offered in an open format, as the licence asks, at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/bundled/tske.json</span></p>
                 </div>
               )}
-              {info.info?<CmLines text={info.info} T={T} lang={lang} onRef={r=>{setInfo(null);openPreview(r);}} size={14} color={T.mut}/>
+              {info.info?<CmLines text={info.info} T={T} lang={lang} onRef={r=>{setInfo(null);openPreview(r);}} px={Math.max(14,Math.round(px*0.85))} color={T.mut}/>
                 :!info.notice&&<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14)}}>This commentary came with no description.</div>}
             </div>
           </div>
@@ -3567,7 +3584,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
   },[need.join(',')]);
   const chip=on=>({background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:12,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'6px 12px',cursor:'pointer',fontWeight:on?600:400});
   return(
-    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {highlights.length===0?(
         <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
       ):(<>
@@ -3634,7 +3651,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
 
 function RecentsPanel({T,recents,onOpen,onClose,onBack,versions,navH,isClosing}){
   return(
-    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map(r=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
@@ -4778,6 +4795,7 @@ function App(){
   // Leaving the reading page is leaving it: anything the navigation lit goes
   // with it, so coming back does not find an old jump still highlighted.
   useEffect(()=>{if(tab!=='read')clearAutoSel();},[tab]);
+  useEffect(()=>{if(readFullScreen.current)exitFullScreen();},[tab]);
   const[readBmLabel,setReadBmLabel]=useState('');
   const[readBmCat,setReadBmCat]=useState('');
   const[readBmLabelFocused,setReadBmLabelFocused]=useState(false);
@@ -6382,6 +6400,19 @@ function App(){
     else{readScrollToVerse.current=r.v;landSilent.current=true;setReadBook(r.b);setReadCh(r.c);}
     setTab('read');
   }
+  // Auto full screen, by the same rules as Read: down past the threshold hides
+  // the bars, back up (or to the top) brings them back.
+  const cmLastY=useRef(0),cmDelta=useRef(0);
+  function cmScroll(sy,own){
+    const dy=sy-cmLastY.current;cmLastY.current=sy;
+    if(own){cmDelta.current=0;return;}
+    if(sy<=5){if(readFullScreen.current)exitFullScreen();cmDelta.current=0;return;}
+    if(Math.sign(dy)!==Math.sign(cmDelta.current))cmDelta.current=0;
+    cmDelta.current+=dy;
+    if(cmDelta.current>fsScrollThreshold&&!readFullScreen.current){if(readAutoFullscreen)enterFullScreen();cmDelta.current=0;}
+    else if(cmDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();cmDelta.current=0;}
+  }
+  function cmOpenNav(){setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}
   async function cmImport(f){const meta=await importCommentaryFile(f);setCmImports(l=>[meta,...l]);setCmId(meta.id);return meta;}
   async function cmDelete(id){
     await idbDeleteCommentary(id).catch(()=>{});
@@ -7409,7 +7440,7 @@ function App(){
                 <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
-                <button type="button" title="Navigate" {...navTap(tab==='parallel'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Navigate" {...navTap(tab==='parallel'||tab==='commentaries'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||tab==='commentaries'||!studyActive?'visible':'hidden'}}>
                   <svg width="22" height="18" viewBox="0 0 22 18" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* left page */}
                     <path d="M10.5 4.5 Q7 2.5 3 2.5 Q2 2.5 2 3.5 L2 13.5 Q2 14.5 3 14.5 Q7 14.5 10.5 15 Z" strokeWidth="1.2" fill="none"/>
@@ -7686,7 +7717,7 @@ function App(){
           {[
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
-            {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?Math.min(...readSelVerses):null);setTab('commentaries');closeReadSheet();}},
+            {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
             {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');closeReadSheet();}},
             {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');closeReadSheet();}},
             {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');closeReadSheet();}},
@@ -8235,9 +8266,9 @@ function App(){
 
       {/* ── Global popup sheets (nav / version / search) ── */}
           {readMobileSheet==='nav'&&(()=>{
-            const isP=tab==='parallel';
-            const setNavBk=isP?setParallelBk:setReadBook;
-            const setNavCh=isP?setParallelCh:setReadCh;
+            const isP=tab==='parallel',isC=tab==='commentaries';
+            const setNavBk=isP?setParallelBk:isC?setCmBook:setReadBook;
+            const setNavCh=isP?setParallelCh:isC?setCmCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
             const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:UH(17),letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
             /* Dynamic book button height: fit all 22 rows (13 OT + 9 NT) without scrolling.
@@ -8280,7 +8311,7 @@ function App(){
                   </div>
                   {navStep==='verse'&&(
                     <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
-                      <button type="button" onClick={()=>{if(isP){setParallelVs(1);}closeReadSheet();}}
+                      <button type="button" onClick={()=>{if(isP){setParallelVs(1);}if(isC)setCmFocus(null);closeReadSheet();}}
                         style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
                         Ch {navPickedCh} →
                       </button>
@@ -8327,6 +8358,7 @@ function App(){
                         setNavPickedCh(i+1);
                         setNavBk(navPickedBk);setNavCh(i+1);
                         if(isP){setParallelVs(1);}
+                        if(isC)setCmFocus(null);
                         setNavStep('verse');
                         setTimeout(()=>{const el=document.querySelector('.slide-down-sheet>div');if(el)el.scrollTop=0;},0);
                       }} style={gridBtn}>{i+1}</button>
@@ -8345,6 +8377,7 @@ function App(){
                     {Array.from({length:pickedBkData.v[navPickedCh-1]||0},(_,i)=>(
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
+                        else if(isC){setCmFocus({v:i+1});}
                         else{if(readSearchResultsOpen)setReadSearchResultsOpen(false);setTimeout(()=>{const el=document.getElementById(`rv-${i+1}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(i+1);return ns;});}},120);}
                         closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
@@ -8496,7 +8529,7 @@ function App(){
           )}
 
       {/* Fullscreen status-bar mask — always shown when fsActive to hide text scrolling into notch */}
-      {fsActive&&tab==='read'&&<>
+      {fsActive&&(tab==='read'||tab==='commentaries')&&<>
         <div style={{position:'fixed',top:0,left:0,right:0,height:'var(--sat,0px)',background:T.bg,zIndex:190,pointerEvents:'none'}}/>
         {(chLineAbove||readingHidden)&&<div style={{position:'fixed',top:'var(--sat,0px)',left:0,right:0,height:1,background:T.accentLine,zIndex:190,pointerEvents:'none'}}/>}
       </>}
@@ -9262,7 +9295,8 @@ function App(){
         <CommentaryPage T={T} navH={navH} vid={readVid} lang={versionLang(readVid)} book={cmBook} ch={cmCh} focus={cmFocus}
           list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
-          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}/>
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}
+          fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav}/>
       )}
 
       {/* ═══ COMPARE TAB ═══ */}
