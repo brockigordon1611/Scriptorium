@@ -2594,10 +2594,8 @@ function FadeScroll({children,T,fadeKey,height=36,className,style,wrapStyle}){
     </div>
   );
 }
-// `soft` is a lighter hint for lists of cards, where the full-strength fade
-// swallowed most of a card at each edge.
-function EdgeFades({fade,height=96,top=true,bottom=true,soft=false}){
-  const on=soft?0.7:1;
+function EdgeFades({fade,height=96,top=true,bottom=true}){
+  const on=1;
   return(<>
     {top&&<div aria-hidden style={{position:'absolute',top:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.top?on:0,transition:'opacity .18s ease',background:fade.ramp('bottom')}}/>}
     {bottom&&<div aria-hidden style={{position:'absolute',bottom:0,left:0,right:0,height,pointerEvents:'none',opacity:fade.bot?on:0,transition:'opacity .18s ease',background:fade.ramp('top')}}/>}
@@ -2690,7 +2688,9 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
-          {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96} soft={fade==='soft'}/>}
+          {/* 'soft' is shorter, for lists of cards: the full height swallowed
+              most of a card at each edge. */}
+          {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96}/>}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div {...dragHandlers} style={{position:'relative',display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><GripReach up/><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
@@ -2999,7 +2999,23 @@ function AuthPanel({onAuth}){
 // ══════════════════════════════════════════════════════════
 const CAT_COLORS=['#62c484','#6ab0f5','#e4cc78','#f08080','#c488c8','#f0a060','#80c8c8','#a0a0b8'];
 
-function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker}){
+// The verses a bookmark covers. A range lives only in its label ("Galatians
+// 4:2-3", "Psalms 23:1, 4"); a chapter bookmark covers no one verse.
+function bmVerses(bm){
+  if(bm.verse==null)return[];
+  const m=String(bm.label||'').match(/\s\d+:([\d,\s-]+)$/);
+  if(!m)return[bm.verse];
+  const out=[];
+  for(const part of m[1].split(',')){
+    const[a,b]=part.split('-').map(x=>parseInt(x,10));
+    if(!a)continue;
+    for(let v=a;v<=(b&&b>=a?Math.min(b,a+60):a);v++)out.push(v);
+  }
+  return out.length?out:[bm.verse];
+}
+// Laid out as a verse is in Commentaries: the reference in a band with its
+// controls, then the words themselves in the reading font, then the note.
+function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker,words,px,family}){
   const bk=BIBLE.find(b=>b.n===bm.book_num);
   const ver=versions.find(v=>v.id===bm.version_id);
   const verLabel=ver?.label||(bm.version_id||'').toUpperCase();
@@ -3021,54 +3037,59 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   function cancelNote(){setNoteVal(displayNote||'');setEditNote(false);}
   function moveCat(catId){onUpdate(bm.id,{categoryId:catId||null});}
 
+  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:32,minWidth:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 9px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
+  const hasBody=words!==undefined||displayNote||editNote||(showCatPicker&&categories.length>0);
   return(
-    <div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 12px',marginBottom:8}}>
-      {/* The reference and its controls share one line; the note takes the full
-          width beneath them, rather than a column pinched beside the buttons. */}
-      <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <div style={{flex:1,minWidth:0,fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>
-          {titleRef} <span style={{color:T.gM,fontWeight:400,fontSize:U(11)}}>{verLabel}</span>
+    <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:hasBody?`1px solid ${T.bdS}`:'none'}}>
+        <div style={{flex:1,minWidth:0}}>
+          <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{titleRef}</span>
+          <span style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.dim,marginLeft:8,whiteSpace:'nowrap'}}>{verLabel}</span>
         </div>
-        <div style={{display:'flex',gap:4,flexShrink:0,alignItems:'center'}}>
-          <button className="s-btn s-ghost" onClick={()=>onOpen(bm)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'8px 14px',fontWeight:500}}>Open</button>
-          {user&&<>
-            <button onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'}
-              style={{background:editNote||displayNote?T.gF:'none',border:`1px solid ${editNote||displayNote?T.gD:T.bd}`,borderRadius:5,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(14),padding:'6px 11px',cursor:'pointer',lineHeight:1}}>✎</button>
-            {/* Not the shared IBtn: that one is sized for denser rows than
-                this, and would sit small beside the pencil. */}
-            <button className="s-btn s-danger" onClick={()=>setShowDelConfirm(true)} title="Delete bookmark"
-              style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FB,
-                fontSize:U(15),padding:'6px 12px',lineHeight:1,fontWeight:500,cursor:'pointer'}}>✕</button>
-          </>}
-        </div>
+        <button type="button" className="s-btn s-ghost" onClick={()=>onOpen(bm)}
+          style={{...box,background:'none',color:T.gM,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,padding:'0 11px'}}>Open</button>
+        {user&&<>
+          <button type="button" onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'} aria-label={displayNote?'Edit note':'Add note'}
+            style={{...box,background:editNote||displayNote?T.gF:'none',borderColor:editNote||displayNote?T.gD:T.bd,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(14)}}>✎</button>
+          <button type="button" className="s-btn s-danger" onClick={()=>setShowDelConfirm(true)} title="Delete bookmark" aria-label="Delete bookmark"
+            style={{...box,background:'none',borderColor:`${T.redTxt}55`,color:T.redTxt,fontFamily:FB,fontSize:U(14)}}>✕</button>
+        </>}
       </div>
-      {!editNote&&displayNote&&(
-        <div style={{marginTop:8,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,padding:'9px 12px',
-          fontFamily:FB,fontSize:U(14),color:T.mut,lineHeight:1.55,whiteSpace:'pre-wrap'}}>{displayNote}</div>
-      )}
-      {editNote&&(
-        <div style={{marginTop:8}}>
-          <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
-            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 12px',outline:'none',resize:'vertical',lineHeight:1.55}}/>
-          <div style={{display:'flex',gap:6,marginTop:6}}>
-            <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:5,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer',fontWeight:600}}>Save</button>
-            <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'7px 14px',cursor:'pointer'}}>Cancel</button>
-          </div>
-        </div>
-      )}
-      {/* Category picker — shown when panel-level assign mode is on */}
-      {showCatPicker&&categories.length>0&&(
-        <div style={{marginTop:8,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,padding:'8px 10px',display:'flex',flexWrap:'wrap',gap:5}}>
-          <button onClick={()=>moveCat(null)}
-            style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
-            None
-          </button>
-          {categories.map(c=>(
-            <button key={c.id} onClick={()=>moveCat(c.id)}
-              style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
-              {c.name}
-            </button>
-          ))}
+      {hasBody&&(
+        <div style={{padding:'10px 14px 10px'}}>
+          {words!==undefined&&(
+            <div style={{fontFamily:family,fontSize:px,color:T.mut,lineHeight:1.55,fontStyle:words?'normal':'italic',display:'-webkit-box',WebkitLineClamp:4,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+              {words||'…'}
+            </div>
+          )}
+          {!editNote&&displayNote&&(
+            <div style={{fontFamily:family,fontSize:px,color:T.body,lineHeight:1.55,whiteSpace:'pre-wrap',...(words!==undefined?{borderTop:`1px solid ${T.bdS}`,marginTop:8,paddingTop:8}:{})}}>{displayNote}</div>
+          )}
+          {editNote&&(
+            <div style={{marginTop:words!==undefined?8:0}}>
+              <textarea value={noteVal} onChange={e=>setNoteVal(e.target.value)} rows={3} autoFocus
+                style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:6,color:T.body,fontFamily:family,fontSize:Math.max(16,px),padding:'9px 12px',outline:'none',resize:'vertical',lineHeight:1.55}}/>
+              <div style={{display:'flex',gap:6,marginTop:6}}>
+                <button onClick={saveNote} style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:7,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 16px',cursor:'pointer',fontWeight:600}}>Save</button>
+                <button onClick={cancelNote} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.12em',textTransform:'uppercase',padding:'9px 16px',cursor:'pointer',fontWeight:600}}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {/* Category picker — shown when panel-level assign mode is on */}
+          {showCatPicker&&categories.length>0&&(
+            <div style={{marginTop:words!==undefined||displayNote||editNote?10:0,display:'flex',flexWrap:'wrap',gap:5}}>
+              <button onClick={()=>moveCat(null)}
+                style={{background:bm.category_id==null?T.gF:'none',border:`1px solid ${bm.category_id==null?T.gD:T.bd}`,borderRadius:12,color:bm.category_id==null?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id==null?600:400}}>
+                None
+              </button>
+              {categories.map(c=>(
+                <button key={c.id} onClick={()=>moveCat(c.id)}
+                  style={{background:bm.category_id===c.id?c.color+'28':'none',border:`1.5px solid ${bm.category_id===c.id?c.color:T.bd}`,borderRadius:12,color:bm.category_id===c.id?c.color:T.dim,fontFamily:FS,fontSize:U(11),padding:'5px 13px',cursor:'pointer',fontWeight:bm.category_id===c.id?600:400}}>
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
       {showDelConfirm&&<ConfirmDialog T={T} danger
@@ -3081,7 +3102,9 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   );
 }
 
-function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker,catToggle}){
+// A category is a card in its own colour whose band opens it, as the
+// Introduction does in Commentaries, with its bookmarks as cards inside.
+function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,onDeleteCat,categories,user,showCatPicker,catToggle,cardProps}){
   const[open,setOpen]=useState(false);
   const[renaming,setRenaming]=useState(false);
   useEffect(()=>{if(catToggle)setOpen(catToggle.action==='expand');},[catToggle]);
@@ -3093,26 +3116,20 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
     onRename(cat.id,{name:nameVal||cat.name,color:CAT_COLORS[colorIdx]});
     setRenaming(false);
   }
-
-  // The section is a card in the category's own colour, and the bookmarks are
-  // cards inside it -- a flat list of rows left it ambiguous where one group
-  // ended and the next began.
+  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:32,minWidth:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 9px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
   return(
-    <div style={{border:`1px solid ${cat.color}55`,background:cat.color+'0a',borderRadius:10,marginBottom:10,overflow:'hidden'}}>
-      {/* Section header row */}
-      <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke={T.dim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,transition:'transform .15s',transform:open?'rotate(90deg)':'rotate(0deg)'}}><path d="M2 1L6 4L2 7"/></svg>
+    <div style={{border:`1px solid ${cat.color}66`,background:T.bgCard,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:open||renaming?`1px solid ${cat.color}44`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
+        <span aria-hidden="true" style={{color:T.gM,fontSize:UL(9),transform:open?'rotate(90deg)':'none',transition:'transform .15s',flexShrink:0}}>▶</span>
         <span style={{width:10,height:10,borderRadius:'50%',background:cat.color,flexShrink:0,display:'inline-block'}}/>
-        <span style={{fontFamily:FS,fontSize:U(12),fontWeight:600,color:T.gT,letterSpacing:'0.06em',flex:1}}>{cat.name}</span>
+        <span style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gT,flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cat.name}</span>
         <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
-          {/* Bare glyphs read as decoration beside the boxed controls on
-              the rows below; these wear the same borders. */}
-          <button onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename"
-            style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:U(14),cursor:'pointer',padding:'6px 11px',lineHeight:1,flexShrink:0}}>✎</button>
-          <button onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category"
-            style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,cursor:'pointer',padding:'6px 10px',lineHeight:1,display:'flex',alignItems:'center',flexShrink:0}}>
-            <svg width="16" height="16" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <button type="button" onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename" aria-label={`Rename ${cat.name}`}
+            style={{...box,background:'none',color:T.dim,fontFamily:FS,fontSize:U(14)}}>✎</button>
+          <button type="button" onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category" aria-label={`Delete ${cat.name}`}
+            style={{...box,background:'none',borderColor:`${T.redTxt}55`,color:T.redTxt}}>
+            <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
               <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
             </svg>
@@ -3121,9 +3138,9 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
       </div>
       {/* Rename form — stacked rows, no horizontal overflow */}
       {renaming&&(
-        <div style={{margin:'0 12px 10px',padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
+        <div style={{margin:'10px 10px 0',padding:'8px 10px',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8}} onClick={e=>e.stopPropagation()}>
           <input value={nameVal} onChange={e=>setNameVal(e.target.value)} autoFocus onKeyDown={e=>e.key==='Enter'&&saveRename()}
-            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:U(13),padding:'6px 8px',outline:'none',marginBottom:8}}/>
+            style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:5,color:T.body,fontFamily:FS,fontSize:16,padding:'6px 8px',outline:'none',marginBottom:8}}/>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <div style={{display:'flex',gap:4,flex:1,flexWrap:'wrap'}}>
               {CAT_COLORS.map((c,i)=>(
@@ -3136,10 +3153,10 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
           </div>
         </div>
       )}
-      {open&&<div style={{padding:'10px 12px 2px',borderTop:`1px solid ${cat.color}33`}}>
+      {open&&<div style={{padding:'10px 10px 0'}}>
         {bookmarks.length===0
-          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(13),padding:'2px 0 8px'}}>Empty category</div>
-          :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} T={T} versions={versions} onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate} categories={categories} user={user} showCatPicker={showCatPicker}/>)
+          ?<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),padding:'2px 4px 10px'}}>Empty category</div>
+          :bookmarks.map(bm=><BmCard key={bm.id} bm={bm} {...cardProps(bm)}/>)
         }
       </div>}
       {showDelCatConfirm&&<ConfirmDialog T={T} danger
@@ -3152,7 +3169,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
   );
 }
 
-function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing}){
+function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,onUpdate,onAddCat,onDeleteCat,onUpdateCat,versions,user,navH,isClosing,readFont}){
   const[newCatName,setNewCatName]=useState('');
   const[newCatColor,setNewCatColor]=useState(0);
   const[addingCat,setAddingCat]=useState(false);
@@ -3169,7 +3186,39 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
   const grouped=categories.map(cat=>({cat,items:bookmarks.filter(bm=>bm.category_id===cat.id)}));
   const uncategorized=bookmarks.filter(bm=>!bm.category_id);
   const hasCats=categories.length>0;
-  const bmCardProps={T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats};
+  // Each bookmark shows its verse, in the version it was saved in, the way
+  // Highlights does: a chapter at a time, four at once.
+  const[texts,setTexts]=useState({});
+  const asked=useRef(new Set()),alive=useRef(true);
+  useEffect(()=>()=>{alive.current=false;},[]);
+  const need=[...new Set(bookmarks.filter(b=>b.verse!=null).map(b=>`${b.version_id}|${b.book_num}|${b.chapter}`))].filter(k=>!asked.current.has(k));
+  useEffect(()=>{
+    if(!need.length)return;
+    need.forEach(k=>asked.current.add(k));
+    let i=0;
+    const work=async()=>{
+      while(alive.current&&i<need.length){
+        const k=need[i++];const[vid,b,c]=k.split('|');
+        let rows=[];try{rows=await dbGetChapter(vid,+b,+c);}catch{}
+        if(!alive.current)return;
+        setTexts(t=>{const n={...t,[`${k}|loaded`]:true};for(const r of rows)n[`${k}|${r.verse}`]=String(r.text||'').replace(/<[^>]+>/g,'');return n;});
+      }
+    };
+    Promise.all([work(),work(),work(),work()]);
+  },[need.join(',')]);
+  // undefined: no verse to show (a chapter bookmark, or text not on this
+  // device); '' while it loads.
+  function wordsFor(bm){
+    if(bm.verse==null)return undefined;
+    const k=`${bm.version_id}|${bm.book_num}|${bm.chapter}`;
+    if(!texts[`${k}|loaded`])return'';
+    const w=bmVerses(bm).map(v=>texts[`${k}|${v}`]).filter(Boolean).join(' ');
+    return w||undefined;
+  }
+  const px=Math.max(14,Math.min(36,Math.round((readFont?.size||31)*0.6)));
+  const cardProps=bm=>({T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats,words:wordsFor(bm),px,family:readFont?.family||FB});
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const toggle=on=>({...small,flex:1,background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:8,color:on?T.gT:T.gM,padding:'11px 0',cursor:'pointer'});
 
   return(
     <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
@@ -3202,31 +3251,27 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
             </div>
           ):(
             <button onClick={()=>setAddingCat(true)}
-              style={{background:'none',border:`1px dashed ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',padding:'11px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',textAlign:'left',marginBottom:hasCats?8:0}}>
-              + New Category
+              style={{...small,display:'flex',alignItems:'center',justifyContent:'center',background:'none',border:`1px dashed ${T.gD}`,borderRadius:10,color:T.gT,padding:'11px 14px',cursor:'pointer',width:'100%',boxSizing:'border-box',marginBottom:hasCats?8:0}}>
+              ＋ New Category
             </button>
           )}
           {/* View toggles — only shown when categories exist */}
           {hasCats&&(
             <>
               <div style={{display:'flex',gap:8,marginBottom:6}}>
-                <button onClick={()=>setViewAll(v=>!v)}
-                  style={{flex:1,background:viewAll?T.gF:'none',border:`1px solid ${viewAll?T.gD:T.bd}`,borderRadius:8,color:viewAll?T.gT:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
+                <button onClick={()=>setViewAll(v=>!v)} style={toggle(viewAll)}>
                   {viewAll?'By Category':'View All'}
                 </button>
-                <button onClick={()=>setAssigningCats(v=>!v)}
-                  style={{flex:1,background:assigningCats?T.gF:'none',border:`1px solid ${assigningCats?T.gD:T.bd}`,borderRadius:8,color:assigningCats?T.gT:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'11px 0',cursor:'pointer'}}>
+                <button onClick={()=>setAssigningCats(v=>!v)} style={toggle(assigningCats)}>
                   {assigningCats?'Done Assigning':'Assign Categories'}
                 </button>
               </div>
               {!viewAll&&(
                 <div style={{display:'flex',gap:8}}>
-                  <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'10px 0',cursor:'pointer'}}>
+                  <button onClick={()=>setCatToggle({action:'expand',tick:Date.now()})} style={toggle(false)}>
                     <span style={{display:'inline-flex',alignItems:'center',gap:5,justifyContent:'center'}}><Caret open={false} size={13}/> Expand All</span>
                   </button>
-                  <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})}
-                    style={{flex:1,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(12),letterSpacing:'0.08em',padding:'10px 0',cursor:'pointer'}}>
+                  <button onClick={()=>setCatToggle({action:'collapse',tick:Date.now()})} style={toggle(false)}>
                     ▸ Collapse All
                   </button>
                 </div>
@@ -3240,28 +3285,31 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
 
       {/* Flat list */}
       {viewAll&&hasCats?(
-        bookmarks.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)
+        bookmarks.map(bm=><BmCard key={bm.id} bm={bm} {...cardProps(bm)}/>)
       ):(
         <>
           {grouped.map(({cat,items})=>(
             <CatSection key={cat.id} cat={cat} bookmarks={items} T={T} versions={versions}
               onDelete={onDelete} onOpen={onOpen} onUpdate={onUpdate}
               onRename={onUpdateCat} onDeleteCat={onDeleteCat}
-              categories={categories} user={user} showCatPicker={assigningCats} catToggle={catToggle}/>
+              categories={categories} user={user} showCatPicker={assigningCats} catToggle={catToggle} cardProps={cardProps}/>
           ))}
           {/* Uncategorized reads as the categories' sibling, so it gets a box
               too -- a neutral one, since it has no colour of its own. Without
               any categories there is nothing to be a sibling of, and the cards
               stand on their own. */}
           {uncategorized.length>0&&(hasCats?(
-            <div style={{border:`1px solid ${T.bd}`,borderRadius:10,marginTop:10,marginBottom:10}}>
-              <div style={{fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',color:T.dim,textTransform:'uppercase',padding:'11px 12px 0'}}>Uncategorized</div>
-              <div style={{padding:'10px 12px 2px'}}>
-                {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}
+            <div style={{border:`1px solid ${T.bd}`,background:T.bgCard,borderRadius:10,marginTop:10,marginBottom:10,overflow:'hidden'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'11px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+                <span style={{...small,fontSize:UL(10),color:T.dim,flex:1}}>Uncategorized</span>
+                <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim}}>{uncategorized.length}</span>
+              </div>
+              <div style={{padding:'10px 10px 0'}}>
+                {uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...cardProps(bm)}/>)}
               </div>
             </div>
           ):(
-            <>{uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...bmCardProps}/>)}</>
+            <>{uncategorized.map(bm=><BmCard key={bm.id} bm={bm} {...cardProps(bm)}/>)}</>
           ))}
         </>
       )}
@@ -3269,10 +3317,6 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
   );
 }
 
-// Every highlight, grouped by colour like bookmark categories, filtered by
-// colour and by version. Each row shows the verse's words in the version it was
-// highlighted in: highlights are about the text, where bookmarks are about the
-// place. The words load a chapter at a time, four at once, for what is shown.
 // A reference as the page prints it, in the reading version's language:
 // "Prov. 8:22–24" inline, the full book name as a preview's title.
 function cmRefLabel(r,lang,full){
@@ -3308,7 +3352,7 @@ function splitReciprocal(m){
 
 // Study → Commentaries. It opens on the chapter being read, and at the verse
 // that was selected; its own arrows move on from there without moving Read.
-function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav}){
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose}){
   // The commentary is read like the text it comments on, so it follows
   // Scripture Size -- a little over half of it: 19px at the default of 31.
   const px=Math.max(14,Math.min(36,Math.round(readFont.size*0.6)));
@@ -3348,7 +3392,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   },[vid,book,ch]);
   // Land on the verse it was opened from; a new chapter starts at its top.
   useEffect(()=>{
-    if(rec===undefined)return;
+    if(rec===undefined||focus?.tap)return;
     const el=scrollRef.current;if(!el)return;
     const at=focus&&document.getElementById(`cm-v-${focus.v}`);
     // Measured against the list itself (offsetTop counts from the page), and
@@ -3460,8 +3504,9 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
             const label=ce?`${v}–${ce}:${ve}`:ve?`${v}–${ve}`:`${v}`;
             const words=ve&&!ce?Array.from({length:ve-v+1},(_,k)=>texts[v+k]).filter(Boolean).join(' '):texts[v];
             return(
-              <div key={`${v}-${ve||''}`} id={`cm-v-${v}`} style={{...card,border:`1px solid ${focus?.v===v?T.gD:T.bd}`}}>
-                <div style={{display:'flex',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+              <div key={`${v}-${ve||''}`} id={`cm-v-${v}`} style={{...card,border:`1px solid ${focus?.v===v?T.gD:T.bd}`,boxShadow:focus?.v===v?`0 0 0 1px ${T.gD}, 0 1px 8px var(--ac-sel-glow)`:'none',transition:'box-shadow .2s, border-color .2s'}}>
+                <div role="button" tabIndex={0} aria-pressed={focus?.v===v} onClick={()=>onChoose(v)}
+                  style={{display:'flex',gap:10,padding:'10px 14px',background:focus?.v===v?T.gF:T.bgSec,borderBottom:`1px solid ${T.bdS}`,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none',transition:'background .2s'}}>
                   <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,flexShrink:0,minWidth:18,lineHeight:1.5}}>{label}</span>
                   <span style={{fontFamily:readFont.family,fontSize:px,color:T.mut,lineHeight:1.5,fontStyle:words?'normal':'italic'}}>{words||'…'}</span>
                 </div>
@@ -3555,6 +3600,10 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   );
 }
 
+// Every highlight, grouped by colour like bookmark categories, filtered by
+// colour and by version. Each row shows the verse's words in the version it was
+// highlighted in: highlights are about the text, where bookmarks are about the
+// place. The words load a chapter at a time, four at once, for what is shown.
 function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,isClosing}){
   const[colorF,setColorF]=useState('all');
   const[verF,setVerF]=useState('all');
@@ -7430,7 +7479,7 @@ function App(){
               <div style={{...pill,flex:1,position:'relative'}}>
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:3,width:'calc(50% - 4px)',transform:studyIsActive?'translateX(calc(100% + 2px))':'translateX(0px)',willChange:'transform',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
-                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
+                <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}if(tab==='commentaries'){const v=cmFocus?.v||null,same=cmBook===readBook&&cmCh===readCh;setReadBook(cmBook);setReadCh(cmCh);readScrollToVerse.current=v;if(same&&v){setTimeout(()=>{const el=document.getElementById(`rv-${v}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([v]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
                 <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
@@ -7760,8 +7809,9 @@ function App(){
               </div>
             </div>
           </div>
-          {/* Read-tab toggles: Strong's + Auto Fullscreen */}
-          {tab==='read'&&<div style={{display:'flex',gap:8,marginBottom:8}}>
+          {/* Read-tab toggles: Strong's + Auto Fullscreen. Commentaries has its
+              own full screen, and is read alongside Read, so they show there too. */}
+          {(tab==='read'||tab==='commentaries')&&<div style={{display:'flex',gap:8,marginBottom:8}}>
             {/* Strong's card */}
             <div onClick={()=>readVid==='kjv'&&setStrongsMode(v=>!v)} title={readVid!=='kjv'?"Strong's numbers are only available for the KJV":undefined} style={{flex:1,padding:'9px 10px',background:strongsMode&&readVid==='kjv'?T.gF:T.bgSec,border:`1.5px solid ${strongsMode&&readVid==='kjv'?T.gD:T.bd}`,borderRadius:10,cursor:readVid==='kjv'?'pointer':'not-allowed',opacity:readVid==='kjv'?1:0.45,userSelect:'none',WebkitUserSelect:'none',transition:'background .2s,border-color .2s,opacity .2s',display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <span style={{fontFamily:FS,fontSize:UH(18),color:strongsMode&&readVid==='kjv'?T.gT:T.dim,flexShrink:0,transition:'color .2s'}}>ℍ</span>
@@ -7780,7 +7830,7 @@ function App(){
               </div>
             </div>
           </div>}
-          {strongsInfoVisible&&tab==='read'&&<div style={{marginTop:-8,marginBottom:14,padding:'10px 14px',background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:9,display:'flex',gap:8,alignItems:'flex-start'}}>
+          {strongsInfoVisible&&(tab==='read'||tab==='commentaries')&&<div style={{marginTop:-8,marginBottom:14,padding:'10px 14px',background:T.bgSec,border:`1px solid ${T.gD}`,borderRadius:9,display:'flex',gap:8,alignItems:'flex-start'}}>
             <span style={{color:T.gT,flexShrink:0}}>ⓘ</span>
             <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.5}}>Underlines every word with its original Hebrew or Greek number. Tap any word to see its definition and every verse where it appears. KJV only.</span>
           </div>}
@@ -9207,18 +9257,26 @@ function App(){
       )}
 
       {/* ═══ PARALLEL VERSES TAB ═══ */}
-      {tab==='parallel'&&(
+      {tab==='parallel'&&(()=>{
+        // Laid out as Commentaries is: a small line naming the page over the
+        // passage, one card per version with its name in a band and the verse
+        // beneath in the reading font, and the same bottom bar -- whose middle
+        // opens the passage picker.
+        const lang=versionLang(readVid);
+        const name=bookName(parallelBkData,lang);
+        const px=Math.max(14,Math.min(36,Math.round(readFontSize*0.6)));
+        const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
+        const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+        const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
+        const boxBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:7,width:32,height:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:0,fontSize:U(14),lineHeight:1,cursor:'pointer',flexShrink:0};
+        return(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          {/* Mobile nav sheet — now uses global nav via header button */}
-          {/* Verse reference header */}
-          <div style={{textAlign:'center',padding:'18px 14px 2px',flexShrink:0}}>
-            <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.08em'}}>
-              {parallelBkData?.name} {parallelCh}:{parallelVs}
-            </div>
+          <div style={{textAlign:'center',padding:'12px 14px 2px',flexShrink:0}}>
+            <div style={{...small,color:T.gM}}>Parallel · {parallelVids.length} {parallelVids.length===1?'version':'versions'}</div>
+            <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{name} {parallelCh}:{parallelVs}</div>
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
-          {/* Version cards */}
-          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'8px 14px 72px',maxWidth:700,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
@@ -9244,51 +9302,48 @@ function App(){
               const verseRow=rows.find(r=>r.verse===parallelVs);
               const isFirst=idx===0;const isLast=idx===parallelVids.length-1;
               return(
-                <div key={vid} style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 12px',borderBottom:`1px solid ${T.bdS}`,background:T.bgSec}}>
-                    <span style={{flex:1,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.12em',fontWeight:600,color:T.gT}}>{verDef?.label||vid}</span>
-                    <span style={{fontFamily:FS,fontSize:UL(9),color:T.dim,letterSpacing:'0.08em'}}>{verDef?.lang}</span>
-                    <button type="button" title="Move up" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];return a;})} disabled={isFirst}
-                      style={{background:'none',border:'none',color:isFirst?T.dim:T.gM,cursor:isFirst?'default':'pointer',fontSize:U(16),padding:'0 3px',lineHeight:1}}>↑</button>
-                    <button type="button" title="Move down" onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];return a;})} disabled={isLast}
-                      style={{background:'none',border:'none',color:isLast?T.dim:T.gM,cursor:isLast?'default':'pointer',fontSize:U(16),padding:'0 3px',lineHeight:1}}>↓</button>
-                    <button type="button" title="Remove" onClick={()=>setParallelVids(ids=>ids.filter(id=>id!==vid))}
-                      style={{background:'none',border:'none',color:T.dim,cursor:'pointer',fontSize:U(14),padding:'0 3px',lineHeight:1}}>✕</button>
+                <div key={vid} style={card}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+                    <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{verDef?.label||vid}</span>
+                    <span style={{...small,fontSize:UL(8),color:T.dim,flex:1,marginLeft:4}}>{verDef?.lang}</span>
+                    <button type="button" title="Move up" aria-label={`Move ${verDef?.label||vid} up`} disabled={isFirst}
+                      onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx-1],a[idx]]=[a[idx],a[idx-1]];return a;})}
+                      style={{...boxBtn,color:T.gM,opacity:isFirst?0.35:1,cursor:isFirst?'default':'pointer'}}>↑</button>
+                    <button type="button" title="Move down" aria-label={`Move ${verDef?.label||vid} down`} disabled={isLast}
+                      onClick={()=>setParallelVids(ids=>{const a=[...ids];[a[idx],a[idx+1]]=[a[idx+1],a[idx]];return a;})}
+                      style={{...boxBtn,color:T.gM,opacity:isLast?0.35:1,cursor:isLast?'default':'pointer'}}>↓</button>
+                    <button type="button" title="Remove" aria-label={`Remove ${verDef?.label||vid}`}
+                      onClick={()=>setParallelVids(ids=>ids.filter(id=>id!==vid))}
+                      style={{...boxBtn,color:T.dim}}>✕</button>
                   </div>
-                  <div style={{padding:'13px 16px'}}>
+                  <div style={{padding:'12px 14px 12px'}}>
                     {verseRow
-                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(verseRow.text,readRedLetter,dark)}}/>
-                      :<div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>Not available</div>}
+                      ?<div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:px,color:T.body,lineHeight:1.55,textAlign:readTextAlign}} dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(parallelBk,parallelCh,parallelVs,verseRow.text),readRedLetter,dark)}}/>
+                      :<div style={{fontFamily:fontFamilyMap[readFontFamily],fontStyle:'italic',color:T.dim,fontSize:px}}>Not in this version</div>}
                   </div>
                 </div>
               );
             })}
-            {/* Add removed versions back */}
+            {/* Versions taken off, to put back */}
             {(data?.versions||[]).filter(v=>!parallelVids.includes(v.id)).map(v=>(
               <button key={v.id} type="button" onClick={()=>setParallelVids(ids=>[...ids,v.id])}
-                style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'transparent',border:`1px dashed ${T.bd}`,borderRadius:9,color:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.1em',padding:'10px 14px',cursor:'pointer',marginBottom:8,boxSizing:'border-box'}}>
+                style={{...small,display:'flex',alignItems:'center',justifyContent:'center',gap:6,width:'100%',background:'none',border:`1px dashed ${T.gD}`,borderRadius:10,color:T.gT,padding:'11px 14px',cursor:'pointer',marginBottom:8,boxSizing:'border-box'}}>
                 ＋ {v.label}
               </button>
             ))}
           </div>
-          {/* Bottom nav */}
           <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <button type="button" onClick={parallelPrevVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
-              ‹ Prev
+            <button type="button" onClick={parallelPrevVs} style={navBtn}>‹ Prev</button>
+            {/* It opened a sheet that was never drawn, which only froze the page. */}
+            <button type="button" onClick={()=>{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}
+              style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'8px 8px'}}>
+              {shortBook(name)} {parallelCh}:{parallelVs}
             </button>
-            <button type="button" className="show-mobile" onClick={()=>setParallelMobileSheet('nav')}
-              style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'4px 8px'}}>
-              {parallelVs} / {parallelTotalVs}
-            </button>
-            <span className="hide-mobile" style={{fontFamily:FS,fontSize:U(11),color:T.gT,letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500}}>
-              {parallelVs} / {parallelTotalVs}
-            </span>
-            <button type="button" onClick={parallelNextVs} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'}}>
-              Next ›
-            </button>
+            <button type="button" onClick={parallelNextVs} style={navBtn}>Next ›</button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══ COMMENTARIES TAB ═══ */}
       {tab==='commentaries'&&(
@@ -9296,7 +9351,7 @@ function App(){
           list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}
-          fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav}/>
+          fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav} onChoose={v=>setCmFocus(f=>f?.v===v?null:{v,tap:true})}/>
       )}
 
       {/* ═══ COMPARE TAB ═══ */}
@@ -10233,7 +10288,7 @@ function App(){
       {modal?.type==='versions'&&<VersionsModal data={data} onSave={saveVersions} onClose={closeModal} onBack={()=>closeModal(()=>setReadMobileSheet('version'))} T={T} dlStates={dlStates} onDownload={startDownload} onDeleteLocal={deleteDownload} navH={navH} isClosing={modalClosing} user={user}/>}
       {/* Opened from the Study tiles, back returns to Study Tools; from anywhere
           else it closes, as before. */}
-      {modal?.type==='bookmarks'&&<BookmarksPanel T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onBack={studyBack} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='bookmarks'&&<BookmarksPanel readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} T={T} bookmarks={bookmarks} categories={bmCategories} onDelete={handleDelBookmark} onOpen={openFromBookmark} onClose={closeModal} onBack={studyBack} onUpdate={handleUpdateBookmark} onAddCat={handleAddCategory} onDeleteCat={handleDeleteCategory} onUpdateCat={handleUpdateCategory} versions={data.versions} user={user} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='highlights'&&<HighlightsPanel T={T} dark={dark} highlights={highlights} versions={data.versions} onOpen={openFromHighlight} onClose={closeModal} onBack={studyBack} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='recents'&&<RecentsPanel T={T} recents={recents} onOpen={openFromRecent} onClose={closeModal} onBack={studyBack} versions={data.versions} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='stats'&&<StatsModal data={data} T={T} onClose={()=>setModal(null)}/>}
