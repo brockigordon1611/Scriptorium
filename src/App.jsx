@@ -4828,6 +4828,11 @@ function UserBlobThumb({id,mime,title,T}){
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
+// Compare's search -- the nav bar's search button on Compare and the search
+// box in the desktop toolbar -- is switched off. Set true to bring both back;
+// the search sheet and the filter are still in place.
+const COMPARE_SEARCH=false;
+
 // ══════════════════════════════════════════════════════════
 //  MAIN APP
 // ══════════════════════════════════════════════════════════
@@ -7713,7 +7718,7 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:3,width:44,height:'calc(100% - 6px)',transform:`translateX(${rIndLeft-3}px)`,willChange:'transform',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" {...navTap(tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='compare'||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" {...navTap(COMPARE_SEARCH&&tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:(COMPARE_SEARCH&&tab==='compare')||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" {...navTap(tab==='parallel'||tab==='commentaries'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||tab==='commentaries'||!studyActive?'visible':'hidden'}}>
@@ -9531,11 +9536,13 @@ function App(){
 
             {/* Unified toolbar — desktop only */}
             <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:5,padding:'5px 8px',flexWrap:'nowrap',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+              {COMPARE_SEARCH&&<>
               <span style={{color:T.gM,fontSize:U(14),flexShrink:0}}>⌕</span>
               <input className="s-btn" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search passages, text, notes…"
                 style={{flex:1,minWidth:120,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'5px 8px',outline:'none'}}/>
               {q&&<button type="button" className="s-btn s-ghost" title="Clear search" onClick={()=>setQ('')} style={{background:'none',border:'none',color:T.dim,fontSize:U(13),padding:'2px 4px',flexShrink:0}}>✕</button>}
               <div style={{width:1,height:18,background:T.bd,flexShrink:0,margin:'0 2px'}}/>
+              </>}
               <TBtn T={T} ch="＋ Verse" onClick={openAdd} primary/>
               <TBtn T={T} ch="＋ Section" onClick={openAddSec}/>
               <TBtn T={T} ch={<Caret open={false} size={12}/>} onClick={()=>setSecToggle({action:'expand',tick:Date.now()})} title="Expand all"/>
