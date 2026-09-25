@@ -4836,7 +4836,7 @@ function UndoToast({ud,onUndo,onDismiss,T}){
 // ══════════════════════════════════════════════════════════
 //  MOBILE BOTTOM SHEET
 // ══════════════════════════════════════════════════════════
-function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad,fade,fadeKey}){
+function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheetHeight,maxSheetHeight,isClosing,topOffset=0,noScroll=false,topPad,fade,fadeKey,bounce}){
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
   const overlayRef=React.useRef(null);
@@ -4887,7 +4887,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
           {title&&<div style={{fontFamily:FS,fontSize:U(11),fontWeight:600,color:T.gT,letterSpacing:'0.1em',marginBottom:2}}>{title}</div>}
         </div>}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-          <div ref={edge.ref} className="sheet-scroll" style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
+          <div ref={edge.ref} className="sheet-scroll" data-bounce={bounce===true?'':bounce} style={{overflowY:noScroll?'hidden':'auto',overscrollBehavior:'none',flex:1,padding:fromTop?`${topPad??20}px 18px 32px`:'6px 18px 32px'}} onScroll={onScroll}>
             {children}
           </div>
           {fade&&!noScroll&&<EdgeFades fade={edge} height={48} top={fade!=='bottom'}/>}
@@ -5219,15 +5219,24 @@ function UserBlobThumb({id,mime,title,T}){
 // for a pull of x on an area h tall -- at BOUNCE_SCALE of its distance, springing
 // back on release. A scroll area opts in with data-bounce. Sideways drags
 // (chapter swipes) and drags that start on something fixed inside the area
-// (a confirm dialog) are left alone.
+// (a confirm dialog) are left alone. data-bounce="children" moves the area's
+// children instead of the area, skipping any marked data-bounce-pin -- for a
+// list with a sticky heading inside it, which should stay where it is.
 const BOUNCE_SCALE=0.5;
 let _bounceOn=false;
 function installTightBounce(){
   if(_bounceOn)return;_bounceOn=true;
   let el=null,x0=0,y0=0,dir=0,edge=0,base=0,off=0,timer=0;
   const ease='.42s cubic-bezier(0.2,0.8,0.2,1)';
+  const kids=t=>t.dataset.bounce==='children'?[...t.children].filter(c=>!c.hasAttribute('data-bounce-pin')):null;
   const paint=(t,v,spring)=>{
     off=v;
+    const k=kids(t);
+    if(k){
+      // The area clips its own children, so no clip-path is needed here.
+      for(const c of k){c.style.transition=spring?`transform ${ease}`:'none';c.style.transform=v?`translateY(${v}px)`:'';}
+      return;
+    }
     t.style.transition=spring?`transform ${ease}, clip-path ${ease}`:'none';
     t.style.transform=v?`translateY(${v}px)`:'';
     // The window stays put: whatever slides past its edges is clipped.
@@ -5258,7 +5267,7 @@ function installTightBounce(){
   },{passive:true});
   const end=()=>{
     const t=el;el=null;
-    if(t&&off){paint(t,0,true);timer=setTimeout(()=>{t.style.transition='';t.style.clipPath='';},460);}
+    if(t&&off){paint(t,0,true);timer=setTimeout(()=>{const k=kids(t);if(k)for(const c of k)c.style.transition='';else{t.style.transition='';t.style.clipPath='';}},460);}
   };
   document.addEventListener('touchend',end,{passive:true});
   document.addEventListener('touchcancel',end,{passive:true});
@@ -8459,11 +8468,11 @@ function App(){
 
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} fade="bottom" topPad={0}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} fade="bottom" topPad={0} bounce="children">
           {/* Pinned, as Bookmarks' and the others' headings are: the sheet's top
               padding is part of it, so it stays where it opened and the list
               runs up underneath. */}
-          <div style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,padding:'20px 0 14px'}}>
+          <div data-bounce-pin="" style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,padding:'20px 0 14px'}}>
           <div style={{position:'relative',minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
