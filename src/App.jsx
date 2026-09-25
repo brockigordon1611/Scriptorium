@@ -2739,7 +2739,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           <div className="modal-subhead" style={{flexShrink:0,padding:'0 24px 16px'}}>{subHeader}</div>
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-          <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',overscrollBehavior:'none',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
+          <div ref={edge.ref} className="modal-body" data-bounce="" style={{overflowY:'auto',overscrollBehavior:'none',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
           {/* 'soft' is shorter, for lists of cards: the full height swallowed
               most of a card at each edge. */}
           {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96}/>}
@@ -3497,7 +3497,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   return(
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
       <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current,ruleRef.current?.getBoundingClientRect().bottom)}
-        style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
+        data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
         onClick={()=>menu&&setMenu(false)}
         onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
         onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
@@ -3973,17 +3973,34 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
     if(!text)return<div style={{...hint,padding:'24px 0'}}>This passage couldn’t be loaded.</div>;
     const words=mvWords(text);
     const lang=langOf(cur.version_id);
-    let body,controls=null;
+    let body,controls=null,cardEl=null;
     if(mode==='flash'){
-      body=shown?<div style={verse}>{text}</div>
-        :<div style={{textAlign:'center',padding:'18px 0'}}>
-          <div style={{fontFamily:FS,fontSize:UH(20),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{mvRef(cur,lang)}</div>
-          <div style={{...hint,marginTop:10}}>Say it from memory, then reveal it to check.</div>
-        </div>;
+      // A card that turns over. Both faces share one grid cell, so the card is
+      // the height of the taller one whichever side is up.
+      const face={...card,marginBottom:0,padding:16,gridArea:'1/1',backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden'};
+      cardEl=<div style={{perspective:1400,marginBottom:10}}>
+        <div role="button" tabIndex={0} aria-pressed={shown} onClick={()=>setShown(s=>!s)}
+          style={{display:'grid',cursor:'pointer',transformStyle:'preserve-3d',WebkitTransformStyle:'preserve-3d',
+            transition:'transform .55s cubic-bezier(0.4,0.1,0.2,1)',transform:shown?'rotateY(180deg)':'rotateY(0deg)'}}>
+          <div style={{...face,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',transform:'rotateY(0deg)'}}>
+            <div style={{fontFamily:FS,fontSize:UH(20),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{mvRef(cur,lang)}</div>
+            <div style={{...hint,marginTop:10}}>Say it from memory, then reveal it to check.</div>
+          </div>
+          <div style={{...face,transform:'rotateY(180deg)'}}><div style={verse}>{text}</div></div>
+        </div>
+      </div>;
       controls=<button type="button" onClick={()=>setShown(s=>!s)} style={btn(!shown,{width:'100%'})}>{shown?'Hide':'Reveal'}</button>;
     }else if(mode==='letters'){
-      body=<div style={{...verse,letterSpacing:shown?0:'0.04em'}}>
-        {shown?text:words.map(w=>w.pre+(Array.from(w.core)[0]||'')+w.post).join(' ')}
+      // Every word keeps its full width with all but its first letter unseen,
+      // so the initials sit where the words will be and don't move when the
+      // rest fades in, left to right.
+      body=<div style={verse}>
+        {words.map((w,i)=>{
+          const ch=Array.from(w.core);
+          return<React.Fragment key={i}>{i>0&&' '}{w.pre}{ch[0]||''}
+            <span style={{opacity:shown?1:0,transition:'opacity .4s ease',transitionDelay:shown?`${Math.min(i*14,500)}ms`:'0ms'}}>{ch.slice(1).join('')}</span>
+            {w.post}</React.Fragment>;
+        })}
       </div>;
       controls=<button type="button" onClick={()=>setShown(s=>!s)} style={btn(false,{width:'100%'})}>{shown?'Back to First Letters':'Show Whole Verse'}</button>;
     }else if(mode==='blanks'){
@@ -4028,8 +4045,8 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
       }
     }
     return<>
-      <div style={{...card,padding:'16px',cursor:mode==='flash'||mode==='letters'?'pointer':'default'}}
-        onClick={mode==='flash'||mode==='letters'?()=>setShown(s=>!s):undefined}>{body}</div>
+      {cardEl||<div style={{...card,padding:'16px',cursor:mode==='letters'?'pointer':'default'}}
+        onClick={mode==='letters'?()=>setShown(s=>!s):undefined}>{body}</div>}
       {controls&&<div style={{marginBottom:18}}>{controls}</div>}
       <button type="button" onClick={finish} style={btn(true,{width:'100%'})}>Done · Mark Practiced</button>
       <div style={{...small,fontSize:UL(8),color:T.dim,textAlign:'center',marginTop:10}}>{practiced(cur)}</div>
@@ -4045,7 +4062,7 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
         </div>
         <div style={{height:1,background:T.accentLine,marginTop:8}}/>
       </div>
-      <div ref={scRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+      <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
         {cur?<>
           <div style={{display:'flex',gap:4,marginBottom:12}}>
             {MV_MODES.map(([k,l])=><button key={k} type="button" onClick={()=>pickMode(k)} style={chip(mode===k)}>{l}</button>)}
@@ -4189,21 +4206,43 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
   );
 }
 
+// The day a passage was visited, as its heading in Recent Passages: Today,
+// Yesterday, then the weekday and date (with the year once it isn't this one).
+function recentDay(iso){
+  if(!iso)return'Earlier';
+  const d=new Date(iso),now=new Date();
+  const day=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime();
+  const ago=Math.round((day(now)-day(d))/864e5);
+  if(ago===0)return'Today';
+  if(ago===1)return'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric',...(d.getFullYear()!==now.getFullYear()?{year:'numeric'}:{})});
+}
+// Newest first, as the database returns them, under a heading for each day;
+// each visit carries the time it was opened.
 function RecentsPanel({T,recents,onOpen,onClose,onBack,versions,navH,isClosing}){
+  let lastDay=null;
   return(
     <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
-      {recents.map(r=>{
+      {recents.map((r,i)=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
+        const day=r.visited_at?new Date(r.visited_at).toDateString():'';
+        const head=i===0||day!==lastDay;lastDay=day;
         return(
-          <div key={r.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${T.bd}`}}>
-            <div style={{flex:1}}>
-              <span style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bk?.name} {r.chapter}</span>
-              <span style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
+          <React.Fragment key={r.id}>
+            {head&&<div style={{display:'flex',alignItems:'center',gap:10,margin:i?'20px 0 2px':'0 0 2px'}}>
+              <span style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,whiteSpace:'nowrap'}}>{recentDay(r.visited_at)}</span>
+              <span style={{flex:1,height:1,background:T.bdA}}/>
+            </div>}
+            <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderBottom:`1px solid ${T.bdS}`}}>
+              <div style={{flex:1,minWidth:0}}>
+                <span style={{fontFamily:FS,fontSize:U(13),fontWeight:600,color:T.gT,letterSpacing:'0.04em'}}>{bk?.name} {r.chapter}</span>
+                <span style={{fontFamily:FB,fontSize:U(13),color:T.dim,marginLeft:10}}>{ver?.label||(r.version_id||'').toUpperCase()}</span>
+              </div>
+              {r.visited_at&&<div style={{fontFamily:FB,fontSize:U(12),color:T.dim,whiteSpace:'nowrap'}}>{new Date(r.visited_at).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'})}</div>}
+              <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
             </div>
-            <div style={{fontFamily:FB,fontSize:U(12),color:T.dim}}>{fmtDate(r.visited_at)}</div>
-            <button className="s-btn s-ghost" onClick={()=>onOpen(r)} style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:5,color:T.dim,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'5px 10px',fontWeight:500}}>Read</button>
-          </div>
+          </React.Fragment>
         );
       })}
     </Modal>
@@ -5100,6 +5139,56 @@ function UserBlobThumb({id,mime,title,T}){
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
+// A short, stiff rubber band at the ends of the main scroll areas. iOS's own
+// is switched off on them (overscroll-behavior: none) and its distance can't
+// be changed, so this stands in for it: pulled past the top or the bottom,
+// the content gives a few pixels against rising resistance -- never more than
+// BOUNCE_MAX -- and springs back on release. A scroll area opts in with
+// data-bounce. Sideways drags (chapter swipes) and drags that start on
+// something fixed inside the area (a confirm dialog) are left alone.
+const BOUNCE_MAX=18;
+let _bounceOn=false;
+function installTightBounce(){
+  if(_bounceOn)return;_bounceOn=true;
+  let el=null,x0=0,y0=0,dir=0,edge=0,base=0,off=0,timer=0;
+  const ease='.3s cubic-bezier(0.2,0.8,0.2,1)';
+  const paint=(t,v,spring)=>{
+    off=v;
+    t.style.transition=spring?`transform ${ease}, clip-path ${ease}`:'none';
+    t.style.transform=v?`translateY(${v}px)`:'';
+    // The window stays put: whatever slides past its edges is clipped.
+    t.style.clipPath=v>0?`inset(0 0 ${v}px 0)`:v<0?`inset(${-v}px 0 0 0)`:'';
+  };
+  document.addEventListener('touchstart',e=>{
+    el=null;
+    const t=e.target.closest&&e.target.closest('[data-bounce]');
+    if(!t||e.touches.length!==1)return;
+    for(let n=e.target;n&&n!==t;n=n.parentElement)if(getComputedStyle(n).position==='fixed')return;
+    clearTimeout(timer);
+    el=t;x0=e.touches[0].clientX;y0=e.touches[0].clientY;dir=0;edge=0;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!el)return;
+    const x=e.touches[0].clientX,y=e.touches[0].clientY;
+    if(!dir){if(Math.abs(x-x0)<6&&Math.abs(y-y0)<6)return;dir=Math.abs(y-y0)>=Math.abs(x-x0)?1:-1;}
+    if(dir<0)return;
+    if(!edge){
+      const top=el.scrollTop<=0,bottom=el.scrollTop+el.clientHeight>=el.scrollHeight-1;
+      if(y>y0&&top)edge=1;else if(y<y0&&bottom)edge=-1;else{y0=y;return;}
+      base=y0; // from where the finger was when the edge was reached
+    }
+    const d=(y-base)*edge;
+    if(d<=0){if(off)paint(el,0);edge=0;y0=y;return;}
+    paint(el,edge*BOUNCE_MAX*(1-Math.exp(-d/80)));
+  },{passive:true});
+  const end=()=>{
+    const t=el;el=null;
+    if(t&&off){paint(t,0,true);timer=setTimeout(()=>{t.style.transition='';t.style.clipPath='';},340);}
+  };
+  document.addEventListener('touchend',end,{passive:true});
+  document.addEventListener('touchcancel',end,{passive:true});
+}
+
 // How copied verses are laid out (Settings -> Copy Format). The default is
 // what Copy always produced: the reference on its own line, then a line a
 // verse, each led by its number in superscript.
@@ -5477,6 +5566,7 @@ function App(){
   }
   const[copyFmt,setCopyFmt]=useState(()=>{try{return{...COPY_DEFAULT,...JSON.parse(localStorage.getItem('scrip:copyFormat')||'{}')};}catch{return COPY_DEFAULT;}});
   const[copyFmtOpen,setCopyFmtOpen]=useState(false);
+  useEffect(()=>{installTightBounce();},[]);
   function setCopyOpt(k,v){setCopyFmt(f=>{const n={...f,[k]:v};try{localStorage.setItem('scrip:copyFormat',JSON.stringify(n));}catch{}return n;});}
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
   // ── Audio playback state ──
@@ -9390,7 +9480,7 @@ function App(){
 
           {/* Verse content */}
 
-          <div ref={readRef} className={"read-area"+(readingHidden?' bar-away':'')} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className={"read-area"+(readingHidden?' bar-away':'')} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
               // The chapter is not on screen while search owns it, so a sideways
               // swipe here would move it with nothing to show for it.
@@ -9642,7 +9732,7 @@ function App(){
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
-              React.createElement('div',{style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
@@ -9814,7 +9904,7 @@ function App(){
             <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{name} {parallelCh}:{parallelVs}</div>
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
-          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
