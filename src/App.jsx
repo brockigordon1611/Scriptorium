@@ -3659,7 +3659,7 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
       </div>
       {trail}
     </div>
-    <div style={{height:1,background:T.accentLine,margin:'8px 0 12px',flexShrink:0}}/>
+    <div style={{height:14,flexShrink:0}}/>
     {!entry?<div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading…</div>:<>
       {/* The word: the original and its transliteration in the band, then the
           definition -- larger than the rest, being what the reader came for --
