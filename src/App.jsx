@@ -3651,10 +3651,14 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
         close button. */}
     <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
       {lead}
-      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:5}}>
-        <span style={{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>
-        <span style={{...small,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
-          {["Strong's",langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')}
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:6}}>
+        {/* Sized with the entry, off Scripture Size: at a fixed 19px the
+            number sat smaller than the definition beneath it. */}
+        <span style={{fontFamily:FS,fontSize:Math.round(px*1.3),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>
+        <span style={{...small,fontSize:Math.min(13,Math.round(px*0.62)),letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
+          {/* The number already says Strong's; at this size the full line no
+              longer fit beside the close button. */}
+          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
       </div>
       {trail}
@@ -3666,7 +3670,7 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
           and the derivation under a hairline. */}
       <div style={card}>
         <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
-          <span style={{fontFamily:fam,fontSize:Math.round(px*1.6),color:T.gT,lineHeight:1.2}}>{entry.original_word}</span>
+          <span style={{fontFamily:fam,fontSize:Math.round(px*1.25),color:T.gT,lineHeight:1.2}}>{entry.original_word}</span>
           <span style={{fontFamily:fam,fontSize:px,color:T.mut,fontStyle:'italic'}}>{entry.transliteration}{entry.pronunciation?` (${entry.pronunciation})`:''}</span>
         </div>
         <div style={{padding:'12px 14px 10px'}}>
