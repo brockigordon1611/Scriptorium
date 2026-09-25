@@ -3279,7 +3279,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
   const toggle=on=>({...small,flex:1,background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:8,color:on?T.gT:T.gM,padding:'11px 0',cursor:'pointer'});
 
   return(
-    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Bookmarks" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft">
       {!user&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'12px 14px',marginBottom:16,display:'flex',gap:10,alignItems:'flex-start'}}>
         <span style={{fontSize:16,flexShrink:0}}>⚠︎</span>
         <div>
@@ -4196,7 +4196,7 @@ function HighlightsPanel({T,dark,highlights,versions,onOpen,onClose,onBack,navH,
   },[need.join(',')]);
   const chip=on=>({background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:12,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.06em',padding:'6px 12px',cursor:'pointer',fontWeight:on?600:400});
   return(
-    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Highlights" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft">
       {highlights.length===0?(
         <div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No highlights yet. In Reading Mode, tap a verse, then the colour button beside its reference.</div>
       ):(<>
@@ -4277,7 +4277,7 @@ function recentDay(iso){
 function RecentsPanel({T,recents,onOpen,onClose,onBack,versions,navH,isClosing}){
   let lastDay=null;
   return(
-    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft" footer={<SBtn ch="Close" onClick={onClose} T={T}/>}>
+    <Modal title="Recent Passages" onClose={onClose} onBack={onBack} T={T} topSheet={navH} isClosing={isClosing} fade="soft">
       {recents.length===0&&<div style={{textAlign:'center',padding:'32px 0',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15)}}>No recent passages yet. Browse chapters in Reading Mode.</div>}
       {recents.map((r,i)=>{
         const bk=BIBLE.find(b=>b.n===r.book_num);const ver=versions.find(v=>v.id===r.version_id);
@@ -8440,8 +8440,12 @@ function App(){
 
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} fade="bottom">
-          <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} fade="bottom" topPad={0}>
+          {/* Pinned, as Bookmarks' and the others' headings are: the sheet's top
+              padding is part of it, so it stays where it opened and the list
+              runs up underneath. */}
+          <div style={{position:'sticky',top:0,zIndex:3,background:T.bgCard,padding:'20px 0 14px'}}>
+          <div style={{position:'relative',minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
                 style={{background:'none',border:`1px solid ${T.bd}`,borderRadius:7,color:T.gT,padding:'6px 9px',cursor:'pointer',fontSize:U(12),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -8449,6 +8453,7 @@ function App(){
               </button>
             </div>
             <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</FitTitle>
+          </div>
           </div>
           {/* Bookmarks, Highlights, Recent Passages: three across, each its icon
               over its name and nothing else, so the row stays short. */}
