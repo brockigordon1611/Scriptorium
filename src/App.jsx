@@ -3647,12 +3647,16 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
   // One block, not a fragment: the popup scrolls a flex column, and loose
   // cards in it shrank to nothing instead of scrolling.
   return(<div style={{flexShrink:0}}>
+    {/* The number, and under it what it is, from the left and level with the
+        close button. */}
     <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
       {lead}
-      <span style={{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,flexShrink:0,lineHeight:1}}>{num}</span>
-      <span style={{...small,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,flex:1}}>
-        {["Strong's",langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')}
-      </span>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:5}}>
+        <span style={{fontFamily:FS,fontSize:UH(19),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>
+        <span style={{...small,color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
+          {["Strong's",langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')}
+        </span>
+      </div>
       {trail}
     </div>
     <div style={{height:1,background:T.accentLine,margin:'8px 0 12px',flexShrink:0}}/>
