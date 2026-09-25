@@ -2739,7 +2739,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
           <div className="modal-subhead" style={{flexShrink:0,padding:'0 24px 16px'}}>{subHeader}</div>
         )}
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
-          <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
+          <div ref={edge.ref} className="modal-body" style={{overflowY:'auto',overscrollBehavior:'none',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
           {/* 'soft' is shorter, for lists of cards: the full height swallowed
               most of a card at each edge. */}
           {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96}/>}
@@ -3497,7 +3497,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   return(
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
       <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current,ruleRef.current?.getBoundingClientRect().bottom)}
-        style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
+        style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
         onClick={()=>menu&&setMenu(false)}
         onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
         onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
@@ -4045,7 +4045,7 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
         </div>
         <div style={{height:1,background:T.accentLine,marginTop:8}}/>
       </div>
-      <div ref={scRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+      <div ref={scRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
         {cur?<>
           <div style={{display:'flex',gap:4,marginBottom:12}}>
             {MV_MODES.map(([k,l])=><button key={k} type="button" onClick={()=>pickMode(k)} style={chip(mode===k)}>{l}</button>)}
@@ -8740,47 +8740,6 @@ function App(){
 
           </div>}
 
-          {/* ── Copy Format: how Copy lays out the verses it puts on the clipboard ── */}
-          {tab==='read'&&(
-          <button type="button" onClick={()=>setCopyFmtOpen(o=>!o)}
-            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:copyFmtOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
-            <span style={{width:22,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,flexShrink:0}}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-            </span>
-            <span style={{flex:1,textAlign:'left'}}>Copy Format</span>
-            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={copyFmtOpen}/></span>
-          </button>
-          )}
-          {copyFmtOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
-            {[['ref','Reference',[['above','Above'],['below','Below'],['none','Off']]],
-              ['nums','Verse Numbers',[['super','Superscript'],['plain','Plain'],['none','Off']]],
-              ['layout','Layout',[['lines','Line per Verse'],['para','Paragraph']]]].map(([key,label,opts])=>(
-              <div key={key} style={{marginBottom:14}}>
-                <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>{label}</div>
-                <div style={{display:'flex',gap:4}}>
-                  {opts.map(([k,l])=>(
-                    <button key={k} type="button" onClick={()=>setCopyOpt(key,k)}
-                      style={{flex:1,background:copyFmt[key]===k?T.gF:'transparent',border:`1px solid ${copyFmt[key]===k?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]===k?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div style={{display:'flex',gap:6,marginBottom:14}}>
-              {[['version','Version Name'],['quotes','Quote Marks']].map(([key,l])=>(
-                <button key={key} type="button" onClick={()=>setCopyOpt(key,!copyFmt[key])}
-                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:copyFmt[key]?T.gF:'transparent',border:`1px solid ${copyFmt[key]?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
-                  <span>{l}</span><span style={{fontSize:UL(8),opacity:0.7}}>{copyFmt[key]?'ON':'OFF'}</span>
-                </button>
-              ))}
-            </div>
-            <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,marginBottom:6}}>Preview</div>
-            <div style={{whiteSpace:'pre-wrap',fontFamily:fontFamilyMap[readFontFamily],fontSize:U(15),color:T.body,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',lineHeight:1.5,marginBottom:14}}>
-              {formatCopy('Psalms 23:1-2','KJV',COPY_SAMPLE,copyFmt)}
-            </div>
-          </div>}
-
           {/* ── Offline Data accordion ── */}
           <button type="button" onClick={()=>setOfflineDataOpen(o=>!o)}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
@@ -8871,6 +8830,46 @@ function App(){
               </div>
             );
           })()}
+          {/* ── Copy Format: how Copy lays out the verses it puts on the clipboard ── */}
+          {tab==='read'&&(
+          <button type="button" onClick={()=>setCopyFmtOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:copyFmtOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,marginTop:8,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            <span style={{width:22,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,flexShrink:0}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </span>
+            <span style={{flex:1,textAlign:'left'}}>Copy Format</span>
+            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={copyFmtOpen}/></span>
+          </button>
+          )}
+          {copyFmtOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
+            {[['ref','Reference',[['above','Above'],['below','Below'],['none','Off']]],
+              ['nums','Verse Numbers',[['super','Superscript'],['plain','Plain'],['none','Off']]],
+              ['layout','Layout',[['lines','Line per Verse'],['para','Paragraph']]]].map(([key,label,opts])=>(
+              <div key={key} style={{marginBottom:14}}>
+                <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>{label}</div>
+                <div style={{display:'flex',gap:4}}>
+                  {opts.map(([k,l])=>(
+                    <button key={k} type="button" onClick={()=>setCopyOpt(key,k)}
+                      style={{flex:1,background:copyFmt[key]===k?T.gF:'transparent',border:`1px solid ${copyFmt[key]===k?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]===k?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:6,marginBottom:14}}>
+              {[['version','Version Name'],['quotes','Quote Marks']].map(([key,l])=>(
+                <button key={key} type="button" onClick={()=>setCopyOpt(key,!copyFmt[key])}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:copyFmt[key]?T.gF:'transparent',border:`1px solid ${copyFmt[key]?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  <span>{l}</span><span style={{fontSize:UL(8),opacity:0.7}}>{copyFmt[key]?'ON':'OFF'}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,marginBottom:6}}>Preview</div>
+            <div style={{whiteSpace:'pre-wrap',fontFamily:fontFamilyMap[readFontFamily],fontSize:U(15),color:T.body,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',lineHeight:1.5,marginBottom:14}}>
+              {formatCopy('Psalms 23:1-2','KJV',COPY_SAMPLE,copyFmt)}
+            </div>
+          </div>}
           <button type="button" className="s-btn s-ghost" onClick={()=>{closeReadSheet();setModal({type:'help'});}}
             style={{display:'flex',alignItems:'center',gap:12,textAlign:'left',background:'transparent',border:`1px solid ${T.bd}`,borderRadius:9,color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',width:'100%',marginTop:8}}>
             <span style={{width:22,textAlign:'center',color:T.gT,flexShrink:0}}>⋯</span>Help & Reference
@@ -9391,7 +9390,7 @@ function App(){
 
           {/* Verse content */}
 
-          <div ref={readRef} className={"read-area"+(readingHidden?' bar-away':'')} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div ref={readRef} className={"read-area"+(readingHidden?' bar-away':'')} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:`${navH+(searchBarH?searchBarH+18:8)}px 5px 64px`,maxWidth:960,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{
               // The chapter is not on screen while search owns it, so a sideways
               // swipe here would move it with nothing to show for it.
@@ -9643,7 +9642,7 @@ function App(){
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
-              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
@@ -9815,7 +9814,7 @@ function App(){
             <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{name} {parallelCh}:{parallelVs}</div>
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
-          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
+          <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
             onTouchStart={e=>{swipeTouchX.current=e.touches[0].clientX;swipeTouchY.current=e.touches[0].clientY;swipeTouchT.current=Date.now();swipeDir.current=null;}}
             onTouchMove={e=>{
               if(swipeTouchX.current===null)return;
