@@ -15,8 +15,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // for audio the user deliberately started, and is what Podcasts and
         // Audible use; spokenAudio is its speech variant, which also does the
         // right thing when another app interrupts.
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        // Off the main thread: activating the session waits on the system's
+        // media server, and at launch that wait holds up the first frame --
+        // Xcode flags it as a hang risk. Nothing plays this early, so doing it
+        // a moment later in the background changes nothing else.
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
         return true
     }
 
