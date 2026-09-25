@@ -3084,22 +3084,22 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
   function cancelNote(){setNoteVal(displayNote||'');setEditNote(false);}
   function moveCat(catId){onUpdate(bm.id,{categoryId:catId||null});}
 
-  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:32,minWidth:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 9px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
+  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:28,minWidth:28,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
   const hasBody=words!==undefined||displayNote||editNote||(showCatPicker&&categories.length>0);
   return(
     <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:hasBody?`1px solid ${T.bdS}`:'none'}}>
         <div style={{flex:1,minWidth:0}}>
-          <span style={{fontFamily:FS,fontSize:Math.min(19,Math.round(px*0.85)),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{titleRef}</span>
+          <span style={{fontFamily:FS,fontSize:Math.min(17,Math.round(px*0.6)),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{titleRef}</span>
           <span style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.dim,marginLeft:8,whiteSpace:'nowrap'}}>{verLabel}</span>
         </div>
         <button type="button" className="s-btn s-ghost" onClick={()=>onOpen(bm)}
-          style={{...box,background:'none',color:T.gM,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,padding:'0 11px'}}>Open</button>
+          style={{...box,background:'none',color:T.gM,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,padding:'0 9px'}}>Open</button>
         {user&&<>
           <button type="button" onClick={()=>editNote?cancelNote():openEditor()} title={displayNote?'Edit note':'Add note'} aria-label={displayNote?'Edit note':'Add note'}
-            style={{...box,background:editNote||displayNote?T.gF:'none',borderColor:editNote||displayNote?T.gD:T.bd,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(14)}}>✎</button>
+            style={{...box,background:editNote||displayNote?T.gF:'none',borderColor:editNote||displayNote?T.gD:T.bd,color:editNote||displayNote?T.gT:T.dim,fontFamily:FS,fontSize:U(13)}}>✎</button>
           <button type="button" className="s-btn s-danger" onClick={()=>setShowDelConfirm(true)} title="Delete bookmark" aria-label="Delete bookmark"
-            style={{...box,background:'none',borderColor:`${T.redTxt}55`,color:T.redTxt,fontFamily:FB,fontSize:U(14)}}>✕</button>
+            style={{...box,background:'none',borderColor:`${T.redTxt}55`,color:T.redTxt,fontFamily:FB,fontSize:U(13)}}>✕</button>
         </>}
       </div>
       {hasBody&&(
@@ -3163,7 +3163,7 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
     onRename(cat.id,{name:nameVal||cat.name,color:CAT_COLORS[colorIdx]});
     setRenaming(false);
   }
-  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:32,minWidth:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 9px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
+  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:28,minWidth:28,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box'};
   return(
     <div style={{border:`1px solid ${cat.color}66`,background:T.bgCard,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:open||renaming?`1px solid ${cat.color}44`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}} onClick={()=>!renaming&&setOpen(v=>!v)}>
@@ -3172,10 +3172,10 @@ function CatSection({cat,bookmarks,T,versions,onDelete,onOpen,onUpdate,onRename,
         <span style={{fontFamily:FS,fontSize:UL(10),color:T.dim,marginRight:4}}>{bookmarks.length}</span>
         {user&&!renaming&&<>
           <button type="button" onClick={e=>{e.stopPropagation();setRenaming(true);setOpen(true);}} title="Rename" aria-label={`Rename ${cat.name}`}
-            style={{...box,background:'none',color:T.dim,fontFamily:FS,fontSize:U(14)}}>✎</button>
+            style={{...box,background:'none',color:T.dim,fontFamily:FS,fontSize:U(13)}}>✎</button>
           <button type="button" onClick={e=>{e.stopPropagation();setShowDelCatConfirm(true);}} title="Delete category" aria-label={`Delete ${cat.name}`}
             style={{...box,background:'none',borderColor:`${T.redTxt}55`,color:T.redTxt}}>
-            <svg width="15" height="15" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1,3 11,3"/><path d="M4.5,3V2a.5.5,0,0,1,.5-.5h2a.5.5,0,0,1,.5.5v1"/><rect x="2" y="3" width="8" height="7.5" rx=".5"/>
               <line x1="4.5" y1="5.5" x2="4.5" y2="9"/><line x1="7.5" y1="5.5" x2="7.5" y2="9"/>
             </svg>
