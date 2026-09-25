@@ -9444,9 +9444,10 @@ function App(){
         const boxBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:7,width:32,height:32,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:0,fontSize:U(14),lineHeight:1,cursor:'pointer',flexShrink:0};
         return(
         <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-          <div style={{textAlign:'center',padding:'12px 14px 2px',flexShrink:0}}>
-            <div style={{...small,color:T.gM}}>Parallel · {parallelVids.length} {parallelVids.length===1?'version':'versions'}</div>
-            <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{name} {parallelCh}:{parallelVs}</div>
+          {/* No bottom padding: the cards scroll up to the gold line itself,
+              with no strip of page between. */}
+          <div style={{textAlign:'center',padding:'12px 14px 0',flexShrink:0}}>
+            <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{name} {parallelCh}:{parallelVs}</div>
             <div style={{height:1,background:T.accentLine,marginTop:8}}/>
           </div>
           <div style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',padding:'10px 14px 84px',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}
