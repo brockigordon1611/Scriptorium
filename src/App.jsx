@@ -3677,13 +3677,17 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
       {groupList.map(([key,{word,refs}])=>{
         const open=expanded.has(key);
         const times=[...refs.values()].reduce((s,c)=>s+c,0);
-        // Where the KJV has no English for the word, the gloss is STEPBible's,
-        // in angle brackets ("<to>", "<obj.>", "to <the>"): in the original,
-        // not in the translation. Those words are set in italics, and a
-        // rendering made only of them says so.
-        const parts=String(word||'').split(/(<[^>]*>)/).filter(Boolean);
-        const implied=parts.every(p=>/^<[^>]*>$/.test(p)||!p.trim());
-        const shown=parts.map((p,i)=>/^<[^>]*>$/.test(p)?<i key={i} style={{fontWeight:600}}>{p.slice(1,-1)}</i>:p);
+        // Where the KJV has no English tied to the word, the rendering is
+        // STEPBible's gloss, whose brackets mean opposite things. Square ones
+        // ("[are] to") are words supplied for the English and not in the
+        // original -- what the KJV prints in italics, so they are italic here
+        // too. Angle ones ("<to>", "<obj.>") are in the original but not in the
+        // translation; they are set dim instead, so italics keep the one
+        // meaning, and a rendering made only of them says it is not translated.
+        const parts=String(word||'').split(/(<[^>]*>|\[[^\]]*\])/).filter(Boolean);
+        const implied=parts.some(p=>/^<[^>]*>$/.test(p))&&parts.every(p=>/^<[^>]*>$/.test(p)||!p.trim());
+        const shown=parts.map((p,i)=>/^<[^>]*>$/.test(p)?<span key={i} style={{color:T.dim}}>{p.slice(1,-1)}</span>
+          :/^\[[^\]]*\]$/.test(p)?<i key={i}>{p.slice(1,-1)}</i>:p);
         const refArr=[...refs.entries()].map(([r,cnt])=>{const[bn,ch,vs]=r.split('|').map(Number);return{bn,ch,vs,cnt};}).sort((a,b)=>a.bn-b.bn||a.ch-b.ch||a.vs-b.vs);
         return(
           <div key={key} style={card}>
