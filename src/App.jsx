@@ -3090,7 +3090,7 @@ function BmCard({bm,T,versions,onDelete,onOpen,onUpdate,categories,user,showCatP
     <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:hasBody?`1px solid ${T.bdS}`:'none'}}>
         <div style={{flex:1,minWidth:0}}>
-          <span style={{fontFamily:FS,fontSize:Math.round(px*0.85),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{titleRef}</span>
+          <span style={{fontFamily:FS,fontSize:Math.min(19,Math.round(px*0.85)),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{titleRef}</span>
           <span style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.dim,marginLeft:8,whiteSpace:'nowrap'}}>{verLabel}</span>
         </div>
         <button type="button" className="s-btn s-ghost" onClick={()=>onOpen(bm)}
@@ -3261,7 +3261,7 @@ function BookmarksPanel({T,bookmarks,categories,onDelete,onOpen,onClose,onBack,o
     const w=bmVerses(bm).map(v=>texts[`${k}|${v}`]).filter(Boolean).join(' ');
     return w||undefined;
   }
-  const px=Math.max(14,Math.min(36,Math.round((readFont?.size||31)*0.6)));
+  const px=cmPx(readFont?.size||31);
   const cardProps=bm=>({T,versions,onDelete,onOpen,onUpdate,categories,user,showCatPicker:assigningCats,words:wordsFor(bm),px,family:readFont?.family||FB});
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const toggle=on=>({...small,flex:1,background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:8,color:on?T.gT:T.gM,padding:'11px 0',cursor:'pointer'});
@@ -3402,8 +3402,8 @@ function splitReciprocal(m){
 // that was selected; its own arrows move on from there without moving Read.
 function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose,verLabel}){
   // The commentary is read like the text it comments on, so it follows
-  // Scripture Size -- a little over half of it: 19px at the default of 31.
-  const px=Math.max(14,Math.min(36,Math.round(readFont.size*0.6)));
+  // Scripture Size (see cmPx).
+  const px=cmPx(readFont.size);
   const cm=list.find(c=>c.id===cid)||list[0];
   const[rec,setRec]=useState(undefined); // undefined while loading, null for none
   const[intro,setIntro]=useState(null);
@@ -3630,9 +3630,11 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   );
 }
 
-// The commentary text size, for the pieces laid out like Commentaries: a
-// little over half of Scripture Size, 19px at the default of 31.
-const cmPx=size=>Math.max(14,Math.min(36,Math.round(size*0.6)));
+// The text size for everything laid out like Commentaries -- Commentaries,
+// Parallel, Bookmarks, the Strong's entry and the verse popups. Four-fifths
+// of Scripture Size (25px at the default of 31), so moving between Read and
+// these doesn't mean changing the setting; 60% was a jump down from Read.
+const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 
 // A Strong's entry laid out as Commentaries lays out a verse: the number and
 // what it is on one line over the gold rule, the word as a card holding its
@@ -3642,7 +3644,9 @@ const cmPx=size=>Math.max(14,Math.min(36,Math.round(size*0.6)));
 function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
-  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  // The small caps grow with the entry too, or a count sits at 9px beside
+  // a 28px word.
+  const small={fontFamily:FS,fontSize:Math.min(14,Math.max(9,Math.round(px*0.46))),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
   // One block, not a fragment: the popup scrolls a flex column, and loose
   // cards in it shrank to nothing instead of scrolling.
@@ -3654,8 +3658,8 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:6}}>
         {/* Sized with the entry, off Scripture Size: at a fixed 19px the
             number sat smaller than the definition beneath it. */}
-        <span style={{fontFamily:FS,fontSize:Math.round(px*1.3),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>
-        <span style={{...small,fontSize:Math.min(13,Math.round(px*0.62)),letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
+        <span style={{fontFamily:FS,fontSize:Math.round(px*1.2),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>
+        <span style={{...small,fontSize:Math.min(15,Math.round(px*0.6)),letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
           {/* The number already says Strong's; at this size the full line no
               longer fit beside the close button. */}
           {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||"Strong's"}
@@ -3670,11 +3674,11 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
           and the derivation under a hairline. */}
       <div style={card}>
         <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
-          <span style={{fontFamily:fam,fontSize:Math.round(px*1.25),color:T.gT,lineHeight:1.2}}>{entry.original_word}</span>
+          <span style={{fontFamily:fam,fontSize:Math.round(px*1.1),color:T.gT,lineHeight:1.2}}>{entry.original_word}</span>
           <span style={{fontFamily:fam,fontSize:px,color:T.mut,fontStyle:'italic'}}>{entry.transliteration}{entry.pronunciation?` (${entry.pronunciation})`:''}</span>
         </div>
         <div style={{padding:'12px 14px 10px'}}>
-          <div style={{fontFamily:fam,fontSize:Math.round(px*1.3),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*1.15),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
           {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
         </div>
       </div>
@@ -9246,7 +9250,8 @@ function App(){
             const groupList=Object.entries(groups).filter(([k])=>!_FUNC.has(k)).sort((a,b)=>[...b[1].refs.values()].reduce((s,c)=>s+c,0)-[...a[1].refs.values()].reduce((s,c)=>s+c,0));
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:140,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+            // Above the bottom bar (150), which stays put and is simply covered.
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:160,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
                 animation:strongsDragMode?'none':(strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both')},ref:strongsPanelRef},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
@@ -9391,10 +9396,9 @@ function App(){
               the buttons cannot be hit through the gap on the way past or once
               it has gone — which is the half of this that is not decoration:
               tapping a chapter arrow from the results took you somewhere else
-              entirely. The Strong's popup sends it away the same way: the
-              popup has the screen, and the bar sat over its foot. */}
+              entirely. */}
           <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,
-            transform:readingHidden||strongsPopup?'translateY(100%)':'none',pointerEvents:readingHidden||strongsPopup?'none':'auto',
+            transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
             transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
@@ -9428,7 +9432,7 @@ function App(){
         // opens the passage picker.
         const lang=versionLang(readVid);
         const name=bookName(parallelBkData,lang);
-        const px=Math.max(14,Math.min(36,Math.round(readFontSize*0.6)));
+        const px=cmPx(readFontSize);
         const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
         const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
         const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
