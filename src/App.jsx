@@ -2614,8 +2614,9 @@ function GripReach({up}){
 // Softens the top and bottom edges of a scrolling list so it reads as
 // scrollable. Each edge only shows when there is something past it. `key` is
 // whatever changes the content without scrolling it — the nav sheet swapping
-// between books, chapters and verses, for instance.
-function useEdgeFade(enabled,T,key){
+// between books, chapters and verses, for instance. `color` is what the list
+// sits on (a popup is T.bg, not T.bgCard); it must be a six-digit hex.
+function useEdgeFade(enabled,T,key,color){
   const ref=React.useRef(null);
   const[top,setTop]=React.useState(false);
   const[bot,setBot]=React.useState(false);
@@ -2630,11 +2631,17 @@ function useEdgeFade(enabled,T,key){
     update();
     el.addEventListener('scroll',update,{passive:true});
     const t0=setTimeout(update,80);   // a body that scrolls itself on open
-    return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);};
+    // Content that arrives after opening (verses loading) changes whether
+    // there is anything past the edge without any scrolling.
+    const ro=new RObserver(update);ro.observe(el);
+    const mo=typeof MutationObserver!=='undefined'?new MutationObserver(update):null;
+    if(mo)mo.observe(el,{childList:true,subtree:true});
+    return()=>{el.removeEventListener('scroll',update);clearTimeout(t0);ro.disconnect();if(mo)mo.disconnect();};
   },[enabled,key]);
   // A short linear ramp reads as a hard band rather than a fade, so this one is
   // long and eased. The hex suffix is the alpha channel on T.bgCard.
-  const ramp=dir=>`linear-gradient(to ${dir}, ${T.bgCard} 0%, ${T.bgCard}e8 14%, ${T.bgCard}c4 30%, ${T.bgCard}8e 48%, ${T.bgCard}54 66%, ${T.bgCard}22 84%, ${T.bgCard}00 100%)`;
+  const c=color||T.bgCard;
+  const ramp=dir=>`linear-gradient(to ${dir}, ${c} 0%, ${c}e8 14%, ${c}c4 30%, ${c}8e 48%, ${c}54 66%, ${c}22 84%, ${c}00 100%)`;
   return{ref,top,bot,ramp};
 }
 function FadeScroll({children,T,fadeKey,height=36,className,style,wrapStyle}){
@@ -2741,8 +2748,8 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
         <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
           <div ref={edge.ref} className="modal-body" data-bounce="" style={{overflowY:'auto',overscrollBehavior:'none',flex:1,minHeight:0,padding:'22px 24px'}}>{children}</div>
           {/* 'soft' is shorter, for lists of cards: the full height swallowed
-              most of a card at each edge. */}
-          {fade&&<EdgeFades fade={edge} height={fade==='soft'?44:96}/>}
+              most of a card at each edge. 'bottom' is soft, at the foot only. */}
+          {fade&&<EdgeFades fade={edge} height={fade==='soft'||fade==='bottom'?44:96} top={fade!=='bottom'}/>}
         </div>
         {footer&&<div style={{padding:'12px 20px',display:'flex',justifyContent:'flex-end',gap:10,background:T.bgCard,flexShrink:0}}>{footer}</div>}
         {topSheet&&<div {...dragHandlers} style={{position:'relative',display:'flex',justifyContent:'center',padding:'6px 0 10px',flexShrink:0,touchAction:'none',cursor:'grab'}}><GripReach up/><div style={{width:36,height:4,background:T.bdA,borderRadius:2}}/></div>}
@@ -3743,13 +3750,17 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
 // the middle scrolling. Sized by vh, a long verse ran the card off the
 // screen on the phone; held to the overlay's own height, it cannot.
 function PopFrame({T,onClose,head,foot,children,maxWidth=460,zIndex=250}){
+  const edge=useEdgeFade(true,T,undefined,T.bg);
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box',
       padding:'max(20px, calc(env(safe-area-inset-top) + 12px)) 16px max(20px, calc(env(safe-area-inset-bottom) + 12px))',animation:'fadeIn .15s ease both'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:T.bg,border:`1px solid ${T.bdA}`,borderRadius:16,width:'100%',maxWidth,maxHeight:'100%',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:T.accentLine,flexShrink:0}}/>
         <div style={{flexShrink:0}}>{head}</div>
-        <div style={{flex:1,minHeight:0,overflowY:'auto',overscrollBehavior:'contain',WebkitOverflowScrolling:'touch',padding:'12px 16px 4px'}}>{children}</div>
+        <div style={{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+          <div ref={edge.ref} style={{flex:1,minHeight:0,overflowY:'auto',overscrollBehavior:'contain',WebkitOverflowScrolling:'touch',padding:'12px 16px 4px'}}>{children}</div>
+          <EdgeFades fade={edge} height={40} top={false}/>
+        </div>
         {foot&&<div style={{flexShrink:0,padding:'12px 16px 16px'}}>{foot}</div>}
       </div>
     </div>
@@ -4092,15 +4103,17 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
   }
 
   return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
-      <div style={{position:'relative',textAlign:'center',padding:'12px 14px 0',flexShrink:0}}>
-        {cur&&<div style={{position:'absolute',left:14,top:6}}><SheetBackBtn onClick={back} T={T}/></div>}
-        <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',padding:'0 44px'}}>
-          {cur?mvRef(cur,langOf(cur.version_id)):'Memory Verses'}
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
+      <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:`${navH}px 14px calc(28px + env(safe-area-inset-bottom))`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+        {/* Inside the scroll, as Commentaries' is: the title goes up behind
+            the nav with everything else. */}
+        <div style={{position:'relative',textAlign:'center',padding:'12px 0 0',marginBottom:12}}>
+          {cur&&<div style={{position:'absolute',left:0,top:6}}><SheetBackBtn onClick={back} T={T}/></div>}
+          <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',padding:'0 44px'}}>
+            {cur?mvRef(cur,langOf(cur.version_id)):'Memory Verses'}
+          </div>
+          <div style={{height:1,background:T.accentLine,marginTop:8}}/>
         </div>
-        <div style={{height:1,background:T.accentLine,marginTop:8}}/>
-      </div>
-      <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
         {cur?<>
           <div style={{display:'flex',gap:4,marginBottom:12}}>
             {MV_MODES.map(([k,l])=><button key={k} type="button" onClick={()=>pickMode(k)} style={chip(mode===k)}>{l}</button>)}
@@ -4347,7 +4360,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
   const inputStyle={width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:U(14),padding:'9px 11px',outline:'none',marginBottom:8};
 
   return(
-    <Modal title="Bible Versions" onClose={onClose} onBack={onBack} wide T={T} topSheet={navH} isClosing={isClosing} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
+    <Modal title="Bible Versions" onClose={onClose} onBack={onBack} wide T={T} topSheet={navH} isClosing={isClosing} fade="bottom" footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch="Save" onClick={doSave} T={T}/></>}>
       {/* Current versions */}
       {vers.length===0&&<div style={{padding:'18px 0',textAlign:'center',fontFamily:FB,fontSize:U(15),color:T.dim}}>No versions added yet.</div>}
       {vers.map((v,i)=>{
@@ -4545,7 +4558,7 @@ function Section({sec,entries,versions,q,dark,T,onEditSec,onDelSec,onEdit,onDup,
 // ══════════════════════════════════════════════════════════
 //  ENTRY MODAL  (with DB auto-fill)
 // ══════════════════════════════════════════════════════════
-function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
+function EntryModal({entry,sections,versions,onSave,onClose,T,dark,navH,isClosing}){
   const isEdit=!!entry._isEdit;
   const pd=parseRefDD(entry.reference||'');
   const[bkN,setBkN]=useState(pd?.bookNum||0);const[ch,setCh]=useState(pd?.chapter||0);const[vs,setVs]=useState(pd?.verse||0);
@@ -4585,7 +4598,7 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
   </>);
 
   return(<>
-    <Modal title={isEdit?'✎ Edit Entry':'＋ Add Entry'} onClose={onClose} wide T={T} footer={footer}>
+    <Modal title={isEdit?'✎ Edit Entry':'＋ Add Entry'} onClose={onClose} wide T={T} topSheet={navH} isClosing={isClosing} fade="bottom" footer={footer}>
       <div className="form-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:18}}>
         <div>
           <Lbl c="Reference" T={T} req/>
@@ -4621,10 +4634,10 @@ function EntryModal({entry,sections,versions,onSave,onClose,T,dark}){
   </>);
 }
 
-function SecModal({sec,onSave,onClose,T}){
+function SecModal({sec,onSave,onClose,T,navH,isClosing}){
   const[title,setTitle]=useState(sec?.title||'');const[desc,setDesc]=useState(sec?.description||'');
   return(
-    <Modal title={sec?'✎ Edit Section':'＋ Add Section'} onClose={onClose} T={T} footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch={sec?'Save Changes':'Add Section'} onClick={()=>{if(title)onSave({...sec,title,description:desc,_isNew:!sec?.id});}} T={T}/></>}>
+    <Modal title={sec?'✎ Edit Section':'＋ Add Section'} onClose={onClose} T={T} topSheet={navH} isClosing={isClosing} fade="bottom" footer={<><SBtn ch="Cancel" onClick={onClose} T={T}/><PBtn ch={sec?'Save Changes':'Add Section'} onClick={()=>{if(title)onSave({...sec,title,description:desc,_isNew:!sec?.id});}} T={T}/></>}>
       <div style={{marginBottom:16}}><Lbl c="Title" T={T} req/><Inp val={title} set={setTitle} ph="§ I — Section Title" T={T}/></div>
       <div><Lbl c="Description" T={T}/><TA val={desc} set={setDesc} T={T} rows={4}/></div>
     </Modal>
@@ -5281,7 +5294,7 @@ function App(){
   const[hiddenVers,setHiddenVers]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:hidden')||'[]');}catch{return[];}});
   const[modal,setModal]=useState(null);
   const[modalClosing,setModalClosing]=useState(false);
-  const _topSheetTypes=['versions','bookmarks','highlights','recents','help'];
+  const _topSheetTypes=['versions','bookmarks','highlights','recents','help','entry','section'];
   const studyBack=modal?.from==='study'?()=>closeModal(()=>setReadMobileSheet('studyTools')):undefined;
   function closeModal(then){
     if(_topSheetTypes.includes(modal?.type)){
@@ -6043,6 +6056,8 @@ function App(){
   const undoTRef=useRef(null);const undoPRef=useRef(null);
   const _acc=(accent==='custom'?buildCustomPalette(customAccentHex):(ACCENTS[accent]||ACCENTS.gold))[dark?'dark':'light'];
   const T={...(dark?D:L),..._acc,accentLine:`linear-gradient(90deg,transparent,${_acc.gD},${_acc.g},${_acc.gD},transparent)`};
+  // The Strong's popup's scrolling body fades at both edges, into its T.bg.
+  const spEdge=useEdgeFade(!!strongsPopup,T,strongsPopup?.strongs_number,T.bg);
 
   // ── CSS variable accent injection ──
   useEffect(()=>{
@@ -8421,7 +8436,7 @@ function App(){
 
       {/* ═══ STUDY TOOLS DROPDOWN SHEET ═══ */}
       {readMobileSheet==='studyTools'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} fade="bottom">
           <div style={{position:'relative',marginBottom:14,minHeight:24,display:'flex',alignItems:'center',justifyContent:'center'}}>
             <div style={{position:'absolute',left:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
               <button type="button" onClick={closeReadSheet}
@@ -8471,7 +8486,7 @@ function App(){
 
       {/* ═══ SETTINGS SHEET (global, works from any tab) ═══ */}
       {readMobileSheet==='settings'&&(
-        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`${window.innerHeight-navH-bottomBarH-8}px`}>
+        <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} maxSheetHeight={`${window.innerHeight-navH-bottomBarH-8}px`} fade="bottom">
           {/* Header row: back + absolutely centered title + dark mode pill */}
           <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
             <button type="button" onClick={closeReadSheet}
@@ -9771,7 +9786,7 @@ function App(){
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
-              React.createElement('div',{'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{style:{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}},React.createElement('div',{ref:spEdge.ref,'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
@@ -9788,7 +9803,7 @@ function App(){
                     )
                   )
                 )
-              )
+              ),React.createElement(EdgeFades,{fade:spEdge,height:40}))
             )
           );
           })()}
@@ -10910,8 +10925,8 @@ function App(){
       )}
 
       {/* ═══ MODALS ═══ */}
-      {modal?.type==='entry'&&<EntryModal entry={modal.entry} sections={data.sections} versions={data.versions} onSave={saveEntry} onClose={()=>setModal(null)} T={T} dark={dark}/>}
-      {modal?.type==='section'&&<SecModal sec={modal.sec} onSave={saveSec} onClose={()=>setModal(null)} T={T}/>}
+      {modal?.type==='entry'&&<EntryModal entry={modal.entry} sections={data.sections} versions={data.versions} onSave={saveEntry} onClose={()=>closeModal()} T={T} dark={dark} navH={navH} isClosing={modalClosing}/>}
+      {modal?.type==='section'&&<SecModal sec={modal.sec} onSave={saveSec} onClose={()=>closeModal()} T={T} navH={navH} isClosing={modalClosing}/>}
       {modal?.type==='delete'&&(
         <ConfirmDialog T={T} danger={modal.delType==='entry'}
           title={`Delete ${modal.delType}?`}
