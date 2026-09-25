@@ -2653,6 +2653,25 @@ function FadeScroll({children,T,fadeKey,height=36,className,style,wrapStyle}){
     </div>
   );
 }
+// The top fade for a list under a pinned heading: it hangs from the heading's
+// lower edge (the heading is sticky, so it anchors it) and shows once the list
+// has been scrolled up under it. It finds its own scroll area.
+function HeadFade({T,height=44}){
+  const ref=useRef(null);
+  const[on,setOn]=useState(false);
+  useEffect(()=>{
+    let sc=ref.current&&ref.current.parentElement;
+    while(sc&&!/(auto|scroll)/.test(getComputedStyle(sc).overflowY))sc=sc.parentElement;
+    if(!sc)return;
+    const f=()=>setOn(sc.scrollTop>8);
+    f();
+    sc.addEventListener('scroll',f,{passive:true});
+    return()=>sc.removeEventListener('scroll',f);
+  },[]);
+  const c=T.bgCard;
+  return<div ref={ref} aria-hidden style={{position:'absolute',left:0,right:0,top:'100%',height,pointerEvents:'none',opacity:on?1:0,transition:'opacity .18s ease',
+    background:`linear-gradient(to bottom, ${c} 0%, ${c}e8 14%, ${c}c4 30%, ${c}8e 48%, ${c}54 66%, ${c}22 84%, ${c}00 100%)`}}/>;
+}
 function EdgeFades({fade,height=96,top=true,bottom=true}){
   const on=1;
   return(<>
@@ -8454,6 +8473,7 @@ function App(){
             </div>
             <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Study Tools</FitTitle>
           </div>
+          <HeadFade T={T}/>
           </div>
           {/* Bookmarks, Highlights, Recent Passages: three across, each its icon
               over its name and nothing else, so the row stays short. */}
