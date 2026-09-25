@@ -3705,12 +3705,12 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
           <div key={key} style={card}>
             <div role="button" tabIndex={0} aria-expanded={open} onClick={()=>onToggle(key)}
               style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-              {/* Word and count are each centred in the card. The word is then
-                  lifted a touch: centred on its capitals, its mostly-lowercase
-                  letters sit low and it reads as off-centre. The lift is half
-                  the gap between the capital and lowercase midlines. */}
-              <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2,position:'relative',top:-Math.round(px*0.92)*0.06}}>{shown}</span>
-              <span style={{...small,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}{implied?' · not translated':''}</span>
+              {/* The word is centred on its capitals. The count, centred too,
+                  read as high beside the word's lowercase; on the word's baseline
+                  it read as low. It sits halfway between, lowered in step with
+                  the word's size (1.5px at the default). */}
+              <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>{shown}</span>
+              <span style={{...small,color:T.dim,flex:1,position:'relative',top:Math.round(px*0.92)*0.065}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}{implied?' · not translated':''}</span>
               <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
             </div>
             {open&&(
