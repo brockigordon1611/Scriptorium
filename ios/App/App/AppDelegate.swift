@@ -63,3 +63,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 }
+
+// The app's view controller: Capacitor's, with iOS 26's scroll edge effect
+// taken off the web view. iOS draws that soft fade under the status bar at the
+// top edge of a scroll view; the app's own header already fills that strip,
+// so the fade only showed as a haze over it -- plainly so in light mode.
+class MainViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        if #available(iOS 26.0, *) {
+            webView?.scrollView.topEdgeEffect.isHidden = true
+        }
+    }
+}
