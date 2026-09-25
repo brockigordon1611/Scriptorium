@@ -9268,7 +9268,7 @@ function App(){
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
-              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px '+(32+bottomBarH)+'px',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{style:{overflow:'auto',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
@@ -9391,9 +9391,10 @@ function App(){
               the buttons cannot be hit through the gap on the way past or once
               it has gone — which is the half of this that is not decoration:
               tapping a chapter arrow from the results took you somewhere else
-              entirely. */}
+              entirely. The Strong's popup sends it away the same way: the
+              popup has the screen, and the bar sat over its foot. */}
           <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,
-            transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
+            transform:readingHidden||strongsPopup?'translateY(100%)':'none',pointerEvents:readingHidden||strongsPopup?'none':'auto',
             transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
               <button type="button" className="s-btn s-ghost" onClick={readPrevCh} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.dim,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',fontWeight:500,width:UL(90),minHeight:U(34),overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',flexShrink:0}}>
