@@ -4045,7 +4045,10 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
       // and the result comes in a part at a time.
       const perfect=result&&result.right===result.total&&!result.extra;
       const label={...small,fontSize:UL(8),color:T.gM,marginBottom:6};
-      const bad={color:T.redTxt,textDecoration:'underline',textDecorationColor:T.redTxt,textUnderlineOffset:4};
+      // In the verse, the words that were missed show green -- the right word;
+      // in the attempt, the words that didn't match show red.
+      const mark=c=>({color:c,textDecoration:'underline',textDecorationColor:c,textUnderlineOffset:4});
+      const right=mark(T.greenTxt),bad=mark(T.redTxt);
       const rise=delay=>({animation:`fadeUp .42s cubic-bezier(0.2,0.8,0.2,1) ${delay}ms both`});
       body=<AutoHeight>
         {!result
@@ -4062,7 +4065,7 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
               <div style={label}>The verse</div>
               <div style={verse}>
                 {words.map((w,i)=><React.Fragment key={i}>{i>0&&' '}{w.pre}
-                  <span style={w.core&&!result.hit.has(i)?bad:null}>{w.core}</span>
+                  <span style={w.core&&!result.hit.has(i)?right:null}>{w.core}</span>
                   {w.post}</React.Fragment>)}
               </div>
             </div>
