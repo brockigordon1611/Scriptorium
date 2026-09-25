@@ -3852,12 +3852,28 @@ function mvOrder(n,seed){
 // the two share in order, so one missed word doesn't mark the rest wrong.
 function mvCheck(words,typed){
   const idx=words.map((w,i)=>mvNorm(w.core)?i:-1).filter(i=>i>=0);
-  const a=idx.map(i=>mvNorm(words[i].core)),b=String(typed).split(/\s+/).map(mvNorm).filter(Boolean);
+  const raw=String(typed).trim().split(/\s+/).filter(Boolean);
+  const tIdx=raw.map((t,k)=>mvNorm(t)?k:-1).filter(k=>k>=0);
+  const a=idx.map(i=>mvNorm(words[i].core)),b=tIdx.map(k=>mvNorm(raw[k]));
   const n=a.length,m=b.length,L=Array.from({length:n+1},()=>new Uint16Array(m+1));
   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
-  const hit=new Set();let i=0,j=0;
-  while(i<n&&j<m){if(a[i]===b[j]){hit.add(idx[i]);i++;j++;}else if(L[i+1][j]>=L[i][j+1])i++;else j++;}
-  return{hit,right:L[0][0],total:n,extra:m-L[0][0]};
+  const hit=new Set(),typedHit=new Set();let i=0,j=0;
+  while(i<n&&j<m){if(a[i]===b[j]){hit.add(idx[i]);typedHit.add(tIdx[j]);i++;j++;}else if(L[i+1][j]>=L[i][j+1])i++;else j++;}
+  return{hit,typedHit,raw,right:L[0][0],total:n,extra:m-L[0][0]};
+}
+// Grows and shrinks with what's inside it, so a swap of contents slides what
+// sits below instead of making it jump.
+function AutoHeight({children,ms=380}){
+  const inner=useRef(null);
+  const[h,setH]=useState(null);
+  useLayoutEffect(()=>{
+    const el=inner.current;if(!el)return;
+    setH(el.offsetHeight);
+    const ro=new RObserver(()=>setH(el.offsetHeight));
+    ro.observe(el);
+    return()=>ro.disconnect();
+  },[]);
+  return<div style={{height:h??'auto',overflow:'hidden',transition:`height ${ms}ms cubic-bezier(0.2,0.8,0.2,1)`}}><div ref={inner}>{children}</div></div>;
 }
 function mvRef(mv,lang){
   const b=BIBLE.find(x=>x.n===mv.book_num);
@@ -4024,25 +4040,44 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
         <button type="button" disabled={round>=4} onClick={()=>{setRound(r=>r+1);setPeeked(new Set());}} style={btn(round<4,{opacity:round>=4?0.4:1,cursor:round>=4?'default':'pointer'})}>Harder</button>
       </div>;
     }else{
-      if(!result){
-        body=<textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={6} placeholder="Type the verse from memory…"
-          autoCapitalize="sentences" spellCheck={false}
-          style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:8,color:T.body,fontFamily:readFont.family,fontSize:Math.max(16,px),padding:'10px 12px',outline:'none',lineHeight:1.5,resize:'vertical',display:'block'}}/>;
-        controls=<button type="button" disabled={!typed.trim()} onClick={()=>setResult(mvCheck(words,typed))} style={btn(true,{width:'100%',opacity:typed.trim()?1:0.5})}>Check</button>;
-      }else{
-        const perfect=result.right===result.total&&!result.extra;
-        body=<>
-          <div style={{...small,textAlign:'center',color:perfect?T.gT:T.gM,marginBottom:12,fontSize:UL(10)}}>
-            {perfect?'Word perfect':`${result.right} of ${result.total} words${result.extra?` · ${result.extra} extra`:''}`}
+      // Typing, then the verse with what was missed, and under it what was
+      // typed with what didn't match. The card eases to each one's height
+      // and the result comes in a part at a time.
+      const perfect=result&&result.right===result.total&&!result.extra;
+      const label={...small,fontSize:UL(8),color:T.gM,marginBottom:6};
+      const bad={color:T.redTxt,textDecoration:'underline',textDecorationColor:T.redTxt,textUnderlineOffset:4};
+      const rise=delay=>({animation:`fadeUp .42s cubic-bezier(0.2,0.8,0.2,1) ${delay}ms both`});
+      body=<AutoHeight>
+        {!result
+          ?<div key="type" style={{animation:'fadeIn .3s ease both'}}>
+            <textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={6} placeholder="Type the verse from memory…"
+              autoCapitalize="sentences" spellCheck={false}
+              style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:8,color:T.body,fontFamily:readFont.family,fontSize:Math.max(16,px),padding:'10px 12px',outline:'none',lineHeight:1.5,resize:'none',display:'block'}}/>
           </div>
-          <div style={verse}>
-            {words.map((w,i)=><React.Fragment key={i}>{i>0&&' '}{w.pre}
-              <span style={w.core&&!result.hit.has(i)?{color:T.redTxt,textDecoration:'underline',textDecorationColor:T.redTxt,textUnderlineOffset:4}:null}>{w.core}</span>
-              {w.post}</React.Fragment>)}
-          </div>
-        </>;
-        controls=<button type="button" onClick={()=>{setTyped('');setResult(null);}} style={btn(false,{width:'100%'})}>Try Again</button>;
-      }
+          :<div key="check">
+            <div style={{...small,textAlign:'center',color:perfect?T.gT:T.gM,marginBottom:12,fontSize:UL(10),...rise(0)}}>
+              {perfect?'Word perfect':`${result.right} of ${result.total} words${result.extra?` · ${result.extra} extra`:''}`}
+            </div>
+            <div style={rise(60)}>
+              <div style={label}>The verse</div>
+              <div style={verse}>
+                {words.map((w,i)=><React.Fragment key={i}>{i>0&&' '}{w.pre}
+                  <span style={w.core&&!result.hit.has(i)?bad:null}>{w.core}</span>
+                  {w.post}</React.Fragment>)}
+              </div>
+            </div>
+            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.bdS}`,...rise(200)}}>
+              <div style={label}>You typed</div>
+              <div style={{...verse,color:T.mut}}>
+                {result.raw.map((t,k)=><React.Fragment key={k}>{k>0&&' '}
+                  <span style={mvNorm(t)&&!result.typedHit.has(k)?bad:null}>{t}</span></React.Fragment>)}
+              </div>
+            </div>
+          </div>}
+      </AutoHeight>;
+      controls=!result
+        ?<button type="button" disabled={!typed.trim()} onClick={()=>setResult(mvCheck(words,typed))} style={btn(true,{width:'100%',opacity:typed.trim()?1:0.5})}>Check</button>
+        :<button type="button" onClick={()=>{setTyped('');setResult(null);}} style={btn(false,{width:'100%'})}>Try Again</button>;
     }
     return<>
       {cardEl||<div style={{...card,padding:'16px',cursor:mode==='letters'?'pointer':'default'}}
@@ -5139,19 +5174,19 @@ function UserBlobThumb({id,mime,title,T}){
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
-// A short, stiff rubber band at the ends of the main scroll areas. iOS's own
-// is switched off on them (overscroll-behavior: none) and its distance can't
-// be changed, so this stands in for it: pulled past the top or the bottom,
-// the content gives a few pixels against rising resistance -- never more than
-// BOUNCE_MAX -- and springs back on release. A scroll area opts in with
-// data-bounce. Sideways drags (chapter swipes) and drags that start on
-// something fixed inside the area (a confirm dialog) are left alone.
-const BOUNCE_MAX=18;
+// A shorter rubber band at the ends of the main scroll areas. iOS's own is
+// switched off on them (overscroll-behavior: none) and its distance can't be
+// changed, so this stands in for it: iOS's own curve -- (1 - 1/(x*0.55/h + 1))*h
+// for a pull of x on an area h tall -- at BOUNCE_SCALE of its distance, springing
+// back on release. A scroll area opts in with data-bounce. Sideways drags
+// (chapter swipes) and drags that start on something fixed inside the area
+// (a confirm dialog) are left alone.
+const BOUNCE_SCALE=0.5;
 let _bounceOn=false;
 function installTightBounce(){
   if(_bounceOn)return;_bounceOn=true;
   let el=null,x0=0,y0=0,dir=0,edge=0,base=0,off=0,timer=0;
-  const ease='.3s cubic-bezier(0.2,0.8,0.2,1)';
+  const ease='.42s cubic-bezier(0.2,0.8,0.2,1)';
   const paint=(t,v,spring)=>{
     off=v;
     t.style.transition=spring?`transform ${ease}, clip-path ${ease}`:'none';
@@ -5179,11 +5214,12 @@ function installTightBounce(){
     }
     const d=(y-base)*edge;
     if(d<=0){if(off)paint(el,0);edge=0;y0=y;return;}
-    paint(el,edge*BOUNCE_MAX*(1-Math.exp(-d/80)));
+    const h=el.clientHeight||window.innerHeight;
+    paint(el,edge*BOUNCE_SCALE*(1-1/(d*0.55/h+1))*h);
   },{passive:true});
   const end=()=>{
     const t=el;el=null;
-    if(t&&off){paint(t,0,true);timer=setTimeout(()=>{t.style.transition='';t.style.clipPath='';},340);}
+    if(t&&off){paint(t,0,true);timer=setTimeout(()=>{t.style.transition='';t.style.clipPath='';},460);}
   };
   document.addEventListener('touchend',end,{passive:true});
   document.addEventListener('touchcancel',end,{passive:true});
