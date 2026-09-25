@@ -9178,7 +9178,7 @@ function App(){
             </MobileSheet>);
           })()}
           {readMobileSheet==='version'&&(
-            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={versionSheetH?versionSheetH+'px':undefined}>
+            <MobileSheet T={T} title={null} onClose={closeReadSheet} isClosing={readSheetClosing} fromTop topOffset={navH} sheetHeight={versionSheetH?versionSheetH+'px':undefined} fade="bottom" fadeKey={versionSheetView}>
               <div ref={versionContentRef} style={{paddingBottom:12}}>
               {versionSheetView==='list'?(
                 <>
