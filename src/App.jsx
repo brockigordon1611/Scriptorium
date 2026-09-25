@@ -3678,7 +3678,7 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
           <span style={{fontFamily:fam,fontSize:px,color:T.mut,fontStyle:'italic'}}>{entry.transliteration}{entry.pronunciation?` (${entry.pronunciation})`:''}</span>
         </div>
         <div style={{padding:'12px 14px 10px'}}>
-          <div style={{fontFamily:fam,fontSize:Math.round(px*1.15),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*1.08),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
           {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
         </div>
       </div>
@@ -3705,12 +3705,12 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
           <div key={key} style={card}>
             <div role="button" tabIndex={0} aria-expanded={open} onClick={()=>onToggle(key)}
               style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:open?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-              <span style={{fontFamily:fam,fontSize:Math.round(px*1.1),fontWeight:700,color:T.gT,lineHeight:1.2}}>{shown}</span>
+              <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>{shown}</span>
               <span style={{...small,color:T.dim,flex:1}}>{times}× · {refs.size} {refs.size===1?'verse':'verses'}{implied?' · not translated':''}</span>
               <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={open} size={12}/></span>
             </div>
             {open&&(
-              <div style={{padding:'10px 14px 8px',fontFamily:fam,fontSize:Math.round(px*1.1),lineHeight:1.6,color:T.body}}>
+              <div style={{padding:'10px 14px 8px',fontFamily:fam,fontSize:Math.round(px*0.92),lineHeight:1.6,color:T.body}}>
                 {refArr.map(({bn,ch,vs,cnt})=>(
                   <span key={`${bn}-${ch}-${vs}`} style={{display:'inline-block',marginRight:16,marginBottom:4,whiteSpace:'nowrap'}}>
                     <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onRef(bn,ch,vs);}} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onRef(bn,ch,vs);}}}
@@ -3760,7 +3760,7 @@ function PopHead({T,sub,title,onBack}){
 }
 // Verses as a card, a row each: the number in gold, the words beside it.
 function VerseRows({T,rows,readFont,size}){
-  const px=cmPx(readFont.size),fs=size||Math.round(px*1.2);
+  const px=cmPx(readFont.size),fs=size||Math.round(px*1.04);
   return(
     <div style={{background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,overflow:'hidden'}}>
       {rows.map((r,i)=>(
