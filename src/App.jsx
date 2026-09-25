@@ -2255,6 +2255,11 @@ async function dbSetHighlights(userId,versionId,bookNum,chapter,verses,color){
   const r=await sbFetch(`${HL_URL}?on_conflict=user_id,version_id,book_num,chapter,verse`,{method:'POST',headers:{...sbHeaders(token),'Prefer':'return=minimal,resolution=merge-duplicates'},body:JSON.stringify(rows),signal:sbSignal()},token);
   if(!r.ok)throw new Error(`HTTP ${r.status}`);
 }
+// ── Memory verses ──
+async function dbLoadMemoryVerses(userId){const token=getToken();const t=await sbFrom('memory_verses',token);const r=await t.select('*',{user_id:userId},{order:'created_at.desc'});if(r.error)throw new Error('memory verses load failed');return r.data||[];}
+async function dbAddMemoryVerse(userId,{versionId,bookNum,chapter,verseStart,verseEnd}){const token=getToken();const t=await sbFrom('memory_verses',token);const r=await t.insert({user_id:userId,version_id:versionId,book_num:bookNum,chapter,verse_start:verseStart,verse_end:verseEnd});if(r.error)throw new Error(r.error.code==='23505'?'duplicate':'add failed');return r.data?.[0];}
+async function dbPracticedMemoryVerse(id,patch){const token=getToken();const t=await sbFrom('memory_verses',token);const r=await t.update(patch,{id});if(r.error)throw new Error('update failed');}
+async function dbDeleteMemoryVerse(id){const token=getToken();const t=await sbFrom('memory_verses',token);const r=await t.delete({id});if(r.error)throw new Error('delete failed');}
 async function dbRemoveHighlights(userId,versionId,bookNum,chapter,verses){
   const token=getToken();
   const r=await sbFetch(`${HL_URL}?user_id=eq.${userId}&version_id=eq.${encodeURIComponent(versionId)}&book_num=eq.${bookNum}&chapter=eq.${chapter}&verse=in.(${verses.join(',')})`,{method:'DELETE',headers:sbHeaders(token),signal:sbSignal()},token);
@@ -3823,6 +3828,269 @@ function BookmarkDialog({T,d,rows,readFont,categories,canCategorize,onChange,onS
   );
 }
 
+// ══ Memory Verses ══
+// A verse's words for practice. Each keeps the punctuation around it; the
+// letters between are what gets hidden, cut to an initial, or checked.
+function mvWords(text){
+  return String(text||'').split(/\s+/).filter(Boolean).map(t=>{
+    const m=t.match(/^([^\p{L}\p{N}]*)([\s\S]*?)([^\p{L}\p{N}]*)$/u);
+    return{pre:m[1],core:m[2],post:m[3]};
+  });
+}
+// Compared without case, accents or punctuation: "LORD's" matches "lords".
+const mvNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\p{L}\p{N}]/gu,'');
+// Fill In hides words in a fixed order for each verse, so every round hides
+// what the one before it did and a quarter more.
+function mvOrder(n,seed){
+  let h=2166136261;
+  for(const c of String(seed)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
+  const a=[...Array(n).keys()];
+  for(let i=n-1;i>0;i--){h^=h<<13;h^=h>>>17;h^=h<<5;const j=(h>>>0)%(i+1);[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+// What was typed against the verse, word by word. It finds the longest run
+// the two share in order, so one missed word doesn't mark the rest wrong.
+function mvCheck(words,typed){
+  const idx=words.map((w,i)=>mvNorm(w.core)?i:-1).filter(i=>i>=0);
+  const a=idx.map(i=>mvNorm(words[i].core)),b=String(typed).split(/\s+/).map(mvNorm).filter(Boolean);
+  const n=a.length,m=b.length,L=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)L[i][j]=a[i]===b[j]?L[i+1][j+1]+1:Math.max(L[i+1][j],L[i][j+1]);
+  const hit=new Set();let i=0,j=0;
+  while(i<n&&j<m){if(a[i]===b[j]){hit.add(idx[i]);i++;j++;}else if(L[i+1][j]>=L[i][j+1])i++;else j++;}
+  return{hit,right:L[0][0],total:n,extra:m-L[0][0]};
+}
+function mvRef(mv,lang){
+  const b=BIBLE.find(x=>x.n===mv.book_num);
+  return `${bookName(b,lang)||''} ${mv.chapter}:${mv.verse_start}${mv.verse_end>mv.verse_start?`-${mv.verse_end}`:''}`;
+}
+
+// Adding a memory verse: the verse picked in the passage picker, which can run
+// on through the verses after it, shown as it will be learned.
+function MemoryAddDialog({T,d,vid,verLabel,lang,readFont,onChange,onSave,onCancel}){
+  const[rows,setRows]=useState(null);
+  useEffect(()=>{
+    let live=true;setRows(null);
+    dbGetChapter(vid,d.bk,d.ch).then(r=>{if(live)setRows(r||[]);}).catch(()=>{if(live)setRows([]);});
+    return()=>{live=false;};
+  },[vid,d.bk,d.ch]);
+  const last=BIBLE.find(b=>b.n===d.bk)?.v?.[d.ch-1]||d.v;
+  const title=mvRef({book_num:d.bk,chapter:d.ch,verse_start:d.v,verse_end:d.end},lang);
+  const shown=(rows||[]).filter(r=>r.verse>=d.v&&r.verse<=d.end)
+    .map(r=>({key:r.verse,label:r.verse,html:esc(String(r.text||'').replace(/<[^>]+>/g,''))}));
+  const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM};
+  const step=off=>({width:36,height:36,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'none',border:`1px solid ${off?T.bdS:T.gD}`,borderRadius:8,color:off?T.dim:T.gT,fontSize:U(18),lineHeight:1,cursor:off?'default':'pointer',opacity:off?0.5:1,padding:0});
+  const btn=primary=>({flex:primary?1:'none',background:primary?T.gF:'none',border:`1px solid ${primary?T.gD:T.bd}`,borderRadius:8,color:primary?T.gT:T.dim,cursor:d.busy?'default':'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 18px',fontWeight:600,opacity:d.busy&&primary?0.6:1});
+  return(
+    <PopFrame T={T} onClose={onCancel} zIndex={500}
+      head={<PopHead T={T} sub={`Add memory verse · ${verLabel}`} title={title} onBack={onCancel}/>}
+      foot={<>
+        {d.err&&<div style={{fontFamily:FB,fontSize:U(14),color:T.redTxt,textAlign:'center',marginBottom:10}}>{d.err}</div>}
+        <div style={{display:'flex',gap:8}}>
+          <button type="button" onClick={onCancel} style={btn(false)}>Cancel</button>
+          <button type="button" onClick={onSave} disabled={d.busy||!shown.length} style={btn(true)}>{d.busy?'Adding…':'Add'}</button>
+        </div>
+      </>}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:12}}>
+        <span style={small}>Through verse</span>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button type="button" aria-label="One verse fewer" disabled={d.end<=d.v} onClick={()=>onChange({end:d.end-1,err:null})} style={step(d.end<=d.v)}>−</button>
+          <span style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,minWidth:28,textAlign:'center'}}>{d.end}</span>
+          <button type="button" aria-label="One verse more" disabled={d.end>=last} onClick={()=>onChange({end:d.end+1,err:null})} style={step(d.end>=last)}>＋</button>
+        </div>
+      </div>
+      {rows===null?note('Loading…'):shown.length?<VerseRows T={T} rows={shown} readFont={readFont}/>:note('This passage isn’t in the version you’re reading.')}
+      <div style={{height:8}}/>
+    </PopFrame>
+  );
+}
+
+// Study → Memory Verses. Each passage as a card, as Bookmarks shows its
+// verses; Practice opens it in one of four ways of learning it by heart.
+const MV_MODES=[['flash','Flashcard'],['letters','First Letters'],['blanks','Fill In'],['type','Type It']];
+function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,onAdd,onDelete,onPracticed}){
+  const px=cmPx(readFont.size),fs=Math.round(px*1.04);
+  // The words load a chapter at a time, four at once, as Bookmarks' do.
+  const[texts,setTexts]=useState({});
+  const asked=useRef(new Set()),alive=useRef(true);
+  useEffect(()=>()=>{alive.current=false;},[]);
+  const need=[...new Set(list.map(m=>`${m.version_id}|${m.book_num}|${m.chapter}`))].filter(k=>!asked.current.has(k));
+  useEffect(()=>{
+    if(!need.length)return;
+    need.forEach(k=>asked.current.add(k));
+    let i=0;
+    const work=async()=>{
+      while(alive.current&&i<need.length){
+        const k=need[i++];const[vid,b,c]=k.split('|');
+        let rows=[];try{rows=await dbGetChapter(vid,+b,+c);}catch{}
+        if(!alive.current)return;
+        setTexts(t=>{const n={...t,[`${k}|loaded`]:true};for(const r of rows)n[`${k}|${r.verse}`]=String(r.text||'').replace(/<[^>]+>/g,'');return n;});
+      }
+    };
+    Promise.all([work(),work(),work(),work()]);
+  },[need.join(',')]);
+  // undefined while its chapter loads; '' when the chapter hasn't the verses.
+  function textOf(mv){
+    const k=`${mv.version_id}|${mv.book_num}|${mv.chapter}`;
+    if(!texts[`${k}|loaded`])return undefined;
+    const out=[];for(let v=mv.verse_start;v<=mv.verse_end;v++){const t=texts[`${k}|${v}`];if(t)out.push(t.trim());}
+    return out.join(' ');
+  }
+
+  const[pid,setPid]=useState(null);
+  const[mode,setMode]=useState(()=>{try{return localStorage.getItem('scrip:mvMode')||'flash';}catch{return'flash';}});
+  const[shown,setShown]=useState(false);
+  const[round,setRound]=useState(1);
+  const[peeked,setPeeked]=useState(()=>new Set());
+  const[typed,setTyped]=useState('');
+  const[result,setResult]=useState(null);
+  const[delId,setDelId]=useState(null);
+  const scRef=useRef(null);
+  const cur=pid?list.find(m=>m.id===pid):null;
+  function reset(){setShown(false);setRound(1);setPeeked(new Set());setTyped('');setResult(null);}
+  function pickMode(k){setMode(k);reset();try{localStorage.setItem('scrip:mvMode',k);}catch{}}
+  function start(mv){setDelId(null);setPid(mv.id);reset();if(scRef.current)scRef.current.scrollTop=0;}
+  function back(){setPid(null);reset();}
+  function finish(){onPracticed(cur);back();}
+
+  const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const box={border:`1px solid ${T.bd}`,borderRadius:7,height:28,minWidth:28,display:'inline-flex',alignItems:'center',justifyContent:'center',padding:'0 8px',lineHeight:1,cursor:'pointer',flexShrink:0,boxSizing:'border-box',background:'none'};
+  const btn=(primary,extra)=>({background:primary?T.gF:'none',border:`1px solid ${primary?T.gD:T.bd}`,borderRadius:8,color:primary?T.gT:T.dim,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 18px',fontWeight:600,...extra});
+  const chip=on=>({flex:1,background:on?T.gF:'transparent',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:6,color:on?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 2px',cursor:'pointer',whiteSpace:'nowrap'});
+  const verse={fontFamily:readFont.family,fontSize:fs,color:T.body,lineHeight:1.6};
+  const hint={fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:T.dim,textAlign:'center'};
+  const practiced=mv=>{
+    const n=mv.practice_count||0;
+    if(!n)return'Not practiced yet';
+    const d=mv.last_practiced_at?new Date(mv.last_practiced_at).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
+    return `Practiced ${n}×${d?` · ${d}`:''}`;
+  };
+
+  function practice(){
+    const text=textOf(cur);
+    if(text===undefined)return<div style={{...hint,padding:'24px 0'}}>Loading…</div>;
+    if(!text)return<div style={{...hint,padding:'24px 0'}}>This passage couldn’t be loaded.</div>;
+    const words=mvWords(text);
+    const lang=langOf(cur.version_id);
+    let body,controls=null;
+    if(mode==='flash'){
+      body=shown?<div style={verse}>{text}</div>
+        :<div style={{textAlign:'center',padding:'18px 0'}}>
+          <div style={{fontFamily:FS,fontSize:UH(20),fontWeight:600,color:T.gT,letterSpacing:'0.06em'}}>{mvRef(cur,lang)}</div>
+          <div style={{...hint,marginTop:10}}>Say it from memory, then reveal it to check.</div>
+        </div>;
+      controls=<button type="button" onClick={()=>setShown(s=>!s)} style={btn(!shown,{width:'100%'})}>{shown?'Hide':'Reveal'}</button>;
+    }else if(mode==='letters'){
+      body=<div style={{...verse,letterSpacing:shown?0:'0.04em'}}>
+        {shown?text:words.map(w=>w.pre+(Array.from(w.core)[0]||'')+w.post).join(' ')}
+      </div>;
+      controls=<button type="button" onClick={()=>setShown(s=>!s)} style={btn(false,{width:'100%'})}>{shown?'Back to First Letters':'Show Whole Verse'}</button>;
+    }else if(mode==='blanks'){
+      const idx=words.map((w,i)=>w.core?i:-1).filter(i=>i>=0);
+      const order=mvOrder(idx.length,cur.id);
+      const hidden=new Set(order.slice(0,Math.ceil(idx.length*round/4)).map(k=>idx[k]));
+      body=<div style={verse}>
+        {words.map((w,i)=>{
+          const blank=hidden.has(i)&&!peeked.has(i);
+          return<React.Fragment key={i}>{i>0&&' '}{w.pre}
+            {hidden.has(i)
+              ?<span role="button" tabIndex={0} onClick={()=>setPeeked(p=>new Set(p).add(i))}
+                style={blank?{color:'transparent',borderBottom:`2px solid ${T.gD}`,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}:{color:T.gT}}>{w.core}</span>
+              :w.core}
+            {w.post}</React.Fragment>;
+        })}
+      </div>;
+      controls=<div style={{display:'flex',alignItems:'center',gap:8}}>
+        <button type="button" disabled={round<=1} onClick={()=>{setRound(r=>r-1);setPeeked(new Set());}} style={btn(false,{opacity:round<=1?0.4:1,cursor:round<=1?'default':'pointer'})}>Easier</button>
+        <div style={{...small,flex:1,textAlign:'center',color:T.gM}}>Round {round} of 4</div>
+        <button type="button" disabled={round>=4} onClick={()=>{setRound(r=>r+1);setPeeked(new Set());}} style={btn(round<4,{opacity:round>=4?0.4:1,cursor:round>=4?'default':'pointer'})}>Harder</button>
+      </div>;
+    }else{
+      if(!result){
+        body=<textarea value={typed} onChange={e=>setTyped(e.target.value)} rows={6} placeholder="Type the verse from memory…"
+          autoCapitalize="sentences" spellCheck={false}
+          style={{width:'100%',boxSizing:'border-box',background:T.bgIn,border:`1px solid ${T.gD}`,borderRadius:8,color:T.body,fontFamily:readFont.family,fontSize:Math.max(16,px),padding:'10px 12px',outline:'none',lineHeight:1.5,resize:'vertical',display:'block'}}/>;
+        controls=<button type="button" disabled={!typed.trim()} onClick={()=>setResult(mvCheck(words,typed))} style={btn(true,{width:'100%',opacity:typed.trim()?1:0.5})}>Check</button>;
+      }else{
+        const perfect=result.right===result.total&&!result.extra;
+        body=<>
+          <div style={{...small,textAlign:'center',color:perfect?T.gT:T.gM,marginBottom:12,fontSize:UL(10)}}>
+            {perfect?'Word perfect':`${result.right} of ${result.total} words${result.extra?` · ${result.extra} extra`:''}`}
+          </div>
+          <div style={verse}>
+            {words.map((w,i)=><React.Fragment key={i}>{i>0&&' '}{w.pre}
+              <span style={w.core&&!result.hit.has(i)?{color:T.redTxt,textDecoration:'underline',textDecorationColor:T.redTxt,textUnderlineOffset:4}:null}>{w.core}</span>
+              {w.post}</React.Fragment>)}
+          </div>
+        </>;
+        controls=<button type="button" onClick={()=>{setTyped('');setResult(null);}} style={btn(false,{width:'100%'})}>Try Again</button>;
+      }
+    }
+    return<>
+      <div style={{...card,padding:'16px',cursor:mode==='flash'||mode==='letters'?'pointer':'default'}}
+        onClick={mode==='flash'||mode==='letters'?()=>setShown(s=>!s):undefined}>{body}</div>
+      {controls&&<div style={{marginBottom:18}}>{controls}</div>}
+      <button type="button" onClick={finish} style={btn(true,{width:'100%'})}>Done · Mark Practiced</button>
+      <div style={{...small,fontSize:UL(8),color:T.dim,textAlign:'center',marginTop:10}}>{practiced(cur)}</div>
+    </>;
+  }
+
+  return(
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+      <div style={{position:'relative',textAlign:'center',padding:'12px 14px 0',flexShrink:0}}>
+        {cur&&<div style={{position:'absolute',left:14,top:6}}><SheetBackBtn onClick={back} T={T}/></div>}
+        <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',padding:'0 44px'}}>
+          {cur?mvRef(cur,langOf(cur.version_id)):'Memory Verses'}
+        </div>
+        <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+      </div>
+      <div ref={scRef} style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',WebkitOverflowScrolling:'touch',padding:'12px 14px calc(28px + env(safe-area-inset-bottom))',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+        {cur?<>
+          <div style={{display:'flex',gap:4,marginBottom:12}}>
+            {MV_MODES.map(([k,l])=><button key={k} type="button" onClick={()=>pickMode(k)} style={chip(mode===k)}>{l}</button>)}
+          </div>
+          {practice()}
+        </>:<>
+          {user?.guest&&<div style={{background:T.bgCH,border:`1px solid ${T.bd}`,borderRadius:8,padding:'10px 14px',marginBottom:12,fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.5}}>
+            As a guest, memory verses last until the app closes. Sign in to keep them.
+          </div>}
+          <button type="button" onClick={onAdd}
+            style={{...small,width:'100%',background:'none',border:`1px dashed ${T.gD}`,borderRadius:10,color:T.gT,padding:'13px 0',marginBottom:12,cursor:'pointer'}}>＋ Add Verse</button>
+          {list.length===0&&<div style={{...hint,padding:'18px 8px',lineHeight:1.5}}>No memory verses yet. Add a verse to start learning it by heart.</div>}
+          {list.map(mv=>{
+            const words=textOf(mv);
+            return(
+              <div key={mv.id} style={card}>
+                <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px 7px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <span style={{fontFamily:FS,fontSize:Math.min(17,Math.round(px*0.6)),fontWeight:700,color:T.gT,letterSpacing:'0.04em'}}>{mvRef(mv,langOf(mv.version_id))}</span>
+                    <span style={{...small,fontSize:UL(8),color:T.dim,marginLeft:8,whiteSpace:'nowrap'}}>{verLabelOf(mv.version_id)}</span>
+                  </div>
+                  <button type="button" onClick={()=>start(mv)} style={{...box,...small,color:T.gT,background:T.gF,borderColor:T.gD,padding:'0 10px'}}>Practice</button>
+                  <button type="button" onClick={()=>setDelId(id=>id===mv.id?null:mv.id)} title="Remove memory verse" aria-label="Remove memory verse"
+                    style={{...box,borderColor:`${T.redTxt}55`,color:T.redTxt,fontFamily:FB,fontSize:U(13)}}>✕</button>
+                </div>
+                <div style={{padding:'10px 14px'}}>
+                  <div style={{fontFamily:readFont.family,fontSize:px,color:T.body,lineHeight:1.55,fontStyle:words?'normal':'italic',display:'-webkit-box',WebkitLineClamp:4,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+                    {words===undefined?'…':words||'This passage couldn’t be loaded.'}
+                  </div>
+                  <div style={{...small,fontSize:UL(8),color:T.dim,marginTop:8}}>{practiced(mv)}</div>
+                  {delId===mv.id&&<div style={{display:'flex',alignItems:'center',gap:8,marginTop:10,paddingTop:10,borderTop:`1px solid ${T.bdS}`}}>
+                    <span style={{flex:1,fontFamily:FB,fontSize:U(14),color:T.mut}}>Remove this memory verse?</span>
+                    <button type="button" onClick={()=>setDelId(null)} style={{...box,...small,color:T.dim,padding:'0 10px'}}>Cancel</button>
+                    <button type="button" onClick={()=>{setDelId(null);onDelete(mv.id);}} style={{...box,...small,color:T.redTxt,borderColor:`${T.redTxt}55`,padding:'0 10px'}}>Remove</button>
+                  </div>}
+                </div>
+              </div>
+            );
+          })}
+        </>}
+      </div>
+    </div>
+  );
+}
+
 // Every highlight, grouped by colour like bookmark categories, filtered by
 // colour and by version. Each row shows the verse's words in the version it was
 // highlighted in: highlights are about the text, where bookmarks are about the
@@ -4832,6 +5100,21 @@ function UserBlobThumb({id,mime,title,T}){
   return <img src={src} alt={title} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>;
 }
 
+// How copied verses are laid out (Settings -> Copy Format). The default is
+// what Copy always produced: the reference on its own line, then a line a
+// verse, each led by its number in superscript.
+const COPY_DEFAULT={ref:'above',nums:'super',layout:'lines',version:false,quotes:false};
+const SUP_DIGITS='\u2070\u00B9\u00B2\u00B3\u2074\u2075\u2076\u2077\u2078\u2079';
+function formatCopy(ref,verLabel,verses,f){
+  const num=v=>f.nums==='super'?[...String(v)].map(c=>SUP_DIGITS[c]).join('')+' ':f.nums==='plain'?`${v} `:'';
+  let body=verses.map(({v,text})=>num(v)+String(text).trim()).join(f.layout==='para'?' ':'\n');
+  if(f.quotes)body=`\u201C${body}\u201D`;
+  const head=f.version&&verLabel?`${ref} (${verLabel})`:ref;
+  return f.ref==='above'?`${head}\n${body}`:f.ref==='below'?`${body}\n\u2014 ${head}`:body;
+}
+// The preview in Settings: Psalm 23:1-2 in the KJV.
+const COPY_SAMPLE=[{v:1,text:'The LORD is my shepherd; I shall not want.'},{v:2,text:'He maketh me to lie down in green pastures: he leadeth me beside the still waters.'}];
+
 // Compare's search -- the nav bar's search button on Compare and the search
 // box in the desktop toolbar -- is switched off. Set true to bring both back;
 // the search sheet and the filter are still in place.
@@ -5192,6 +5475,9 @@ function App(){
       localStorage.setItem('scrip:redLetter',JSON.stringify(AD.redLetter));
     }catch{}
   }
+  const[copyFmt,setCopyFmt]=useState(()=>{try{return{...COPY_DEFAULT,...JSON.parse(localStorage.getItem('scrip:copyFormat')||'{}')};}catch{return COPY_DEFAULT;}});
+  const[copyFmtOpen,setCopyFmtOpen]=useState(false);
+  function setCopyOpt(k,v){setCopyFmt(f=>{const n={...f,[k]:v};try{localStorage.setItem('scrip:copyFormat',JSON.stringify(n));}catch{}return n;});}
   const[readAutoFullscreen,setReadAutoFullscreen]=useState(()=>{try{const v=localStorage.getItem('scrip:autoFullscreen');return v===null?true:JSON.parse(v)===true;}catch{return true;}});
   // ── Audio playback state ──
   const[audioSource,setAudioSource]=useState(()=>{try{return localStorage.getItem('scrip:audio:source')||'auto';}catch{return 'auto';}});
@@ -5620,6 +5906,8 @@ function App(){
 
   // ── Bookmarks / Recents / Categories ──
   const[bookmarks,setBookmarks]=useState([]);
+  const[memVerses,setMemVerses]=useState([]);
+  const[memAdd,setMemAdd]=useState(null); // {bk,ch,v,end,busy,err} while adding one
   const[recents,setRecents]=useState([]);
   const[bmCategories,setBmCategories]=useState([]);
 
@@ -6286,6 +6574,7 @@ function App(){
     };
     load(dbLoadBookmarks,setBookmarks);load(dbLoadHighlights,setHighlights);
     load(dbLoadRecents,setRecents);load(dbLoadCategories,setBmCategories);
+    load(dbLoadMemoryVerses,setMemVerses);
   }
   // ── Load project on auth ──
   useEffect(()=>{
@@ -6296,7 +6585,7 @@ function App(){
       setData(pd);
       setReadVid(PUBLIC_VERSIONS.find(v=>v.isRef)?.id||PUBLIC_VERSIONS[0]?.id||'kjv');
       setParallelVids(PUBLIC_VERSIONS.map(v=>v.id));
-      setBookmarks([]);setRecents([]);setBmCategories([]);setHighlights([]);
+      setBookmarks([]);setRecents([]);setBmCategories([]);setHighlights([]);setMemVerses([]);
       setLoadMsg('');setReady(true);
       idbGetAllResources().then(all=>{
         setResources(all.filter(r=>r.category==='other'||!r.category));
@@ -7294,9 +7583,7 @@ function App(){
     const ranges=[];let i=0;
     while(i<sorted.length){let start=sorted[i],end=start;while(i+1<sorted.length&&sorted[i+1]===end+1){i++;end=sorted[i];}ranges.push(start===end?`${start}`:`${start}-${end}`);i++;}
     const header=`${bkDisplayName} ${readCh}:${ranges.join(',')}`;
-    const sup=n=>[...String(n)].map(c=>'\u2070\u00B9\u00B2\u00B3\u2074\u2075\u2076\u2077\u2078\u2079'[c]).join('');
-    const body=verseLines.map(({v,text})=>`${sup(v)} ${text}`).join('\n');
-    const output=header+'\n'+body;
+    const output=formatCopy(header,readVerLabel,verseLines,copyFmt);
     try{await navigator.clipboard.writeText(output);}catch{
       const ta=document.createElement('textarea');ta.value=output;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     }
@@ -7512,6 +7799,36 @@ function App(){
     }
     const bm=await dbAddBookmark(user.id,params);if(bm)setBookmarks(b=>[bm,...b]);
   }
+  // Memory verses. A guest's live in state only, as a guest's bookmarks do.
+  function memOpenPicker(){setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}
+  async function memSave(){
+    const d=memAdd;
+    if(!d||d.busy||!user)return;
+    const dup='That passage is already in your memory verses.';
+    if(memVerses.some(m=>m.version_id===readVid&&m.book_num===d.bk&&m.chapter===d.ch&&m.verse_start===d.v&&m.verse_end===d.end)){setMemAdd(x=>({...x,err:dup}));return;}
+    if(user.guest){
+      setMemVerses(l=>[{id:'g-'+Date.now(),user_id:'guest',version_id:readVid,book_num:d.bk,chapter:d.ch,verse_start:d.v,verse_end:d.end,practice_count:0,last_practiced_at:null,created_at:new Date().toISOString()},...l]);
+      setMemAdd(null);return;
+    }
+    setMemAdd(x=>({...x,busy:true,err:null}));
+    try{
+      const row=await dbAddMemoryVerse(user.id,{versionId:readVid,bookNum:d.bk,chapter:d.ch,verseStart:d.v,verseEnd:d.end});
+      if(row)setMemVerses(l=>[row,...l]);
+      setMemAdd(null);
+    }catch(e){setMemAdd(x=>x&&({...x,busy:false,err:e.message==='duplicate'?dup:'Couldn’t save it. Check your connection and try again.'}));}
+  }
+  function memPracticed(mv){
+    if(!mv)return;
+    const patch={practice_count:(mv.practice_count||0)+1,last_practiced_at:new Date().toISOString()};
+    setMemVerses(l=>l.map(x=>x.id===mv.id?{...x,...patch}:x));
+    if(user&&!user.guest)dbPracticedMemoryVerse(mv.id,patch).catch(()=>{});
+  }
+  async function memDelete(id){
+    const gone=memVerses.find(x=>x.id===id);
+    setMemVerses(l=>l.filter(x=>x.id!==id));
+    if(!user||user.guest||!gone)return;
+    try{await dbDeleteMemoryVerse(id);}catch{setMemVerses(l=>[gone,...l]);}
+  }
   async function handleDelBookmark(id){if(!user)return;await dbDeleteBookmark(id);setBookmarks(b=>b.filter(x=>x.id!==id));}
   async function handleUpdateBookmark(id,patch){
     // Map camelCase patch keys to snake_case so local state grouping works
@@ -7670,7 +7987,7 @@ function App(){
           </div>
           {/* ── 6-button nav bar ── */}
           {(()=>{
-            const studyActive=['parallel','compare','commentaries','strongs','dictionary','maps','charts','other'].includes(tab);
+            const studyActive=['memory','parallel','compare','commentaries','strongs','dictionary','maps','charts','other'].includes(tab);
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
             const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='highlights'||modal?.type==='recents';
@@ -8000,6 +8317,7 @@ function App(){
             ))}
           </div>
           {[
+            {icon:'♡',label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
             {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
@@ -8422,6 +8740,47 @@ function App(){
 
           </div>}
 
+          {/* ── Copy Format: how Copy lays out the verses it puts on the clipboard ── */}
+          {tab==='read'&&(
+          <button type="button" onClick={()=>setCopyFmtOpen(o=>!o)}
+            style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:copyFmtOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s'}}>
+            <span style={{width:22,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,flexShrink:0}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </span>
+            <span style={{flex:1,textAlign:'left'}}>Copy Format</span>
+            <span style={{color:T.gM,display:'inline-flex',alignItems:'center',flexShrink:0}}><Caret open={copyFmtOpen}/></span>
+          </button>
+          )}
+          {copyFmtOpen&&tab==='read'&&<div style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderTop:'none',borderRadius:'0 0 9px 9px',padding:'14px 14px 10px',marginBottom:0}}>
+            {[['ref','Reference',[['above','Above'],['below','Below'],['none','Off']]],
+              ['nums','Verse Numbers',[['super','Superscript'],['plain','Plain'],['none','Off']]],
+              ['layout','Layout',[['lines','Line per Verse'],['para','Paragraph']]]].map(([key,label,opts])=>(
+              <div key={key} style={{marginBottom:14}}>
+                <div style={{fontFamily:FB,fontSize:U(14),color:T.mut,marginBottom:6}}>{label}</div>
+                <div style={{display:'flex',gap:4}}>
+                  {opts.map(([k,l])=>(
+                    <button key={k} type="button" onClick={()=>setCopyOpt(key,k)}
+                      style={{flex:1,background:copyFmt[key]===k?T.gF:'transparent',border:`1px solid ${copyFmt[key]===k?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]===k?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'all .12s'}}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:6,marginBottom:14}}>
+              {[['version','Version Name'],['quotes','Quote Marks']].map(([key,l])=>(
+                <button key={key} type="button" onClick={()=>setCopyOpt(key,!copyFmt[key])}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'space-between',background:copyFmt[key]?T.gF:'transparent',border:`1px solid ${copyFmt[key]?T.gD:T.bd}`,borderRadius:6,color:copyFmt[key]?T.gT:T.dim,fontFamily:FS,fontSize:UL(10),letterSpacing:'0.05em',padding:'8px 10px',cursor:'pointer',transition:'all .12s'}}>
+                  <span>{l}</span><span style={{fontSize:UL(8),opacity:0.7}}>{copyFmt[key]?'ON':'OFF'}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM,marginBottom:6}}>Preview</div>
+            <div style={{whiteSpace:'pre-wrap',fontFamily:fontFamilyMap[readFontFamily],fontSize:U(15),color:T.body,background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,padding:'10px 12px',lineHeight:1.5,marginBottom:14}}>
+              {formatCopy('Psalms 23:1-2','KJV',COPY_SAMPLE,copyFmt)}
+            </div>
+          </div>}
+
           {/* ── Offline Data accordion ── */}
           <button type="button" onClick={()=>setOfflineDataOpen(o=>!o)}
             style={{display:'flex',alignItems:'center',gap:12,width:'100%',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:offlineDataOpen?'9px 9px 0 0':'9px',color:T.mut,fontFamily:FB,fontSize:UH(18),padding:'13px 14px',cursor:'pointer',marginBottom:0,boxSizing:'border-box',transition:'border-radius .15s',marginTop:8}}>
@@ -8552,9 +8911,10 @@ function App(){
 
       {/* ── Global popup sheets (nav / version / search) ── */}
           {readMobileSheet==='nav'&&(()=>{
-            const isP=tab==='parallel',isC=tab==='commentaries';
-            const setNavBk=isP?setParallelBk:isC?setCmBook:setReadBook;
-            const setNavCh=isP?setParallelCh:isC?setCmCh:setReadCh;
+            const isP=tab==='parallel',isC=tab==='commentaries',isM=tab==='memory';
+            // On Memory Verses the picker chooses a verse to add; Read stays put.
+            const setNavBk=isM?()=>{}:isP?setParallelBk:isC?setCmBook:setReadBook;
+            const setNavCh=isM?()=>{}:isP?setParallelCh:isC?setCmCh:setReadCh;
             const pickedBkData=navPickedBk?BIBLE.find(b=>b.n===navPickedBk):null;
             const gridBtn={border:`1px solid ${T.bd}`,borderRadius:7,color:T.body,fontFamily:FS,fontSize:UH(17),letterSpacing:'0.04em',padding:'12px 4px',cursor:'pointer',textAlign:'center',background:T.bgIn,minWidth:0};
             /* Dynamic book button height: fit all 22 rows (13 OT + 9 NT) without scrolling.
@@ -8595,7 +8955,7 @@ function App(){
                   <div style={{textAlign:'center',fontFamily:FS,fontSize:UH(20),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',margin:'0 auto'}}>
                     {navStep==='book'?'Select Book':navStep==='chapter'?bookName(pickedBkData,versionLang(readVid))||'':`${bookName(pickedBkData,versionLang(readVid))||''} ${navPickedCh}`}
                   </div>
-                  {navStep==='verse'&&(
+                  {navStep==='verse'&&!isM&&(
                     <div style={{position:'absolute',right:0,top:0,bottom:0,display:'flex',alignItems:'center'}}>
                       <button type="button" onClick={()=>{if(isP){setParallelVs(1);}if(isC)setCmFocus(null);closeReadSheet();}}
                         style={{background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.08em',padding:'6px 10px',cursor:'pointer',fontWeight:600,whiteSpace:'nowrap'}}>
@@ -8664,6 +9024,7 @@ function App(){
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
                         else if(isC){setCmFocus({v:i+1});}
+                        else if(isM){setMemAdd({bk:navPickedBk,ch:navPickedCh,v:i+1,end:i+1,busy:false,err:null});}
                         else{if(readSearchResultsOpen)setReadSearchResultsOpen(false);setTimeout(()=>{const el=document.getElementById(`rv-${i+1}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(i+1);return ns;});}},120);}
                         closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
@@ -9530,6 +9891,13 @@ function App(){
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}
           fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav} onChoose={v=>setCmFocus(f=>f?.v===v?null:{v,tap:true})}/>
+      )}
+
+      {tab==='memory'&&(
+        <MemoryPage T={T} navH={navH} user={user} list={memVerses} langOf={versionLang}
+          verLabelOf={id=>data?.versions.find(v=>v.id===id)?.label||(String(id).startsWith('user-')?'Imported':String(id).toUpperCase())}
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} anySheetOpen={anySheetOpen}
+          onAdd={memOpenPicker} onDelete={memDelete} onPracticed={memPracticed}/>
       )}
 
       {/* ═══ COMPARE TAB ═══ */}
@@ -10454,6 +10822,11 @@ function App(){
           onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);
             if(p.bn===readBook&&p.ch===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(p.vs,true);}
             else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
+      )}
+      {memAdd&&(
+        <MemoryAddDialog T={T} d={memAdd} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)}
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+          onChange={patch=>setMemAdd(x=>({...x,...patch}))} onSave={memSave} onCancel={()=>setMemAdd(null)}/>
       )}
       {bmDialog&&(
         <BookmarkDialog T={T} d={bmDialog} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
