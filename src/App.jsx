@@ -4107,12 +4107,16 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
       <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:`${navH}px 14px calc(28px + env(safe-area-inset-bottom))`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
         {/* Inside the scroll, as Commentaries' is: the title goes up behind
             the nav with everything else. */}
-        <div style={{position:'relative',textAlign:'center',padding:'12px 0 0',marginBottom:12}}>
-          {cur&&<div style={{position:'absolute',left:0,top:6}}><SheetBackBtn onClick={back} T={T}/></div>}
-          <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',padding:'0 44px'}}>
-            {cur?mvRef(cur,langOf(cur.version_id)):'Memory Verses'}
+        {/* Laid out as the sheets and panels head themselves: 22px under the
+            nav, the back button 18px in and centred on the title's row. */}
+        <div style={{padding:'22px 0 0',marginBottom:12}}>
+          <div style={{position:'relative',minHeight:26,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {cur&&<div style={{position:'absolute',left:4,top:0,bottom:0,display:'flex',alignItems:'center'}}><SheetBackBtn onClick={back} T={T}/></div>}
+            <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',padding:'0 44px',textAlign:'center'}}>
+              {cur?mvRef(cur,langOf(cur.version_id)):'Memory Verses'}
+            </div>
           </div>
-          <div style={{height:1,background:T.accentLine,marginTop:8}}/>
+          <div style={{height:1,background:T.accentLine,marginTop:10}}/>
         </div>
         {cur?<>
           <div style={{display:'flex',gap:4,marginBottom:12}}>
