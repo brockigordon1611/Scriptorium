@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Scriptorium",
-      "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "C:\\Users\\brock\\Desktop\\Scriptorium\\.claude\\serve.bat"],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3000"],
       "port": 3000
     }
   ]

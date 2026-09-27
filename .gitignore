@@ -5,8 +5,8 @@
 Backup of versions/
 
 # STEPBible raw data files (large, re-downloadable)
-stepbible/*.txt
-stepbible/*.csv
+scripts/stepbible/*.txt
+scripts/stepbible/*.csv
 
 # Vite build output
 dist/
