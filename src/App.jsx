@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
-import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { Capacitor, SystemBars, SystemBarsStyle, registerPlugin } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Browser } from '@capacitor/browser';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -1162,6 +1162,10 @@ function useBackHandler(active,fn){
     return()=>{const i=BACK_STACK.lastIndexOf(h);if(i>=0)BACK_STACK.splice(i,1);};
   },[active]);
 }
+// The Android app's own plugin (android/.../WindowBackgroundPlugin.java): paints
+// the window behind the web view, which shows under the system bars on WebViews
+// older than 140.
+const WindowBackground=registerPlugin('WindowBackground');
 // Where the imported KJV recordings live. Directory.Documents is the app's own
 // Documents folder on iOS but the phone's shared public folder on Android, so
 // Android keeps them in the app's private data instead.
@@ -6632,14 +6636,13 @@ function App(){
   // the clock vanished. Style.Light means dark glyphs for a light background.
   // Android styles the status bar and the navigation bar together through
   // Capacitor's SystemBars; Dark means light icons, as StatusBar's Style.Dark does.
-  // A WebView older than 140 can't draw under the bars, so Capacitor pads it
-  // off them and the bars sit on the dark window colour (styles.xml) whatever
-  // the theme -- there the icons stay light, or light mode would hide them.
+  // A WebView older than 140 can't draw under the bars, so Capacitor pads it off
+  // them and the bars sit on the window behind it -- painted here in the bars'
+  // own colour, so they match the theme either way.
   const styleSystemBars=()=>{
     if(Capacitor.getPlatform()!=='android')return StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
-    const chrome=Number((navigator.userAgent.match(/Chrome\/(\d+)/)||[])[1]||0);
-    const onDarkBand=chrome>0&&chrome<140;
-    return SystemBars.setStyle({style:dark||onDarkBand?SystemBarsStyle.Dark:SystemBarsStyle.Light}).catch(()=>{});
+    WindowBackground.set({color:T.bgCard}).catch(()=>{});
+    return SystemBars.setStyle({style:dark?SystemBarsStyle.Dark:SystemBarsStyle.Light}).catch(()=>{});
   };
   useEffect(()=>{
     if(!Capacitor.isNativePlatform())return;
