@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's page colour. Shows behind the web view: during launch, and in
+         the bands around it on phones whose WebView is older than 140, where
+         Capacitor pads the web view off the system bars instead of letting it
+         draw under them. White there looked like a broken frame. -->
+    <color name="scriptorium_window">#0E0D0B</color>
+</resources>

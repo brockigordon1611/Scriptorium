@@ -6632,9 +6632,15 @@ function App(){
   // the clock vanished. Style.Light means dark glyphs for a light background.
   // Android styles the status bar and the navigation bar together through
   // Capacitor's SystemBars; Dark means light icons, as StatusBar's Style.Dark does.
-  const styleSystemBars=()=>Capacitor.getPlatform()==='android'
-    ?SystemBars.setStyle({style:dark?SystemBarsStyle.Dark:SystemBarsStyle.Light}).catch(()=>{})
-    :StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+  // A WebView older than 140 can't draw under the bars, so Capacitor pads it
+  // off them and the bars sit on the dark window colour (styles.xml) whatever
+  // the theme -- there the icons stay light, or light mode would hide them.
+  const styleSystemBars=()=>{
+    if(Capacitor.getPlatform()!=='android')return StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+    const chrome=Number((navigator.userAgent.match(/Chrome\/(\d+)/)||[])[1]||0);
+    const onDarkBand=chrome>0&&chrome<140;
+    return SystemBars.setStyle({style:dark||onDarkBand?SystemBarsStyle.Dark:SystemBarsStyle.Light}).catch(()=>{});
+  };
   useEffect(()=>{
     if(!Capacitor.isNativePlatform())return;
     styleSystemBars();
