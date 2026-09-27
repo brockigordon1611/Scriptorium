@@ -619,6 +619,9 @@ async function importBblxFile({file,label,lang,userId,existingVersionId,onProgre
   // Lazily load sql.js WASM only when needed (~644 KB, loaded once)
   const initSqlJs=(await import('sql.js')).default;
   const SQL=await initSqlJs({locateFile:()=>`${BUNDLED_BASE}sql-wasm.wasm`});
+  // Every e-Sword and MyBible module is a SQLite file; check before reading it all.
+  const head=new TextDecoder().decode(await file.slice(0,15).arrayBuffer());
+  if(head!=='SQLite format 3')throw new Error('That file is not an e-Sword or MyBible Bible module.');
   const buf=await file.arrayBuffer();
   const db=new SQL.Database(new Uint8Array(buf));
   // Try standard e-Sword Bible table; some files use a "verses" table
@@ -1139,9 +1142,14 @@ async function importResourceFile(file){
 // e-Sword and MySword ones (.cmti, .lexi, .dcti, .devi, .refi, .dzip) it
 // cannot place, so a list mixing the two let the common files through and
 // greyed out the modules these pickers exist for. The Bible picker names only
-// module extensions and is unaffected, so it keeps its list. In the iOS and
-// Android apps these pickers show every file -- Android's picker turns the
-// list into file types the same way -- and the extension is checked here.
+// module extensions and is unaffected on iOS, so it keeps its list there. In
+// the iOS and Android apps these pickers show every file -- Android's picker
+// turns the list into file types the same way -- and the extension is checked
+// here.
+// Android has no file type for any Bible module extension, so Capacitor's
+// picker is left with an empty list and crashes; there the Bible picker shows
+// every file and importBblxFile checks for a SQLite header instead.
+const BIBLE_ACCEPT=ANDROID_APP?undefined:'.bblx,.bbli,.SQLite3,.sqlite3,.db';
 const RES_ACCEPT={
   lexicon:'.lexi,.txt,.md,.pdf,.dzip',
   dict:'.dcti,.txt,.md,.pdf,.dzip',
@@ -4477,7 +4485,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
                   ?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{importProg[1]>0?`${Math.round((importProg[0]/importProg[1])*100)}%`:'…'}</span>
                   :avail===true?<span style={{fontFamily:FS,fontSize:UL(9),color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                   :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                    ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
+                    ⚠︎ Re-import<input type="file" accept={BIBLE_ACCEPT} style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)doReImport(v.id,f);e.target.value='';}}/>
                   </label>
                   :<span style={{fontFamily:FS,fontSize:UL(9),color:T.dim}}>…</span>
               )}
@@ -4522,7 +4530,7 @@ function VersionsModal({data,onSave,onClose,T,dlStates={},onDownload,onDeleteLoc
         </select>
         <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:U(13),color:importFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
           {importFile?importFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
-          <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+          <input type="file" accept={BIBLE_ACCEPT} style={{display:'none'}} onChange={e=>{setImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
         </label>
         {importing==='new'?(
           <div style={{fontFamily:FB,fontSize:U(13),color:T.gM,padding:'8px 0'}}>
@@ -9378,7 +9386,7 @@ function App(){
                               ?<span style={{fontFamily:FS,fontSize:UL(9),color:T.gM,whiteSpace:'nowrap'}}>{mngImportProg[1]>0?`${Math.round((mngImportProg[0]/mngImportProg[1])*100)}%`:'…'}</span>
                               :avail===true?<span style={{fontFamily:FS,fontSize:UL(9),color:'#62c484',whiteSpace:'nowrap'}}>✓ On device</span>
                               :avail===false?<label style={{background:T.red,border:`1px solid ${T.redTxt}33`,borderRadius:5,color:T.redTxt,fontFamily:FS,fontSize:UL(9),letterSpacing:'0.07em',padding:'4px 8px',cursor:'pointer',whiteSpace:'nowrap'}}>
-                                ⚠︎ Re-import<input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
+                                ⚠︎ Re-import<input type="file" accept={BIBLE_ACCEPT} style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)mngDoReImport(v.id,f);e.target.value='';}}/>
                               </label>
                               :null
                           )}
@@ -9423,7 +9431,7 @@ function App(){
                     </select>
                     <label style={{display:'block',background:T.bgIn,border:`1px dashed ${T.bd}`,borderRadius:6,padding:'10px 14px',cursor:'pointer',fontFamily:FB,fontSize:U(13),color:mngImportFile?T.body:T.dim,marginBottom:8,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                       {mngImportFile?mngImportFile.name:'Choose .bblx, .bbli, or .SQLite3 file…'}
-                      <input type="file" accept=".bblx,.bbli,.SQLite3,.sqlite3,.db" style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
+                      <input type="file" accept={BIBLE_ACCEPT} style={{display:'none'}} onChange={e=>{setMngImportFile(e.target.files?.[0]||null);e.target.value='';}}/>
                     </label>
                     {mngImporting==='new'?(
                       <div style={{fontFamily:FB,fontSize:U(13),color:T.gM,padding:'8px 0'}}>
