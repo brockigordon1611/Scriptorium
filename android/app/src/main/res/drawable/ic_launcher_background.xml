@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app icon's background: a warm glow from the upper left fading to near
+     black, matched to Scriptorium-Icon-1024.png (glow centre at its (100,100),
+     stops at 0, 412, 832 and 1130 px, scaled onto the 108dp canvas). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="28.6"
+                android:centerY="28.6"
+                android:gradientRadius="69.7">
+                <item android:offset="0" android:color="#FF695940"/>
+                <item android:offset="0.364" android:color="#FF3F362E"/>
+                <item android:offset="0.736" android:color="#FF29241D"/>
+                <item android:offset="1" android:color="#FF1C1A10"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

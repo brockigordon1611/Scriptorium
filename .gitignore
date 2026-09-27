@@ -26,9 +26,8 @@ patch_audio.cjs
 # Audio timestamp JSONs — large, only needed for Android/iOS builds, generated locally
 public/timestamps/
 
-# Android/iOS Capacitor builds — generated, not source
-android/
-# ios/
+# The android/ and ios/ projects are versioned: they hold the app's native
+# settings. Their build output is ignored by their own .gitignore files.
 
 # macOS junk
 .DS_Store

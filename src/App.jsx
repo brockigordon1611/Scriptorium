@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Browser } from '@capacitor/browser';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapApp } from '@capacitor/app';
 import { Network } from '@capacitor/network';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { MEEK_WEEKS } from './meekPlan.js';
 import { cmtiToMarkup, dropSelfLine, markupRuns } from './commentary.js';
 
@@ -46,12 +47,47 @@ function openExternal(url){
 // ReferenceError when the global is missing, not undefined, so it threw during
 // the first render and took the whole app down with a startup error. Every use
 // goes through these instead, which degrade to doing nothing.
-const TTS_OK=typeof window!=='undefined'&&!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function';
-const TTS=(typeof window!=='undefined'&&window.speechSynthesis)||{
+// The Android app's WebView has no speechSynthesis either, so there the spoken
+// voice goes through the native text-to-speech plugin, behind the same shape:
+// a queue of utterances with onstart/onend, pause/resume/cancel, getVoices and
+// voiceschanged. Android's engine can't pause mid-sentence, so pause stops the
+// verse and resume says it again from its start.
+function androidTTS(){
+  let queue=[],cur=null,gen=0,voices=[];
+  const listeners=new Set();
+  const t={paused:false,speaking:false,pending:false,
+    getVoices:()=>voices,
+    addEventListener(ev,fn){if(ev==='voiceschanged')listeners.add(fn);},
+    removeEventListener(ev,fn){listeners.delete(fn);},
+    speak(u){queue.push(u);t.pending=true;if(!cur&&!t.paused)next();},
+    cancel(){gen++;queue=[];cur=null;t.speaking=t.pending=t.paused=false;TextToSpeech.stop().catch(()=>{});},
+    pause(){if(!cur||t.paused)return;t.paused=true;gen++;TextToSpeech.stop().catch(()=>{});},
+    resume(){if(!t.paused)return;t.paused=false;if(cur){queue.unshift(cur);cur=null;}next();},
+  };
+  function next(){
+    if(t.paused)return;
+    const u=queue.shift();t.pending=queue.length>0;
+    if(!u){cur=null;t.speaking=false;return;}
+    cur=u;t.speaking=true;const g=++gen;
+    if(u.onstart)u.onstart();
+    TextToSpeech.speak({text:u.text,lang:u.lang||'en-US',rate:u.rate||1,
+      ...(u.voice&&u.voice._index!=null?{voice:u.voice._index}:{})})
+      .then(()=>{if(g!==gen)return;cur=null;if(u.onend)u.onend();next();})
+      .catch(()=>{if(g!==gen)return;cur=null;if(u.onerror)u.onerror({error:'synthesis-failed'});next();});
+  }
+  TextToSpeech.getSupportedVoices().then(({voices:vs})=>{
+    voices=(vs||[]).map((v,i)=>({...v,_index:i}));
+    listeners.forEach(fn=>{try{fn();}catch{}});
+  }).catch(()=>{});
+  return t;
+}
+const ANDROID_APP=Capacitor.getPlatform()==='android';
+const TTS_OK=ANDROID_APP||(typeof window!=='undefined'&&!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function');
+const TTS=ANDROID_APP?androidTTS():(typeof window!=='undefined'&&window.speechSynthesis)||{
   getVoices:()=>[],cancel(){},pause(){},resume(){},speak(){},
   addEventListener(){},removeEventListener(){},paused:false,speaking:false,pending:false,
 };
-const SpeechUtter=(typeof window!=='undefined'&&window.SpeechSynthesisUtterance)||function(text){this.text=text;};
+const SpeechUtter=(!ANDROID_APP&&typeof window!=='undefined'&&window.SpeechSynthesisUtterance)||function(text){this.text=text;};
 // Older WebViews have no ResizeObserver. Both uses are in mount effects, so a
 // bare reference would throw during startup exactly the way speechSynthesis did;
 // the window resize listener beside them already covers the common case.
@@ -1103,14 +1139,34 @@ async function importResourceFile(file){
 // e-Sword and MySword ones (.cmti, .lexi, .dcti, .devi, .refi, .dzip) it
 // cannot place, so a list mixing the two let the common files through and
 // greyed out the modules these pickers exist for. The Bible picker names only
-// module extensions and is unaffected, so it keeps its list. On iOS these
-// pickers now show every file, and the extension is checked here instead.
+// module extensions and is unaffected, so it keeps its list. In the iOS and
+// Android apps these pickers show every file -- Android's picker turns the
+// list into file types the same way -- and the extension is checked here.
 const RES_ACCEPT={
   lexicon:'.lexi,.txt,.md,.pdf,.dzip',
   dict:'.dcti,.txt,.md,.pdf,.dzip',
   other:'.txt,.md,.pdf,.jpg,.jpeg,.png,.webp,.cmti,.devi,.refi,.dzip',
 };
-const pickerAccept=kind=>Capacitor.getPlatform()==='ios'?undefined:RES_ACCEPT[kind];
+// Android's back button closes whatever is on top. Anything that can be open
+// (a sheet, panel, popup, viewer) adds its close action here while it is open,
+// through useBackHandler; the listener in App runs the most recent one, and with
+// nothing open steps back to Read or leaves the app. iOS and the web never fire
+// the event, so this changes nothing there.
+const BACK_STACK=[];
+function useBackHandler(active,fn){
+  const ref=useRef(fn);ref.current=fn;
+  useEffect(()=>{
+    if(!active)return;
+    const h=()=>ref.current&&ref.current();
+    BACK_STACK.push(h);
+    return()=>{const i=BACK_STACK.lastIndexOf(h);if(i>=0)BACK_STACK.splice(i,1);};
+  },[active]);
+}
+// Where the imported KJV recordings live. Directory.Documents is the app's own
+// Documents folder on iOS but the phone's shared public folder on Android, so
+// Android keeps them in the app's private data instead.
+const AUDIO_DIR=Capacitor.getPlatform()==='android'?Directory.Data:Directory.Documents;
+const pickerAccept=kind=>Capacitor.isNativePlatform()?undefined:RES_ACCEPT[kind];
 function checkPicked(file,kind){
   const ok=RES_ACCEPT[kind].split(','),ext='.'+String(file.name||'').split('.').pop().toLowerCase();
   if(!ok.includes(ext))throw new Error(`${file.name} can't be imported here. Choose a ${ok.filter(x=>x!=='.jpeg').join(', ')} file.`);
@@ -1794,7 +1850,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--ac-input-bd,rgba(200,
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
   .sheet-scroll{scrollbar-width:none;-ms-overflow-style:none;}
   .sheet-scroll::-webkit-scrollbar{display:none;}
-  .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
+  .bottom-nav-safe{padding-bottom:calc(6px + var(--sab,0px))!important;}
   /* Tighter compare cards */
   .cmp-area{padding:10px 8px 20px!important;}
   /* Modal: full-screen sheet on mobile — drops from top */
@@ -2516,6 +2572,7 @@ function Wheel({items,value,onChange,onCentre,render,T,width,itemH=WHEEL_ITEM,ro
 const WHEEL_HOURS=Array.from({length:12},(_,i)=>i+1);
 const WHEEL_MINUTES=Array.from({length:60},(_,i)=>i);
 function TimePicker({value,onSet,onCancel,T}){
+  useBackHandler(true,onCancel);
   const[h24,m0]=String(value||PLAN_REMIND_TIME).split(':').map(Number);
   const[h,setH]=React.useState(()=>((h24||0)%12)||12);
   const[m,setM]=React.useState(()=>m0||0);
@@ -2722,6 +2779,7 @@ function FitTitle({style,children}){
 }
 function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,hideBack,fade,subHeader}){
   const{ref:panelRef,handlers:dragHandlers}=useSheetDrag(-1,onClose); // top sheet: leaves upwards
+  useBackHandler(!isClosing,()=>(onBack||onClose)());
   const modalOverlayRef=React.useRef(null);
   const edge=useEdgeFade(fade,T);
   React.useEffect(()=>{
@@ -2779,6 +2837,7 @@ function Modal({title,onClose,children,footer,wide,T,topSheet,onBack,isClosing,h
 }
 
 function ConfirmDialog({title,message,confirmLabel,cancelLabel,onConfirm,onCancel,danger,T,children}){
+  useBackHandler(true,onCancel);
   return(
     <div onClick={e=>{if(e.target===e.currentTarget)onCancel();}} style={{position:'fixed',inset:0,zIndex:500,background:'rgba(0,0,0,0.78)',display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(5px)'}}>
       <div className="modal-in" style={{background:danger?'#180606':T.bgCard,border:`2px solid ${danger?'#8a2020':T.bdA}`,borderRadius:14,width:'min(92vw,480px)',maxHeight:'86vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:danger?'0 32px 80px rgba(140,10,10,0.4)':'0 32px 80px rgba(0,0,0,0.7)'}}>
@@ -3444,6 +3503,8 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const[menu,setMenu]=useState(false);
   const[info,setInfo]=useState(null);
   const[preview,setPreview]=useState(null);
+  useBackHandler(menu,()=>setMenu(false));
+  useBackHandler(!!info,()=>setInfo(null));
   const[busy,setBusy]=useState(false);
   const[msg,setMsg]=useState(null);
   const scrollRef=useRef(null);
@@ -3557,7 +3618,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
             ))}
             <label style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginTop:6,padding:'10px 12px',border:`1px dashed ${T.gD}`,borderRadius:8,color:busy?T.dim:T.gT,cursor:busy?'default':'pointer',...small,fontSize:UL(9)}}>
               {busy?'Importing…':'＋ Import e-Sword commentary (.cmti)'}
-              <input type="file" accept={Capacitor.getPlatform()==='ios'?undefined:'.cmti'} style={{display:'none'}} disabled={busy}
+              <input type="file" accept={Capacitor.isNativePlatform()?undefined:'.cmti'} style={{display:'none'}} disabled={busy}
                 onChange={e=>{const f=e.target.files?.[0];e.target.value='';pickFile(f);}}/>
             </label>
           </div>
@@ -3769,10 +3830,11 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
 // the middle scrolling. Sized by vh, a long verse ran the card off the
 // screen on the phone; held to the overlay's own height, it cannot.
 function PopFrame({T,onClose,head,foot,children,maxWidth=460,zIndex=250}){
+  useBackHandler(true,onClose);
   const edge=useEdgeFade(true,T,undefined,T.bg);
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',boxSizing:'border-box',
-      padding:'max(20px, calc(env(safe-area-inset-top) + 12px)) 16px max(20px, calc(env(safe-area-inset-bottom) + 12px))',animation:'fadeIn .15s ease both'}}>
+      padding:'max(20px, calc(var(--sat,0px) + 12px)) 16px max(20px, calc(var(--sab,0px) + 12px))',animation:'fadeIn .15s ease both'}}>
       <div onClick={e=>e.stopPropagation()} style={{background:T.bg,border:`1px solid ${T.bdA}`,borderRadius:16,width:'100%',maxWidth,maxHeight:'100%',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.6)'}}>
         <div style={{height:3,background:T.accentLine,flexShrink:0}}/>
         <div style={{flexShrink:0}}>{head}</div>
@@ -3998,6 +4060,7 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
   function start(mv){setDelId(null);setPid(mv.id);reset();if(scRef.current)scRef.current.scrollTop=0;}
   function back(){setPid(null);reset();}
   function finish(){onPracticed(cur);back();}
+  useBackHandler(!!cur,back);
 
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
@@ -4123,7 +4186,7 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
 
   return(
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-      <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:`${navH}px 14px calc(28px + env(safe-area-inset-bottom))`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+      <div ref={scRef} data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',WebkitOverflowScrolling:'touch',padding:`${navH}px 14px calc(28px + var(--sab,0px))`,maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
         {/* Inside the scroll, as Commentaries' is: the title goes up behind
             the nav with everything else. */}
         {/* Laid out as the sheets and panels head themselves: 22px under the
@@ -4840,6 +4903,7 @@ function MobileSheet({onClose,children,T,title,onScroll,fromTop,fullScreen,sheet
   const[internalClosing,setInternalClosing]=React.useState(false);
   const closing=isClosing||internalClosing;
   const overlayRef=React.useRef(null);
+  useBackHandler(!closing,()=>dismiss());
 
   // Prevent background scroll-through on iOS WKWebView.
   // Only allow scroll gestures on elements that are truly scrollable AND
@@ -5081,6 +5145,7 @@ function PinchZoom({src,alt,onZoomChange,maxScale}){
 }
 function MapLightboxGrid({maps,BASE,T}){
   const[lightbox,setLightbox]=useState(null);
+  useBackHandler(lightbox!==null,()=>setLightbox(null));
   const mapTouchX=useRef(null);
   const mapSwiped=useRef(false);
   const[mapZoomed,setMapZoomed]=useState(false);
@@ -5111,13 +5176,13 @@ function MapLightboxGrid({maps,BASE,T}){
       </div>
       {lightbox!==null&&(
         <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={mapOnTouchStart} onTouchEnd={mapOnTouchEnd} onClick={()=>{if(mapSwiped.current){mapSwiped.current=false;return;}setLightbox(null);}}>
-          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(var(--sat,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <div style={{fontFamily:'Georgia,serif',fontSize:U(12),color:'rgba(200,168,78,0.85)',letterSpacing:'0.06em',flex:1}}>{maps[lightbox].title}</div>
             <div style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:'rgba(255,255,255,0.35)',marginRight:12}}>{lightbox+1} / {maps.length}</div>
             <button type="button" onClick={()=>setLightbox(null)} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:UH(17),cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
           </div>
           <PinchZoom src={`${BASE}maps/${maps[lightbox].file}`} alt={maps[lightbox].title} onZoomChange={setMapZoomed} maxScale={12}/>
-          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+          <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(var(--sab,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
             <button onClick={()=>setLightbox(i=>Math.max(i-1,0))} disabled={lightbox===0}
               style={{background:'none',border:`1px solid ${lightbox===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:lightbox===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:lightbox===0?'default':'pointer'}}>‹ Prev</button>
             <div style={{fontFamily:'Georgia,serif',fontSize:UL(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
@@ -5134,6 +5199,7 @@ function MapLightboxGrid({maps,BASE,T}){
 //  LARKIN CHARTS
 // ══════════════════════════════════════════════════════════
 function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
+  useBackHandler(true,onClose);
   const[idx,setIdx]=useState(startIdx);
   const[zoomed,setZoomed]=useState(false);
   const lkTouchX=useRef(null);
@@ -5154,7 +5220,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
   return(
     <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.96)',display:'flex',flexDirection:'column'}} onTouchStart={lkOnTouchStart} onTouchEnd={lkOnTouchEnd} onClick={()=>{if(lkSwiped.current){lkSwiped.current=false;return;}zoomed?setZoomed(false):onClose();}}>
       {/* Top bar */}
-      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(env(safe-area-inset-top,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'calc(var(--sat,0px) + 10px) 16px 10px',background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <div style={{fontFamily:'Georgia,serif',fontSize:U(11),color:'rgba(200,168,78,0.8)',letterSpacing:'0.06em',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',paddingRight:12}}>{cur.section} {imgs.filter(x=>x.section===cur.section).length>1?`· Chart ${imgs.slice(0,idx+1).filter(x=>x.section===cur.section).length}`:''}</div>
         <div style={{fontFamily:'Georgia,serif',fontSize:UL(10),color:'rgba(255,255,255,0.35)',marginRight:12}}>{idx+1} / {imgs.length}</div>
         <button type="button" onClick={onClose} title="Close" aria-label="Close" style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:9,color:'rgba(255,255,255,0.85)',fontSize:UH(17),cursor:'pointer',width:40,height:40,minWidth:40,padding:0,display:'inline-flex',alignItems:'center',justifyContent:'center',lineHeight:1,flexShrink:0,boxSizing:'border-box'}}>✕</button>
@@ -5162,7 +5228,7 @@ function LarkinLightbox({imgs,startIdx,BASE,T,onClose}){
       {/* Image */}
         <PinchZoom src={`${BASE}charts/larkin/${cur.img}`} alt={cur.section} onZoomChange={setZoomed} maxScale={10}/>
       {/* Prev / Next */}
-      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(env(safe-area-inset-bottom,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',padding:`10px 16px calc(var(--sab,0px) + 10px)`,background:'rgba(0,0,0,0.6)'}} onClick={e=>e.stopPropagation()}>
         <button onClick={()=>setIdx(i=>Math.max(i-1,0))} disabled={idx===0}
           style={{background:'none',border:`1px solid ${idx===0?'rgba(255,255,255,0.1)':'rgba(200,168,78,0.4)'}`,borderRadius:6,color:idx===0?'rgba(255,255,255,0.2)':'rgba(200,168,78,0.8)',fontFamily:'Georgia,serif',fontSize:U(11),letterSpacing:'0.08em',padding:'7px 18px',cursor:idx===0?'default':'pointer'}}>‹ Prev</button>
         <div style={{fontFamily:'Georgia,serif',fontSize:UL(11),color:'rgba(200,168,78,0.75)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pinch to zoom</div>
@@ -6217,7 +6283,7 @@ function App(){
           const{folder,stem}=localAudioStem(readBook,readCh);
           const nativePath=`Audio/${folder}/KJV Reg/${stem}.mp3`;
           try{
-            const result=await Filesystem.getUri({directory:Directory.Documents,path:nativePath});
+            const result=await Filesystem.getUri({directory:AUDIO_DIR,path:nativePath});
             audioElRef.current.src=Capacitor.convertFileSrc(result.uri);
           }catch{
             // getUri builds a path without checking it exists, so a missing pack
@@ -6423,7 +6489,7 @@ function App(){
   // ── Measure safe-area-inset-top (lazy — done on first scroll so WKWebView is settled) ──
   function measureSafeAreaTop(){
     const el=document.createElement('div');
-    el.style.cssText='position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
+    el.style.cssText='position:fixed;top:var(--sat,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
     document.body.appendChild(el);
     const v=el.getBoundingClientRect().top;
     document.body.removeChild(el);
@@ -6564,9 +6630,14 @@ function App(){
   // iOS picks the status bar style from the *device* appearance, not ours, so a
   // light theme on a dark-mode phone drew white text on a cream background and
   // the clock vanished. Style.Light means dark glyphs for a light background.
+  // Android styles the status bar and the navigation bar together through
+  // Capacitor's SystemBars; Dark means light icons, as StatusBar's Style.Dark does.
+  const styleSystemBars=()=>Capacitor.getPlatform()==='android'
+    ?SystemBars.setStyle({style:dark?SystemBarsStyle.Dark:SystemBarsStyle.Light}).catch(()=>{})
+    :StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
   useEffect(()=>{
     if(!Capacitor.isNativePlatform())return;
-    StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+    styleSystemBars();
   },[dark]);
   // iOS can drop the status bar style when the app returns from the background,
   // so re-assert it on resume rather than waiting for the next theme change.
@@ -6574,7 +6645,7 @@ function App(){
     if(!Capacitor.isNativePlatform())return;
     let h;
     CapApp.addListener('appStateChange',({isActive})=>{
-      if(isActive)StatusBar.setStyle({style:dark?Style.Dark:Style.Light}).catch(()=>{});
+      if(isActive)styleSystemBars();
     }).then(x=>{h=x;}).catch(()=>{});
     return()=>{if(h)h.remove();};
   },[dark]);
@@ -6612,7 +6683,7 @@ function App(){
     return()=>{ro.disconnect();window.removeEventListener('resize',measure);};
   },[ready,installing]);
   // Re-measure nav height after loading completes (navRef is null during loading screen).
-  // Double rAF ensures WKWebView has resolved env(safe-area-inset-top) before measuring.
+  // Double rAF ensures the web view has resolved the status-bar inset before measuring.
   useEffect(()=>{
     if(!ready||!navRef.current)return;
     setNavH(navRef.current.getBoundingClientRect().height);
@@ -7428,6 +7499,26 @@ function App(){
       abandonSearch();
     },200);
   }
+  // Android's back button, for what App itself opens (the shared sheets,
+  // panels and popups register their own). With nothing open it steps back
+  // from a Study page to Read, and from Read sends the app to the background.
+  useBackHandler(!!strongsPopup,closeStrongsPopup);
+  useBackHandler(searchIsOpen,closeSearch);
+  useBackHandler(fsActive,exitFullScreen);
+  useBackHandler(!!openResId&&tab==='other',()=>{setOpenResId(null);setOpenResData(null);setOpenResChapter(0);});
+  useBackHandler(!!strongsTabEntry&&tab==='strongs',()=>setStrongsTabEntry(null));
+  const tabRef=useRef(tab);tabRef.current=tab;
+  useEffect(()=>{
+    if(Capacitor.getPlatform()!=='android')return;
+    let h;
+    CapApp.addListener('backButton',()=>{
+      const top=BACK_STACK[BACK_STACK.length-1];
+      if(top){top();return;}
+      if(tabRef.current!=='read'){setTab('read');return;}
+      CapApp.minimizeApp().catch(()=>{});
+    }).then(x=>{h=x;}).catch(()=>{});
+    return()=>{if(h)h.remove();};
+  },[]);
   // Reopening mid-close retires the teardown, or it would land on the search
   // that was just opened — the same trap the sheets had.
   function cancelSearchClose(){if(searchCloseTimer.current){clearTimeout(searchCloseTimer.current);searchCloseTimer.current=null;}setSearchClosing(false);}
@@ -7771,7 +7862,7 @@ function App(){
     setAudioCheckStatus('checking');
     const check=async(path)=>{
       if(!Capacitor.isNativePlatform())return true;
-      try{await Filesystem.getUri({directory:Directory.Documents,path});return true;}catch{return false;}
+      try{await Filesystem.getUri({directory:AUDIO_DIR,path});return true;}catch{return false;}
     };
     const[ot,nt]=await Promise.all([
       check('Audio/OT/KJV Reg/A01___01_Genesis_____ENGKJVO1DA.mp3'),
@@ -7858,7 +7949,7 @@ function App(){
         const raw=await rb(dataOff,csize);
         const data=method===0?raw:method===8?await inflate(raw):null;
         if(!data)throw new Error(`Unsupported ZIP compression method ${method}`);
-        await Filesystem.writeFile({path:`Audio/${pack}/KJV Reg/${filename}`,data:u8b64(data),directory:Directory.Documents,recursive:true});
+        await Filesystem.writeFile({path:`Audio/${pack}/KJV Reg/${filename}`,data:u8b64(data),directory:AUDIO_DIR,recursive:true});
         setAudioImport(s=>({...s,current:i+1}));
         if(i%5===0)await new Promise(r=>setTimeout(r,0));
       }
@@ -7872,7 +7963,7 @@ function App(){
   };
 
   const removeAudioPack=async(pack)=>{
-    try{await Filesystem.rmdir({path:`Audio/${pack}`,directory:Directory.Documents,recursive:true});}catch{}
+    try{await Filesystem.rmdir({path:`Audio/${pack}`,directory:AUDIO_DIR,recursive:true});}catch{}
     localStorage.removeItem(`scrip:audio:${pack.toLowerCase()}Installed`);
     if(pack==='OT')setOtInstalled(false);else setNtInstalled(false);
     setAudioCheckStatus(s=>s&&s!=='checking'?{...s,[pack.toLowerCase()]:false}:s);
@@ -9824,7 +9915,7 @@ function App(){
               // two different buttons.
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
-              React.createElement('div',{style:{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}},React.createElement('div',{ref:spEdge.ref,'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + env(safe-area-inset-bottom))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
+              React.createElement('div',{style:{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}},React.createElement('div',{ref:spEdge.ref,'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + var(--sab,0px))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
                 React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
@@ -9967,7 +10058,7 @@ function App(){
             {/* Drawn over the bar's safe-area strip rather than added to it, so
                 going offline never shifts the nav buttons. */}
             {!online&&(
-              <div style={{position:'absolute',left:0,right:0,bottom:'max(2px, calc(env(safe-area-inset-bottom, 0px) / 2 - 5px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+              <div style={{position:'absolute',left:0,right:0,bottom:'max(2px, calc(var(--sab,0px) / 2 - 5px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
                 <span style={{fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.14em',textTransform:'uppercase',color:T.ambTxt}}>Offline</span>
               </div>
             )}

@@ -120,7 +120,7 @@ textarea::placeholder{color:var(--ph,var(--ac-dim));opacity:1;}
   .read-scrollbar.visible{opacity:1;transition:opacity .05s ease;}
   .sheet-scroll{scrollbar-width:none;-ms-overflow-style:none;}
   .sheet-scroll::-webkit-scrollbar{display:none;}
-  .bottom-nav-safe{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;}
+  .bottom-nav-safe{padding-bottom:calc(6px + var(--sab,0px))!important;}
   .cmp-area{padding:10px 8px 20px!important;}
   .modal-overlay{padding:0!important;align-items:flex-start!important;}
   .modal-panel{width:100%!important;max-height:92vh!important;border-radius:0 0 16px 16px!important;animation:modalInTop .28s cubic-bezier(0.32,0.72,0,1) both!important;}
