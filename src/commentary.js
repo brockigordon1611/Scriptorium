@@ -52,7 +52,7 @@ export function refToken(text){
 
 // Named entities these modules use. A module with one not listed keeps it as
 // written; the app passes a decoder that knows the rest.
-const NAMED={nbsp:' ',amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",lsquo:'‘',rsquo:'’',ldquo:'“',rdquo:'”',sbquo:'‚',bdquo:'„',ndash:'–',mdash:'—',hellip:'…',middot:'·',bull:'•',para:'¶',sect:'§',pound:'£',copy:'©',reg:'®',deg:'°',dagger:'†',Dagger:'‡',laquo:'«',raquo:'»',times:'×',divide:'÷',frac12:'½',frac14:'¼',frac34:'¾',prime:'′',Prime:'″',
+const NAMED={nbsp:' ',amp:'&',lt:'<',gt:'>',quot:'"',AMP:'&',LT:'<',GT:'>',QUOT:'"',apos:"'",lsquo:'‘',rsquo:'’',ldquo:'“',rdquo:'”',sbquo:'‚',bdquo:'„',ndash:'–',mdash:'—',hellip:'…',middot:'·',bull:'•',para:'¶',sect:'§',pound:'£',copy:'©',reg:'®',deg:'°',dagger:'†',Dagger:'‡',laquo:'«',raquo:'»',times:'×',divide:'÷',frac12:'½',frac14:'¼',frac34:'¾',prime:'′',Prime:'″',
   aelig:'æ',AElig:'Æ',oelig:'œ',OElig:'Œ',szlig:'ß',ccedil:'ç',Ccedil:'Ç',ntilde:'ñ',Ntilde:'Ñ',atilde:'ã',Atilde:'Ã',otilde:'õ',
   aacute:'á',eacute:'é',iacute:'í',oacute:'ó',uacute:'ú',Aacute:'Á',Eacute:'É',Iacute:'Í',Oacute:'Ó',Uacute:'Ú',
   agrave:'à',egrave:'è',igrave:'ì',ograve:'ò',ugrave:'ù',acirc:'â',ecirc:'ê',icirc:'î',ocirc:'ô',ucirc:'û',

@@ -719,6 +719,18 @@ const TSKE_NOTICE=['Copyright 2010-2014, Timothy S. Morton (www.BibleAnalyzer.co
   'The original Treasury of Scripture Knowledge is in the public domain. This greatly enhanced and expanded edition is protected by a derivative copyright to ensure its free and open distribution. Thus permission is granted by the copyright holder to allow this text to be used under the following conditions:',
   'This text, including any additions or improvements that may be made to the text, must be distributed free of charge. If this text is in any way encrypted or placed in a proprietary format, it must also be provided separately, with any additions or improvements, in an open format, by the same party (by download is sufficient). The text can be bundled with items that are sold (CD-Rom, etc.) on the condition it is freely offered separately, with any additions or improvements, by the same party, in an open format (by download is sufficient). This copyright notice must be included with all distributions.',
   'There is no warranty expressed or implied in regard to this text.'];
+// Public-domain commentaries that ship with the app and install in the
+// background after launch, as the Treasury does. Each is built from its e-Sword
+// module by scripts/export-commentary.mjs into public/bundled/<id>.json.
+// `covers` names what a partial one is about, for the chapters it has nothing on.
+const PD_COMMENTARIES=[
+  {id:'scofield',title:'Scofield Reference Bible Notes',abbr:'Scofield',builtin:true,
+    notice:['C. I. Scofield, the notes of the Scofield Reference Bible, 1917 edition. Public domain.']},
+  {id:'meyer',title:'Through the Bible Day by Day (F. B. Meyer)',abbr:'F. B. Meyer',builtin:true,
+    notice:['F. B. Meyer, Through the Bible Day by Day (1914–1918), a devotional commentary. Public domain.']},
+  {id:'tod',title:'The Treasury of David (C. H. Spurgeon)',abbr:'Treasury of David',builtin:true,covers:'the Psalms',
+    notice:['C. H. Spurgeon, The Treasury of David (1869–1885), on the Psalms. Public domain.']},
+];
 async function idbPutCommentaryRecords(recs){
   const db=await idbOpen();
   const tx=db.transaction('commentary','readwrite');
@@ -812,6 +824,8 @@ const BUNDLED_DATASETS={
   // The Treasury's description rides along for its information page.
   tske:{clear:()=>idbDeleteCommentary(TSKE_ID),flags:[],background:true,
     load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${TSKE_ID}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}},
+  ...Object.fromEntries(PD_COMMENTARIES.map(c=>[c.id,{clear:()=>idbDeleteCommentary(c.id),flags:[],background:true,
+    load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${c.id}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}}])),
 };
 // Installs any bundled dataset the device doesn't already hold at the shipped
 // version. Returns true if it wrote anything.
@@ -1296,8 +1310,10 @@ async function _importSqliteResource(file,id,baseName,ext,category){
       if(refRows?.[0]?.values?.length){
         // Pull proper title from Details table
         title=detailsTitle().split('(')[0].trim()||baseName;
-        const stripHtml=s=>String(s||'').replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').trim();
-        chapters=refRows[0].values.map(([ch,content])=>({title:String(ch||''),body:stripHtml(content)}));
+        // Paragraphs kept and entities decoded, as the other formats get them;
+        // stripping the tags alone ran each chapter into one block and left
+        // &ldquo; and the like showing as written.
+        chapters=refRows[0].values.map(([ch,content])=>({title:htmlToParas(String(ch||'')),body:htmlToParas(content)}));
       } else {
         // Fall back to verse cross-reference format
         let rows;
@@ -3509,6 +3525,9 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const cm=list.find(c=>c.id===cid)||list[0];
   const[rec,setRec]=useState(undefined); // undefined while loading, null for none
   const[intro,setIntro]=useState(null);
+  // Whether a built-in commentary has been installed on this device yet. Only
+  // the Treasury covers every chapter, so an empty chapter alone can't tell.
+  const[setUp,setSetUp]=useState(true);
   const[introOpen,setIntroOpen]=useState(false);
   const[texts,setTexts]=useState({});
   const[recipOpen,setRecipOpen]=useState(()=>new Set());
@@ -3528,8 +3547,8 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   useEffect(()=>{
     let alive=true;
     setRec(undefined);setRecipOpen(new Set());setIntroOpen(false);
-    Promise.all([idbGetCommentaryChapter(cm.id,book,ch),idbGetCommentaryChapter(cm.id,book,0)])
-      .then(([r,i])=>{if(alive){setRec(r);setIntro(i?.o||null);}})
+    Promise.all([idbGetCommentaryChapter(cm.id,book,ch),idbGetCommentaryChapter(cm.id,book,0),cm.builtin?idbGetMeta(`bundled:${cm.id}`).catch(()=>null):true])
+      .then(([r,i,s])=>{if(alive){setRec(r);setIntro(i?.o||null);setSetUp(!!s);}})
       .catch(()=>{if(alive){setRec(null);setIntro(null);}});
     return()=>{alive=false;};
   },[cm.id,book,ch,installed]);
@@ -3576,7 +3595,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   }
   async function showInfo(c){
     setMenu(false);
-    if(c.builtin){const m=await idbGetMeta(`commentary:${c.id}`).catch(()=>null);setInfo({c,info:m?.info||'',notice:TSKE_NOTICE});}
+    if(c.builtin){const m=await idbGetMeta(`commentary:${c.id}`).catch(()=>null);setInfo({c,info:m?.info||'',notice:c.id===TSKE_ID?TSKE_NOTICE:(c.notice||null)});}
     else setInfo({c,info:c.info||'',notice:null});
   }
   async function pickFile(f){
@@ -3641,7 +3660,8 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         {rec===undefined&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
         {rec===null&&(
           <div style={{textAlign:'center',padding:'36px 12px',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15),lineHeight:1.6}}>
-            {cm.builtin?'The Treasury of Scripture Knowledge is being set up on this device. It will appear here in a moment.':`${cm.title} has no notes on ${heading}.`}
+            {cm.builtin&&!setUp?`${cm.title} is being set up on this device. It will appear here in a moment.`
+              :cm.covers?`${cm.title} is on ${cm.covers}, so it has nothing on ${heading}.`:`${cm.title} has no notes on ${heading}.`}
           </div>
         )}
         {rec&&<>
@@ -3721,7 +3741,7 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
               {info.notice&&(
                 <div style={{border:`1px solid ${T.gD}`,background:T.gF,borderRadius:10,padding:'12px 14px',marginBottom:14}}>
                   {info.notice.map((p,i)=><p key={i} style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:i?'8px 0 0':0}}>{p}</p>)}
-                  <p style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:'8px 0 0'}}>This edition is offered in an open format, as the licence asks, at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/bundled/tske.json</span></p>
+                  {info.c.id===TSKE_ID&&<p style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.55,margin:'8px 0 0'}}>This edition is offered in an open format, as the licence asks, at <span style={{color:T.gT,overflowWrap:'anywhere'}}>brockigordon1611.github.io/Scriptorium/bundled/tske.json</span></p>}
                 </div>
               )}
               {info.info?<CmLines text={info.info} T={T} lang={lang} onRef={r=>{setInfo(null);openPreview(r);}} px={Math.max(14,Math.round(px*0.85))} color={T.mut}/>
@@ -6132,7 +6152,7 @@ function App(){
   const[cmFocus,setCmFocus]=useState(null);
   useEffect(()=>{idbListCommentaries().then(l=>setCmImports(l.sort((a,b)=>b.importedAt-a.importedAt))).catch(()=>{});},[]);
   useEffect(()=>{try{localStorage.setItem('scrip:cmId',cmId);}catch{}},[cmId]);
-  const cmList=useMemo(()=>[TSKE,...cmImports],[cmImports]);
+  const cmList=useMemo(()=>[TSKE,...PD_COMMENTARIES,...cmImports],[cmImports]);
   const[parallelVids,setParallelVids]=useState([]);
   const[parallelBk,setParallelBk]=useState(1);
   const[parallelCh,setParallelCh]=useState(1);
@@ -6967,25 +6987,35 @@ function App(){
   },[ready,installing]);
 
   // ── Install bundled default resources (once per device, regardless of login) ──
+  // Public-domain e-Sword books in public/defaults, put into Other Resources the
+  // first time the app opens, once it is up (Dispensational Truth is 14 MB, so it
+  // waits its turn behind the first-launch install). Each one's flag keeps a
+  // reader who deleted it from getting it back.
+  const defaultsRun=useRef(false);
   useEffect(()=>{
-    const FOXES_ID='bundled-foxes-book-of-martyrs';
+    if(!ready||installing||defaultsRun.current)return;
+    defaultsRun.current=true;
+    const DEFAULTS=[
+      {id:'bundled-foxes-book-of-martyrs',file:'foxes_book_of_martyrs.refi',title:"Foxe's Book of Martyrs",flag:'bundled:foxes'},
+      {id:'bundled-dispensational-truth',file:'dispensational_truth.refi',title:'Dispensational Truth (Clarence Larkin)',flag:'bundled:larkin-dt'},
+    ];
     (async()=>{
-      const already=await idbGetMeta('bundled:foxes').catch(()=>null);
-      if(already)return;
-      try{
-        const resp=await fetch(`${BUNDLED_BASE}defaults/foxes_book_of_martyrs.refi`);
-        if(!resp.ok)return;
-        const buf=await resp.arrayBuffer();
-        const file=new File([buf],'foxes_book_of_martyrs.refi',{type:'application/octet-stream'});
-        const res=await _importSqliteResource(file,FOXES_ID,"Foxe's Book of Martyrs",'refi','other');
-        await idbPutMeta('bundled:foxes',true);
-        setResources(prev=>{
-          if(prev.find(r=>r.id===FOXES_ID))return prev;
-          return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
-        });
-      }catch(e){console.warn("Bundled Foxe's install failed:",e);}
+      for(const d of DEFAULTS){
+        if(await idbGetMeta(d.flag).catch(()=>null))continue;
+        try{
+          const resp=await fetch(`${BUNDLED_BASE}defaults/${d.file}`);
+          if(!resp.ok)continue;
+          const file=new File([await resp.arrayBuffer()],d.file,{type:'application/octet-stream'});
+          const res=await _importSqliteResource(file,d.id,d.title,'refi','other');
+          await idbPutMeta(d.flag,true);
+          setResources(prev=>{
+            if(prev.find(r=>r.id===d.id))return prev;
+            return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
+          });
+        }catch(e){console.warn(`Bundled ${d.title} install failed:`,e);}
+      }
     })();
-  },[]);
+  },[ready,installing]);
 
   // ── Load reading chapter ──
   useEffect(()=>{
@@ -11616,6 +11646,11 @@ function App(){
                 <Li><strong style={{color:T.gT}}>King James Version (KJV)</strong> — First published 1611. Public domain in the United States and most jurisdictions worldwide. In the United Kingdom it remains Crown Copyright and is reproduced under the terms of the Cambridge University Press licence.</Li>
                 <Li><strong style={{color:T.gT}}>Strong's Hebrew & Greek Lexicon</strong> — James Strong, <em>Exhaustive Concordance of the Bible</em> (1890). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — Noah Webster (1828). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Scofield Reference Bible Notes</strong> — C. I. Scofield (1917 edition). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Through the Bible Day by Day</strong> — F. B. Meyer (1914–1918). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>The Treasury of David</strong> — C. H. Spurgeon (1869–1885). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Dispensational Truth</strong> — Clarence Larkin (1918). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Foxe's Book of Martyrs</strong> — John Foxe (1563). Public domain.</Li>
 
                 {/* TSKe -- its licence requires this notice with every copy */}
                 <Hdg label="Treasury of Scripture Knowledge"/>
