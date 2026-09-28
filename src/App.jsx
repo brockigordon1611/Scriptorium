@@ -3985,8 +3985,12 @@ function mvRef(mv,lang){
 }
 
 // Adding a memory verse: the verse picked in the passage picker, which can run
-// on through the verses after it, shown as it will be learned.
-function MemoryAddDialog({T,d,vid,verLabel,lang,readFont,onChange,onSave,onCancel}){
+// on through the verses after it, shown as it will be learned in the version
+// chosen here (the one being read, to start with).
+function MemoryAddDialog({T,d,versions,readFont,onChange,onSave,onCancel}){
+  const vid=d.vid;
+  const verLabel=versions.find(v=>v.id===vid)?.label||String(vid).toUpperCase();
+  const lang=versionLang(vid);
   const[rows,setRows]=useState(null);
   useEffect(()=>{
     let live=true;setRows(null);
@@ -3999,6 +4003,7 @@ function MemoryAddDialog({T,d,vid,verLabel,lang,readFont,onChange,onSave,onCance
     .map(r=>({key:r.verse,label:r.verse,html:esc(String(r.text||'').replace(/<[^>]+>/g,''))}));
   const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM};
+  const chip=on=>({background:on?T.gF:'none',border:`1.5px solid ${on?T.gD:T.bd}`,borderRadius:14,color:on?T.gT:T.dim,fontFamily:FS,fontSize:U(11),padding:'8px 14px',cursor:d.busy?'default':'pointer',fontWeight:on?600:400});
   const step=off=>({width:36,height:36,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'none',border:`1px solid ${off?T.bdS:T.gD}`,borderRadius:8,color:off?T.dim:T.gT,fontSize:U(18),lineHeight:1,cursor:off?'default':'pointer',opacity:off?0.5:1,padding:0});
   const btn=primary=>({flex:primary?1:'none',background:primary?T.gF:'none',border:`1px solid ${primary?T.gD:T.bd}`,borderRadius:8,color:primary?T.gT:T.dim,cursor:d.busy?'default':'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 18px',fontWeight:600,opacity:d.busy&&primary?0.6:1});
   return(
@@ -4011,6 +4016,12 @@ function MemoryAddDialog({T,d,vid,verLabel,lang,readFont,onChange,onSave,onCance
           <button type="button" onClick={onSave} disabled={d.busy||!shown.length} style={btn(true)}>{d.busy?'Adding…':'Add'}</button>
         </div>
       </>}>
+      {versions.length>1&&<>
+        <div style={{...small,marginBottom:8}}>Version</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+          {versions.map(v=><button key={v.id} type="button" disabled={d.busy} onClick={()=>onChange({vid:v.id,err:null})} style={chip(v.id===vid)}>{v.label}</button>)}
+        </div>
+      </>}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:12}}>
         <span style={small}>Through verse</span>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -4019,7 +4030,7 @@ function MemoryAddDialog({T,d,vid,verLabel,lang,readFont,onChange,onSave,onCance
           <button type="button" aria-label="One verse more" disabled={d.end>=last} onClick={()=>onChange({end:d.end+1,err:null})} style={step(d.end>=last)}>＋</button>
         </div>
       </div>
-      {rows===null?note('Loading…'):shown.length?<VerseRows T={T} rows={shown} readFont={readFont}/>:note('This passage isn’t in the version you’re reading.')}
+      {rows===null?note('Loading…'):shown.length?<VerseRows T={T} rows={shown} readFont={readFont}/>:note(`This passage isn’t in ${verLabel}.`)}
       <div style={{height:8}}/>
     </PopFrame>
   );
@@ -6159,7 +6170,7 @@ function App(){
   // ── Bookmarks / Recents / Categories ──
   const[bookmarks,setBookmarks]=useState([]);
   const[memVerses,setMemVerses]=useState([]);
-  const[memAdd,setMemAdd]=useState(null); // {bk,ch,v,end,busy,err} while adding one
+  const[memAdd,setMemAdd]=useState(null); // {vid,bk,ch,v,end,busy,err} while adding one
   const[recents,setRecents]=useState([]);
   const[bmCategories,setBmCategories]=useState([]);
 
@@ -8088,15 +8099,16 @@ function App(){
   async function memSave(){
     const d=memAdd;
     if(!d||d.busy||!user)return;
+    const vid=d.vid||readVid;
     const dup='That passage is already in your memory verses.';
-    if(memVerses.some(m=>m.version_id===readVid&&m.book_num===d.bk&&m.chapter===d.ch&&m.verse_start===d.v&&m.verse_end===d.end)){setMemAdd(x=>({...x,err:dup}));return;}
+    if(memVerses.some(m=>m.version_id===vid&&m.book_num===d.bk&&m.chapter===d.ch&&m.verse_start===d.v&&m.verse_end===d.end)){setMemAdd(x=>({...x,err:dup}));return;}
     if(user.guest){
-      setMemVerses(l=>[{id:'g-'+Date.now(),user_id:'guest',version_id:readVid,book_num:d.bk,chapter:d.ch,verse_start:d.v,verse_end:d.end,practice_count:0,last_practiced_at:null,created_at:new Date().toISOString()},...l]);
+      setMemVerses(l=>[{id:'g-'+Date.now(),user_id:'guest',version_id:vid,book_num:d.bk,chapter:d.ch,verse_start:d.v,verse_end:d.end,practice_count:0,last_practiced_at:null,created_at:new Date().toISOString()},...l]);
       setMemAdd(null);return;
     }
     setMemAdd(x=>({...x,busy:true,err:null}));
     try{
-      const row=await dbAddMemoryVerse(user.id,{versionId:readVid,bookNum:d.bk,chapter:d.ch,verseStart:d.v,verseEnd:d.end});
+      const row=await dbAddMemoryVerse(user.id,{versionId:vid,bookNum:d.bk,chapter:d.ch,verseStart:d.v,verseEnd:d.end});
       if(row)setMemVerses(l=>[row,...l]);
       setMemAdd(null);
     }catch(e){setMemAdd(x=>x&&({...x,busy:false,err:e.message==='duplicate'?dup:'Couldn’t save it. Check your connection and try again.'}));}
@@ -9313,7 +9325,7 @@ function App(){
                       <button key={i+1} type="button" onClick={()=>{
                         if(isP){setParallelVs(i+1);}
                         else if(isC){setCmFocus({v:i+1});}
-                        else if(isM){setMemAdd({bk:navPickedBk,ch:navPickedCh,v:i+1,end:i+1,busy:false,err:null});}
+                        else if(isM){setMemAdd({vid:readVid,bk:navPickedBk,ch:navPickedCh,v:i+1,end:i+1,busy:false,err:null});}
                         else{if(readSearchResultsOpen)setReadSearchResultsOpen(false);setTimeout(()=>{const el=document.getElementById(`rv-${i+1}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(s=>{const ns=new Set(s);ns.add(i+1);return ns;});}},120);}
                         closeReadSheet();
                       }} style={gridBtn}>{i+1}</button>
@@ -11113,7 +11125,7 @@ function App(){
             else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
       )}
       {memAdd&&(
-        <MemoryAddDialog T={T} d={memAdd} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)}
+        <MemoryAddDialog T={T} d={memAdd} versions={data?.versions||[]}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
           onChange={patch=>setMemAdd(x=>({...x,...patch}))} onSave={memSave} onCancel={()=>setMemAdd(null)}/>
       )}
