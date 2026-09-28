@@ -4271,11 +4271,12 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
 
 // ═══ VERSE FEED (experimental) ═══
 // Study → Verse Feed: one well-known verse at a time, filling the page, and a
-// swipe up snaps to the next. The list (src/feedVerses.json, built by
-// scripts/build-feed-verses.mjs) is shuffled once and walked in that order, and
-// where the reader got to is kept on the device, so the feed carries on from
-// there next time. To take the feature out: FEED_ON=false hides it; this block,
-// the list, its script and the lines tagged "verse feed" are all there is of it.
+// swipe up snaps to the next, with the actions down the right-hand side as a
+// short-video feed has them. The list (src/feedVerses.json, built by
+// scripts/build-feed-verses.mjs) comes in a fresh random order every time the
+// page opens, and pulling down on the first verse deals a new one. To take the
+// feature out: FEED_ON=false hides it; this block, the list, its script and the
+// lines tagged "verse feed" are all there is of it.
 function feedShuffle(n,seed){
   // mulberry32, so one seed always gives the same order.
   let a=seed>>>0;
@@ -4285,9 +4286,11 @@ function feedShuffle(n,seed){
   return o;
 }
 const feedSeed=()=>Math.floor(Math.random()*2147483647);
-function feedLoad(){try{const s=JSON.parse(localStorage.getItem('scrip:feed')||'null');if(s&&Number.isInteger(s.seed)&&Number.isInteger(s.pos))return s;}catch{}return{seed:feedSeed(),pos:0};}
-function feedSave(s){try{localStorage.setItem('scrip:feed',JSON.stringify(s));}catch{}}
+const FEED_PULL=64; // how far the first verse is pulled down before letting go reshuffles
 const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transform:scale(1.15);opacity:.95}35%{transform:scale(1);opacity:.9}100%{transform:scale(1.3);opacity:0}}'
+  +'@keyframes feedIn{from{opacity:0}to{opacity:1}}'
+  +'@keyframes feedSpin{to{transform:rotate(360deg)}}'
+  +'@keyframes feedNudge{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(-7px);opacity:1}}'
   +'.feed-sc{scrollbar-width:none}.feed-sc::-webkit-scrollbar{display:none}';
 
 function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy}){
@@ -4297,11 +4300,9 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
     import('./feedVerses.json').then(m=>{if(live)setRefs(m.default||[]);}).catch(()=>{if(live)setRefs([]);});
     return()=>{live=false;};
   },[]);
-  // The order, and the card to start on, are fixed when the page opens.
-  const saved=useRef(null);if(!saved.current)saved.current=feedLoad();
-  const order=useMemo(()=>refs?feedShuffle(refs.length,saved.current.seed):[],[refs]);
-  const start=refs&&saved.current.pos<refs.length?saved.current.pos:0;
-  const refAt=k=>refs[order[(start+k)%order.length]];
+  const[seed,setSeed]=useState(feedSeed);
+  const order=useMemo(()=>refs?feedShuffle(refs.length,seed):[],[refs,seed]);
+  const refAt=k=>refs[order[k%order.length]];
 
   const[count,setCount]=useState(20);
   const[cur,setCur]=useState(0);
@@ -4317,9 +4318,50 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
     return()=>ro.disconnect();
   },[]);
   useLayoutEffect(()=>{const el=scRef.current;if(el&&h)el.scrollTop=curRef.current*h;},[h]);
-  // A mouse wheel or trackpad moves one card per gesture. Left to itself a
-  // notch or two falls short of half a card and the snap pulls it back, and a
-  // trackpad's glide would run on past several.
+  function onScroll(){
+    const el=scRef.current;if(!el||!h||!order.length)return;
+    const k=Math.max(0,Math.round(el.scrollTop/h));
+    if(k!==curRef.current){curRef.current=k;setCur(k);if(k>0)setSwiped(true);}
+    if(k>count-6)setCount(c=>c+20);
+  }
+
+  // A new order: the spinner turns a moment, then the first verse of the new
+  // deal fades in where the old one was.
+  const[refreshing,setRefreshing]=useState(false);
+  const refreshT=useRef(null);
+  function refresh(){
+    if(refreshing)return;
+    setRefreshing(true);
+    clearTimeout(refreshT.current);
+    refreshT.current=setTimeout(()=>{
+      setSeed(feedSeed());setCount(20);curRef.current=0;setCur(0);
+      if(scRef.current)scRef.current.scrollTop=0;
+      setRefreshing(false);
+    },550);
+  }
+  useEffect(()=>()=>clearTimeout(refreshT.current),[]);
+  const refreshRef=useRef(refresh);refreshRef.current=refresh;
+  // Pulling down on the first verse: measured from the finger, since only iOS
+  // lets the scroller itself go past the top. Letting go past FEED_PULL deals.
+  const pullFrom=useRef(null),pullRef=useRef(0);
+  const[pull,setPull]=useState(0);
+  const setPullTo=px=>{pullRef.current=px;setPull(px);};
+  function touchStart(e){pullFrom.current=scRef.current&&scRef.current.scrollTop<=0&&!refreshing?e.touches[0].clientY:null;}
+  function touchMove(e){
+    if(pullFrom.current===null)return;
+    const dy=e.touches[0].clientY-pullFrom.current;
+    if(dy<=0||scRef.current.scrollTop>0){if(pullRef.current)setPullTo(0);if(dy<0)pullFrom.current=null;return;}
+    setPullTo(Math.min(FEED_PULL*1.8,dy*0.5));
+  }
+  function touchEnd(){
+    if(pullFrom.current!==null&&pullRef.current>=FEED_PULL)refresh();
+    pullFrom.current=null;setPullTo(0);
+  }
+
+  // A mouse wheel or trackpad moves one card per gesture (left to itself a
+  // notch falls short and the snap pulls it back, and a trackpad's glide would
+  // run on past several). Upward on the first card deals a new order, as a
+  // pull does on a phone.
   useEffect(()=>{
     const el=scRef.current;if(!el)return;
     let busy=false,quiet=null;
@@ -4329,25 +4371,12 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
       clearTimeout(quiet);quiet=setTimeout(()=>{busy=false;},220);
       if(busy)return;busy=true;
       const ch=el.clientHeight,k=Math.round(el.scrollTop/ch)+(e.deltaY>0?1:-1);
-      el.scrollTo({top:Math.max(0,k)*ch,behavior:'smooth'});
+      if(k<0){refreshRef.current();return;}
+      el.scrollTo({top:k*ch,behavior:'smooth'});
     };
     el.addEventListener('wheel',wheel,{passive:false});
     return()=>{el.removeEventListener('wheel',wheel);clearTimeout(quiet);};
   },[]);
-  // Where the reader is, written a moment after the scrolling stops and when
-  // the page closes. Past the end of this order, the next visit reshuffles.
-  const posRef=useRef(null),saveT=useRef(null);
-  useEffect(()=>()=>{clearTimeout(saveT.current);if(posRef.current)feedSave(posRef.current);},[]);
-  function onScroll(){
-    const el=scRef.current;if(!el||!h||!order.length)return;
-    const k=Math.round(el.scrollTop/h);
-    if(k!==curRef.current){curRef.current=k;setCur(k);if(k>0)setSwiped(true);}
-    if(k>count-6)setCount(c=>c+20);
-    const p=start+k;
-    posRef.current=p<order.length?{seed:saved.current.seed,pos:p}:{seed:feedSeed(),pos:0};
-    clearTimeout(saveT.current);
-    saveT.current=setTimeout(()=>feedSave(posRef.current),300);
-  }
 
   // The words, a chapter at a time, for the card in view and the four after it.
   const[texts,setTexts]=useState({});
@@ -4391,18 +4420,28 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
   const fsFor=t=>{const n=t.replace(/<[^>]+>/g,'').length;return Math.round(px*(n>200?1.1:n>130?1.22:1.35));};
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const hint={fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:T.dim,textAlign:'center'};
-  const act=on=>({flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,minHeight:54,background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:10,color:on?T.gT:T.mut,cursor:'pointer',padding:'6px 2px',WebkitTapHighlightColor:'transparent'});
-  const icon={fontFamily:FS,fontSize:U(17),lineHeight:1,color:T.gT,display:'flex',alignItems:'center',justifyContent:'center',height:18};
-  const label={fontFamily:FB,fontSize:U(11),lineHeight:1.2};
+  // The actions stand in a column at the bottom right; the verse keeps clear
+  // of it (RAIL is the column's width and the gap beside it).
+  const RAIL=74;
+  const act=on=>({width:46,height:46,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:on?T.gF:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,color:T.gT,fontFamily:FS,fontSize:U(18),lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'});
+  const actLabel={fontFamily:FB,fontSize:UL(10),color:T.mut,marginTop:4,lineHeight:1.1,textAlign:'center',whiteSpace:'nowrap'};
+  const action=(on,glyph,text,fn,extra)=>(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:62}}>
+      <button type="button" aria-label={text} aria-pressed={on} onClick={fn} style={{...act(on),...extra}}>{glyph}</button>
+      <span style={actLabel}>{text}</span>
+    </div>
+  );
+  const copyGlyph=<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
 
   return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH,position:'relative'}}>
       <style>{FEED_CSS}</style>
-      <div style={{padding:'22px 14px 0',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
-        <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center',minHeight:26,display:'flex',alignItems:'center',justifyContent:'center'}}>Verse Feed</div>
-        <div style={{height:1,background:T.accentLine,marginTop:10}}/>
-      </div>
-      <div ref={scRef} onScroll={onScroll} className="feed-sc"
+      {(pull>0||refreshing)&&<div style={{position:'absolute',zIndex:2,pointerEvents:'none',left:'50%',marginLeft:-19,width:38,height:38,top:navH+10+(refreshing?FEED_PULL*0.45:pull*0.45),
+        borderRadius:'50%',background:T.bgCard,border:`1px solid ${T.gD}`,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,
+        opacity:refreshing?1:Math.min(1,pull/FEED_PULL),boxShadow:'0 2px 10px rgba(0,0,0,0.15)'}}>
+        <span style={{display:'inline-block',fontFamily:FS,fontSize:19,lineHeight:1,transform:refreshing?undefined:`rotate(${pull*4}deg)`,animation:refreshing?'feedSpin .6s linear infinite':'none'}}>↻</span>
+      </div>}
+      <div ref={scRef} onScroll={onScroll} onTouchStart={touchStart} onTouchMove={touchMove} onTouchEnd={touchEnd} onTouchCancel={touchEnd} className="feed-sc"
         style={{flex:1,minHeight:0,overflowY:anySheetOpen?'hidden':'auto',overflowX:'hidden',scrollSnapType:'y mandatory',overscrollBehavior:'contain',WebkitOverflowScrolling:'touch'}}>
         {refs!==null&&!order.length&&<div style={{...hint,padding:'40px 20px'}}>The verse list couldn’t be loaded.</div>}
         {h>0&&order.length>0&&Array.from({length:count},(_,k)=>{
@@ -4411,28 +4450,30 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
           const[b,c,v]=refAt(k);
           const text=near?textOf(b,c,v):undefined,marked=near&&!!bookmarkOf(b,c,v);
           return(
-            <div key={k} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
-              {near&&<div style={{height:'100%',maxWidth:760,margin:'0 auto',boxSizing:'border-box',display:'flex',flexDirection:'column',padding:'10px 22px calc(14px + var(--sab,0px))'}}>
+            <div key={`${seed}-${k}`} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
+              {near&&<div style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out'}}>
                 <div onClick={()=>tap(k,b,c,v)}
-                  style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',textAlign:'center',overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
+                  style={{height:'100%',boxSizing:'border-box',padding:`16px ${RAIL}px calc(24px + var(--sab,0px)) 22px`,display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',textAlign:'center',overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
                   {text===undefined?<div style={hint}>…</div>
                     :text?<div style={{fontFamily:readFont.family,fontSize:fsFor(text),lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:verseHtml(b,c,v,text)}}/>
                     :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
                   <div style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
-                  {k===0&&!swiped&&<div style={{...hint,fontSize:U(12),marginTop:28}}>Swipe up for the next verse</div>}
                 </div>
-                <div style={{display:'flex',gap:8,paddingTop:12}}>
-                  <button type="button" aria-pressed={marked} onClick={()=>toggleMark(b,c,v)} style={act(marked)}><span style={icon}>✦</span><span style={label}>{marked?'Bookmarked':'Bookmark'}</span></button>
-                  <button type="button" onClick={()=>onMemorize(b,c,v)} style={act(false)}><span style={icon}>♡</span><span style={label}>Memorize</span></button>
-                  <button type="button" onClick={()=>onOpen(b,c,v)} style={act(false)}><span style={icon}>→</span><span style={label}>Read</span></button>
-                  <button type="button" disabled={!text} onClick={()=>copy(k,b,c,v,text)} style={{...act(copied===k),opacity:text?1:0.5}}>
-                    <span style={icon}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
-                    <span style={label}>{copied===k?'Copied':'Copy'}</span>
-                  </button>
+                <div style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+                  {action(false,'♡','Memorize',()=>onMemorize(b,c,v))}
+                  {action(marked,'✦',marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
+                  {action(copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
+                  {action(false,'→','Read',()=>onOpen(b,c,v))}
                 </div>
+                {k===0&&!swiped&&<div style={{position:'absolute',left:0,right:0,bottom:'calc(20px + var(--sab,0px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center',color:T.gM,animation:'feedNudge 1.6s ease-in-out infinite'}}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 15 12 9 18 15"/></svg>
+                    <span style={{...small,fontSize:UL(8),marginTop:2}}>Swipe up</span>
+                  </div>
+                </div>}
+                {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
+                  style={{position:'absolute',left:`calc(50% - ${(RAIL-22)/2}px)`,top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
               </div>}
-              {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
-                style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
             </div>
           );
         })}
