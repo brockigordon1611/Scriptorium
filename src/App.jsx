@@ -4293,6 +4293,31 @@ const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transfor
   +'@keyframes feedNudge{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(-7px);opacity:1}}'
   +'.feed-sc{scrollbar-width:none}.feed-sc::-webkit-scrollbar{display:none}';
 
+// The verse and its reference, centred on the card at the size the feed gives
+// them. One that fits above the actions keeps the full width. A longer one
+// narrows to a column with equal margins, clear of the actions on the right,
+// and stays centred; if even that is too tall it steps down a pixel at a time.
+function FeedFit({h,rail,size,min,fitKey,children}){
+  const ref=useRef(null);
+  const[fs,setFs]=useState(size);
+  const[narrow,setNarrow]=useState(false);
+  const[top,setTop]=useState(null);
+  useLayoutEffect(()=>{setFs(size);setNarrow(false);setTop(null);},[size,fitKey,h,rail.top,rail.side]);
+  useLayoutEffect(()=>{
+    const el=ref.current;if(!el||!h)return;
+    const ih=el.offsetHeight,mid=(h-ih)/2;
+    const place=t=>{if(top===null||Math.abs(t-top)>0.5)setTop(t);};
+    if(!narrow){
+      if(!rail.top||mid+ih<=rail.top-14){place(Math.max(16,mid));return;}
+      setNarrow(true);return;
+    }
+    if(size&&ih>rail.bottom-16&&fs>min){setFs(f=>Math.max(min,f-1));return;}
+    place(Math.max(16,Math.min(mid,rail.bottom-ih)));
+  });
+  const side=narrow?rail.side:22;
+  return<div ref={ref} style={{position:'absolute',left:side,right:side,top:top??0,visibility:top===null?'hidden':'visible',textAlign:'center',fontSize:size?fs:undefined}}>{children}</div>;
+}
+
 function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy}){
   const[refs,setRefs]=useState(null);
   useEffect(()=>{
@@ -4420,9 +4445,17 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
   const fsFor=t=>{const n=t.replace(/<[^>]+>/g,'').length;return Math.round(px*(n>200?1.1:n>130?1.22:1.35));};
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const hint={fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:T.dim,textAlign:'center'};
-  // The actions stand in a column at the bottom right; the verse keeps clear
-  // of it (RAIL is the column's width and the gap beside it).
-  const RAIL=74;
+  // The actions stand in a column at the bottom right. Where it sits (the same
+  // on every card) is what FeedFit lays the verse out around: its top and foot,
+  // and the margin that clears it on both sides.
+  const railRef=useRef(null);
+  const[rail,setRail]=useState({top:0,bottom:0,side:22});
+  useLayoutEffect(()=>{
+    const el=railRef.current;if(!el)return;
+    const w=el.offsetParent?el.offsetParent.clientWidth:0;
+    const r={top:el.offsetTop,bottom:el.offsetTop+el.offsetHeight,side:Math.max(22,w-el.offsetLeft+6)};
+    if(Math.abs(r.top-rail.top)>0.5||Math.abs(r.bottom-rail.bottom)>0.5||Math.abs(r.side-rail.side)>0.5)setRail(r);
+  });
   const act=on=>({width:46,height:46,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:on?T.gF:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,color:T.gT,fontFamily:FS,fontSize:U(18),lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'});
   const actLabel={fontFamily:FB,fontSize:UL(10),color:T.mut,marginTop:4,lineHeight:1.1,textAlign:'center',whiteSpace:'nowrap'};
   const action=(on,glyph,text,fn,extra)=>(
@@ -4452,14 +4485,15 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
           return(
             <div key={`${seed}-${k}`} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
               {near&&<div style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out'}}>
-                <div onClick={()=>tap(k,b,c,v)}
-                  style={{height:'100%',boxSizing:'border-box',padding:`16px ${RAIL}px calc(24px + var(--sab,0px)) 22px`,display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',textAlign:'center',overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
-                  {text===undefined?<div style={hint}>…</div>
-                    :text?<div style={{fontFamily:readFont.family,fontSize:fsFor(text),lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:verseHtml(b,c,v,text)}}/>
-                    :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
-                  <div style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
+                <div onClick={()=>tap(k,b,c,v)} style={{position:'absolute',inset:0,overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
+                  <FeedFit h={h} rail={rail} size={text?fsFor(text):0} min={Math.round(px*0.85)} fitKey={text}>
+                    {text===undefined?<div style={hint}>…</div>
+                      :text?<div style={{fontFamily:readFont.family,lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:verseHtml(b,c,v,text)}}/>
+                      :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
+                    <div style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
+                  </FeedFit>
                 </div>
-                <div style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+                <div ref={k===cur?railRef:undefined} style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
                   {action(false,'♡','Memorize',()=>onMemorize(b,c,v))}
                   {action(marked,'✦',marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
                   {action(copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
@@ -4472,7 +4506,7 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
                   </div>
                 </div>}
                 {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
-                  style={{position:'absolute',left:`calc(50% - ${(RAIL-22)/2}px)`,top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
+                  style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
               </div>}
             </div>
           );
