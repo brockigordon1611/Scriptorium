@@ -4358,18 +4358,19 @@ function FeedFit({h,rail,size,min,fitKey,children}){
     const el=ref.current;if(!el||!h)return;
     const ih=el.offsetHeight,mid=(h-ih)/2;
     const place=t=>{if(top===null||Math.abs(t-top)>0.5)setTop(t);};
+    const clear=rail.clear||16;
     if(!narrow){
-      if(!rail.top||mid+ih<=rail.top-14){place(Math.max(16,mid));return;}
+      if(!rail.top||(mid+ih<=rail.top-14&&mid>=clear)){place(Math.max(clear,mid));return;}
       setNarrow(true);return;
     }
-    if(size&&ih>rail.bottom-16&&fs>min){setFs(f=>Math.max(min,f-1));return;}
-    place(Math.max(16,Math.min(mid,rail.bottom-ih)));
+    if(size&&ih>rail.bottom-clear&&fs>min){setFs(f=>Math.max(min,f-1));return;}
+    place(Math.max(clear,Math.min(mid,rail.bottom-ih)));
   });
   const side=narrow?rail.side:22;
   return<div ref={ref} style={{position:'absolute',left:side,right:side,top:top??0,visibility:top===null?'hidden':'visible',textAlign:'center',fontSize:size?fs:undefined}}>{children}</div>;
 }
 
-function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy}){
+function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy,onBack}){
   const[refs,setRefs]=useState(null);
   useEffect(()=>{
     let live=true;
@@ -4499,13 +4500,14 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
   // The actions stand in a column at the bottom right. Where it sits (the same
   // on every card) is what FeedFit lays the verse out around: its top and foot,
   // and the margin that clears it on both sides.
-  const railRef=useRef(null);
-  const[rail,setRail]=useState({top:0,bottom:0,side:22});
+  // The back button's foot is the top the verse keeps below.
+  const railRef=useRef(null),backRef=useRef(null);
+  const[rail,setRail]=useState({top:0,bottom:0,side:22,clear:16});
   useLayoutEffect(()=>{
     const el=railRef.current;if(!el)return;
-    const w=el.offsetParent?el.offsetParent.clientWidth:0;
-    const r={top:el.offsetTop,bottom:el.offsetTop+el.offsetHeight,side:Math.max(22,w-el.offsetLeft+6)};
-    if(Math.abs(r.top-rail.top)>0.5||Math.abs(r.bottom-rail.bottom)>0.5||Math.abs(r.side-rail.side)>0.5)setRail(r);
+    const w=el.offsetParent?el.offsetParent.clientWidth:0,bk=backRef.current;
+    const r={top:el.offsetTop,bottom:el.offsetTop+el.offsetHeight,side:Math.max(22,w-el.offsetLeft+6),clear:bk?bk.offsetTop+bk.offsetHeight+10:16};
+    if(Math.abs(r.top-rail.top)>0.5||Math.abs(r.bottom-rail.bottom)>0.5||Math.abs(r.side-rail.side)>0.5||Math.abs(r.clear-rail.clear)>0.5)setRail(r);
   });
   const act=on=>({width:46,height:46,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:on?T.gF:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,color:T.gT,fontFamily:FS,fontSize:U(18),lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'});
   const actLabel={fontFamily:FB,fontSize:UL(10),color:T.mut,marginTop:4,lineHeight:1.1,textAlign:'center',whiteSpace:'nowrap'};
@@ -4517,10 +4519,16 @@ function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,book
   );
   const copyGlyph=<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
 
+  // The glass the verse strip's pieces wear, for the back button that floats
+  // over the feed now the nav steps aside for it.
+  const glass={background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:7};
+  const TOP='max(var(--sat,0px),var(--sat-min,0px))';
   return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH,position:'relative'}}>
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,position:'relative'}}>
       <style>{FEED_CSS}</style>
-      {(pull>0||refreshing)&&<div style={{position:'absolute',zIndex:2,pointerEvents:'none',left:'50%',marginLeft:-19,width:38,height:38,top:navH+10+(refreshing?FEED_PULL*0.45:pull*0.45),
+      <button ref={backRef} type="button" onClick={onBack} title="Back" aria-label="Back"
+        style={{...glass,position:'absolute',zIndex:3,top:`calc(${TOP} + 8px)`,left:14,color:T.gT,padding:'8px 11px',cursor:'pointer',fontSize:U(13),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>←</button>
+      {(pull>0||refreshing)&&<div style={{position:'absolute',zIndex:2,pointerEvents:'none',left:'50%',marginLeft:-19,width:38,height:38,top:`calc(${TOP} + ${10+(refreshing?FEED_PULL*0.45:pull*0.45)}px)`,
         borderRadius:'50%',background:T.bgCard,border:`1px solid ${T.gD}`,display:'flex',alignItems:'center',justifyContent:'center',color:T.gT,
         opacity:refreshing?1:Math.min(1,pull/FEED_PULL),boxShadow:'0 2px 10px rgba(0,0,0,0.15)'}}>
         <span style={{display:'inline-block',fontFamily:FS,fontSize:19,lineHeight:1,transform:refreshing?undefined:`rotate(${pull*4}deg)`,animation:refreshing?'feedSpin .6s linear infinite':'none'}}>↻</span>
@@ -6471,6 +6479,7 @@ function App(){
   const[bookmarks,setBookmarks]=useState([]);
   const[memVerses,setMemVerses]=useState([]);
   const[memAdd,setMemAdd]=useState(null); // {vid,bk,ch,v,end,busy,err} while adding one
+  const feedFrom=useRef('read'); // verse feed: the tab its back button returns to
   const[recents,setRecents]=useState([]);
   const[bmCategories,setBmCategories]=useState([]);
 
@@ -8583,7 +8592,8 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none',
+        transition:'transform .18s ease',...(FEED_ON&&tab==='feed'?{transform:'translateY(-100%)',pointerEvents:'none'}:{})/* verse feed: the nav steps aside */}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
           {/* Logo */}
@@ -8930,7 +8940,7 @@ function App(){
           </div>
           {[
             {icon:'♡',label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
-            ...(FEED_ON?[{icon:'⇅',label:'Verse Feed',sub:'Swipe through well-known verses',key:'feed',fn:()=>{setTab('feed');closeReadSheet();}}]:[]), // verse feed
+            ...(FEED_ON?[{icon:'⇅',label:'Verse Feed',sub:'Swipe through well-known verses',key:'feed',fn:()=>{if(tab!=='feed')feedFrom.current=tab;setTab('feed');closeReadSheet();}}]:[]), // verse feed
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
             {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
@@ -10513,7 +10523,7 @@ function App(){
       )}
       {/* verse feed */}
       {FEED_ON&&tab==='feed'&&(
-        <FeedPage T={T} navH={navH} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)}
+        <FeedPage T={T} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)} onBack={()=>setTab(feedFrom.current||'read')}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} anySheetOpen={anySheetOpen}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
           bookmarkOf={(b,c,v)=>bookmarks.find(x=>x.version_id===readVid&&x.book_num===b&&x.chapter===c&&x.verse===v)?.id||null}
