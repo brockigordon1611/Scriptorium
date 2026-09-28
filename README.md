@@ -4,8 +4,8 @@ A Bible reading and study app: the KJV and imported versions, Strong's
 concordance, commentaries (the Treasury of Scripture Knowledge is built in),
 parallel versions, memory verses, highlights, bookmarks and reading plans.
 
-One React codebase runs on the web (GitHub Pages) and on iPhone (App Store),
-wrapped for iOS with Capacitor. Accounts and synced data live in Supabase.
+One React codebase runs on the web (GitHub Pages), on iPhone (App Store) and
+on Android (Google Play, in progress), wrapped for the phones with Capacitor. Accounts and synced data live in Supabase.
 
 - Web: https://brockigordon1611.github.io/Scriptorium/
 
@@ -17,6 +17,7 @@ wrapped for iOS with Capacitor. Accounts and synced data live in Supabase.
 | `index.html` | The entry page. It also sets the status-bar spacing before the app starts. |
 | `public/` | Copied into the build as is: the bundled KJV and TSK data (`bundled/`), maps, charts, fonts, help, and the privacy and support pages (`docs/`). |
 | `ios/` | The Xcode project (`App/App.xcodeproj`). Native code is `App/App/AppDelegate.swift`. |
+| `android/` | The Android Studio project (open this folder). Native code is `app/src/main/java/com/brockgordon/scriptorium/`. |
 | `scripts/` | `export-bundled-data.mjs` and `export-tsk.mjs` rebuild the bundled data. `strongs/`, `stepbible/` and `audio/` are the one-off tools that built the Strong's and audio-timing data (Windows-era; their paths are hard-coded). |
 | `supabase/` | The sign-up and password-reset email templates. |
 | `store/` | App Store Connect notes for each release. |
