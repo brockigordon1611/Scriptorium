@@ -723,6 +723,12 @@ const TSKE_NOTICE=['Copyright 2010-2014, Timothy S. Morton (www.BibleAnalyzer.co
 // background after launch, as the Treasury does. Each is built from its e-Sword
 // module by scripts/export-commentary.mjs into public/bundled/<id>.json.
 // `covers` names what a partial one is about, for the chapters it has nothing on.
+// Public-domain books that ship in public/defaults and install into Other
+// Resources. lazyOnWeb: the website fetches it only once Other Resources opens.
+const DEFAULT_RESOURCES=[
+  {id:'bundled-foxes-book-of-martyrs',file:'foxes_book_of_martyrs.refi',title:"Foxe's Book of Martyrs",flag:'bundled:foxes'},
+  {id:'bundled-dispensational-truth',file:'dispensational_truth.refi',title:'Dispensational Truth (Clarence Larkin)',flag:'bundled:larkin-dt',lazyOnWeb:true},
+];
 const PD_COMMENTARIES=[
   {id:'scofield',title:'Scofield Reference Bible Notes',abbr:'Scofield',builtin:true,
     notice:['C. I. Scofield, the notes of the Scofield Reference Bible, 1917 edition. Public domain.']},
@@ -824,12 +830,12 @@ const BUNDLED_DATASETS={
   // The Treasury's description rides along for its information page.
   tske:{clear:()=>idbDeleteCommentary(TSKE_ID),flags:[],background:true,
     load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${TSKE_ID}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}},
-  ...Object.fromEntries(PD_COMMENTARIES.map(c=>[c.id,{clear:()=>idbDeleteCommentary(c.id),flags:[],background:true,
+  ...Object.fromEntries(PD_COMMENTARIES.map(c=>[c.id,{clear:()=>idbDeleteCommentary(c.id),flags:[],background:true,lazyOnWeb:true,
     load:async f=>{const d=await _bundledJson(f);const recs=d.records||[];for(let i=0;i<recs.length;i+=100)await idbPutCommentaryRecords(recs.slice(i,i+100));await idbPutMeta(`commentary:${c.id}`,{title:d.title,info:d.info}).catch(()=>{});return recs.length;}}])),
 };
 // Installs any bundled dataset the device doesn't already hold at the shipped
 // version. Returns true if it wrote anything.
-async function installBundledDatasets(onProgress,{background=false}={}){
+async function installBundledDatasets(onProgress,{background=false,only=null}={}){
   bootMark(background?'bg-install-check':'install-check');
   let man;
   try{man=await _bundledJson('manifest.json');}
@@ -838,9 +844,15 @@ async function installBundledDatasets(onProgress,{background=false}={}){
   if(!ds){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:'no datasets in manifest',at:Date.now()}).catch(()=>{});return false;}
   const jobs=[];
   for(const name of Object.keys(BUNDLED_DATASETS)){
-    // Two passes: what the app needs to open, behind the install screen, and
-    // what it does not, once it is open.
-    if(!!BUNDLED_DATASETS[name].background!==background)continue;
+    if(only){if(name!==only)continue;}
+    else{
+      // Two passes: what the app needs to open, behind the install screen, and
+      // what it does not, once it is open.
+      if(!!BUNDLED_DATASETS[name].background!==background)continue;
+      // The website leaves out what only a reader who opens it wants; those
+      // come one at a time, when opened (`only`). The apps have them on board.
+      if(BUNDLED_DATASETS[name].lazyOnWeb&&!Capacitor.isNativePlatform())continue;
+    }
     const d=ds[name];
     if(!d||!Array.isArray(d.files))continue;
     const have=await idbGetMeta(`bundled:${name}`).catch(()=>null);
@@ -3518,7 +3530,7 @@ function splitReciprocal(m){
 
 // Study → Commentaries. It opens on the chapter being read, and at the verse
 // that was selected; its own arrows move on from there without moving Read.
-function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose,verLabel}){
+function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,onGo,onImport,onDelete,verseHtml,readFont,anySheetOpen,installed,fs,onScroll,onNav,onChoose,verLabel,onInstall}){
   // The commentary is read like the text it comments on, so it follows
   // Scripture Size (see cmPx).
   const px=cmPx(readFont.size);
@@ -3539,6 +3551,17 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
     if(b&&b!==barH)setBarH(b);
   });
   useEffect(()=>{setFar(false);},[cm.id,book,ch]);
+  // The website downloads a bundled commentary the first time it is opened:
+  // 'loading' while it comes, 'failed' to offer another try.
+  const[fetchState,setFetchState]=useState({});
+  const fetchNow=id=>{
+    setFetchState(f=>({...f,[id]:'loading'}));
+    Promise.resolve(onInstall&&onInstall(id)).then(()=>setFetchState(f=>({...f,[id]:'done'}))).catch(()=>setFetchState(f=>({...f,[id]:'failed'})));
+  };
+  useEffect(()=>{
+    if(!cm.builtin||setUp||rec===undefined||Capacitor.isNativePlatform()||fetchState[cm.id])return;
+    fetchNow(cm.id);
+  },[cm.id,setUp,rec]);
   const[introOpen,setIntroOpen]=useState(false);
   const[texts,setTexts]=useState({});
   const[recipOpen,setRecipOpen]=useState(()=>new Set());
@@ -3647,7 +3670,10 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
         {rec===undefined&&<div style={{textAlign:'center',padding:'32px 0',color:T.dim,fontFamily:FB,fontStyle:'italic'}}>Loading…</div>}
         {rec===null&&(
           <div style={{textAlign:'center',padding:'36px 12px',color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(15),lineHeight:1.6}}>
-            {cm.builtin&&!setUp?`${cm.title} is being set up on this device. It will appear here in a moment.`
+            {cm.builtin&&!setUp&&fetchState[cm.id]==='loading'?`Downloading ${cm.title}…`
+              :cm.builtin&&!setUp&&fetchState[cm.id]==='failed'?<>{`${cm.title} couldn’t be downloaded. Check your connection.`}<br/>
+                <button type="button" onClick={()=>fetchNow(cm.id)} style={{...navBtn,marginTop:12,fontStyle:'normal'}}>Try again</button></>
+              :cm.builtin&&!setUp?`${cm.title} is being set up on this device. It will appear here in a moment.`
               :cm.covers?`${cm.title} is on ${cm.covers}, so it has nothing on ${heading}.`:`${cm.title} has no notes on ${heading}.`}
           </div>
         )}
@@ -7018,20 +7044,19 @@ function App(){
   },[ready,installing]);
 
   // ── Install bundled default resources (once per device, regardless of login) ──
-  // Public-domain e-Sword books in public/defaults, put into Other Resources the
-  // first time the app opens, once it is up (Dispensational Truth is 14 MB, so it
-  // waits its turn behind the first-launch install). Each one's flag keeps a
-  // reader who deleted it from getting it back.
-  const defaultsRun=useRef(false);
+  // Public-domain e-Sword books in public/defaults (DEFAULT_RESOURCES), put into
+  // Other Resources once the app is up. On the website a large one waits until
+  // Other Resources is opened. Each one's flag keeps a reader who deleted it
+  // from getting it back.
+  const defaultsTried=useRef(new Set());
   useEffect(()=>{
-    if(!ready||installing||defaultsRun.current)return;
-    defaultsRun.current=true;
-    const DEFAULTS=[
-      {id:'bundled-foxes-book-of-martyrs',file:'foxes_book_of_martyrs.refi',title:"Foxe's Book of Martyrs",flag:'bundled:foxes'},
-      {id:'bundled-dispensational-truth',file:'dispensational_truth.refi',title:'Dispensational Truth (Clarence Larkin)',flag:'bundled:larkin-dt'},
-    ];
+    if(!ready||installing)return;
+    const web=!Capacitor.isNativePlatform();
+    const due=DEFAULT_RESOURCES.filter(d=>!defaultsTried.current.has(d.id)&&!(d.lazyOnWeb&&web&&tab!=='other'));
+    if(!due.length)return;
+    due.forEach(d=>defaultsTried.current.add(d.id));
     (async()=>{
-      for(const d of DEFAULTS){
+      for(const d of due){
         if(await idbGetMeta(d.flag).catch(()=>null))continue;
         try{
           const resp=await fetch(`${BUNDLED_BASE}defaults/${d.file}`);
@@ -7043,10 +7068,10 @@ function App(){
             if(prev.find(r=>r.id===d.id))return prev;
             return[...prev,{id:res.id,title:res.title,ext:res.ext,importedAt:res.importedAt,kind:res.kind,entryCount:res.entryCount}];
           });
-        }catch(e){console.warn(`Bundled ${d.title} install failed:`,e);}
+        }catch(e){console.warn(`Bundled ${d.title} install failed:`,e);defaultsTried.current.delete(d.id);}
       }
     })();
-  },[ready,installing]);
+  },[ready,installing,tab]);
 
   // ── Load reading chapter ──
   useEffect(()=>{
@@ -7328,6 +7353,8 @@ function App(){
     else if(cmDelta.current<-fsScrollThreshold&&readFullScreen.current){exitFullScreen();cmDelta.current=0;}
   }
   function cmOpenNav(){setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}
+  // On the website a bundled commentary downloads when it is first opened.
+  function cmInstall(id){return installBundledDatasets(null,{only:id}).then(did=>{setBgInstalled(n=>n+1);return did;});}
   async function cmImport(f){const meta=await importCommentaryFile(f);setCmImports(l=>[meta,...l]);setCmId(meta.id);return meta;}
   async function cmDelete(id){
     await idbDeleteCommentary(id).catch(()=>{});
@@ -10252,7 +10279,7 @@ function App(){
           list={cmList} cid={cmId} onPick={setCmId} onStep={cmStep} onGo={cmGo} onImport={cmImport} onDelete={cmDelete}
           verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize,lineHeight:readLineHeight}} anySheetOpen={anySheetOpen} installed={bgInstalled}
-          fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav} onChoose={v=>setCmFocus(f=>f?.v===v?null:{v,tap:true})}/>
+          fs={fsActive} onScroll={cmScroll} onNav={cmOpenNav} onChoose={v=>setCmFocus(f=>f?.v===v?null:{v,tap:true})} onInstall={cmInstall}/>
       )}
 
       {tab==='memory'&&(
