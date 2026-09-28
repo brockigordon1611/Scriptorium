@@ -3529,6 +3529,17 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   // Whether a built-in commentary has been installed on this device yet. Only
   // the Treasury covers every chapter, so an empty chapter alone can't tell.
   const[setUp,setSetUp]=useState(true);
+  // The pinned name's height (the page keeps that much room for it), the
+  // bottom bar's (Back to top stands above it), and whether the page is far
+  // enough down for Back to top to show.
+  const pillRef=useRef(null),barRef=useRef(null);
+  const[pillH,setPillH]=useState(30),[barH,setBarH]=useState(44),[far,setFar]=useState(false);
+  useLayoutEffect(()=>{
+    const p=pillRef.current?.offsetHeight,b=barRef.current?.offsetHeight;
+    if(p&&p!==pillH)setPillH(p);
+    if(b&&b!==barH)setBarH(b);
+  });
+  useEffect(()=>{setFar(false);},[cm.id,book,ch]);
   const[introOpen,setIntroOpen]=useState(false);
   const[texts,setTexts]=useState({});
   const[recipOpen,setRecipOpen]=useState(()=>new Set());
@@ -3613,48 +3624,24 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
   const navBtn={background:'none',border:`1px solid ${T.bd}`,borderRadius:6,color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.08em',padding:'6px 16px',fontWeight:500,cursor:'pointer'};
+  // The glass the verse strip's pieces wear, for the two things that float over
+  // the page: the commentary's name at the top and Back to top at the bottom.
+  const glass={background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6};
   return(
     <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0}}>
-      <div ref={scrollRef} onScroll={e=>onScroll&&onScroll(e.currentTarget.scrollTop,Date.now()<ownScroll.current,ruleRef.current?.getBoundingClientRect().bottom)}
+      <div ref={scrollRef} onScroll={e=>{const st=e.currentTarget.scrollTop;setFar(st>Math.max(600,window.innerHeight*0.9));onScroll&&onScroll(st,Date.now()<ownScroll.current,ruleRef.current?.getBoundingClientRect().bottom);}}
         data-bounce="" style={{flex:1,overflowY:anySheetOpen?'hidden':'auto',overscrollBehavior:'none',paddingTop:navH,paddingBottom:84,boxSizing:'border-box'}}
         onClick={()=>menu&&setMenu(false)}
         onTouchStart={e=>{swipe.current={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),dir:null};}}
         onTouchMove={e=>{const s=swipe.current;if(!s||s.dir)return;const dx=e.touches[0].clientX-s.x,dy=e.touches[0].clientY-s.y;if(Math.abs(dx)>12||Math.abs(dy)>12)s.dir=Math.abs(dx)>Math.abs(dy)?'h':'v';}}
         onTouchEnd={e=>{const s=swipe.current;swipe.current=null;if(!s||s.dir!=='h')return;const dx=e.changedTouches[0].clientX-s.x;if(Math.abs(dx)<60&&Math.abs(dx)/Math.max(1,Date.now()-s.t)<0.35)return;onStep(dx<0?1:-1);}}>
       <div style={{maxWidth:760,margin:'0 auto',padding:'0 14px'}}>
-      {/* The commentary's name above the chapter, where Read puts the version. */}
+      {/* The commentary's name sits in the pinned pill (below); this keeps
+          its room at the top of the page so the chapter clears it. */}
       <div style={{textAlign:'center',padding:'12px 0 2px',position:'relative'}}>
-        <button type="button" aria-haspopup="menu" aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(o=>!o);setMsg(null);}}
-          style={{...small,display:'inline-flex',alignItems:'center',gap:6,background:menu?T.gF:'none',border:`1px solid ${menu?T.gD:'transparent'}`,borderRadius:12,color:T.gM,padding:'4px 10px',cursor:'pointer',maxWidth:'100%'}}>
-          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cm.title}</span>
-          <span aria-hidden="true" style={{fontSize:UL(8)}}>▾</span>
-        </button>
+        <div style={{height:pillH}}/>
         <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:600,color:T.gT,letterSpacing:'0.06em',marginTop:4}}>{heading}</div>
         <div ref={ruleRef} style={{height:1,background:T.accentLine,marginTop:8}}/>
-        {menu&&(
-          <div role="menu" onClick={e=>e.stopPropagation()} style={{position:'absolute',top:'calc(100% - 4px)',left:0,right:0,zIndex:20,background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
-            {list.map(c=>(
-              <div key={c.id} style={{display:'flex',alignItems:'center',gap:6,borderRadius:8,background:c.id===cm.id?T.gF:'none'}}>
-                <button type="button" role="menuitemradio" aria-checked={c.id===cm.id} onClick={()=>{onPick(c.id);setMenu(false);}}
-                  style={{flex:1,minWidth:0,textAlign:'left',background:'none',border:'none',padding:'10px 10px',cursor:'pointer'}}>
-                  <div style={{fontFamily:FB,fontSize:U(15),fontWeight:600,color:c.id===cm.id?T.gT:T.body,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.title}</div>
-                  <div style={{...small,fontSize:UL(8),color:T.dim,marginTop:2,fontWeight:500}}>{c.builtin?'Included':'Imported · on this device'}</div>
-                </button>
-                <button type="button" aria-label={`About ${c.title}`} onClick={()=>showInfo(c)}
-                  style={{width:34,height:34,flexShrink:0,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(13),cursor:'pointer'}}>i</button>
-                {!c.builtin&&(
-                  <button type="button" aria-label={`Delete ${c.title}`} onClick={()=>{if(window.confirm(`Delete “${c.title}” from this device?`))onDelete(c.id);}}
-                    style={{width:34,height:34,flexShrink:0,marginRight:4,background:'none',border:`1px solid ${T.redTxt}55`,borderRadius:8,color:T.redTxt,fontSize:U(13),cursor:'pointer'}}>✕</button>
-                )}
-              </div>
-            ))}
-            <label style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginTop:6,padding:'10px 12px',border:`1px dashed ${T.gD}`,borderRadius:8,color:busy?T.dim:T.gT,cursor:busy?'default':'pointer',...small,fontSize:UL(9)}}>
-              {busy?'Importing…':'＋ Import e-Sword commentary (.cmti)'}
-              <input type="file" accept={Capacitor.isNativePlatform()?undefined:'.cmti'} style={{display:'none'}} disabled={busy}
-                onChange={e=>{const f=e.target.files?.[0];e.target.value='';pickFile(f);}}/>
-            </label>
-          </div>
-        )}
         {msg&&<div style={{marginTop:8,fontFamily:FB,fontSize:U(13),color:msg.err?T.redTxt:T.gM}}>{msg.text}</div>}
       </div>
       <div style={{paddingTop:10}}>
@@ -3713,8 +3700,52 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
       </div>
       </div>
 
+      {/* The commentary's name, pinned in glass: under the nav, or under the
+          gold line pinned at the top once the nav has slid away. Its menu
+          hangs below it. */}
+      <div style={{position:'fixed',top:fs?'calc(max(var(--sat,0px),var(--sat-min,0px)) + 8px)':navH+8,left:0,right:0,zIndex:160,
+        display:'flex',flexDirection:'column',alignItems:'center',padding:'0 14px',pointerEvents:'none',transition:'top .18s ease'}}>
+        <button ref={pillRef} type="button" aria-haspopup="menu" aria-expanded={menu} onClick={e=>{e.stopPropagation();setMenu(o=>!o);setMsg(null);}}
+          style={{...glass,...small,pointerEvents:'auto',display:'inline-flex',alignItems:'center',gap:6,color:T.gM,padding:'7px 14px',cursor:'pointer',maxWidth:'100%'}}>
+          <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{cm.title}</span>
+          <span aria-hidden="true" style={{fontSize:UL(8)}}>▾</span>
+        </button>
+        {menu&&(
+          <div role="menu" onClick={e=>e.stopPropagation()} style={{pointerEvents:'auto',marginTop:6,width:'100%',maxWidth:732,maxHeight:'60vh',overflowY:'auto',boxSizing:'border-box',background:T.bgCard,border:`1px solid ${T.bdA}`,borderRadius:10,boxShadow:'0 10px 30px rgba(0,0,0,0.4)',padding:6,textAlign:'left'}}>
+            {list.map(c=>(
+              <div key={c.id} style={{display:'flex',alignItems:'center',gap:6,borderRadius:8,background:c.id===cm.id?T.gF:'none'}}>
+                <button type="button" role="menuitemradio" aria-checked={c.id===cm.id} onClick={()=>{onPick(c.id);setMenu(false);}}
+                  style={{flex:1,minWidth:0,textAlign:'left',background:'none',border:'none',padding:'10px 10px',cursor:'pointer'}}>
+                  <div style={{fontFamily:FB,fontSize:U(15),fontWeight:600,color:c.id===cm.id?T.gT:T.body,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.title}</div>
+                  <div style={{...small,fontSize:UL(8),color:T.dim,marginTop:2,fontWeight:500}}>{c.builtin?'Included':'Imported · on this device'}</div>
+                </button>
+                <button type="button" aria-label={`About ${c.title}`} onClick={()=>showInfo(c)}
+                  style={{width:34,height:34,flexShrink:0,background:'none',border:`1px solid ${T.bd}`,borderRadius:8,color:T.gM,fontFamily:FS,fontSize:U(13),cursor:'pointer'}}>i</button>
+                {!c.builtin&&(
+                  <button type="button" aria-label={`Delete ${c.title}`} onClick={()=>{if(window.confirm(`Delete “${c.title}” from this device?`))onDelete(c.id);}}
+                    style={{width:34,height:34,flexShrink:0,marginRight:4,background:'none',border:`1px solid ${T.redTxt}55`,borderRadius:8,color:T.redTxt,fontSize:U(13),cursor:'pointer'}}>✕</button>
+                )}
+              </div>
+            ))}
+            <label style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginTop:6,padding:'10px 12px',border:`1px dashed ${T.gD}`,borderRadius:8,color:busy?T.dim:T.gT,cursor:busy?'default':'pointer',...small,fontSize:UL(9)}}>
+              {busy?'Importing…':'＋ Import e-Sword commentary (.cmti)'}
+              <input type="file" accept={Capacitor.isNativePlatform()?undefined:'.cmti'} style={{display:'none'}} disabled={busy}
+                onChange={e=>{const f=e.target.files?.[0];e.target.value='';pickFile(f);}}/>
+            </label>
+          </div>
+        )}
+      </div>
+      {/* Back to top, once the page is a screen or so down, in the same glass,
+          above the bottom bar, or at the foot once that has slid away. */}
+      <div style={{position:'fixed',left:0,right:0,bottom:fs?'calc(14px + var(--sab,0px))':barH+10,zIndex:155,display:'flex',justifyContent:'center',
+        pointerEvents:'none',opacity:far?1:0,transition:'bottom .18s ease, opacity .2s ease'}}>
+        <button type="button" tabIndex={far?0:-1} aria-hidden={!far} onClick={()=>scrollRef.current?.scrollTo({top:0,behavior:'smooth'})}
+          style={{...glass,...small,pointerEvents:far?'auto':'none',color:T.gT,padding:'8px 14px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}>
+          <span aria-hidden="true">↑</span>Back to top
+        </button>
+      </div>
       {/* Slides away with the nav in full screen, as Read's bottom bar does. */}
-      <div className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',transform:fs?'translateY(100%)':'none',transition:'transform .18s ease'}}>
+      <div ref={barRef} className="bottom-nav-safe" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,padding:'1px 12px',display:'flex',justifyContent:'space-between',alignItems:'center',transform:fs?'translateY(100%)':'none',transition:'transform .18s ease'}}>
         <button type="button" onClick={()=>onStep(-1)} disabled={book===1&&ch===1} style={{...navBtn,opacity:book===1&&ch===1?0.4:1}}>‹ Prev</button>
         {/* The book, chapter and verse picker, as Parallel's is. */}
         <button type="button" onClick={onNav} style={{background:'none',border:'none',color:T.gT,fontFamily:FS,fontSize:U(11),letterSpacing:'0.2em',textTransform:'uppercase',fontWeight:500,cursor:'pointer',padding:'8px 8px'}}>{shortBook(bookName(bk,lang))} {ch}</button>
