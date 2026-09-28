@@ -82,6 +82,7 @@ function androidTTS(){
   return t;
 }
 const ANDROID_APP=Capacitor.getPlatform()==='android';
+const FEED_ON=true; // verse feed: false hides Study → Verse Feed (experimental)
 const TTS_OK=ANDROID_APP||(typeof window!=='undefined'&&!!window.speechSynthesis&&typeof window.SpeechSynthesisUtterance==='function');
 const TTS=ANDROID_APP?androidTTS():(typeof window!=='undefined'&&window.speechSynthesis)||{
   getVoices:()=>[],cancel(){},pause(){},resume(){},speak(){},
@@ -4268,6 +4269,179 @@ function MemoryPage({T,navH,user,list,langOf,verLabelOf,readFont,anySheetOpen,on
   );
 }
 
+// ═══ VERSE FEED (experimental) ═══
+// Study → Verse Feed: one well-known verse at a time, filling the page, and a
+// swipe up snaps to the next. The list (src/feedVerses.json, built by
+// scripts/build-feed-verses.mjs) is shuffled once and walked in that order, and
+// where the reader got to is kept on the device, so the feed carries on from
+// there next time. To take the feature out: FEED_ON=false hides it; this block,
+// the list, its script and the lines tagged "verse feed" are all there is of it.
+function feedShuffle(n,seed){
+  // mulberry32, so one seed always gives the same order.
+  let a=seed>>>0;
+  const rnd=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};
+  const o=Array.from({length:n},(_,i)=>i);
+  for(let i=n-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[o[i],o[j]]=[o[j],o[i]];}
+  return o;
+}
+const feedSeed=()=>Math.floor(Math.random()*2147483647);
+function feedLoad(){try{const s=JSON.parse(localStorage.getItem('scrip:feed')||'null');if(s&&Number.isInteger(s.seed)&&Number.isInteger(s.pos))return s;}catch{}return{seed:feedSeed(),pos:0};}
+function feedSave(s){try{localStorage.setItem('scrip:feed',JSON.stringify(s));}catch{}}
+const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transform:scale(1.15);opacity:.95}35%{transform:scale(1);opacity:.9}100%{transform:scale(1.3);opacity:0}}'
+  +'.feed-sc{scrollbar-width:none}.feed-sc::-webkit-scrollbar{display:none}';
+
+function FeedPage({T,navH,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy}){
+  const[refs,setRefs]=useState(null);
+  useEffect(()=>{
+    let live=true;
+    import('./feedVerses.json').then(m=>{if(live)setRefs(m.default||[]);}).catch(()=>{if(live)setRefs([]);});
+    return()=>{live=false;};
+  },[]);
+  // The order, and the card to start on, are fixed when the page opens.
+  const saved=useRef(null);if(!saved.current)saved.current=feedLoad();
+  const order=useMemo(()=>refs?feedShuffle(refs.length,saved.current.seed):[],[refs]);
+  const start=refs&&saved.current.pos<refs.length?saved.current.pos:0;
+  const refAt=k=>refs[order[(start+k)%order.length]];
+
+  const[count,setCount]=useState(20);
+  const[cur,setCur]=useState(0);
+  const[swiped,setSwiped]=useState(false);
+  // Every card is exactly the scroller's height, measured, so each snap lands
+  // on a whole card, and a resize keeps the same card in view.
+  const scRef=useRef(null),curRef=useRef(0);
+  const[h,setH]=useState(0);
+  useLayoutEffect(()=>{
+    const el=scRef.current;if(!el)return;
+    const measure=()=>setH(el.clientHeight);measure();
+    const ro=new RObserver(measure);ro.observe(el);
+    return()=>ro.disconnect();
+  },[]);
+  useLayoutEffect(()=>{const el=scRef.current;if(el&&h)el.scrollTop=curRef.current*h;},[h]);
+  // A mouse wheel or trackpad moves one card per gesture. Left to itself a
+  // notch or two falls short of half a card and the snap pulls it back, and a
+  // trackpad's glide would run on past several.
+  useEffect(()=>{
+    const el=scRef.current;if(!el)return;
+    let busy=false,quiet=null;
+    const wheel=e=>{
+      if(Math.abs(e.deltaY)<=Math.abs(e.deltaX))return;
+      e.preventDefault();
+      clearTimeout(quiet);quiet=setTimeout(()=>{busy=false;},220);
+      if(busy)return;busy=true;
+      const ch=el.clientHeight,k=Math.round(el.scrollTop/ch)+(e.deltaY>0?1:-1);
+      el.scrollTo({top:Math.max(0,k)*ch,behavior:'smooth'});
+    };
+    el.addEventListener('wheel',wheel,{passive:false});
+    return()=>{el.removeEventListener('wheel',wheel);clearTimeout(quiet);};
+  },[]);
+  // Where the reader is, written a moment after the scrolling stops and when
+  // the page closes. Past the end of this order, the next visit reshuffles.
+  const posRef=useRef(null),saveT=useRef(null);
+  useEffect(()=>()=>{clearTimeout(saveT.current);if(posRef.current)feedSave(posRef.current);},[]);
+  function onScroll(){
+    const el=scRef.current;if(!el||!h||!order.length)return;
+    const k=Math.round(el.scrollTop/h);
+    if(k!==curRef.current){curRef.current=k;setCur(k);if(k>0)setSwiped(true);}
+    if(k>count-6)setCount(c=>c+20);
+    const p=start+k;
+    posRef.current=p<order.length?{seed:saved.current.seed,pos:p}:{seed:feedSeed(),pos:0};
+    clearTimeout(saveT.current);
+    saveT.current=setTimeout(()=>feedSave(posRef.current),300);
+  }
+
+  // The words, a chapter at a time, for the card in view and the four after it.
+  const[texts,setTexts]=useState({});
+  const asked=useRef(new Set());
+  useEffect(()=>{
+    if(!order.length)return;
+    for(let k=cur;k<cur+5&&k<count;k++){
+      const[b,c]=refAt(k),key=`${vid}|${b}|${c}`;
+      if(asked.current.has(key))continue;
+      asked.current.add(key);
+      dbGetChapter(vid,b,c)
+        .then(rows=>{const m={};for(const r of rows||[])m[r.verse]=String(r.text||'');setTexts(t=>({...t,[key]:m}));})
+        .catch(()=>{asked.current.delete(key);setTexts(t=>({...t,[key]:{}}));});
+    }
+  },[order,cur,count,vid]);
+  // undefined while its chapter loads; '' when the version hasn't the verse.
+  const textOf=(b,c,v)=>{const m=texts[`${vid}|${b}|${c}`];return m===undefined?undefined:(m[v]||'');};
+
+  // A double-tap bookmarks the verse (never un-bookmarks it) and flares a ✦.
+  const lastTap=useRef({k:-1,t:0}),pending=useRef(new Set());
+  const[pop,setPop]=useState(null);
+  function mark(b,c,v){
+    const key=`${b}|${c}|${v}`;
+    if(pending.current.has(key)||bookmarkOf(b,c,v))return;
+    pending.current.add(key);
+    Promise.resolve(onBookmark(b,c,v)).catch(()=>{}).finally(()=>pending.current.delete(key));
+  }
+  function tap(k,b,c,v){
+    const now=Date.now(),l=lastTap.current;
+    if(l.k===k&&now-l.t<300){lastTap.current={k:-1,t:0};setPop({k,n:now});mark(b,c,v);}
+    else lastTap.current={k,t:now};
+  }
+  function toggleMark(b,c,v){const id=bookmarkOf(b,c,v);if(id)Promise.resolve(onUnbookmark(id)).catch(()=>{});else mark(b,c,v);}
+  const[copied,setCopied]=useState(null);
+  function copy(k,b,c,v,text){
+    Promise.resolve(onCopy(b,c,v,text.replace(/<[^>]+>/g,''))).catch(()=>{});
+    setCopied(k);setTimeout(()=>setCopied(x=>x===k?null:x),1600);
+  }
+
+  const px=cmPx(readFont.size);
+  const fsFor=t=>{const n=t.replace(/<[^>]+>/g,'').length;return Math.round(px*(n>200?1.1:n>130?1.22:1.35));};
+  const small={fontFamily:FS,fontSize:UL(9),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const hint={fontFamily:FB,fontStyle:'italic',fontSize:U(14),color:T.dim,textAlign:'center'};
+  const act=on=>({flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,minHeight:54,background:on?T.gF:'none',border:`1px solid ${on?T.gD:T.bd}`,borderRadius:10,color:on?T.gT:T.mut,cursor:'pointer',padding:'6px 2px',WebkitTapHighlightColor:'transparent'});
+  const icon={fontFamily:FS,fontSize:U(17),lineHeight:1,color:T.gT,display:'flex',alignItems:'center',justifyContent:'center',height:18};
+  const label={fontFamily:FB,fontSize:U(11),lineHeight:1.2};
+
+  return(
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,paddingTop:navH}}>
+      <style>{FEED_CSS}</style>
+      <div style={{padding:'22px 14px 0',maxWidth:760,margin:'0 auto',width:'100%',boxSizing:'border-box'}}>
+        <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:600,color:T.gT,letterSpacing:'0.06em',textAlign:'center',minHeight:26,display:'flex',alignItems:'center',justifyContent:'center'}}>Verse Feed</div>
+        <div style={{height:1,background:T.accentLine,marginTop:10}}/>
+      </div>
+      <div ref={scRef} onScroll={onScroll} className="feed-sc"
+        style={{flex:1,minHeight:0,overflowY:anySheetOpen?'hidden':'auto',overflowX:'hidden',scrollSnapType:'y mandatory',overscrollBehavior:'contain',WebkitOverflowScrolling:'touch'}}>
+        {refs!==null&&!order.length&&<div style={{...hint,padding:'40px 20px'}}>The verse list couldn’t be loaded.</div>}
+        {h>0&&order.length>0&&Array.from({length:count},(_,k)=>{
+          // Cards away from the one in view are empty frames of the same height.
+          const near=k>=cur-2&&k<=cur+5;
+          const[b,c,v]=refAt(k);
+          const text=near?textOf(b,c,v):undefined,marked=near&&!!bookmarkOf(b,c,v);
+          return(
+            <div key={k} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
+              {near&&<div style={{height:'100%',maxWidth:760,margin:'0 auto',boxSizing:'border-box',display:'flex',flexDirection:'column',padding:'10px 22px calc(14px + var(--sab,0px))'}}>
+                <div onClick={()=>tap(k,b,c,v)}
+                  style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',textAlign:'center',overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
+                  {text===undefined?<div style={hint}>…</div>
+                    :text?<div style={{fontFamily:readFont.family,fontSize:fsFor(text),lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:verseHtml(b,c,v,text)}}/>
+                    :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
+                  <div style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
+                  {k===0&&!swiped&&<div style={{...hint,fontSize:U(12),marginTop:28}}>Swipe up for the next verse</div>}
+                </div>
+                <div style={{display:'flex',gap:8,paddingTop:12}}>
+                  <button type="button" aria-pressed={marked} onClick={()=>toggleMark(b,c,v)} style={act(marked)}><span style={icon}>✦</span><span style={label}>{marked?'Bookmarked':'Bookmark'}</span></button>
+                  <button type="button" onClick={()=>onMemorize(b,c,v)} style={act(false)}><span style={icon}>♡</span><span style={label}>Memorize</span></button>
+                  <button type="button" onClick={()=>onOpen(b,c,v)} style={act(false)}><span style={icon}>→</span><span style={label}>Read</span></button>
+                  <button type="button" disabled={!text} onClick={()=>copy(k,b,c,v,text)} style={{...act(copied===k),opacity:text?1:0.5}}>
+                    <span style={icon}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+                    <span style={label}>{copied===k?'Copied':'Copy'}</span>
+                  </button>
+                </div>
+              </div>}
+              {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
+                style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+// ═══ END VERSE FEED ═══
+
 // Every highlight, grouped by colour like bookmark categories, filtered by
 // colour and by version. Each row shows the verse's words in the version it was
 // highlighted in: highlights are about the text, where bookmarks are about the
@@ -8283,7 +8457,7 @@ function App(){
           </div>
           {/* ── 6-button nav bar ── */}
           {(()=>{
-            const studyActive=['memory','parallel','compare','commentaries','strongs','dictionary','maps','charts','other'].includes(tab);
+            const studyActive=['memory','parallel','compare','commentaries','strongs','dictionary','maps','charts','other','feed'/* verse feed */].includes(tab);
             const sheetOpen=!!readMobileSheet&&!readSheetClosing; // treat closing as already closed
             const anySheet=sheetOpen;
             const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='highlights'||modal?.type==='recents';
@@ -8620,6 +8794,7 @@ function App(){
           </div>
           {[
             {icon:'♡',label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
+            ...(FEED_ON?[{icon:'⇅',label:'Verse Feed',sub:'Swipe through well-known verses',key:'feed',fn:()=>{setTab('feed');closeReadSheet();}}]:[]), // verse feed
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
             {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
@@ -10199,6 +10374,24 @@ function App(){
           verLabelOf={id=>data?.versions.find(v=>v.id===id)?.label||(String(id).startsWith('user-')?'Imported':String(id).toUpperCase())}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} anySheetOpen={anySheetOpen}
           onAdd={memOpenPicker} onDelete={memDelete} onPracticed={memPracticed}/>
+      )}
+      {/* verse feed */}
+      {FEED_ON&&tab==='feed'&&(
+        <FeedPage T={T} navH={navH} vid={readVid} verLabel={readVerLabel} lang={versionLang(readVid)}
+          readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} anySheetOpen={anySheetOpen}
+          verseHtml={(b,c,v,t)=>processRedLetter(wojWrap(b,c,v,t),readRedLetter,dark)}
+          bookmarkOf={(b,c,v)=>bookmarks.find(x=>x.version_id===readVid&&x.book_num===b&&x.chapter===c&&x.verse===v)?.id||null}
+          onBookmark={(b,c,v)=>handleAddBookmark({versionId:readVid,bookNum:b,chapter:c,verse:v})}
+          onUnbookmark={id=>handleDelBookmark(id)}
+          onMemorize={(b,c,v)=>setMemAdd({vid:readVid,bk:b,ch:c,v,end:v,busy:false,err:null})}
+          onOpen={(b,c,v)=>{
+            if(b===readBook&&c===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(v,true);}
+            else{readScrollToVerse.current=v;landSilent.current=true;setReadBook(b);setReadCh(c);setTab('read');}}}
+          onCopy={async(b,c,v,t)=>{
+            const out=formatCopy(`${bookName(BIBLE.find(x=>x.n===b),versionLang(readVid))} ${c}:${v}`,readVerLabel,[{v,text:t}],copyFmt);
+            try{await navigator.clipboard.writeText(out);}catch{
+              const ta=document.createElement('textarea');ta.value=out;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+            }}}/>
       )}
 
       {/* ═══ COMPARE TAB ═══ */}
