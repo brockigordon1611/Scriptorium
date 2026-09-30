@@ -24,10 +24,13 @@ their words can't be quoted without permission.
 ## Rules for each note
 
 - One to two sentences. Plain, reverent, in the KJV's wording when quoting.
+- Edit notes.json, then run `node scripts/feed-notes/build.mjs`.
 - Name the source it draws on. A note that draws on none says so.
-- Must agree with the statement of faith below. Where a source disagrees with
-  it, leave that point out. Spurgeon was a Calvinist; his election and
-  limited-atonement views must not carry into a doctrinal note.
+- Should agree with the statement of faith below. Where an approved source
+  holds a different view (Scofield's and Larkin's gap between Genesis 1:1 and
+  1:2, Larkin's thought on the Trinity, Spurgeon's Calvinism), a note may give
+  it only as that source's view, by name: "Larkin held..." (Brock, 2026-09-30).
+- Never use a Revised Version reading; KJV wording only.
 - Historical notes state only what the sources support. No guessed dates or
   places.
 - Brock reviews notes before they ship.

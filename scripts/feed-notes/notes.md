@@ -1,21 +1,15 @@
-# Verse Feed notes: 25 samples for review
+# Verse Feed notes
 
-Each verse has a **historical**, **doctrinal** and **practical** note, one or two sentences each, drawn only from Brock's approved sources: Scofield (1917 notes), Meyer, Spurgeon's *Treasury of David* (Psalms) and Larkin's *Dispensational Truth*. Where a note rests on the Bible passage itself, that passage is named. Quoted words are the sources' own; everything else is a close summary. Each note was checked against the statement of faith in `GUIDE.md`.
+25 verses, each with a historical, doctrinal and practical note drawn only from Brock's approved sources (see GUIDE.md), the source named on every note. Built from notes.json by build.mjs; edit notes.json, not this file.
 
-## Left out on purpose
-
-- **The gap theory.** Scofield's note on Genesis 1:2 and Larkin's *Rightly Dividing the Word* teach a ruined earlier creation and long ages between Genesis 1:1 and 1:2. None of the notes below say this. Brock to decide whether it belongs.
-- **Larkin on the Trinity.** In *The Dispensational Work of the Lord Jesus Christ* Larkin wonders whether the Son and Spirit “proceeded from” a Father who existed first alone. That conflicts with the statement of faith (“eternally existed … co-equal”), so none of his words on it are used.
-- **Larkin on Isaiah 40:31**, which he reads as resurrected saints acting as angel-like messengers in the Kingdom.
-- **Meyer's Revised Version readings** (Psalm 46:5, Isaiah 53:9–10, Romans 6:17). Only KJV wording is used.
-- **Spurgeon's Calvinism.** None of these 25 verses called for his views on election.
+In the app the three are headed **The Backstory**, **The Big Truth**, **Live It Today**.
 
 ## 1. Genesis 1:1
 
 > In the beginning God created the heaven and the earth.
 
-- **Historical.** The first words of the Bible. Before anything else is told, God is named as the Creator of all. *(Genesis 1, Larkin, Dispensational Truth)*
-- **Doctrinal.** God created the heaven and the earth by His own act, and Christ was the agent of that creation: “the worlds were framed by the word of God” (Hebrews 11:3; John 1:1–3). *(Larkin, Dispensational Truth)*
+- **Historical.** The first words of the Bible. Scofield and Larkin held that it tells of an original creation in “the dateless past,” which divine judgment later left “without form and void” (1:2; Jeremiah 4:23–27). *(Genesis 1, Scofield Reference Bible notes (1917), Larkin, Dispensational Truth)*
+- **Doctrinal.** God created all things by His own act, and Christ was its agent: “the worlds were framed by the word of God” (Hebrews 11:3). Larkin thought it “not clear” whether the Father existed first alone, with the Son and the Spirit proceeding from Him. *(Larkin, Dispensational Truth)*
 - **Practical.** “All beginnings must begin with God.” Put Him first: the first thought every morning, the first aim of every work. *(Meyer, Through the Bible Day by Day)*
 
 ## 2. Psalm 23:1
@@ -79,7 +73,7 @@ Each verse has a **historical**, **doctrinal** and **practical** note, one or tw
 > But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint.
 
 - **Historical.** Isaiah’s word of comfort to God’s people (40:1). The God who calls every star by name will not fail the soul that clings to Him. *(Isaiah 40, Meyer, Through the Bible Day by Day)*
-- **Doctrinal.** The everlasting God “fainteth not, neither is weary,” and He gives power to the faint (40:28–29). *(Isaiah 40)*
+- **Doctrinal.** The everlasting God “fainteth not, neither is weary,” and gives power to the faint (40:28–29). Larkin also applied the verse to the saints raised in power, who in the coming Kingdom will serve as God’s messengers, “angel like.” *(Isaiah 40, Larkin, Dispensational Truth)*
 - **Practical.** Notice the order: mount up, run, walk. “It is more difficult to walk than to mount!” The everyday plod needs Him most. *(Meyer, Through the Bible Day by Day)*
 
 ## 10. Isaiah 41:10

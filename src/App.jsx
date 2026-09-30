@@ -4380,16 +4380,49 @@ const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transfor
   +'@keyframes feedRail{from{opacity:0;transform:translateX(16px) scale(.9)}to{opacity:1;transform:none}}'
   +'.feed-on .fw{animation:feedWord .55s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--i) * var(--step))}'
   +'.feed-on .fref{animation:feedIn .5s ease-out both;animation-delay:var(--refd)}'
+  // Six ways in for the words, one picked for each card (feedFx): rise, drop,
+  // blur (out of focus), pop (past full size and settle), slide (from the
+  // left), bloom (from the middle word outward). The reference follows suit.
+  +'@keyframes fwDrop{from{opacity:0;transform:translateY(-.6em)}to{opacity:1;transform:none}}'
+  +'@keyframes fwBlur{from{opacity:0;filter:blur(8px)}to{opacity:1;filter:blur(0)}}'
+  +'@keyframes fwPop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:none}}'
+  +'@keyframes fwSlide{from{opacity:0;transform:translateX(-.7em)}to{opacity:1;transform:none}}'
+  +'@keyframes fwBloom{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}'
+  +'.feed-on.fx-drop .fw,.feed-on.fx-drop .fref{animation-name:fwDrop}'
+  +'.feed-on.fx-blur .fw,.feed-on.fx-blur .fref{animation-name:fwBlur;animation-duration:.7s}'
+  +'.feed-on.fx-pop .fw,.feed-on.fx-pop .fref{animation-name:fwPop}'
+  +'.feed-on.fx-slide .fw,.feed-on.fx-slide .fref{animation-name:fwSlide}'
+  +'.feed-on.fx-bloom .fw{animation-name:fwBloom;animation-delay:calc(var(--o) * var(--step) * 2)}'
+  +'.feed-on.fx-bloom .fref{animation-name:fwBloom}'
+  // "3 Things You Missed": a gold pill with light running across it and a
+  // glow that keeps pulsing out, popping in after the reference.
+  +'@keyframes ctaShine{0%{background-position:160% 0}55%,100%{background-position:-60% 0}}'
+  +'@keyframes ctaGlow{0%{box-shadow:0 0 0 0 rgba(212,175,70,.6)}70%,100%{box-shadow:0 0 0 12px rgba(212,175,70,0)}}'
+  +'.feed-cta{background:linear-gradient(110deg,#b8913a 0%,#e2c46c 40%,#fff4c8 50%,#e2c46c 60%,#b8913a 100%);background-size:250% 100%;animation:ctaShine 2.8s ease-in-out infinite,ctaGlow 1.9s ease-out infinite}'
+  +'.feed-on .fcta{animation:fwPop .6s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--refd) + 250ms)}'
+  +'.feed-wait .fcta{opacity:0}'
+  +'@keyframes notesUp{from{transform:translateY(100%)}to{transform:none}}'
   +'.feed-on .frail>*{animation:feedRail .45s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(150ms + var(--j) * 70ms)}'
   +'.feed-wait .fw,.feed-wait .fref,.feed-wait .frail>*{opacity:0}'
-  +'@media (prefers-reduced-motion:reduce){.feed-on .fw,.feed-on .fref,.feed-on .frail>*{animation:none}.feed-wait .fw,.feed-wait .fref,.feed-wait .frail>*{opacity:1}}';
+  +'@media (prefers-reduced-motion:reduce){.feed-on .fw,.feed-on .fref,.feed-on .frail>*,.feed-on .fcta,.feed-cta{animation:none!important}.feed-wait .fw,.feed-wait .fref,.feed-wait .frail>*,.feed-wait .fcta{opacity:1}}';
 // Each word of a verse's markup in its own span (tags left as they are), so it
 // can arrive a word at a time. Returns the markup and how many words it has.
 function feedWords(html){
+  const parts=String(html).split(/(<[^>]+>)/);
+  const count=parts.reduce((n,p)=>n+(p.startsWith('<')?0:(p.match(/\S+/g)||[]).length),0),mid=(count-1)/2;
   let n=0;
-  const out=String(html).split(/(<[^>]+>)/).map(p=>p.startsWith('<')?p:p.replace(/\S+/g,w=>`<span class="fw" style="--i:${n++}">${w}</span>`)).join('');
-  return{html:out,count:n};
+  const out=parts.map(p=>p.startsWith('<')?p:p.replace(/\S+/g,w=>{const i=n++;return`<span class="fw" style="--i:${i};--o:${Math.abs(i-mid).toFixed(1)}">${w}</span>`;})).join('');
+  return{html:out,count};
 }
+// Which way in a card's words take: random, but fixed for the card within a
+// deal, and never the same as the card before.
+const FEED_FX=['rise','drop','blur','pop','slide','bloom'];
+function feedFx(seed,k){
+  const pick=i=>{let x=(seed^Math.imul(i+1,2654435761))>>>0;x^=x>>>15;x=Math.imul(x,2246822519)>>>0;x^=x>>>13;return(x>>>0)%FEED_FX.length;};
+  let v=pick(k);if(k>0&&v===pick(k-1))v=(v+1)%FEED_FX.length;
+  return FEED_FX[v];
+}
+const FEED_NOTE_KINDS=[['historical','📜','The Backstory'],['doctrinal','💡','The Big Truth'],['practical','🔥','Live It Today']];
 
 // The verse and its reference, centred on the card at the size the feed gives
 // them. One that fits above the actions keeps the full width. A longer one
@@ -4418,14 +4451,33 @@ function FeedFit({h,rail,size,min,fitKey,children}){
 }
 
 function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy,onBack}){
+  // The verses, and the notes some of them have (src/feedNotes.json, built by
+  // scripts/feed-notes/build.mjs), arrive together.
   const[refs,setRefs]=useState(null);
+  const[notes,setNotes]=useState({});
   useEffect(()=>{
     let live=true;
-    import('./feedVerses.json').then(m=>{if(live)setRefs(m.default||[]);}).catch(()=>{if(live)setRefs([]);});
+    Promise.all([import('./feedVerses.json'),import('./feedNotes.json').catch(()=>({default:{}}))])
+      .then(([v,n])=>{if(live){setNotes(n.default||{});setRefs(v.default||[]);}})
+      .catch(()=>{if(live)setRefs([]);});
     return()=>{live=false;};
   },[]);
   const[seed,setSeed]=useState(feedSeed);
-  const order=useMemo(()=>refs?feedShuffle(refs.length,seed):[],[refs,seed]);
+  // While only some verses have notes, those are dealt early and often (every
+  // third card) so they turn up; once every verse has notes this changes nothing.
+  const order=useMemo(()=>{
+    if(!refs)return[];
+    const o=feedShuffle(refs.length,seed);
+    const has=i=>!!notes[refs[i].join('.')];
+    const noted=o.filter(has),rest=o.filter(i=>!has(i));
+    if(!noted.length||!rest.length)return o;
+    const out=[];let a=0,b=0;
+    while(a<noted.length||b<rest.length)out.push(a<noted.length&&(out.length%3===0||b>=rest.length)?noted[a++]:rest[b++]);
+    return out;
+  },[refs,notes,seed]);
+  // The notes panel: which verse's, while it is open.
+  const[notesOf,setNotesOf]=useState(null);
+  useBackHandler(!!notesOf,()=>setNotesOf(null));
   const refAt=k=>refs[order[k%order.length]];
 
   const[count,setCount]=useState(20);
@@ -4595,13 +4647,19 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
           const refd=fw?Math.min(1700,Math.round(fw.count*step)+200):200;
           return(
             <div key={`${seed}-${k}`} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
-              {near&&<div className={k===cur?'feed-on':k>cur?'feed-wait':undefined} style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out','--step':`${step}ms`,'--refd':`${refd}ms`}}>
+              {near&&<div className={k===cur?`feed-on fx-${feedFx(seed,k)}`:k>cur?'feed-wait':undefined} style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out','--step':`${step}ms`,'--refd':`${refd}ms`}}>
                 <div onClick={()=>tap(k,b,c,v)} style={{position:'absolute',inset:0,overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
                   <FeedFit h={h} rail={rail} size={text?fsFor(text):0} min={Math.round(px*0.85)} fitKey={text}>
                     {text===undefined?<div style={hint}>…</div>
                       :text?<div style={{fontFamily:readFont.family,lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:fw.html}}/>
                       :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
                     <div className="fref" style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
+                    {text&&notes[`${b}.${c}.${v}`]&&<div className="fcta" style={{marginTop:20}}>
+                      <button type="button" className="feed-cta" onClick={e=>{e.stopPropagation();setNotesOf({b,c,v,text});}}
+                        style={{border:'none',borderRadius:999,padding:'11px 20px',cursor:'pointer',fontFamily:FS,fontSize:UL(10),fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'#231a06',display:'inline-flex',alignItems:'center',gap:8,WebkitTapHighlightColor:'transparent'}}>
+                        <span aria-hidden="true">✦</span>3 Things You Missed<span aria-hidden="true">›</span>
+                      </button>
+                    </div>}
                   </FeedFit>
                 </div>
                 <div ref={k===cur?railRef:undefined} className="frail" style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
@@ -4623,6 +4681,35 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
           );
         })}
       </div>
+      {notesOf&&(()=>{
+        const nt=notes[`${notesOf.b}.${notesOf.c}.${notesOf.v}`];if(!nt)return null;
+        const plain=String(notesOf.text).replace(/<[^>]+>/g,'');
+        const gold={background:'linear-gradient(100deg,#b8913a,#f0d68a 50%,#b8913a)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'};
+        return(
+          <div onClick={()=>setNotesOf(null)} style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)',WebkitBackdropFilter:'blur(3px)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'feedIn .2s ease-out'}}>
+            <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="3 Things You Missed"
+              style={{width:'100%',maxWidth:640,maxHeight:'84vh',overflowY:'auto',boxSizing:'border-box',background:T.bgCard,borderTop:'2px solid #c8a84e',borderRadius:'18px 18px 0 0',
+                padding:'10px 18px calc(24px + var(--sab,0px))',boxShadow:'0 -10px 40px rgba(0,0,0,0.5)',animation:'notesUp .38s cubic-bezier(.2,.75,.25,1) both'}}>
+              <div style={{width:40,height:4,borderRadius:2,background:T.bd,margin:'0 auto 12px'}}/>
+              <div style={{position:'relative',textAlign:'center',padding:'0 36px'}}>
+                <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase',textWrap:'balance',...gold}}>✦ 3 Things You Missed ✦</div>
+                <div style={{...small,color:T.gM,marginTop:6}}>{mvRef({book_num:notesOf.b,chapter:notesOf.c,verse_start:notesOf.v,verse_end:notesOf.v},lang)} · {verLabel}</div>
+                <button type="button" aria-label="Close" onClick={()=>setNotesOf(null)}
+                  style={{position:'absolute',top:-2,right:0,width:30,height:30,borderRadius:'50%',border:`1px solid ${T.bd}`,background:T.bgSec,color:T.gT,cursor:'pointer',fontSize:U(13),lineHeight:1,padding:0}}>✕</button>
+              </div>
+              <div style={{fontFamily:readFont.family,fontStyle:'italic',fontSize:U(16),color:T.mut,lineHeight:1.5,textAlign:'center',margin:'14px 4px 16px'}}>“{plain}”</div>
+              {FEED_NOTE_KINDS.map(([kind,icon,title],i)=>nt[kind]&&(
+                <div key={kind} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderLeft:'3px solid #c8a84e',borderRadius:10,padding:'12px 14px',marginBottom:10,
+                  animation:'feedWord .5s cubic-bezier(.2,.75,.25,1) both',animationDelay:`${150+i*120}ms`}}>
+                  <div style={{fontFamily:FS,fontSize:U(13),fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT,marginBottom:6}}><span aria-hidden="true" style={{marginRight:8}}>{icon}</span>{title}</div>
+                  <div style={{fontFamily:FB,fontSize:U(16),color:T.body,lineHeight:1.55}}>{nt[kind].text}</div>
+                  {nt[kind].sources?.length>0&&<div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,marginTop:6}}>— {nt[kind].sources.join('; ')}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
