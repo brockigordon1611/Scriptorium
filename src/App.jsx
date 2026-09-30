@@ -3761,13 +3761,14 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
           </div>
         )}
       </div>
-      {/* Back to top, once the page is a screen or so down, in the same glass,
-          above the bottom bar, or at the foot once that has slid away. */}
-      <div style={{position:'fixed',left:0,right:0,bottom:fs?'calc(14px + var(--sab,0px))':barH+10,zIndex:155,display:'flex',justifyContent:'center',
+      {/* Back to top, once the page is a screen or so down: the pinned name's
+          twin, in the same glass and the same quiet gold, sitting just above
+          the bottom bar, or at the foot once that has slid away. */}
+      <div style={{position:'fixed',left:0,right:0,bottom:fs?'calc(8px + var(--sab,0px))':barH+6,zIndex:155,display:'flex',justifyContent:'center',
         pointerEvents:'none',opacity:far?1:0,transition:'bottom .18s ease, opacity .2s ease'}}>
         <button type="button" tabIndex={far?0:-1} aria-hidden={!far} onClick={()=>scrollRef.current?.scrollTo({top:0,behavior:'smooth'})}
-          style={{...glass,...small,pointerEvents:far?'auto':'none',color:T.gT,padding:'8px 14px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}>
-          <span aria-hidden="true">↑</span>Back to top
+          style={{...glass,...small,pointerEvents:far?'auto':'none',color:T.gM,padding:'7px 14px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}>
+          <span aria-hidden="true" style={{fontSize:UL(8)}}>▴</span>Back to top
         </button>
       </div>
       {/* Slides away with the nav in full screen, as Read's bottom bar does. */}
