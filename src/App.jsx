@@ -4369,7 +4369,27 @@ const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transfor
   +'@keyframes feedIn{from{opacity:0}to{opacity:1}}'
   +'@keyframes feedSpin{to{transform:rotate(360deg)}}'
   +'@keyframes feedNudge{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(-7px);opacity:1}}'
-  +'.feed-sc{scrollbar-width:none}.feed-sc::-webkit-scrollbar{display:none}';
+  +'.feed-sc{scrollbar-width:none}.feed-sc::-webkit-scrollbar{display:none}'
+  // A verse arrives as a short video's caption does: its words rise into place
+  // one after another (--i, --step), then its reference (--refd), while the
+  // actions slide in beside it (--j). feed-on is the card in view; feed-wait,
+  // one still to come, holds everything back until it is; a card already
+  // passed keeps its words, so the one leaving never blanks.
+  +'.fw{display:inline-block}'
+  +'@keyframes feedWord{from{opacity:0;transform:translateY(.45em)}to{opacity:1;transform:none}}'
+  +'@keyframes feedRail{from{opacity:0;transform:translateX(16px) scale(.9)}to{opacity:1;transform:none}}'
+  +'.feed-on .fw{animation:feedWord .55s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(var(--i) * var(--step))}'
+  +'.feed-on .fref{animation:feedIn .5s ease-out both;animation-delay:var(--refd)}'
+  +'.feed-on .frail>*{animation:feedRail .45s cubic-bezier(.2,.75,.25,1) both;animation-delay:calc(150ms + var(--j) * 70ms)}'
+  +'.feed-wait .fw,.feed-wait .fref,.feed-wait .frail>*{opacity:0}'
+  +'@media (prefers-reduced-motion:reduce){.feed-on .fw,.feed-on .fref,.feed-on .frail>*{animation:none}.feed-wait .fw,.feed-wait .fref,.feed-wait .frail>*{opacity:1}}';
+// Each word of a verse's markup in its own span (tags left as they are), so it
+// can arrive a word at a time. Returns the markup and how many words it has.
+function feedWords(html){
+  let n=0;
+  const out=String(html).split(/(<[^>]+>)/).map(p=>p.startsWith('<')?p:p.replace(/\S+/g,w=>`<span class="fw" style="--i:${n++}">${w}</span>`)).join('');
+  return{html:out,count:n};
+}
 
 // The verse and its reference, centred on the card at the size the feed gives
 // them. One that fits above the actions keeps the full width. A longer one
@@ -4538,8 +4558,8 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
   });
   const act=on=>({width:46,height:46,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',background:on?T.gF:T.bgSec,border:`1px solid ${on?T.gD:T.bd}`,color:T.gT,fontFamily:FS,fontSize:U(18),lineHeight:1,cursor:'pointer',padding:0,WebkitTapHighlightColor:'transparent'});
   const actLabel={fontFamily:FB,fontSize:UL(10),color:T.mut,marginTop:4,lineHeight:1.1,textAlign:'center',whiteSpace:'nowrap'};
-  const action=(on,glyph,text,fn,extra)=>(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:62}}>
+  const action=(j,on,glyph,text,fn,extra)=>(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',width:62,'--j':j}}>
       <button type="button" aria-label={text} aria-pressed={on} onClick={fn} style={{...act(on),...extra}}>{glyph}</button>
       <span style={actLabel}>{text}</span>
     </div>
@@ -4568,22 +4588,27 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
           const near=k>=cur-2&&k<=cur+5;
           const[b,c,v]=refAt(k);
           const text=near?textOf(b,c,v):undefined,marked=near&&!!bookmarkOf(b,c,v);
+          // The pace of the words: about a second for the whole verse, each
+          // word no slower than 55 ms behind the last.
+          const fw=text?feedWords(verseHtml(b,c,v,text)):null;
+          const step=fw?Math.min(55,Math.max(18,1100/Math.max(1,fw.count))):40;
+          const refd=fw?Math.min(1700,Math.round(fw.count*step)+200):200;
           return(
             <div key={`${seed}-${k}`} style={{height:h,scrollSnapAlign:'start',scrollSnapStop:'always',position:'relative',overflow:'hidden'}}>
-              {near&&<div style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out'}}>
+              {near&&<div className={k===cur?'feed-on':k>cur?'feed-wait':undefined} style={{height:'100%',maxWidth:760,margin:'0 auto',position:'relative',animation:'feedIn .35s ease-out','--step':`${step}ms`,'--refd':`${refd}ms`}}>
                 <div onClick={()=>tap(k,b,c,v)} style={{position:'absolute',inset:0,overflow:'hidden',userSelect:'none',WebkitUserSelect:'none',touchAction:'manipulation'}}>
                   <FeedFit h={h} rail={rail} size={text?fsFor(text):0} min={Math.round(px*0.85)} fitKey={text}>
                     {text===undefined?<div style={hint}>…</div>
-                      :text?<div style={{fontFamily:readFont.family,lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:verseHtml(b,c,v,text)}}/>
+                      :text?<div style={{fontFamily:readFont.family,lineHeight:1.5,color:T.body}} dangerouslySetInnerHTML={{__html:fw.html}}/>
                       :<div style={hint}>This verse couldn’t be loaded in {verLabel}.</div>}
-                    <div style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
+                    <div className="fref" style={{...small,color:T.gM,marginTop:22}}>{mvRef({book_num:b,chapter:c,verse_start:v,verse_end:v},lang)} · {verLabel}</div>
                   </FeedFit>
                 </div>
-                <div ref={k===cur?railRef:undefined} style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-                  {action(false,'♡','Memorize',()=>onMemorize(b,c,v))}
-                  {action(marked,'✦',marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
-                  {action(copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
-                  {action(false,'→','Read',()=>onOpen(b,c,v))}
+                <div ref={k===cur?railRef:undefined} className="frail" style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+                  {action(0,false,'♡','Memorize',()=>onMemorize(b,c,v))}
+                  {action(1,marked,'✦',marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
+                  {action(2,copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
+                  {action(3,false,'→','Read',()=>onOpen(b,c,v))}
                 </div>
                 {k===0&&!swiped&&<div style={{position:'absolute',left:0,right:0,bottom:'calc(20px + var(--sab,0px))',display:'flex',justifyContent:'center',pointerEvents:'none'}}>
                   <div style={{display:'flex',flexDirection:'column',alignItems:'center',color:T.gM,animation:'feedNudge 1.6s ease-in-out infinite'}}>
