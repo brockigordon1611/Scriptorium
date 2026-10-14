@@ -4534,6 +4534,36 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
     pullFrom.current=null;setPullTo(0);
   }
 
+  // A swipe in from the left edge goes back, as the back button does. The page
+  // follows the finger; let go past a third of the way across (or flick) and it
+  // slides off, short of that it springs back. Once a swipe reads as sideways
+  // it is the edge's alone: the pull to reshuffle stands down.
+  const edgeRef=useRef(null);
+  const[edgeX,setEdgeX]=useState(0),[edgeAnim,setEdgeAnim]=useState(false);
+  function edgeStart(e){
+    const t=e.touches[0];
+    edgeRef.current=t.clientX<=28&&!notesOf?{x:t.clientX,y:t.clientY,t:Date.now(),dir:null}:null;
+  }
+  function edgeMove(e){
+    const g=edgeRef.current;if(!g)return;
+    const t=e.touches[0],dx=t.clientX-g.x,dy=t.clientY-g.y;
+    if(!g.dir){
+      if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+      g.dir=dx>0&&Math.abs(dx)>Math.abs(dy)?'h':'v';
+      if(g.dir==='v'){edgeRef.current=null;return;}
+      pullFrom.current=null;setPullTo(0);setEdgeAnim(false);
+    }
+    setEdgeX(Math.max(0,dx));
+  }
+  function edgeEnd(e){
+    const g=edgeRef.current;edgeRef.current=null;
+    if(!g||g.dir!=='h')return;
+    const t=e.changedTouches&&e.changedTouches[0],dx=(t?t.clientX:g.x)-g.x,speed=dx/Math.max(1,Date.now()-g.t),w=window.innerWidth;
+    setEdgeAnim(true);
+    if(dx>w/3||(speed>0.5&&dx>40)){setEdgeX(w);setTimeout(()=>onBack&&onBack(),200);}
+    else setEdgeX(0);
+  }
+
   // A mouse wheel or trackpad moves one card per gesture (left to itself a
   // notch falls short and the snap pulls it back, and a trackpad's glide would
   // run on past several). Upward on the first card deals a new order, as a
@@ -4623,7 +4653,9 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
   const glass={background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:7};
   const TOP='max(var(--sat,0px),var(--sat-min,0px))';
   return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,position:'relative'}}>
+    <div onTouchStart={edgeStart} onTouchMove={edgeMove} onTouchEnd={edgeEnd} onTouchCancel={()=>{edgeRef.current=null;setEdgeAnim(true);setEdgeX(0);}}
+      style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',minHeight:0,position:'relative',background:T.bg,
+        transform:edgeX?`translateX(${edgeX}px)`:undefined,transition:edgeAnim?'transform .2s ease-out':'none',boxShadow:edgeX?'-10px 0 28px rgba(0,0,0,0.35)':undefined}}>
       <style>{FEED_CSS}</style>
       <button ref={backRef} type="button" onClick={onBack} title="Back" aria-label="Back"
         style={{...glass,position:'absolute',zIndex:3,top:`calc(${TOP} + 8px)`,left:14,color:T.gT,padding:'8px 11px',cursor:'pointer',fontSize:U(13),lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>←</button>
