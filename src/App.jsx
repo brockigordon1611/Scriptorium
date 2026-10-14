@@ -849,14 +849,15 @@ async function installBundledDatasets(onProgress,{background=false,only=null}={}
       // Two passes: what the app needs to open, behind the install screen, and
       // what it does not, once it is open.
       if(!!BUNDLED_DATASETS[name].background!==background)continue;
-      // The website leaves out what only a reader who opens it wants; those
-      // come one at a time, when opened (`only`). The apps have them on board.
-      if(BUNDLED_DATASETS[name].lazyOnWeb&&!Capacitor.isNativePlatform())continue;
     }
     const d=ds[name];
     if(!d||!Array.isArray(d.files))continue;
     const have=await idbGetMeta(`bundled:${name}`).catch(()=>null);
     if(have===d.version)continue;
+    // The website leaves out what only a reader who opens it wants; those come
+    // one at a time, when opened (`only`). One a reader already has is kept up
+    // to date like everything else. The apps have them all on board.
+    if(!only&&have==null&&BUNDLED_DATASETS[name].lazyOnWeb&&!Capacitor.isNativePlatform())continue;
     jobs.push([name,d]);
   }
   if(!jobs.length){bootMark(background?'bg-install-none':'install-none');await idbPutMeta('bundled:status',{ok:true,stage:'already-installed',installed:[],at:Date.now()}).catch(()=>{});return false;}
