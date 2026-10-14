@@ -8234,6 +8234,9 @@ function App(){
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
+  // A search tab that can't be used right now: struck through in a muted red.
+  // Greyed out alone, Dictionary and Strong's still looked like they'd open.
+  const searchTabOff={background:'transparent',border:'1px solid rgba(198,40,40,0.35)',boxShadow:'none',color:'rgba(239,83,80,0.75)',textDecoration:'line-through',textDecorationColor:'rgba(239,83,80,0.75)',cursor:'not-allowed'};
   const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(searchLive)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
@@ -10359,7 +10362,7 @@ function App(){
                     return(
                       <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} disabled={off} onClick={()=>setSearchView(k)}
                         title={off?(searchQT?'For a single word':'Type a word'):undefined}
-                        style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),...(off?{color:T.dim,opacity:0.6,cursor:'default'}:{cursor:'pointer'}),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s,opacity .12s'}}>
+                        style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),...(off?searchTabOff:{cursor:'pointer'}),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s,opacity .12s'}}>
                         {label}{n?` ${n}`:''}
                       </button>
                     );
