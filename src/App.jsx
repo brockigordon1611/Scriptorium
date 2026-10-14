@@ -2374,6 +2374,15 @@ function OrnRule({T}){return(<div style={{display:'flex',alignItems:'center',gap
 function Inp({val,set,ph,T,type}){return <input className="s-btn" type={type||'text'} value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',outline:'none'}}/>;}
 function Sel({val,set,children,T,sm,dis}){return <select className="s-btn" value={val} onChange={e=>set(e.target.value)} disabled={dis} style={{width:sm?'auto':'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:val?T.mut:T.dim,fontFamily:FB,fontSize:sm?14:16,padding:sm?'5px 10px':'9px 13px',cursor:'pointer',opacity:dis?.4:1,outline:'none'}}>{children}</select>;}
 function TA({val,set,ph,T,rows}){return <textarea className="s-btn" value={val} onChange={e=>set(e.target.value)} placeholder={ph||''} rows={rows||3} style={{width:'100%',background:T.bgIn,border:`1px solid ${T.bd}`,borderRadius:6,color:T.body,fontFamily:FB,fontSize:16,padding:'9px 13px',resize:'vertical',lineHeight:1.7,outline:'none'}}/>;}
+// A bookmark ribbon, drawn: what stands for a bookmark wherever one is meant
+// (the ✦ is the app's ornament, and the Read tab's). 1em square, so it takes
+// the size and colour of the text beside it; `filled` for one that is set.
+function BookmarkGlyph({filled,style}){
+  return(
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{display:'inline-block',verticalAlign:'-0.125em',flexShrink:0,...style}}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+  );
+}
 function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
 function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
 function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s-btn${danger?' s-danger':' s-ghost'}`} onClick={onClick} title={title} disabled={disabled} style={{background:danger?T.red:'transparent',border:`1px solid ${danger?T.redTxt+'33':T.bd+'40'}`,borderRadius:5,color:danger?T.redTxt:T.dim,padding:'4px 9px',fontSize:U(13),fontFamily:FB,lineHeight:1,fontWeight:500,opacity:disabled?.3:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
@@ -9010,7 +9019,7 @@ function App(){
           <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:6}}>
             {saveStatus==='saving'&&<span style={{fontFamily:FS,fontSize:UL(9),letterSpacing:'0.1em',fontWeight:500,color:T.gM}}>● Saving…</span>}
             <div style={{display:'flex',background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:8,padding:3,gap:2}}>
-              <GhostBtn T={T} ch="✦ Bookmarks" onClick={()=>setModal({type:'bookmarks'})}/>
+              <GhostBtn T={T} ch={<><BookmarkGlyph/> Bookmarks</>} onClick={()=>setModal({type:'bookmarks'})}/>
               <GhostBtn T={T} ch="↺ Recents" onClick={()=>setModal({type:'recents'})}/>
               <GhostBtn T={T} ch={dark?'☀︎':'☾'} onClick={()=>setDark(!dark)} title={dark?'Light mode':'Dark mode'}/>
               <GhostBtn T={T} ch="⋯" onClick={()=>setModal({type:'help'})} title="Help & more"/>
@@ -9037,7 +9046,7 @@ function App(){
             <FitTitle style={{fontFamily:FS,fontSize:UH(22),fontWeight:700,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',maxWidth:'calc(100% - 96px)',textAlign:'center'}}>Menu</FitTitle>
           </div>
           {[
-            {icon:'✦',label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
+            {icon:<BookmarkGlyph/>,label:'Bookmarks',fn:()=>{closeMobileSheet();setModal({type:'bookmarks'});}},
             {icon:'◐',label:'Highlights',fn:()=>{closeMobileSheet();setModal({type:'highlights'});}},
             {icon:'↺',label:'Recent Passages',fn:()=>{closeMobileSheet();setModal({type:'recents'});}},
             {icon:dark?'☀︎':'☾',label:dark?'Light Mode':'Dark Mode',fn:()=>setDark(!dark)},
@@ -9101,7 +9110,7 @@ function App(){
               over its name and nothing else, so the row stays short. */}
           <div style={{display:'flex',gap:8,marginBottom:12}}>
             {[
-              {icon:'✦',label:'Bookmarks',type:'bookmarks'},
+              {icon:<BookmarkGlyph/>,label:'Bookmarks',type:'bookmarks'},
               {icon:'◐',label:'Highlights',type:'highlights'},
               {icon:'↺',label:'Recent Passages',type:'recents'},
             ].map(t=>(
@@ -11934,7 +11943,7 @@ function App(){
                 <Row icon="⧉">
                   After selecting one or more verses a toolbar appears at the bottom. Tap <strong style={{color:T.gT}}>Copy</strong> to copy the verse text with its reference formatted for sharing.
                 </Row>
-                <Row icon="✦">
+                <Row icon={<BookmarkGlyph/>}>
                   Tap <strong style={{color:T.gT}}>Bookmark</strong> to open the save form — write a note, choose a category, or create a category on the spot. The passage reference becomes the bookmark's title.
                 </Row>
                 <Row icon="▤">
