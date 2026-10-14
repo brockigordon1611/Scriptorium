@@ -8061,7 +8061,9 @@ function App(){
           the entries read a size or two smaller than the definitions there. */}
       <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
         <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.62),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
-        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,flexShrink:0,lineHeight:1.2}}>{r.entry.original_word}</span>
+        {/* The word and its transliteration are one thing said twice, so
+            they match in size. */}
+        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.72),color:T.body,flexShrink:0,lineHeight:1.2}}>{r.entry.original_word}</span>
         <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.72),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
         {r.count!=null&&<span style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>{r.count}× as {searchWord}</span>}
       </div>
@@ -8283,6 +8285,10 @@ function App(){
   },[searchWord,searchFieldOpen,searchView]);
   // A closed search reopens on its verses.
   useEffect(()=>{if(!searchFieldOpen)setSearchView('verses');},[searchFieldOpen]);
+  // A Strong's popup opened from search answers what the search showed when it
+  // opened. The bar stays live above it, so changing tab or what's typed would
+  // leave it standing over results it no longer belongs to: either closes it.
+  useEffect(()=>{if(strongsPopup)closeStrongsPopup();},[searchView,readSearchQ]);
   // Leaving Read for a Study page leaves search behind. Study Tools no longer
   // closes it on the way, and open but out of sight it would still hold
   // Android's Back, which would then take two presses to get anywhere.
