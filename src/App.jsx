@@ -2265,6 +2265,33 @@ async function strongsForWord(q){
   const idx=await loadWordStrongs();
   return(idx[searchWordKey(q)]||[]).map(([sn,count])=>({sn,count}));
 }
+// Strong's entries a word can find outside the KJV's own wording: by spelling,
+// with the accents ignored ("agape" finds agápē, "logos" lógos), and by a word
+// in the definition ("affection" finds philéō). The Concordance page's search
+// needs the accents typed, so "agape" finds nothing there. Read from the
+// device's copy, kept in memory as a small index after the first search.
+const plainLatin=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f\u02b0-\u02ff]/g,'').toLowerCase();
+let _strongsLoose=null;
+async function loadStrongsLoose(){
+  if(_strongsLoose)return _strongsLoose;
+  if(!(await idbIsDownloaded('strongs')))return null;
+  const db=await idbOpen();
+  const all=await _idbReq(db.transaction('strongs_lex','readonly').objectStore('strongs_lex').getAll());
+  _strongsLoose=all.map(r=>({sn:r.strongs_number,tl:plainLatin(r.transliteration).replace(/[^a-z]/g,''),def:String(r.short_def||'').toLowerCase(),n:r.occurrence_count||0}));
+  return _strongsLoose;
+}
+// {spelled,meaning}: Strong's numbers, best first. Empty for a short word or a
+// number, null when the device has no copy to search.
+async function strongsLooseSearch(q){
+  const key=plainLatin(q).replace(/[^a-z]/g,'');
+  if(key.length<3||STRONGS_NUM_RX.test(q))return{spelled:[],meaning:[]};
+  const idx=await loadStrongsLoose().catch(()=>null);
+  if(!idx)return null;
+  const rx=new RegExp(`\\b${key}\\b`);
+  const spelled=idx.filter(r=>r.tl.startsWith(key)).sort((a,b)=>a.tl.length-b.tl.length||b.n-a.n).slice(0,8).map(r=>r.sn);
+  const meaning=idx.filter(r=>rx.test(r.def)).sort((a,b)=>b.n-a.n).slice(0,15).map(r=>r.sn);
+  return{spelled,meaning};
+}
 async function dbGetStrongsVerses(strongsNum){
   // Once the index is complete a missing record means the number genuinely has no
   // occurrences — which is what the server returns too — so don't fall back.
@@ -8239,10 +8266,9 @@ function App(){
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
-  // A search tab that can't be used right now: dimmed, with a line drawn
-  // across it corner to corner. Dimmed alone, Dictionary and Strong's still
-  // looked like they'd open.
-  const searchTabOff={...ctrlRest,background:`linear-gradient(to top right,transparent calc(50% - 0.75px),${T.mut} calc(50% - 0.75px),${T.mut} calc(50% + 0.75px),transparent calc(50% + 0.75px)),${T.g}0d`,color:T.dim,opacity:0.6,cursor:'not-allowed'};
+  // A search tab that can't be used right now: dimmed and struck through.
+  // Dimmed alone, Dictionary and Strong's still looked like they'd open.
+  const searchTabOff={...ctrlRest,color:T.dim,opacity:0.7,textDecoration:'line-through',textDecorationColor:T.mut,cursor:'not-allowed'};
   const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(searchLive)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
@@ -8382,30 +8408,41 @@ function App(){
   const searchStrongsPanel=()=>{
     if(!searchWord)return searchExtraNote('Type an English word to see the Hebrew and Greek behind it, or a Strong’s number like G25.');
     const st=searchStrongs&&searchStrongs.q===searchWord?searchStrongs:null;
-    if(!st||(st.list.length>0&&!st.entries))return searchExtraNote('Looking up…');
-    const rows=st.list.map((x,i)=>({...x,entry:st.entries?st.entries[i]:null})).filter(r=>r.entry);
-    if(!rows.length)return searchExtraNote(STRONGS_NUM_RX.test(searchWord)
+    if(!st||(st.list.length+st.spelled.length+st.meaning.length>0&&!st.entries))return searchExtraNote('Looking up…');
+    const rowsOf=(sns,counts)=>sns.map((sn,i)=>({sn,count:counts?counts[i]:null,entry:st.entries?st.entries[sn]:null})).filter(r=>r.entry);
+    const kjv=rowsOf(st.list.map(x=>x.sn),st.list.map(x=>x.count));
+    const spelled=rowsOf(st.spelled),meaning=rowsOf(st.meaning);
+    if(!kjv.length&&!spelled.length&&!meaning.length)return searchExtraNote(STRONGS_NUM_RX.test(searchWord)
       ?`There is no Strong’s entry ${normStrongsNum(searchWord.toUpperCase())}.`
       :`No Hebrew or Greek words to show for “${searchWord}”.`);
+    // Labels only when there is more than one kind of match to tell apart.
+    const labelled=[kjv,spelled,meaning].filter(a=>a.length).length>1;
+    const section=(rows,title)=>rows.length>0&&(<>
+      {labelled&&<div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,padding:'14px 12px 4px'}}>{title}</div>}
+      {rows.map(strongsRow)}
+    </>);
     return(
       <div style={{padding:'0 0 24px'}}>
-        {rows.map(r=>(
-          <div key={r.sn} role="button" tabIndex={0} onClick={()=>handleStrongsWordTap(r.sn,searchWord)}
-            style={{padding:'10px 12px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`}}>
-            <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
-              <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
-              <span style={{fontFamily:'serif',fontSize:U(16),color:T.body,flexShrink:0}}>{r.entry.original_word}</span>
-              <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
-              {r.count!=null&&<span style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>{r.count}× as {searchWord}</span>}
-            </div>
-            {/* Three lines at most: G5368's runs to a paragraph, and the whole
-                entry is a tap away. */}
-            <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.45,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(r.entry.short_def||'').trim()}</div>
-          </div>
-        ))}
+        {section(kjv,`In the KJV as “${searchWord}”`)}
+        {section(spelled,`Spelled like “${searchWord}”`)}
+        {section(meaning,`Definition mentions “${searchWord}”`)}
       </div>
     );
   };
+  const strongsRow=r=>(
+    <div key={r.sn} role="button" tabIndex={0} onClick={()=>handleStrongsWordTap(r.sn,searchWord)}
+      style={{padding:'10px 12px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`}}>
+      <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
+        <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
+        <span style={{fontFamily:'serif',fontSize:U(16),color:T.body,flexShrink:0}}>{r.entry.original_word}</span>
+        <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
+        {r.count!=null&&<span style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>{r.count}× as {searchWord}</span>}
+      </div>
+      {/* Three lines at most: G5368's runs to a paragraph, and the whole
+          entry is a tap away. */}
+      <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.45,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(r.entry.short_def||'').trim()}</div>
+    </div>
+  );
   // Search owns the screen for as long as the field is open. It used to hand
   // the chapter back in the gap between the third character and the first
   // result — 350ms of debounce plus the search itself — where it sat under the
@@ -8574,13 +8611,19 @@ function App(){
     const t=setTimeout(async()=>{
       try{
         const list=await strongsForWord(q);
+        const loose=await strongsLooseSearch(q).catch(()=>null);
         if(!current())return;
+        // Each number once, in the first list it turns up in.
+        const seen=new Set(list.map(x=>x.sn));
+        const fresh=a=>{const out=[];for(const sn of a||[])if(!seen.has(sn)){seen.add(sn);out.push(sn);}return out;};
+        const spelled=fresh(loose?.spelled),meaning=fresh(loose?.meaning);
         const had=searchStrongsRef.current;
-        if(!had||had.q!==q)setSearchStrongs({q,list,entries:null});
+        if(!had||had.q!==q)setSearchStrongs({q,list,spelled,meaning,entries:null});
         if(searchView==='strongs'&&!(had&&had.q===q&&had.entries)){
-          const entries=await Promise.all(list.map(x=>dbGetStrongsEntry(x.sn).catch(()=>null)));
+          const all=[...list.map(x=>x.sn),...spelled,...meaning];
+          const got=await Promise.all(all.map(sn=>dbGetStrongsEntry(sn).catch(()=>null)));
           if(!current())return;
-          setSearchStrongs({q,list,entries});
+          setSearchStrongs({q,list,spelled,meaning,entries:Object.fromEntries(all.map((sn,i)=>[sn,got[i]]))});
         }
         if(searchView==='dict'&&searchDictRef.current?.q!==q){
           const ql=q.toLowerCase();
@@ -10387,7 +10430,7 @@ function App(){
                   {[['verses','Verses',summary&&searchQT&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
                     ['dict','Dictionary',''],
                     // A typed number's count would be 1 before anyone knew whether it existed.
-                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length):'']].map(([k,label,n])=>{
+                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length+searchStrongs.spelled.length+searchStrongs.meaning.length):'']].map(([k,label,n])=>{
                     const off=k!=='verses'&&!searchExtrasOk;
                     return(
                       <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} disabled={off} onClick={()=>setSearchView(k)}
