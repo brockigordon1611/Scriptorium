@@ -2196,17 +2196,32 @@ async function dbGetStrongsForChapter(bookNum,chapter){
   const {data}=await sbRpc('get_strongs_for_chapter',{p_book_num:bookNum,p_chapter:chapter},token);
   return Array.isArray(data)?data:[];
 }
+// Corrections to the OpenScriptures Strong's dictionary the lexicon was built
+// from, which has them wrong at source: Hebrew numbers given a G (G25, G137,
+// G4460), typos for G3303 μέν and G5590 ψυχή, a Greek word it dropped (ἄγαν),
+// and a misspelling. Applied as entries are read, so neither the bundled data
+// on phones nor the server's copy has to change. Checked against Strong's.
+const STRONGS_FIXES={
+  G25:{full_def:'perhaps from ἄγαν (much) (or compare H5689);'},
+  G137:{full_def:'of Hebrew origin (a derivative of H5869, place of springs);'},
+  G3304:{full_def:'from G3303 (μέν) and G3767 (οὖν) and G1065 (γέ);'},
+  G3305:{full_def:'from G3303 (μέν) and G5104 (τοί);'},
+  G3642:{full_def:'from G3641 (ὀλίγος) and G5590 (ψυχή);'},
+  G4460:{full_def:'of Hebrew origin (H7343);'},
+  G5235:{short_def:' to throw beyond the usual mark, i.e. (figuratively) to surpass (only active participle supereminent)'},
+};
+const fixStrongs=e=>e&&STRONGS_FIXES[e.strongs_number]?{...e,...STRONGS_FIXES[e.strongs_number]}:e;
 async function dbGetStrongsEntry(strongsNumber){
-  try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return local;}}catch{}
+  try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return fixStrongs(local);}}catch{}
   const token=getToken();
   const {data}=await sbRpc('get_strongs_entry',{p_strongs_number:strongsNumber},token);
-  return data?.[0]||null;
+  return fixStrongs(data?.[0]||null);
 }
 async function dbSearchStrongs(query){
-  try{if(await idbIsDownloaded('strongs')){return await idbSearchStrongsLocal(query);}}catch{}
+  try{if(await idbIsDownloaded('strongs')){return(await idbSearchStrongsLocal(query)).map(fixStrongs);}}catch{}
   const token=getToken();
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
-  return Array.isArray(data)?data:[];
+  return Array.isArray(data)?data.map(fixStrongs):[];
 }
 async function dbGetStrongsVerses(strongsNum){
   // Once the index is complete a missing record means the number genuinely has no
@@ -3861,7 +3876,7 @@ const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 // definition, and each English rendering as a card that opens to its verses.
 // The popup over Read and the Strong's Concordance page both draw it, so the
 // two cannot drift apart.
-function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,reserveRight=0}){
+function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   // The small caps grow with the entry too, or a count sits at 9px beside
@@ -3888,7 +3903,7 @@ function StrongsEntry({T,num,entry,groupList,totalCount,expanded,onToggle,onRef,
       {trail}
     </div>
     <div style={{height:14,flexShrink:0}}/>
-    {!entry?<div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB}}>Loading…</div>:<>
+    {!entry?<div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB,fontStyle:missing?'italic':'normal'}}>{missing?`There is no Strong’s entry ${num}.`:'Loading…'}</div>:<>
       {/* The word: the original and its transliteration in the band, then the
           definition -- larger than the rest, being what the reader came for --
           and the derivation under a hairline. */}
@@ -10074,7 +10089,7 @@ function App(){
               React.createElement('button',{type:'button',onClick:closeStrongsPopup,title:'Close','aria-label':'Close',
                 style:{position:'absolute',top:22,right:20,zIndex:3,background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(13),fontWeight:600,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',padding:0}},'\u2715'),
               React.createElement('div',{style:{position:'relative',flex:1,minHeight:0,display:'flex',flexDirection:'column'}},React.createElement('div',{ref:spEdge.ref,'data-bounce':'',style:{overflow:'auto',overscrollBehavior:'none',padding:'20px 20px calc(32px + var(--sab,0px))',flex:1,display:'flex',flexDirection:'column',minHeight:0}},
-                React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,groupList,totalCount,
+                React.createElement(StrongsEntry,{T,num:strongsPopup.strongs_number,entry:strongsPopup.entry,missing:!strongsPopup.entry&&strongsPopup.versesLoading===false,groupList,totalCount,
                   expanded:strongsExpandedWords,onToggle:key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;}),
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
                   derivation:strongsPopup.entry?.full_def?renderDerivation(strongsPopup.entry.full_def):null,
@@ -10493,7 +10508,7 @@ function App(){
             }
             return(
               <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'16px 18px 32px'}}>
-                <StrongsEntry T={T} num={te.strongs_number} entry={e} groupList={groupList} totalCount={totalCount}
+                <StrongsEntry T={T} num={te.strongs_number} entry={e} missing={!e&&te.verses!=null} groupList={groupList} totalCount={totalCount}
                   expanded={strongsExpandedWords} onToggle={key=>setStrongsExpandedWords(s=>{const ns=new Set(s);ns.has(key)?ns.delete(key):ns.add(key);return ns;})}
                   onRef={(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs)}
                   derivation={e?.full_def?renderDerivation(e.full_def):null}
