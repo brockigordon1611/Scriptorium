@@ -6251,6 +6251,7 @@ function App(){
   const[searchDict,setSearchDict]=useState(null); // {q,entries,wiki}
   const[searchStrongs,setSearchStrongs]=useState(null); // {q,list,entries}
   const[searchDictOpen,setSearchDictOpen]=useState(()=>new Set()); // related words unfolded in the Dictionary tab
+  const[searchStrongsSec,setSearchStrongsSec]=useState(null); // the Strong's tab section at the top of the list
   const searchExtraSeq=useRef(0);
   const searchExtraLastQ=useRef('');
   const searchDictRef=useRef(null);searchDictRef.current=searchDict;
@@ -7814,6 +7815,27 @@ function App(){
       setReadSearchLimit(n=>{loadMorePendingRef.current=false;return n+50;});
     }
     trackSearchBook(el);
+    trackStrongsSection(el);
+  }
+  // The Strong's tab's counterpart: which of its sections -- the KJV's own
+  // words, spellings, definitions -- is at the top, named in the bar where the
+  // verses name their book.
+  const strongsSecRaf=useRef(0);
+  function trackStrongsSection(el){
+    if(!el)return;
+    if(strongsSecRaf.current)cancelAnimationFrame(strongsSecRaf.current);
+    strongsSecRaf.current=requestAnimationFrame(()=>{
+      strongsSecRaf.current=0;
+      const heads=el.querySelectorAll('[data-strongs-sec]');
+      if(!heads.length)return;
+      const line=el.getBoundingClientRect().top+(parseFloat(getComputedStyle(el).paddingTop)||0)+24;
+      let cur=heads[0].dataset.strongsSec;
+      for(const h of heads){
+        if(h.getBoundingClientRect().top<=line)cur=h.dataset.strongsSec;
+        else break;
+      }
+      setSearchStrongsSec(p=>p===cur?p:cur);
+    });
   }
   // Which book the reader has scrolled to, for the bar above the results. The
   // anchors are the ones the wheel jumps to, so this needs nothing
@@ -8405,6 +8427,7 @@ function App(){
       </div>
     );
   };
+  const strongsSecTitle=(k,w)=>k==='kjv'?`In the KJV as “${w}”`:k==='spelled'?`Spelled like “${w}”`:`Definition mentions “${w}”`;
   // Search's Strong's tab: the Hebrew and Greek words behind the English one,
   // most used first. Each opens in the Strong's popup, over the search.
   const searchStrongsPanel=()=>{
@@ -8417,32 +8440,33 @@ function App(){
     if(!kjv.length&&!spelled.length&&!meaning.length)return searchExtraNote(STRONGS_NUM_RX.test(searchWord)
       ?`There is no Strong’s entry ${normStrongsNum(searchWord.toUpperCase())}.`
       :`No Hebrew or Greek words to show for “${searchWord}”.`);
-    // Labels only when there is more than one kind of match to tell apart.
-    const labelled=[kjv,spelled,meaning].filter(a=>a.length).length>1;
-    const section=(rows,title)=>rows.length>0&&(<>
-      {labelled&&<div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,padding:'14px 12px 4px'}}>{title}</div>}
-      {rows.map(strongsRow)}
-    </>);
+    // Each section is named in the bar while it's at the top of the list; here
+    // a gold line marks where one gives way to the next.
+    const sections=[['kjv',kjv],['spelled',spelled],['meaning',meaning]].filter(([,r])=>r.length);
     return(
       <div style={{padding:'0 0 24px'}}>
-        {section(kjv,`In the KJV as “${searchWord}”`)}
-        {section(spelled,`Spelled like “${searchWord}”`)}
-        {section(meaning,`Definition mentions “${searchWord}”`)}
+        {sections.map(([k,rows],i)=>(
+          <div key={k} data-strongs-sec={k} style={i?{borderTop:`1px solid ${T.gD}`,marginTop:14}:undefined}>
+            {rows.map(strongsRow)}
+          </div>
+        ))}
       </div>
     );
   };
   const strongsRow=r=>(
     <div key={r.sn} role="button" tabIndex={0} onClick={()=>handleStrongsWordTap(r.sn,searchWord)}
       style={{padding:'10px 12px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`}}>
+      {/* Sized from Scripture Size, as the Dictionary tab is: at fixed sizes
+          the entries read a size or two smaller than the definitions there. */}
       <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
-        <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
-        <span style={{fontFamily:'serif',fontSize:U(16),color:T.body,flexShrink:0}}>{r.entry.original_word}</span>
-        <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
+        <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.62),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
+        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,flexShrink:0,lineHeight:1.2}}>{r.entry.original_word}</span>
+        <span style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.72),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
         {r.count!=null&&<span style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>{r.count}× as {searchWord}</span>}
       </div>
       {/* Three lines at most: G5368's runs to a paragraph, and the whole
           entry is a tap away. */}
-      <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.45,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(r.entry.short_def||'').trim()}</div>
+      <div style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:Math.round(readFontSize*0.82),color:T.mut,lineHeight:1.4,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(r.entry.short_def||'').trim()}</div>
     </div>
   );
   // Search owns the screen for as long as the field is open. It used to hand
@@ -8650,6 +8674,10 @@ function App(){
   useEffect(()=>{
     if(searchViewOn==='verses'&&readSearchRes&&readSearchResultsOpen)trackSearchBook(readRef.current);
   },[searchViewOn,readSearchRes,readSearchResultsOpen]);
+  // And the Strong's section label, when its list comes or changes.
+  useEffect(()=>{
+    if(searchViewOn==='strongs')trackStrongsSection(readRef.current);
+  },[searchViewOn,searchStrongs]);
   // iOS scrolls the whole web view up to keep a focused input clear of the
   // keyboard, and leaves it pannable afterwards. The search field is already at
   // the top of the screen, so nothing needed revealing — all that gave was a
@@ -9180,7 +9208,10 @@ function App(){
               <div style={{...pill,position:'relative'}}>
                 {/* Sliding background indicator — defaults to Navigate (49px), slides to Search (3px) or Version (95px) */}
                 {!studyActive&&<div style={{position:'absolute',top:3,left:3,width:44,height:'calc(100% - 6px)',transform:`translateX(${rIndLeft-3}px)`,willChange:'transform',background:rAny?T.gF:T.bgCH,border:`1px solid ${rAny?T.gD:T.bdA}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>}
-                <button type="button" title="Search" {...navTap(COMPARE_SEARCH&&tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{searchIsOpen?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:(COMPARE_SEARCH&&tab==='compare')||!studyActive?'visible':'hidden'}}>
+                <button type="button" title="Search" {...navTap(COMPARE_SEARCH&&tab==='compare'?()=>setMobileSheet('compareSearch'):!studyActive?()=>{
+                  // Over Study Tools a search may be waiting underneath, and
+                  // toggling it shut first took a second tap to get it back.
+                  searchIsOpen&&!studySheetUp?closeSearch():openSearch();}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,fontSize:UH(21),paddingLeft:2,color:rSearch?T.gT:T.dim,transition:'color .04s ease-out',visibility:(COMPARE_SEARCH&&tab==='compare')||!studyActive?'visible':'hidden'}}>
                   {readSearching&&!studyActive?<Spinner/>:'⌕'}
                 </button>
                 <button type="button" title="Navigate" {...navTap(tab==='parallel'||tab==='commentaries'||!studyActive?()=>{if(readMobileSheet==='nav'&&!readSheetClosing){closeReadSheet();}else{setNavStep('book');setNavPickedBk(null);setNavPickedCh(null);openReadSheet('nav');}}:undefined)} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',width:44,color:rNav?T.gT:T.dim,transition:'color .04s ease-out',visibility:tab==='parallel'||tab==='commentaries'||!studyActive?'visible':'hidden'}}>
@@ -10357,11 +10388,19 @@ function App(){
                 </>)):null)
               :searchViewOn==='dict'
               ?(dictFor&&(dictFor.entries.length
-                  ?`Webster’s 1828 · ${plural(new Set(dictFor.entries.map(e=>String(e.word).toLowerCase())).size,'word','words')} · ${plural(dictFor.entries.length,'entry','entries')}`
-                  :dictFor.wiki?'From Wiktionary':'No entries'))
+                  ?`${plural(new Set(dictFor.entries.map(e=>String(e.word).toLowerCase())).size,'word','words')} · ${plural(dictFor.entries.length,'entry','entries')}`
+                  :dictFor.wiki?'Not in Webster’s 1828':'No entries'))
               // A typed number's count would be 1 before anyone knew whether it existed.
               :(strongsFor&&!STRONGS_NUM_RX.test(searchWord)
                   ?plural(strongsFor.list.length+strongsFor.spelled.length+strongsFor.meaning.length,'entry','entries'):null);
+            // Where the book label sits on Verses: the source on Dictionary, and on
+            // Strong's the section at the top of the list.
+            const strongsSecs=strongsFor?[['kjv',strongsFor.list],['spelled',strongsFor.spelled],['meaning',strongsFor.meaning]].filter(([,a])=>a.length).map(([k])=>k):[];
+            const barLeft=searchViewOn==='dict'
+              ?(dictFor&&(dictFor.entries.length?'Webster’s 1828':dictFor.wiki?'Wiktionary':null))
+              :searchViewOn==='strongs'&&strongsSecs.length&&!STRONGS_NUM_RX.test(searchWord)
+              ?strongsSecTitle(strongsSecs.includes(searchStrongsSec)?searchStrongsSec:strongsSecs[0],searchWord)
+              :null;
             const bookWheelWanted=bookWheelOpen&&searchBooks.length>1&&!!bookLabelBox;
             return (<>
             {/* A sibling of the bar, not a child: the bar's backdrop-filter makes
@@ -10491,9 +10530,10 @@ function App(){
               {/* It speaks for whichever tab is open; the counts used to sit on
                   the tabs themselves. The book label, which opens the wheel, is
                   the Verses tab's alone. */}
-              {searchFieldOpen&&barCount&&(
+              {searchFieldOpen&&(barCount||barLeft)&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchViewOn==='verses'&&searchTopBook&&topBookLabel(9.5,'46%')}
+                  {barLeft&&<div style={{fontFamily:FS,fontSize:9.5,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1,maxWidth:'64%'}}>{barLeft}</div>}
                   <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {barCount}
                   </div>
