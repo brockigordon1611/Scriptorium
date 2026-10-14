@@ -4488,7 +4488,15 @@ function FeedFit({h,rail,size,min,fitKey,children}){
   return<div ref={ref} style={{position:'absolute',left:side,right:side,top:top??0,visibility:top===null?'hidden':'visible',textAlign:'center',fontSize:size?fs:undefined}}>{children}</div>;
 }
 
-function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onOpen,onCopy,onBack}){
+// The Memorize heart, drawn to match the bookmark ribbon: outline, or filled
+// once the verse is among the reader's memory verses.
+function HeartGlyph({filled}){
+  return(
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{display:'inline-block',verticalAlign:'-0.125em',flexShrink:0}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+  );
+}
+function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkOf,onBookmark,onUnbookmark,onMemorize,onQuickMemorize,memorizedOf,onOpen,onCopy,onBack}){
   // The verses, and the notes some of them have (src/feedNotes.json, built by
   // scripts/feed-notes/build.mjs), arrive together.
   const[refs,setRefs]=useState(null);
@@ -4639,8 +4647,9 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
   // undefined while its chapter loads; '' when the version hasn't the verse.
   const textOf=(b,c,v)=>{const m=texts[`${vid}|${b}|${c}`];return m===undefined?undefined:(m[v]||'');};
 
-  // A double-tap bookmarks the verse (never un-bookmarks it) and flares a
-  // bookmark ribbon.
+  // A double-tap adds the verse to Memory Verses (never takes it out) and
+  // flares a heart. Memorize itself still opens the dialog, for a run of
+  // verses or another version.
   const lastTap=useRef({k:-1,t:0}),pending=useRef(new Set());
   const[pop,setPop]=useState(null);
   function mark(b,c,v){
@@ -4651,8 +4660,14 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
   }
   function tap(k,b,c,v){
     const now=Date.now(),l=lastTap.current;
-    if(l.k===k&&now-l.t<300){lastTap.current={k:-1,t:0};setPop({k,n:now});mark(b,c,v);}
+    if(l.k===k&&now-l.t<300){lastTap.current={k:-1,t:0};setPop({k,n:now});memorize(b,c,v);}
     else lastTap.current={k,t:now};
+  }
+  function memorize(b,c,v){
+    const key=`m|${b}|${c}|${v}`;
+    if(pending.current.has(key)||memorizedOf(b,c,v))return;
+    pending.current.add(key);
+    Promise.resolve(onQuickMemorize(b,c,v)).catch(()=>{}).finally(()=>pending.current.delete(key));
   }
   function toggleMark(b,c,v){const id=bookmarkOf(b,c,v);if(id)Promise.resolve(onUnbookmark(id)).catch(()=>{});else mark(b,c,v);}
   const[copied,setCopied]=useState(null);
@@ -4710,7 +4725,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
           // Cards away from the one in view are empty frames of the same height.
           const near=k>=cur-2&&k<=cur+5;
           const[b,c,v]=refAt(k);
-          const text=near?textOf(b,c,v):undefined,marked=near&&!!bookmarkOf(b,c,v);
+          const text=near?textOf(b,c,v):undefined,marked=near&&!!bookmarkOf(b,c,v),learning=near&&memorizedOf(b,c,v);
           // The pace of the words: about a second for the whole verse, each
           // word no slower than 55 ms behind the last.
           const fw=text?feedWords(verseHtml(b,c,v,text)):null;
@@ -4734,7 +4749,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
                   </FeedFit>
                 </div>
                 <div ref={k===cur?railRef:undefined} className="frail" style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
-                  {action(0,false,'♡','Memorize',()=>onMemorize(b,c,v))}
+                  {action(0,learning,<HeartGlyph filled={learning}/>,learning?'Memorized':'Memorize',()=>onMemorize(b,c,v))}
                   {action(1,marked,<BookmarkGlyph filled={marked}/>,marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
                   {action(2,copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
                   {action(3,false,'→','Read',()=>onOpen(b,c,v))}
@@ -4746,7 +4761,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
                   </div>
                 </div>}
                 {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
-                  style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}><BookmarkGlyph filled/></div>}
+                  style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}><HeartGlyph filled/></div>}
               </div>}
             </div>
           );
@@ -8646,6 +8661,17 @@ function App(){
       setMemAdd(null);
     }catch(e){setMemAdd(x=>x&&({...x,busy:false,err:e.message==='duplicate'?dup:'Couldn’t save it. Check your connection and try again.'}));}
   }
+  // verse feed: a double-tap adds the one verse, in the version being read,
+  // with no dialog. Nothing happens if it is already there.
+  async function memQuickAdd(vid,bk,ch,v){
+    if(!user||memVerses.some(m=>m.version_id===vid&&m.book_num===bk&&m.chapter===ch&&m.verse_start===v&&m.verse_end===v))return;
+    if(user.guest){
+      setMemVerses(l=>[{id:'g-'+Date.now(),user_id:'guest',version_id:vid,book_num:bk,chapter:ch,verse_start:v,verse_end:v,practice_count:0,last_practiced_at:null,created_at:new Date().toISOString()},...l]);
+      return;
+    }
+    const row=await dbAddMemoryVerse(user.id,{versionId:vid,bookNum:bk,chapter:ch,verseStart:v,verseEnd:v});
+    if(row)setMemVerses(l=>[row,...l]);
+  }
   function memPracticed(mv){
     if(!mv)return;
     const patch={practice_count:(mv.practice_count||0)+1,last_practiced_at:new Date().toISOString()};
@@ -10744,6 +10770,8 @@ function App(){
           onBookmark={(b,c,v)=>handleAddBookmark({versionId:readVid,bookNum:b,chapter:c,verse:v})}
           onUnbookmark={id=>handleDelBookmark(id)}
           onMemorize={(b,c,v)=>setMemAdd({vid:readVid,bk:b,ch:c,v,end:v,busy:false,err:null})}
+          onQuickMemorize={(b,c,v)=>memQuickAdd(readVid,b,c,v)}
+          memorizedOf={(b,c,v)=>memVerses.some(m=>m.version_id===readVid&&m.book_num===b&&m.chapter===c&&m.verse_start<=v&&m.verse_end>=v)}
           onOpen={(b,c,v)=>{
             if(b===readBook&&c===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(v,true);}
             else{readScrollToVerse.current=v;landSilent.current=true;setReadBook(b);setReadCh(c);setTab('read');}}}
