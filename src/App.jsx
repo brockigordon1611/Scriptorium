@@ -2199,9 +2199,12 @@ async function dbGetStrongsForChapter(bookNum,chapter){
 }
 // Corrections to the OpenScriptures Strong's dictionary the lexicon was built
 // from, which has them wrong at source: Hebrew numbers given a G (G25, G137,
-// G4460), typos for G3303 μέν and G5590 ψυχή, a Greek word it dropped (ἄγαν),
-// and a misspelling. Applied as entries are read, so neither the bundled data
-// on phones nor the server's copy has to change. Checked against Strong's.
+// G4460), typos for G3303 μέν and G5590 ψυχή, and a misspelling. Checked
+// against Strong's. The bulk -- Greek words its conversion dropped, Hebrew
+// editors' notes it printed -- is src/strongsFixes.json, built by
+// scripts/strongs/build-fixes.py; these win over it. Both are applied as
+// entries are read, so neither the bundled data on phones nor the server's
+// copy has to change.
 const STRONGS_FIXES={
   G25:{full_def:'perhaps from ἄγαν (much) (or compare H5689);'},
   G137:{full_def:'of Hebrew origin (a derivative of H5869, place of springs);'},
@@ -2211,18 +2214,29 @@ const STRONGS_FIXES={
   G4460:{full_def:'of Hebrew origin (H7343);'},
   G5235:{short_def:' to throw beyond the usual mark, i.e. (figuratively) to surpass (only active participle supereminent)'},
 };
-const fixStrongs=e=>e&&STRONGS_FIXES[e.strongs_number]?{...e,...STRONGS_FIXES[e.strongs_number]}:e;
+// Loaded the first time Strong's is used, not with the app. If it can't load
+// (offline on the web before it was ever fetched), the hand-made ones still apply.
+let _strongsFixes=null;
+const loadStrongsFixes=()=>_strongsFixes||(_strongsFixes=import('./strongsFixes.json').then(m=>m.default,()=>{_strongsFixes=null;return{};}));
+const fixStrongs=(e,fx)=>{
+  if(!e)return e;
+  const g=fx[e.strongs_number],m=STRONGS_FIXES[e.strongs_number];
+  return g||m?{...e,...g,...m}:e;
+};
 async function dbGetStrongsEntry(strongsNumber){
-  try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return fixStrongs(local);}}catch{}
+  const fx=loadStrongsFixes();
+  try{if(await idbIsDownloaded('strongs')){const local=await idbGetStrongsEntryLocal(strongsNumber);if(local)return fixStrongs(local,await fx);}}catch{}
   const token=getToken();
   const {data}=await sbRpc('get_strongs_entry',{p_strongs_number:strongsNumber},token);
-  return fixStrongs(data?.[0]||null);
+  return fixStrongs(data?.[0]||null,await fx);
 }
 async function dbSearchStrongs(query){
-  try{if(await idbIsDownloaded('strongs')){return(await idbSearchStrongsLocal(query)).map(fixStrongs);}}catch{}
+  const fx=loadStrongsFixes();
+  try{if(await idbIsDownloaded('strongs')){const rows=await idbSearchStrongsLocal(query),f=await fx;return rows.map(e=>fixStrongs(e,f));}}catch{}
   const token=getToken();
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
-  return Array.isArray(data)?data.map(fixStrongs):[];
+  const f=await fx;
+  return Array.isArray(data)?data.map(e=>fixStrongs(e,f)):[];
 }
 async function dbGetStrongsVerses(strongsNum){
   // Once the index is complete a missing record means the number genuinely has no
