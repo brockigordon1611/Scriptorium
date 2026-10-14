@@ -4394,8 +4394,8 @@ const FEED_CSS='@keyframes feedPop{0%{transform:scale(.3);opacity:0}18%{transfor
   +'.feed-on.fx-slide .fw,.feed-on.fx-slide .fref{animation-name:fwSlide}'
   +'.feed-on.fx-bloom .fw{animation-name:fwBloom;animation-delay:calc(var(--o) * var(--step) * 2)}'
   +'.feed-on.fx-bloom .fref{animation-name:fwBloom}'
-  // "3 Things You Missed": a gold pill with light running across it and a
-  // glow that keeps pulsing out, popping in after the reference.
+  // "Study This Verse": a gold pill with light running across it and a glow
+  // that keeps pulsing out, popping in after the reference.
   +'@keyframes ctaShine{0%{background-position:160% 0}55%,100%{background-position:-60% 0}}'
   +'@keyframes ctaGlow{0%{box-shadow:0 0 0 0 rgba(212,175,70,.6)}70%,100%{box-shadow:0 0 0 12px rgba(212,175,70,0)}}'
   +'.feed-cta{background:linear-gradient(110deg,#b8913a 0%,#e2c46c 40%,#fff4c8 50%,#e2c46c 60%,#b8913a 100%);background-size:250% 100%;animation:ctaShine 2.8s ease-in-out infinite,ctaGlow 1.9s ease-out infinite}'
@@ -4422,7 +4422,7 @@ function feedFx(seed,k){
   let v=pick(k);if(k>0&&v===pick(k-1))v=(v+1)%FEED_FX.length;
   return FEED_FX[v];
 }
-const FEED_NOTE_KINDS=[['historical','📜','The Backstory'],['doctrinal','💡','The Big Truth'],['practical','🔥','Live It Today']];
+const FEED_NOTE_KINDS=[['historical','Historical Context'],['doctrinal','Doctrine'],['practical','Application']];
 
 // The verse and its reference, centred on the card at the size the feed gives
 // them. One that fits above the actions keeps the full width. A longer one
@@ -4657,7 +4657,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
                     {text&&notes[`${b}.${c}.${v}`]&&<div className="fcta" style={{marginTop:20}}>
                       <button type="button" className="feed-cta" onClick={e=>{e.stopPropagation();setNotesOf({b,c,v,text});}}
                         style={{border:'none',borderRadius:999,padding:'11px 20px',cursor:'pointer',fontFamily:FS,fontSize:UL(10),fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'#231a06',display:'inline-flex',alignItems:'center',gap:8,WebkitTapHighlightColor:'transparent'}}>
-                        <span aria-hidden="true">✦</span>3 Things You Missed<span aria-hidden="true">›</span>
+                        <span aria-hidden="true">✦</span>Study This Verse<span aria-hidden="true">›</span>
                       </button>
                     </div>}
                   </FeedFit>
@@ -4687,23 +4687,24 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
         const gold={background:'linear-gradient(100deg,#b8913a,#f0d68a 50%,#b8913a)',WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent'};
         return(
           <div onClick={()=>setNotesOf(null)} style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(3px)',WebkitBackdropFilter:'blur(3px)',display:'flex',alignItems:'flex-end',justifyContent:'center',animation:'feedIn .2s ease-out'}}>
-            <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="3 Things You Missed"
+            <div onClick={e=>e.stopPropagation()} role="dialog" aria-label="Study notes"
               style={{width:'100%',maxWidth:640,maxHeight:'84vh',overflowY:'auto',boxSizing:'border-box',background:T.bgCard,borderTop:'2px solid #c8a84e',borderRadius:'18px 18px 0 0',
                 padding:'10px 18px calc(24px + var(--sab,0px))',boxShadow:'0 -10px 40px rgba(0,0,0,0.5)',animation:'notesUp .38s cubic-bezier(.2,.75,.25,1) both'}}>
               <div style={{width:40,height:4,borderRadius:2,background:T.bd,margin:'0 auto 12px'}}/>
               <div style={{position:'relative',textAlign:'center',padding:'0 36px'}}>
-                <div style={{fontFamily:FS,fontSize:UH(17),fontWeight:700,letterSpacing:'0.05em',textTransform:'uppercase',textWrap:'balance',...gold}}>✦ 3 Things You Missed ✦</div>
+                <div style={{fontFamily:FS,fontSize:UH(19),fontWeight:700,letterSpacing:'0.06em',textTransform:'uppercase',textWrap:'balance',...gold}}>Study Notes</div>
                 <div style={{...small,color:T.gM,marginTop:6}}>{mvRef({book_num:notesOf.b,chapter:notesOf.c,verse_start:notesOf.v,verse_end:notesOf.v},lang)} · {verLabel}</div>
                 <button type="button" aria-label="Close" onClick={()=>setNotesOf(null)}
                   style={{position:'absolute',top:-2,right:0,width:30,height:30,borderRadius:'50%',border:`1px solid ${T.bd}`,background:T.bgSec,color:T.gT,cursor:'pointer',fontSize:U(13),lineHeight:1,padding:0}}>✕</button>
               </div>
-              <div style={{fontFamily:readFont.family,fontStyle:'italic',fontSize:U(16),color:T.mut,lineHeight:1.5,textAlign:'center',margin:'14px 4px 16px'}}>“{plain}”</div>
-              {FEED_NOTE_KINDS.map(([kind,icon,title],i)=>nt[kind]&&(
+              <div style={{fontFamily:readFont.family,fontStyle:'italic',fontSize:U(16),color:T.mut,lineHeight:1.5,textAlign:'center',margin:'14px 4px 10px'}}>“{plain}”</div>
+              <div style={{fontFamily:FB,fontSize:UL(12),color:T.dim,lineHeight:1.5,textAlign:'center',margin:'0 8px 16px'}}>The setting, teaching and application of this verse, drawn from Scofield, Meyer, Spurgeon and Larkin. Each note names its source.</div>
+              {FEED_NOTE_KINDS.map(([kind,title],i)=>nt[kind]&&(
                 <div key={kind} style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderLeft:'3px solid #c8a84e',borderRadius:10,padding:'12px 14px',marginBottom:10,
                   animation:'feedWord .5s cubic-bezier(.2,.75,.25,1) both',animationDelay:`${150+i*120}ms`}}>
-                  <div style={{fontFamily:FS,fontSize:U(13),fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT,marginBottom:6}}><span aria-hidden="true" style={{marginRight:8}}>{icon}</span>{title}</div>
+                  <div style={{fontFamily:FS,fontSize:U(13),fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:T.gT,marginBottom:6}}>{title}</div>
                   <div style={{fontFamily:FB,fontSize:U(16),color:T.body,lineHeight:1.55}}>{nt[kind].text}</div>
-                  {nt[kind].sources?.length>0&&<div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,marginTop:6}}>— {nt[kind].sources.join('; ')}</div>}
+                  {nt[kind].sources?.length>0&&<div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,marginTop:6}}>{nt[kind].sources.length>1?'Sources':'Source'}: {nt[kind].sources.join('; ')}</div>}
                 </div>
               ))}
             </div>

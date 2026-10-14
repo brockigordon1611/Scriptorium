@@ -14,7 +14,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const DIR = path.join(ROOT, 'scripts', 'feed-notes');
 const notes = JSON.parse(fs.readFileSync(path.join(DIR, 'notes.json'), 'utf8'));
-const KINDS = [['historical', 'The Backstory'], ['doctrinal', 'The Big Truth'], ['practical', 'Live It Today']];
+const KINDS = [['historical', 'Historical Context'], ['doctrinal', 'Doctrine'], ['practical', 'Application']];
 
 const app = {};
 for (const n of notes) {

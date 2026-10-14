@@ -2,7 +2,7 @@
 
 25 verses, each with a historical, doctrinal and practical note drawn only from Brock's approved sources (see GUIDE.md), the source named on every note. Built from notes.json by build.mjs; edit notes.json, not this file.
 
-In the app the three are headed **The Backstory**, **The Big Truth**, **Live It Today**.
+In the app the three are headed **Historical Context**, **Doctrine**, **Application**.
 
 ## 1. Genesis 1:1
 
