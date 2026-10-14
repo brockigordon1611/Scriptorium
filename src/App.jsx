@@ -10335,10 +10335,12 @@ function App(){
                 {searchFilterRows()}
               </div>
             )}
-            {/* Nothing to search for yet: offer what was searched before. */}
+            {/* Nothing to search for yet. An empty field offers what was
+                searched before; once something is typed, recents no longer
+                answer it, so the field says what will. */}
             {searchShowRecents&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'6px 10px'}}>
-                {recentSearches.length>0?(<>
+                {!searchQT&&recentSearches.length>0?(<>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                     <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
                     <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}}
