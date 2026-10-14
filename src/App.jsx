@@ -6189,7 +6189,6 @@ function App(){
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
   const[readSearchRes,setReadSearchRes]=useState(null);
-  const[readSearchFor,setReadSearchFor]=useState(''); // the query readSearchRes answers
   const[readSearchResQ,setReadSearchResQ]=useState(''); // the query the standing results belong to
   const[readSearchResultsOpen,setReadSearchResultsOpen]=useState(false);
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
@@ -7940,7 +7939,6 @@ function App(){
   async function doReadSearch(overrideQ,overrideOpts,live=false){
     const query=(overrideQ!==undefined?overrideQ:readSearchQ).trim();
     if(!query)return;
-    setReadSearchFor(query);
     // Nothing stopped two searches overlapping, and whichever finished last won
     // — so a slow search for an early prefix could land on top of the results
     // for what was actually typed. Every write below is now gated on this still
@@ -8160,12 +8158,10 @@ function App(){
   // while the recents and filters below them were already there. Tapping again
   // in that gap reached the bar's submit path instead of opening anything.
   const searchBarOn=tab==='read'&&!(readMobileSheet&&!readSheetClosing)&&!modal&&(searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen));
-  // Below three characters nothing is searched as you type, so the space under
-  // the bar offers recent searches instead -- unless that shorter word (Og, Ai)
-  // was searched on purpose, with Enter, the magnifier or a recent chip. Those
-  // used to run and then stay hidden behind the recents.
+  // Anything typed is searched as you type, so the space under the bar offers
+  // recent searches only while the field is empty.
   const searchQT=readSearchQ.trim();
-  const searchLive=searchQT.length>=3||(!!searchQT&&searchQT===readSearchFor);
+  const searchLive=!!searchQT;
   const searchShowRecents=searchFieldOpen&&!searchLive;
   const searchOptsDirty=Object.keys(SEARCH_DEFAULTS).some(k=>searchOpts[k]!==SEARCH_DEFAULTS[k]);
   // The field, both bar buttons and the filter buttons share one pair of faces:
@@ -8394,15 +8390,17 @@ function App(){
       </button>
     );
   };
-  // Results as you type. Three characters rather than the dictionary's two: a
-  // two-letter fragment matches a good part of the Bible and costs the most to
-  // find. A committed search — Enter, the magnifier, a recent chip — goes
-  // through doReadSearch directly and is unaffected by any of this.
+  // Results as you type, from the first letter. This used to wait for three,
+  // on the assumption that a short fragment cost too much to find; measured
+  // against the KJV, "a" -- 6,219 verses, 8,181 times -- is found and counted in
+  // about 15ms. The pause below keeps a quick typist from being searched letter
+  // by letter. A committed search -- Enter, the magnifier, a recent chip --
+  // goes through doReadSearch directly and is unaffected by any of this.
   useEffect(()=>{
     if(readSearchTimer.current)clearTimeout(readSearchTimer.current);
     if(!searchTypedRef.current)return;
     const q=readSearchQ.trim();
-    if(q.length<3)return;
+    if(!q)return;
     readSearchTimer.current=setTimeout(()=>{doReadSearch(undefined,undefined,true);},350);
     return()=>{if(readSearchTimer.current)clearTimeout(readSearchTimer.current);};
   },[readSearchQ,searchOpts,readVid]);
@@ -10335,12 +10333,10 @@ function App(){
                 {searchFilterRows()}
               </div>
             )}
-            {/* Nothing to search for yet. An empty field offers what was
-                searched before; once something is typed, recents no longer
-                answer it, so the field says what will. */}
+            {/* Nothing to search for yet: offer what was searched before. */}
             {searchShowRecents&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'6px 10px'}}>
-                {!searchQT&&recentSearches.length>0?(<>
+                {recentSearches.length>0?(<>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                     <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
                     <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}}
@@ -10356,24 +10352,13 @@ function App(){
                   </div>
                 </>):(
                   <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),padding:'10px 2px'}}>
-                    Results appear as you type from three letters on. For a shorter word, like Og, press Enter or tap the magnifier.
+                    Type a word, a phrase or a reference to search this version.
                   </div>
-                )}
-                {searchRef&&(
-                  <button type="button" onClick={()=>goRefFromBar(searchRef)}
-                    style={{display:'flex',alignItems:'center',gap:10,width:'100%',textAlign:'left',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,padding:'11px 12px',marginTop:12,cursor:'pointer'}}>
-                    <span style={{fontSize:U(15),color:T.gT,flexShrink:0}}>⤷</span>
-                    <span style={{fontFamily:FS,fontSize:UL(8.5),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',flexShrink:0}}>Go to</span>
-                    <span style={{fontFamily:FS,fontSize:U(14),color:T.gT,letterSpacing:'0.06em',fontWeight:600}}>
-                      {bookName(searchRef.book,versionLang(readVid))} {searchRef.chapter}{searchRef.verse?`:${searchRef.verse}`:''}
-                    </span>
-                  </button>
                 )}
               </div>
             )}
-            {/* The query is long enough to search but nothing has come back
-                yet. Something has to hold the space, or the screen goes blank
-                between keystrokes. */}
+            {/* Something is typed but nothing has come back yet. Something has
+                to hold the space, or the screen goes blank between keystrokes. */}
             {searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>
                 Searching…
@@ -12024,7 +12009,7 @@ function App(){
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
                 <Row icon="⌕">
-                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, from three letters on, with a running count of the verses and occurrences that matched. A shorter word, like Og or Ai, searches when you press Enter or tap the magnifier.
+                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, with a running count of the verses and occurrences that matched.
                 </Row>
                 <Row icon="⚙">
                   The <strong style={{color:T.gT}}>filter bar</strong> sets <strong style={{color:T.gT}}>Scope</strong> — All, OT or NT — and <strong style={{color:T.gT}}>Mode</strong> — All Words, Phrase or Any Word — with Case Sensitive and Partial Match beside them. A reset arrow appears once you change anything. Tap the filter button to pin the bar so it stays put while the results scroll.
