@@ -556,6 +556,17 @@ async function idbClearWebster(){
   tx.objectStore('webster').clear();
   return _txDone(tx);
 }
+// A word's Webster's entries and those of the words starting with it: the
+// device's copy when it has one, else the server's; [] when there are none.
+// The Dictionary page and search's Dictionary tab both read through this.
+async function websterLookup(q){
+  try{if(await idbIsDownloaded('webster'))return await idbSearchWebsterLocal(q);}catch{}
+  const{data}=await sbRpc('search_webster_1828',{query_term:q});
+  return Array.isArray(data)?data:[];
+}
+// Webster's part-of-speech abbreviations, spelled out.
+const DICT_POS={'n':'noun','v':'verb','v.t':'verb transitive','v.i':'verb intransitive','adj':'adjective','adv':'adverb','prep':'preposition','conj':'conjunction','pron':'pronoun','interj':'interjection','art':'article','n.pl':'noun plural','p.p':'past participle','pret':'preterite','pp':'past participle','part':'participle','a':'adjective','n.':'noun','v.':'verb','adj.':'adjective','adv.':'adverb','prep.':'preposition','conj.':'conjunction','pron.':'pronoun','interj.':'interjection'};
+function expandPos(raw){if(!raw)return raw;const trimmed=raw.trim().toLowerCase().replace(/\.+$/,'');return DICT_POS[trimmed]||DICT_POS[raw.trim().toLowerCase()]||raw;}
 
 // ── Meta / download flags ─────────────────────────────────
 async function idbGetMeta(key){try{const db=await idbOpen();const r=await _idbReq(db.transaction('meta','readonly').objectStore('meta').get(key));return r?.value;}catch{return undefined;}}
@@ -2237,6 +2248,22 @@ async function dbSearchStrongs(query){
   const {data}=await sbRpc('search_strongs',{p_query:query},token);
   const f=await fx;
   return Array.isArray(data)?data.map(e=>fixStrongs(e,f)):[];
+}
+// The Strong's numbers behind each English word of the KJV, most used first,
+// built by scripts/strongs/build-word-index.mjs. Loaded the first time it's
+// needed, as text: imported as JSON, Vite makes every word a named export and
+// the file half as big again.
+let _wordStrongs=null;
+const loadWordStrongs=()=>_wordStrongs||(_wordStrongs=import('./kjvWordStrongs.json?raw').then(m=>JSON.parse(m.default),()=>{_wordStrongs=null;return{};}));
+// Must match key() in scripts/strongs/build-word-index.mjs.
+const searchWordKey=w=>String(w).toLowerCase().replace(/'s$/,'').replace(/[^a-z]/g,'');
+const STRONGS_NUM_RX=/^[HG]\d+$/i;
+// [{sn,count}] for a search word: a typed Strong's number is itself (count
+// null), anything else comes from the index.
+async function strongsForWord(q){
+  if(STRONGS_NUM_RX.test(q))return[{sn:normStrongsNum(q.toUpperCase()),count:null}];
+  const idx=await loadWordStrongs();
+  return(idx[searchWordKey(q)]||[]).map(([sn,count])=>({sn,count}));
 }
 async function dbGetStrongsVerses(strongsNum){
   // Once the index is complete a missing record means the number genuinely has no
@@ -6191,6 +6218,15 @@ function App(){
   const[readSearchRes,setReadSearchRes]=useState(null);
   const[readSearchResQ,setReadSearchResQ]=useState(''); // the query the standing results belong to
   const[readSearchResultsOpen,setReadSearchResultsOpen]=useState(false);
+  // Search's Dictionary and Strong's tabs: which tab is showing, and what each
+  // last found, keyed by the word it was for.
+  const[searchView,setSearchView]=useState('verses');
+  const[searchDict,setSearchDict]=useState(null); // {q,entries,wiki}
+  const[searchStrongs,setSearchStrongs]=useState(null); // {q,list,entries}
+  const searchExtraSeq=useRef(0);
+  const searchExtraLastQ=useRef('');
+  const searchDictRef=useRef(null);searchDictRef.current=searchDict;
+  const searchStrongsRef=useRef(null);searchStrongsRef.current=searchStrongs;
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
   const[readSearchLimit,setReadSearchLimit]=useState(50);
   const[readSearchCapped,setReadSearchCapped]=useState(false); // a live set that stopped at a page boundary
@@ -7323,20 +7359,7 @@ function App(){
     const seq=++dictSeqRef.current;
     dictTimerRef.current=setTimeout(async()=>{
       try{
-        // Local-first: check IndexedDB
-        let r=null;
-        try{
-          if(await idbIsDownloaded('webster')){
-            const local=await idbSearchWebsterLocal(q);
-            if(local.length>0){setDictDbEntries(local);setDictDbLoading(false);return;}
-            r=[];
-          }
-        }catch{}
-        // Network fallback
-        if(r===null){
-          const{data}=await sbRpc('search_webster_1828',{query_term:q});
-          r=Array.isArray(data)?data:[];
-        }
+        const r=await websterLookup(q);
         if(r.length>0){setDictDbEntries(r);setDictDbLoading(false);return;}
         setDictDbEntries(null);setDictDbLoading(false);
         // Not in Webster's 1828: Wiktionary. (This was the Free Dictionary API,
@@ -8163,6 +8186,10 @@ function App(){
   const searchQT=readSearchQ.trim();
   const searchLive=!!searchQT;
   const searchShowRecents=searchFieldOpen&&!searchLive;
+  // One English word, or a Strong's number, also gets the Dictionary and
+  // Strong's tabs. A phrase, or a version in another language, gets verses only.
+  const searchWord=searchQT&&!/\s/.test(searchQT)&&versionLang(readVid)==='EN'?searchQT:'';
+  const searchViewOn=searchFieldOpen&&searchWord?searchView:'verses';
   const searchOptsDirty=Object.keys(SEARCH_DEFAULTS).some(k=>searchOpts[k]!==SEARCH_DEFAULTS[k]);
   // The field, both bar buttons and the filter buttons share one pair of faces:
   // barely tinted while they wait, gold with a soft glow while they are the
@@ -8254,6 +8281,98 @@ function App(){
   // opening page, alongside the recent searches, and typing puts them away.
   const searchFiltersPinned=searchFieldOpen&&searchFiltersOpen;
   const searchFiltersInFlow=searchShowRecents&&!searchFiltersOpen;
+  const searchExtraNote=t=>(
+    <div style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>{t}</div>
+  );
+  // Search's Dictionary tab: the word's own Webster's entries, set out as the
+  // Dictionary page sets them, then the other words that start with it.
+  const searchDictPanel=()=>{
+    const d=searchDict&&searchDict.q===searchWord?searchDict:null;
+    if(!d)return searchExtraNote('Looking up…');
+    const q=searchWord.toLowerCase(),rf=fontFamilyMap[readFontFamily];
+    const own=d.entries.filter(e=>String(e.word).toLowerCase()===q);
+    // Shortest first: alphabetical, "love-drury" and "lovee" crowded out "lover"
+    // and "lovely".
+    const also=[...new Set(d.entries.map(e=>String(e.word).toLowerCase()).filter(w=>w!==q))]
+      .sort((a,b)=>a.length-b.length||a.localeCompare(b)).slice(0,12);
+    const head=(word,tag)=>(
+      <div style={{display:'flex',alignItems:'baseline',gap:8,padding:'6px 0'}}>
+        <span style={{fontFamily:rf,fontSize:Math.round(readFontSize*1.05),color:T.gT,fontWeight:600}}>{word}</span>
+        {tag}
+      </div>
+    );
+    const defs=list=>list.map((def,di)=>(
+      <div key={di} style={{display:'flex',gap:6,marginBottom:4}}>
+        <span style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.55),color:T.gM,minWidth:14,textAlign:'right',flexShrink:0,paddingTop:2}}>{di+1}.</span>
+        <span style={{fontFamily:rf,fontSize:readFontSize,color:T.mut,lineHeight:readLineHeight}}>{def}</span>
+      </div>
+    ));
+    return(
+      <div style={{padding:'4px 12px 24px'}}>
+        {own.length>0&&(<>
+          {head(q,<span style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>)}
+          {own.map((e,ei)=>(
+            <div key={ei} style={{padding:'2px 0 10px',borderTop:ei?`1px solid ${T.bdS}`:'none',paddingTop:ei?10:2}}>
+              {e.pos&&<div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.65),color:T.dim,fontStyle:'italic',marginBottom:4}}>{expandPos(e.pos)}</div>}
+              {defs(e.definitions||[])}
+            </div>
+          ))}
+        </>)}
+        {!own.length&&d.wiki&&(<>
+          <div style={{fontFamily:FB,fontSize:UL(10),color:T.dim,padding:'4px 0 6px'}}>Not found in Webster's 1828 · from Wiktionary</div>
+          {d.wiki.map((entry,ei)=>(entry.meanings||[]).map((m,mi)=>(
+            <div key={ei+'-'+mi} style={{paddingBottom:10}}>
+              {head(entry.word,<span style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.7),color:T.dim,fontStyle:'italic'}}>{expandPos(m.partOfSpeech)}</span>)}
+              {defs((m.definitions||[]).slice(0,4).map(x=>x.definition))}
+            </div>
+          )))}
+          <div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,lineHeight:1.5,paddingTop:4}}>Definitions from Wiktionary, the free dictionary, used under CC BY-SA 4.0.</div>
+        </>)}
+        {!own.length&&!d.wiki&&searchExtraNote(also.length?`“${searchWord}” isn’t in Webster’s 1828.`:`Nothing found for “${searchWord}”.`)}
+        {also.length>0&&(
+          <div style={{marginTop:14}}>
+            <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8}}>Also in Webster's</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+              {also.map(w=>(
+                <button key={w} type="button" onClick={()=>{searchTypedRef.current=true;setReadSearchQ(w);}}
+                  style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 13px',cursor:'pointer'}}>
+                  {w}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  // Search's Strong's tab: the Hebrew and Greek words behind the English one,
+  // most used first. Each opens in the Strong's popup, over the search.
+  const searchStrongsPanel=()=>{
+    const st=searchStrongs&&searchStrongs.q===searchWord?searchStrongs:null;
+    if(!st||(st.list.length>0&&!st.entries))return searchExtraNote('Looking up…');
+    const rows=st.list.map((x,i)=>({...x,entry:st.entries?st.entries[i]:null})).filter(r=>r.entry);
+    if(!rows.length)return searchExtraNote(STRONGS_NUM_RX.test(searchWord)
+      ?`There is no Strong’s entry ${normStrongsNum(searchWord.toUpperCase())}.`
+      :`No Hebrew or Greek words to show for “${searchWord}”.`);
+    return(
+      <div style={{padding:'0 0 24px'}}>
+        {rows.map(r=>(
+          <div key={r.sn} role="button" tabIndex={0} onClick={()=>handleStrongsWordTap(r.sn,searchWord)}
+            style={{padding:'10px 12px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`}}>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
+              <span style={{fontFamily:FS,fontSize:U(12),color:T.gT,fontWeight:600,letterSpacing:'0.06em',flexShrink:0}}>{r.sn}</span>
+              <span style={{fontFamily:'serif',fontSize:U(16),color:T.body,flexShrink:0}}>{r.entry.original_word}</span>
+              <span style={{fontFamily:FB,fontSize:U(13),color:T.mut,fontStyle:'italic',flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.entry.transliteration}</span>
+              {r.count!=null&&<span style={{fontFamily:FS,fontSize:UL(8.5),color:T.dim,letterSpacing:'0.06em',flexShrink:0}}>{r.count}× as {searchWord}</span>}
+            </div>
+            {/* Three lines at most: G5368's runs to a paragraph, and the whole
+                entry is a tap away. */}
+            <div style={{fontFamily:FB,fontSize:U(13),color:T.mut,lineHeight:1.45,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{String(r.entry.short_def||'').trim()}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
   // Search owns the screen for as long as the field is open. It used to hand
   // the chapter back in the gap between the third character and the first
   // result — 350ms of debounce plus the search itself — where it sat under the
@@ -8398,12 +8517,52 @@ function App(){
   // goes through doReadSearch directly and is unaffected by any of this.
   useEffect(()=>{
     if(readSearchTimer.current)clearTimeout(readSearchTimer.current);
-    if(!searchTypedRef.current)return;
+    // Only while the field is open. Closing search left the typed flag set, so
+    // changing version afterwards searched again and reopened the results with
+    // no field to close them.
+    if(!searchTypedRef.current||!searchFieldOpen)return;
     const q=readSearchQ.trim();
     if(!q)return;
     readSearchTimer.current=setTimeout(()=>{doReadSearch(undefined,undefined,true);},350);
     return()=>{if(readSearchTimer.current)clearTimeout(readSearchTimer.current);};
-  },[readSearchQ,searchOpts,readVid]);
+  },[readSearchQ,searchOpts,readVid,searchFieldOpen]);
+  // The Dictionary and Strong's tabs follow the field. The word index is on the
+  // device, so the Strong's count keeps up as you type; entries and definitions
+  // are fetched only for the tab that is open, so typing doesn't reach the
+  // network for a tab nobody is looking at.
+  useEffect(()=>{
+    const q=searchFieldOpen?searchWord:'';
+    const seq=++searchExtraSeq.current;
+    if(!q)return;
+    const current=()=>seq===searchExtraSeq.current;
+    // The pause is for typing; changing tabs on the same word needn't wait.
+    const wait=searchExtraLastQ.current===q?0:350;
+    searchExtraLastQ.current=q;
+    const t=setTimeout(async()=>{
+      try{
+        const list=await strongsForWord(q);
+        if(!current())return;
+        const had=searchStrongsRef.current;
+        if(!had||had.q!==q)setSearchStrongs({q,list,entries:null});
+        if(searchView==='strongs'&&!(had&&had.q===q&&had.entries)){
+          const entries=await Promise.all(list.map(x=>dbGetStrongsEntry(x.sn).catch(()=>null)));
+          if(!current())return;
+          setSearchStrongs({q,list,entries});
+        }
+        if(searchView==='dict'&&searchDictRef.current?.q!==q){
+          const ql=q.toLowerCase();
+          const entries=await websterLookup(ql).catch(()=>[]);
+          // Not in Webster's: Wiktionary, as on the Dictionary page.
+          const wiki=entries.length?null:await wiktionaryLookup(ql).catch(()=>null);
+          if(!current())return;
+          setSearchDict({q,entries,wiki});
+        }
+      }catch{}
+    },wait);
+    return()=>clearTimeout(t);
+  },[searchWord,searchFieldOpen,searchView]);
+  // A closed search reopens on its verses.
+  useEffect(()=>{if(!searchFieldOpen)setSearchView('verses');},[searchFieldOpen]);
   // iOS scrolls the whole web view up to keep a focused input clear of the
   // keyboard, and leaves it pannable afterwards. The search field is already at
   // the top of the screen, so nothing needed revealing — all that gave was a
@@ -10194,12 +10353,28 @@ function App(){
                 </div>
               )}
 
+              {/* One word gets three tabs: the verses it is in, what it means,
+                  and the Hebrew and Greek behind it. */}
+              {searchFieldOpen&&searchWord&&(
+                <div role="tablist" style={{display:'flex',gap:6}}>
+                  {[['verses','Verses',summary&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
+                    ['dict','Dictionary',''],
+                    // A typed number's count would be 1 before anyone knew whether it existed.
+                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length):'']].map(([k,label,n])=>(
+                    <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} onClick={()=>setSearchView(k)}
+                      style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
+                      {label}{n?` ${n}`:''}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Second row, only while typing: what the query has found so far.
                   The bar's own 6px gap put the book name and the counts right under
                   the field, and the label's negative margin pulled them closer still;
                   this is the air that buys back. The wheel is positioned from the
                   label, so it moves down with it. */}
-              {searchFieldOpen&&summary&&(
+              {searchFieldOpen&&summary&&searchViewOn==='verses'&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchTopBook&&topBookLabel(9.5,'46%')}
                   <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
@@ -10357,14 +10532,20 @@ function App(){
                 )}
               </div>
             )}
+            {/* The Dictionary and Strong's tabs, in place of the verses. */}
+            {searchViewOn!=='verses'&&(
+              <div className={searchClosing?'srch-body-out':'srch-body-in'}>
+                {searchViewOn==='dict'?searchDictPanel():searchStrongsPanel()}
+              </div>
+            )}
             {/* Something is typed but nothing has come back yet. Something has
                 to hold the space, or the screen goes blank between keystrokes. */}
-            {searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
+            {searchViewOn==='verses'&&searchFieldOpen&&!searchShowRecents&&!(readSearchRes&&readSearchResultsOpen)&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>
                 Searching…
               </div>
             )}
-            {!searchShowRecents&&readSearchRes&&readSearchResultsOpen&&(
+            {searchViewOn==='verses'&&!searchShowRecents&&readSearchRes&&readSearchResultsOpen&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'}>
                 {/* A typed reference beats searching for its own text. */}
                 {searchRef&&(
@@ -11118,8 +11299,6 @@ function App(){
 
       {/* ═══ DICTIONARY TAB ═══ */}
       {tab==='dictionary'&&(function(){
-        const posMap={'n':'noun','v':'verb','v.t':'verb transitive','v.i':'verb intransitive','adj':'adjective','adv':'adverb','prep':'preposition','conj':'conjunction','pron':'pronoun','interj':'interjection','art':'article','n.pl':'noun plural','p.p':'past participle','pret':'preterite','pp':'past participle','part':'participle','a':'adjective','n.':'noun','v.':'verb','adj.':'adjective','adv.':'adverb','prep.':'preposition','conj.':'conjunction','pron.':'pronoun','interj.':'interjection'};
-        function expandPos(raw){if(!raw)return raw;const trimmed=raw.trim().toLowerCase().replace(/\.+$/,'');return posMap[trimmed]||posMap[raw.trim().toLowerCase()]||raw;}
         const q=dictSearchQ.trim().toLowerCase();
         const isLoading=dictDbLoading||dictLiveLoading;
         const hasDb=dictDbEntries&&dictDbEntries.length>0;
@@ -12009,7 +12188,7 @@ function App(){
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
                 <Row icon="⌕">
-                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, with a running count of the verses and occurrences that matched.
+                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, with a running count of the verses and occurrences that matched. A single word also gets Dictionary and Strong's tabs: what the word means, and the Hebrew and Greek words behind it in the KJV.
                 </Row>
                 <Row icon="⚙">
                   The <strong style={{color:T.gT}}>filter bar</strong> sets <strong style={{color:T.gT}}>Scope</strong> — All, OT or NT — and <strong style={{color:T.gT}}>Mode</strong> — All Words, Phrase or Any Word — with Case Sensitive and Partial Match beside them. A reset arrow appears once you change anything. Tap the filter button to pin the bar so it stays put while the results scroll.
