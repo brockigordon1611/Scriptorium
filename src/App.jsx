@@ -5771,6 +5771,7 @@ function App(){
   const[readCopyOk,setReadCopyOk]=useState(false);
   const[readSearchQ,setReadSearchQ]=useState('');
   const[readSearchRes,setReadSearchRes]=useState(null);
+  const[readSearchFor,setReadSearchFor]=useState(''); // the query readSearchRes answers
   const[readSearchResQ,setReadSearchResQ]=useState(''); // the query the standing results belong to
   const[readSearchResultsOpen,setReadSearchResultsOpen]=useState(false);
   const[readSearchOccurrences,setReadSearchOccurrences]=useState(0);
@@ -7520,6 +7521,7 @@ function App(){
   async function doReadSearch(overrideQ,overrideOpts,live=false){
     const query=(overrideQ!==undefined?overrideQ:readSearchQ).trim();
     if(!query)return;
+    setReadSearchFor(query);
     // Nothing stopped two searches overlapping, and whichever finished last won
     // — so a slow search for an early prefix could land on top of the results
     // for what was actually typed. Every write below is now gated on this still
@@ -7739,9 +7741,13 @@ function App(){
   // while the recents and filters below them were already there. Tapping again
   // in that gap reached the bar's submit path instead of opening anything.
   const searchBarOn=tab==='read'&&!(readMobileSheet&&!readSheetClosing)&&!modal&&(searchFieldOpen||!!(readSearchRes&&readSearchResultsOpen));
-  // Below three characters there is nothing to search for, so the space under
-  // the bar offers recent searches instead.
-  const searchShowRecents=searchFieldOpen&&readSearchQ.trim().length<3;
+  // Below three characters nothing is searched as you type, so the space under
+  // the bar offers recent searches instead -- unless that shorter word (Og, Ai)
+  // was searched on purpose, with Enter, the magnifier or a recent chip. Those
+  // used to run and then stay hidden behind the recents.
+  const searchQT=readSearchQ.trim();
+  const searchLive=searchQT.length>=3||(!!searchQT&&searchQT===readSearchFor);
+  const searchShowRecents=searchFieldOpen&&!searchLive;
   const searchOptsDirty=Object.keys(SEARCH_DEFAULTS).some(k=>searchOpts[k]!==SEARCH_DEFAULTS[k]);
   // The field, both bar buttons and the filter buttons share one pair of faces:
   // barely tinted while they wait, gold with a soft glow while they are the
@@ -7786,7 +7792,7 @@ function App(){
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
-  const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(readSearchQ.trim().length>=3)doReadSearch(undefined,o,true);};
+  const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(searchLive)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
       style={{flex:1,...(active?(red?ctrlOnRed:ctrlOnSoft):ctrlRest),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'7px 4px',cursor:'pointer',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s',whiteSpace:'nowrap'}}>
@@ -7813,7 +7819,7 @@ function App(){
       <div style={{width:38,flexShrink:0,display:'flex',alignSelf:'stretch'}}>
         {searchOptsDirty&&(
           <button type="button" title="Reset to defaults" aria-label="Reset search options to defaults"
-            onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(readSearchQ.trim().length>=3)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
+            onClick={()=>{setSearchOpts(SEARCH_DEFAULTS);if(searchLive)doReadSearch(undefined,SEARCH_DEFAULTS,true);}}
             style={{...ctrlRest,borderRadius:6,width:'100%',display:'flex',alignItems:'center',justifyContent:'center',padding:0,cursor:'pointer',transition:'background .12s,border-color .12s,color .12s'}}>
             {/* A circle turning back on itself: the same arrow the app draws
                 everywhere else, 24-unit box and a 2px stroke in currentColor, so
@@ -9916,7 +9922,7 @@ function App(){
                   </div>
                 </>):(
                   <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),padding:'10px 2px'}}>
-                    Type at least three characters to search this version.
+                    Results appear as you type from three letters on. For a shorter word, like Og, press Enter or tap the magnifier.
                   </div>
                 )}
                 {searchRef&&(
@@ -11564,7 +11570,7 @@ function App(){
                 {/* ── SEARCH ── */}
                 <Hdg label="Search"/>
                 <Row icon="⌕">
-                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, from three letters on, with a running count of the verses and occurrences that matched.
+                  Tap the <strong style={{color:T.gT}}>search icon</strong> in the top bar to search the current version. Results appear as you type, from three letters on, with a running count of the verses and occurrences that matched. A shorter word, like Og or Ai, searches when you press Enter or tap the magnifier.
                 </Row>
                 <Row icon="⚙">
                   The <strong style={{color:T.gT}}>filter bar</strong> sets <strong style={{color:T.gT}}>Scope</strong> — All, OT or NT — and <strong style={{color:T.gT}}>Mode</strong> — All Words, Phrase or Any Word — with Case Sensitive and Partial Match beside them. A reset arrow appears once you change anything. Tap the filter button to pin the bar so it stays put while the results scroll.
