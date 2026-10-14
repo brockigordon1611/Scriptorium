@@ -6223,6 +6223,7 @@ function App(){
   const[searchView,setSearchView]=useState('verses');
   const[searchDict,setSearchDict]=useState(null); // {q,entries,wiki}
   const[searchStrongs,setSearchStrongs]=useState(null); // {q,list,entries}
+  const[searchDictOpen,setSearchDictOpen]=useState(()=>new Set()); // related words unfolded in the Dictionary tab
   const searchExtraSeq=useRef(0);
   const searchExtraLastQ=useRef('');
   const searchDictRef=useRef(null);searchDictRef.current=searchDict;
@@ -8185,11 +8186,15 @@ function App(){
   // recent searches only while the field is empty.
   const searchQT=readSearchQ.trim();
   const searchLive=!!searchQT;
-  const searchShowRecents=searchFieldOpen&&!searchLive;
-  // One English word, or a Strong's number, also gets the Dictionary and
-  // Strong's tabs. A phrase, or a version in another language, gets verses only.
-  const searchWord=searchQT&&!/\s/.test(searchQT)&&versionLang(readVid)==='EN'?searchQT:'';
-  const searchViewOn=searchFieldOpen&&searchWord?searchView:'verses';
+  // Dictionary and Strong's look up one English word (or a Strong's number). An
+  // empty field can sit on either, waiting for one; a phrase, or a version in
+  // another language, can only search verses.
+  const searchEn=versionLang(readVid)==='EN';
+  const searchWord=searchQT&&!/\s/.test(searchQT)&&searchEn?searchQT:'';
+  const searchExtrasOk=searchEn&&(!searchQT||!!searchWord);
+  const searchViewOn=searchFieldOpen&&searchExtrasOk?searchView:'verses';
+  // Recent searches are verse searches, so they belong to the Verses tab.
+  const searchShowRecents=searchFieldOpen&&!searchLive&&searchViewOn==='verses';
   const searchOptsDirty=Object.keys(SEARCH_DEFAULTS).some(k=>searchOpts[k]!==SEARCH_DEFAULTS[k]);
   // The field, both bar buttons and the filter buttons share one pair of faces:
   // barely tinted while they wait, gold with a soft glow while they are the
@@ -8234,9 +8239,10 @@ function App(){
   // Case Sensitive and Partial Match light red rather than gold: that colour is
   // warning you they are cutting the result, not decorating the button.
   const ctrlOnRed={background:'rgba(198,40,40,0.15)',border:'1px solid #c62828',boxShadow:'0 0 0 2px rgba(198,40,40,0.2)',color:'#ef5350'};
-  // A search tab that can't be used right now: struck through in a muted red.
-  // Greyed out alone, Dictionary and Strong's still looked like they'd open.
-  const searchTabOff={background:'transparent',border:'1px solid rgba(198,40,40,0.35)',boxShadow:'none',color:'rgba(239,83,80,0.75)',textDecoration:'line-through',textDecorationColor:'rgba(239,83,80,0.75)',cursor:'not-allowed'};
+  // A search tab that can't be used right now: dimmed, with a line drawn
+  // across it corner to corner. Dimmed alone, Dictionary and Strong's still
+  // looked like they'd open.
+  const searchTabOff={...ctrlRest,background:`linear-gradient(to top right,transparent calc(50% - 0.75px),${T.mut} calc(50% - 0.75px),${T.mut} calc(50% + 0.75px),transparent calc(50% + 0.75px)),${T.g}0d`,color:T.dim,opacity:0.6,cursor:'not-allowed'};
   const setOpt=(k,v)=>{const o={...searchOpts,[k]:v};setSearchOpts(o);if(searchLive)doReadSearch(undefined,o,true);};
   const optBtn=(active,label,onClick,red)=>(
     <button key={label} type="button" onClick={onClick}
@@ -8290,14 +8296,23 @@ function App(){
   // Search's Dictionary tab: the word's own Webster's entries, set out as the
   // Dictionary page sets them, then the other words that start with it.
   const searchDictPanel=()=>{
+    if(!searchWord)return searchExtraNote('Type a word to look it up in Webster’s 1828.');
     const d=searchDict&&searchDict.q===searchWord?searchDict:null;
     if(!d)return searchExtraNote('Looking up…');
     const q=searchWord.toLowerCase(),rf=fontFamilyMap[readFontFamily];
     const own=d.entries.filter(e=>String(e.word).toLowerCase()===q);
-    // Shortest first: alphabetical, "love-drury" and "lovee" crowded out "lover"
-    // and "lovely".
-    const also=[...new Set(d.entries.map(e=>String(e.word).toLowerCase()).filter(w=>w!==q))]
-      .sort((a,b)=>a.length-b.length||a.localeCompare(b)).slice(0,12);
+    // Every other word the lookup found, in dictionary order, as the Dictionary
+    // page lists them -- each folded to its first definition until tapped.
+    const byWord=new Map();
+    for(const e of d.entries){
+      const w=String(e.word).toLowerCase();
+      if(w===q)continue;
+      if(!byWord.has(w))byWord.set(w,[]);
+      byWord.get(w).push(e);
+    }
+    const others=[...byWord.keys()].sort((a,b)=>a.localeCompare(b));
+    const label=t=><div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,margin:'4px 0 8px'}}>{t}</div>;
+    const toggle=w=>setSearchDictOpen(s=>{const n=new Set(s);n.has(w)?n.delete(w):n.add(w);return n;});
     const head=(word,tag)=>(
       <div style={{display:'flex',alignItems:'baseline',gap:8,padding:'6px 0'}}>
         <span style={{fontFamily:rf,fontSize:Math.round(readFontSize*1.05),color:T.gT,fontWeight:600}}>{word}</span>
@@ -8312,6 +8327,7 @@ function App(){
     ));
     return(
       <div style={{padding:'4px 12px 24px'}}>
+        {d.entries.length>0&&label(`Webster’s 1828 · ${(own.length?1:0)+others.length} word${(own.length?1:0)+others.length!==1?'s':''} · ${d.entries.length} entr${d.entries.length!==1?'ies':'y'}`)}
         {own.length>0&&(<>
           {head(q,<span style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>)}
           {own.map((e,ei)=>(
@@ -8331,18 +8347,31 @@ function App(){
           )))}
           <div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,lineHeight:1.5,paddingTop:4}}>Definitions from Wiktionary, the free dictionary, used under CC BY-SA 4.0.</div>
         </>)}
-        {!own.length&&!d.wiki&&searchExtraNote(also.length?`“${searchWord}” isn’t in Webster’s 1828.`:`Nothing found for “${searchWord}”.`)}
-        {also.length>0&&(
-          <div style={{marginTop:14}}>
-            <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600,marginBottom:8}}>Also in Webster's</div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-              {also.map(w=>(
-                <button key={w} type="button" onClick={()=>{searchTypedRef.current=true;setReadSearchQ(w);}}
-                  style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 13px',cursor:'pointer'}}>
-                  {w}
-                </button>
-              ))}
-            </div>
+        {!own.length&&!d.wiki&&!others.length&&searchExtraNote(`Nothing found for “${searchWord}”.`)}
+        {others.length>0&&(
+          <div style={{marginTop:own.length?14:0}}>
+            {own.length>0?label('Related words'):label(`Words starting with “${q}”`)}
+            {others.map(w=>{
+              const es=byWord.get(w),open=searchDictOpen.has(w);
+              return(
+                <div key={w} role="button" tabIndex={0} aria-expanded={open} onClick={()=>toggle(w)}
+                  style={{borderTop:`1px solid ${T.bdS}`,padding:'10px 0',cursor:'pointer'}}>
+                  <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                    <span style={{fontFamily:rf,fontSize:Math.round(readFontSize*0.95),color:T.gT,fontWeight:600}}>{w}</span>
+                    {es.length>1&&<span style={{fontFamily:FS,fontSize:UL(8),color:T.dim,letterSpacing:'0.08em'}}>{es.length} entries</span>}
+                    <span style={{marginLeft:'auto',fontSize:U(11),color:T.gM}}>{open?'▴':'▾'}</span>
+                  </div>
+                  {open?es.map((e,ei)=>(
+                    <div key={ei} style={{paddingTop:6}}>
+                      {e.pos&&<div style={{fontFamily:FB,fontSize:Math.round(readFontSize*0.65),color:T.dim,fontStyle:'italic',marginBottom:4}}>{expandPos(e.pos)}</div>}
+                      {defs(e.definitions||[])}
+                    </div>
+                  )):(
+                    <div style={{fontFamily:rf,fontSize:Math.round(readFontSize*0.8),color:T.dim,lineHeight:1.4,marginTop:3,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{(es[0].definitions||[])[0]||''}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -8351,6 +8380,7 @@ function App(){
   // Search's Strong's tab: the Hebrew and Greek words behind the English one,
   // most used first. Each opens in the Strong's popup, over the search.
   const searchStrongsPanel=()=>{
+    if(!searchWord)return searchExtraNote('Type an English word to see the Hebrew and Greek behind it, or a Strong’s number like G25.');
     const st=searchStrongs&&searchStrongs.q===searchWord?searchStrongs:null;
     if(!st||(st.list.length>0&&!st.entries))return searchExtraNote('Looking up…');
     const rows=st.list.map((x,i)=>({...x,entry:st.entries?st.entries[i]:null})).filter(r=>r.entry);
@@ -10354,14 +10384,14 @@ function App(){
                   coming and going as you type. */}
               {searchFieldOpen&&(
                 <div role="tablist" style={{display:'flex',gap:6}}>
-                  {[['verses','Verses',summary&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
+                  {[['verses','Verses',summary&&searchQT&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
                     ['dict','Dictionary',''],
                     // A typed number's count would be 1 before anyone knew whether it existed.
                     ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length):'']].map(([k,label,n])=>{
-                    const off=k!=='verses'&&!searchWord;
+                    const off=k!=='verses'&&!searchExtrasOk;
                     return(
                       <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} disabled={off} onClick={()=>setSearchView(k)}
-                        title={off?(searchQT?'For a single word':'Type a word'):undefined}
+                        title={off?(searchEn?'One word at a time':'English versions only'):undefined}
                         style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),...(off?searchTabOff:{cursor:'pointer'}),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s,opacity .12s'}}>
                         {label}{n?` ${n}`:''}
                       </button>
