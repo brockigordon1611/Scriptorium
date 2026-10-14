@@ -850,14 +850,15 @@ async function installBundledDatasets(onProgress,{background=false,only=null}={}
       // Two passes: what the app needs to open, behind the install screen, and
       // what it does not, once it is open.
       if(!!BUNDLED_DATASETS[name].background!==background)continue;
-      // The website leaves out what only a reader who opens it wants; those
-      // come one at a time, when opened (`only`). The apps have them on board.
-      if(BUNDLED_DATASETS[name].lazyOnWeb&&!Capacitor.isNativePlatform())continue;
     }
     const d=ds[name];
     if(!d||!Array.isArray(d.files))continue;
     const have=await idbGetMeta(`bundled:${name}`).catch(()=>null);
     if(have===d.version)continue;
+    // The website leaves out what only a reader who opens it wants; those come
+    // one at a time, when opened (`only`). One a reader already has is kept up
+    // to date like everything else. The apps have them all on board.
+    if(!only&&have==null&&BUNDLED_DATASETS[name].lazyOnWeb&&!Capacitor.isNativePlatform())continue;
     jobs.push([name,d]);
   }
   if(!jobs.length){bootMark(background?'bg-install-none':'install-none');await idbPutMeta('bundled:status',{ok:true,stage:'already-installed',installed:[],at:Date.now()}).catch(()=>{});return false;}
@@ -1260,6 +1261,34 @@ function htmlToParas(html){
   const s=String(html||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|li|div|h\d)>/gi,'\n\n');
   const text=new DOMParser().parseFromString(s,'text/html').body.textContent||'';
   return text.replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+// Words Webster's 1828 doesn't have come from Wiktionary, the free dictionary
+// (CC BY-SA 4.0, credited where they show), shaped as the dictionary panel reads
+// them: [{word, meanings:[{partOfSpeech, definitions:[{definition, example}]}]}].
+// Both spellings are asked for ("internet" and "Internet": the first is often
+// only a pointer to the second), and an entry that is nothing but "Alternative
+// ... form of" pointers goes last. Null when neither has an English entry.
+async function wiktionaryLookup(word){
+  const text=h=>new DOMParser().parseFromString(String(h||''),'text/html').body.textContent.replace(/\s+/g,' ').trim();
+  const isPointer=d=>/^Alternative\b.*\bform of\b/i.test(d.definition);
+  const lower=word.toLowerCase(),forms=[...new Set([lower,lower.charAt(0).toUpperCase()+lower.slice(1)])];
+  const one=async w=>{
+    const ctl=new AbortController(),to=setTimeout(()=>ctl.abort(),8000);
+    try{
+      const r=await fetch(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(w)}`,{signal:ctl.signal});
+      if(!r.ok)return null;
+      const en=(await r.json()).en;
+      if(!Array.isArray(en))return null;
+      const meanings=en.map(e=>({partOfSpeech:String(e.partOfSpeech||'').toLowerCase(),
+        definitions:(e.definitions||[]).map(d=>({definition:text(d.definition),example:d.examples&&d.examples[0]?text(d.examples[0]):''})).filter(d=>d.definition)}))
+        .filter(m=>m.definitions.length)
+        .sort((a,b)=>a.definitions.every(isPointer)-b.definitions.every(isPointer));
+      return meanings.length?{word:w,meanings}:null;
+    }catch{return null;}finally{clearTimeout(to);}
+  };
+  const pointer=e=>e.meanings.every(m=>m.definitions.every(isPointer));
+  const found=(await Promise.all(forms.map(one))).filter(Boolean).sort((a,b)=>pointer(a)-pointer(b));
+  return found.length?found:null;
 }
 async function _importSqliteResource(file,id,baseName,ext,category){
   const initSqlJs=(await import('sql.js')).default;
@@ -6656,6 +6685,7 @@ function App(){
   const[dictLive,setDictLive]=useState(null); // external API fallback
   const[dictLiveLoading,setDictLiveLoading]=useState(false);
   const dictTimerRef=useRef(null);
+  const dictSeqRef=useRef(0); // the latest lookup; an older one's answer is dropped
 
   // ── Bookmarks / Recents / Categories ──
   const[bookmarks,setBookmarks]=useState([]);
@@ -7246,6 +7276,7 @@ function App(){
     const q=dictSearchQ.trim().toLowerCase();
     if(!q||q.length<2){setDictDbEntries(null);setDictDbLoading(false);setDictLive(null);setDictLiveLoading(false);return;}
     setDictDbLoading(true);setDictLive(null);setDictLiveLoading(false);
+    const seq=++dictSeqRef.current;
     dictTimerRef.current=setTimeout(async()=>{
       try{
         // Local-first: check IndexedDB
@@ -7264,13 +7295,13 @@ function App(){
         }
         if(r.length>0){setDictDbEntries(r);setDictDbLoading(false);return;}
         setDictDbEntries(null);setDictDbLoading(false);
-        // No Webster results — try external API fallback
+        // Not in Webster's 1828: Wiktionary. (This was the Free Dictionary API,
+        // which stopped answering; it was itself built from Wiktionary.) A
+        // lookup overtaken by newer typing is dropped rather than shown.
         setDictLiveLoading(true);
-        try{
-          const lr=await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(q)}`);
-          if(lr.ok){const d=await lr.json();setDictLive(Array.isArray(d)&&d.length?d:null);}
-          else setDictLive(null);
-        }catch{setDictLive(null);}
+        const live=await wiktionaryLookup(q).catch(()=>null);
+        if(seq!==dictSeqRef.current)return;
+        setDictLive(live);
         setDictLiveLoading(false);
       }catch{setDictDbEntries(null);setDictDbLoading(false);}
     },300);
@@ -11153,7 +11184,7 @@ function App(){
               <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'6px 0'}}>
                 <div style={{padding:'6px 18px 10px',display:'flex',alignItems:'center',gap:6}}>
                   <span style={{fontFamily:FS,fontSize:UL(7.5),letterSpacing:'0.1em',color:T.dim,background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:3,padding:'2px 6px'}}>EXTERNAL SOURCE</span>
-                  <span style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Not found in Webster's 1828</span>
+                  <span style={{fontFamily:FB,fontSize:UL(10),color:T.dim}}>Not found in Webster's 1828 · from Wiktionary</span>
                 </div>
                 {dictLive.map((entry,ei)=>(
                   <div key={ei}>
@@ -11176,6 +11207,7 @@ function App(){
                     ))}
                   </div>
                 ))}
+                <div style={{padding:'12px 18px 16px',fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,lineHeight:1.5}}>Definitions from Wiktionary, the free dictionary, used under CC BY-SA 4.0.</div>
               </div>
             )}
             {/* Empty state / no results */}
@@ -11184,7 +11216,7 @@ function App(){
                 {/* Scrollable content: message + uploaded dict list */}
                 <div style={{flex:1,overflow:anySheetOpen?'hidden':'auto',padding:'24px 18px 16px',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
                   <div style={{fontFamily:FB,fontSize:U(14),color:T.dim,maxWidth:310,lineHeight:1.7,marginBottom:28}}>
-                    {!q?<>Search for any English word in Webster&rsquo;s 1828 Dictionary. Words not found there (e.g. &ldquo;internet&rdquo;) are automatically looked up via the Free Dictionary API, sourced from Wiktionary.</>:q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
+                    {!q?<>Search for any English word in Webster&rsquo;s 1828 Dictionary. Words not found there (e.g. &ldquo;internet&rdquo;) are looked up on Wiktionary, the free dictionary.</>:q.length<2?'Type at least 2 characters to search.':'No definition found for "'+dictSearchQ+'".'}
                   </div>
                   {userDicts.length>0&&(
                     <div style={{width:'100%',maxWidth:400,textAlign:'left',marginBottom:8}}>
@@ -12138,6 +12170,7 @@ function App(){
                 <Li><strong style={{color:T.gT}}>King James Version (KJV)</strong> — First published 1611. Public domain in the United States and most jurisdictions worldwide. In the United Kingdom it remains Crown Copyright and is reproduced under the terms of the Cambridge University Press licence.</Li>
                 <Li><strong style={{color:T.gT}}>Strong's Hebrew & Greek Lexicon</strong> — James Strong, <em>Exhaustive Concordance of the Bible</em> (1890). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — Noah Webster (1828). Public domain.</Li>
+                <Li><strong style={{color:T.gT}}>Wiktionary</strong> — definitions for words not in Webster's 1828, looked up as you search, from Wiktionary, the free dictionary. CC BY-SA 4.0.</Li>
                 <Li><strong style={{color:T.gT}}>Scofield Reference Bible Notes</strong> — C. I. Scofield (1917 edition). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Through the Bible Day by Day</strong> — F. B. Meyer (1914–1918). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>The Treasury of David</strong> — C. H. Spurgeon (1869–1885). Public domain.</Li>

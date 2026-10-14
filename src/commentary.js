@@ -59,12 +59,18 @@ const NAMED={nbsp:' ',amp:'&',lt:'<',gt:'>',quot:'"',AMP:'&',LT:'<',GT:'>',QUOT:
   auml:'ä',euml:'ë',iuml:'ï',ouml:'ö',uuml:'ü',Auml:'Ä',Ouml:'Ö',Uuml:'Ü',
   Alpha:'Α',Beta:'Β',Gamma:'Γ',Delta:'Δ',Epsilon:'Ε',Zeta:'Ζ',Eta:'Η',Theta:'Θ',Iota:'Ι',Kappa:'Κ',Lambda:'Λ',Mu:'Μ',Nu:'Ν',Xi:'Ξ',Omicron:'Ο',Pi:'Π',Rho:'Ρ',Sigma:'Σ',Tau:'Τ',Upsilon:'Υ',Phi:'Φ',Chi:'Χ',Psi:'Ψ',Omega:'Ω',
   alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',iota:'ι',kappa:'κ',lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',omicron:'ο',pi:'π',rho:'ρ',sigmaf:'ς',sigma:'σ',tau:'τ',upsilon:'υ',phi:'φ',chi:'χ',psi:'ψ',omega:'ω',thetasym:'ϑ',upsih:'ϒ',piv:'ϖ'};
+// Modules written on Windows give curly quotes, dashes and the like as their
+// Windows-1252 numbers (&#146; for ’), which Unicode keeps for invisible control
+// characters; a phone draws those as boxes. HTML reads 128-159 this way too.
+const W1252={0x80:'€',0x82:'‚',0x83:'ƒ',0x84:'„',0x85:'…',0x86:'†',0x87:'‡',0x88:'ˆ',0x89:'‰',0x8A:'Š',0x8B:'‹',0x8C:'Œ',0x8E:'Ž',
+  0x91:'‘',0x92:'’',0x93:'“',0x94:'”',0x95:'•',0x96:'–',0x97:'—',0x98:'˜',0x99:'™',0x9A:'š',0x9B:'›',0x9C:'œ',0x9E:'ž',0x9F:'Ÿ'};
+const fromCode=n=>n>=0x80&&n<=0x9F?(W1252[n]||''):String.fromCodePoint(n);
 export function decodeEntities(s,decodeNamed){
   return String(s).replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi,(all,e)=>{
-    if(e[0]==='#'){const n=e[1]==='x'||e[1]==='X'?parseInt(e.slice(2),16):parseInt(e.slice(1),10);return n>0&&n<0x110000?String.fromCodePoint(n):all;}
+    if(e[0]==='#'){const n=e[1]==='x'||e[1]==='X'?parseInt(e.slice(2),16):parseInt(e.slice(1),10);return n>0&&n<0x110000?fromCode(n):all;}
     if(Object.prototype.hasOwnProperty.call(NAMED,e))return NAMED[e];
     return decodeNamed?decodeNamed(all):all;
-  });
+  }).replace(/[\u0080-\u009f]/g,c=>fromCode(c.charCodeAt(0)));
 }
 const escapeText=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
