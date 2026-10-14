@@ -4610,7 +4610,8 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
   // undefined while its chapter loads; '' when the version hasn't the verse.
   const textOf=(b,c,v)=>{const m=texts[`${vid}|${b}|${c}`];return m===undefined?undefined:(m[v]||'');};
 
-  // A double-tap bookmarks the verse (never un-bookmarks it) and flares a ✦.
+  // A double-tap bookmarks the verse (never un-bookmarks it) and flares a
+  // bookmark ribbon.
   const lastTap=useRef({k:-1,t:0}),pending=useRef(new Set());
   const[pop,setPop]=useState(null);
   function mark(b,c,v){
@@ -4705,7 +4706,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
                 </div>
                 <div ref={k===cur?railRef:undefined} className="frail" style={{position:'absolute',right:6,bottom:'calc(18px + var(--sab,0px))',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
                   {action(0,false,'♡','Memorize',()=>onMemorize(b,c,v))}
-                  {action(1,marked,'✦',marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
+                  {action(1,marked,<BookmarkGlyph filled={marked}/>,marked?'Saved':'Bookmark',()=>toggleMark(b,c,v))}
                   {action(2,copied===k,copyGlyph,copied===k?'Copied':'Copy',()=>{if(text)copy(k,b,c,v,text);},{opacity:text?1:0.5})}
                   {action(3,false,'→','Read',()=>onOpen(b,c,v))}
                 </div>
@@ -4716,7 +4717,7 @@ function FeedPage({T,vid,verLabel,lang,readFont,verseHtml,anySheetOpen,bookmarkO
                   </div>
                 </div>}
                 {pop&&pop.k===k&&<div key={pop.n} onAnimationEnd={()=>setPop(null)}
-                  style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}>✦</div>}
+                  style={{position:'absolute',left:'50%',top:'42%',width:120,height:120,marginLeft:-60,marginTop:-60,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:FS,fontSize:96,lineHeight:1,color:T.gT,pointerEvents:'none',animation:'feedPop .8s ease-out forwards'}}><BookmarkGlyph filled/></div>}
               </div>}
             </div>
           );
