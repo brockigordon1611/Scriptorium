@@ -10277,7 +10277,7 @@ function App(){
                       waiting to open and up at one already open, which is the one
                       thing the old icon never said. */}
                   <button type="button" title="Search options" aria-label="Search options"
-                    onClick={()=>setSearchFiltersOpen(o=>!o)}
+                    onClick={()=>{if(searchViewOn!=='verses'){setSearchView('verses');setSearchFiltersOpen(true);}else setSearchFiltersOpen(o=>!o);}}
                     style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',width:CTRL,height:CTRL,boxSizing:'border-box',...(searchFiltersOpen||searchOptsDirty?ctrlOnSoft:ctrlRest),borderRadius:6,padding:0,cursor:'pointer',flexShrink:0,transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
                     <svg width="11" height="7" viewBox="0 0 10 6" style={{transform:searchFiltersOpen?'rotate(180deg)':'none',transition:'transform .2s ease'}}>
                       <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
@@ -10344,28 +10344,36 @@ function App(){
                 </button>
               </div>
 
-              {/* Pinned: the filters ride in the bar itself. Nothing to position
-                  and nothing to measure separately — the bar is already fixed, and
-                  the reading pane already clears whatever height the bar reports. */}
-              {searchFiltersPinned&&(
-                <div style={{display:'flex',flexDirection:'column',gap:6,paddingTop:1}}>
-                  {searchFilterRows()}
-                </div>
-              )}
-
-              {/* One word gets three tabs: the verses it is in, what it means,
-                  and the Hebrew and Greek behind it. */}
-              {searchFieldOpen&&searchWord&&(
+              {/* Three tabs, pinned under the field for as long as it is open:
+                  the verses a word is in, what it means, and the Hebrew and Greek
+                  behind it. The last two need a single English word (or a Strong's
+                  number), so for anything else they stay, greyed out, rather than
+                  coming and going as you type. */}
+              {searchFieldOpen&&(
                 <div role="tablist" style={{display:'flex',gap:6}}>
                   {[['verses','Verses',summary&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
                     ['dict','Dictionary',''],
                     // A typed number's count would be 1 before anyone knew whether it existed.
-                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length):'']].map(([k,label,n])=>(
-                    <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} onClick={()=>setSearchView(k)}
-                      style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',cursor:'pointer',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s'}}>
-                      {label}{n?` ${n}`:''}
-                    </button>
-                  ))}
+                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length):'']].map(([k,label,n])=>{
+                    const off=k!=='verses'&&!searchWord;
+                    return(
+                      <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} disabled={off} onClick={()=>setSearchView(k)}
+                        title={off?(searchQT?'For a single word':'Type a word'):undefined}
+                        style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),...(off?{color:T.dim,opacity:0.6,cursor:'default'}:{cursor:'pointer'}),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s,opacity .12s'}}>
+                        {label}{n?` ${n}`:''}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Pinned: the filters ride in the bar itself, under the tabs.
+                  Nothing to position and nothing to measure separately — the bar is
+                  already fixed, and the reading pane already clears whatever height
+                  the bar reports. They filter verses, so they show on that tab only. */}
+              {searchFiltersPinned&&searchViewOn==='verses'&&(
+                <div style={{display:'flex',flexDirection:'column',gap:6,paddingTop:1}}>
+                  {searchFilterRows()}
                 </div>
               )}
 
