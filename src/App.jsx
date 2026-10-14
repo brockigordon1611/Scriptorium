@@ -7410,7 +7410,10 @@ function App(){
     searchBookRaf.current=requestAnimationFrame(()=>{
       searchBookRaf.current=0;
       const heads=el.querySelectorAll('[id^="srch-bk-"]');
-      if(!heads.length){setSearchTopBook(null);return;}
+      // No verse rows on screen -- another tab, or results still on their way --
+      // says nothing about which book is at the top. Clearing it here left the
+      // label missing until the next scroll.
+      if(!heads.length)return;
       // The line is the top of what the reader can actually see, not the top of
       // the scroll box — the box runs up behind the nav and the bar, and its own
       // padding is what clears them. Measuring from the box meant a jump landed
@@ -7934,7 +7937,6 @@ function App(){
     ));
     return(
       <div style={{padding:'4px 12px 24px'}}>
-        {d.entries.length>0&&label(`Webster’s 1828 · ${(own.length?1:0)+others.length} word${(own.length?1:0)+others.length!==1?'s':''} · ${d.entries.length} entr${d.entries.length!==1?'ies':'y'}`)}
         {own.length>0&&(<>
           {head(q,<span style={{fontFamily:FS,fontSize:UL(7),letterSpacing:'0.1em',color:T.gM,background:T.gF,border:`1px solid ${T.gD}`,borderRadius:3,padding:'1px 5px',flexShrink:0}}>1828</span>)}
           {own.map((e,ei)=>(
@@ -8220,6 +8222,15 @@ function App(){
   },[searchWord,searchFieldOpen,searchView]);
   // A closed search reopens on its verses.
   useEffect(()=>{if(!searchFieldOpen)setSearchView('verses');},[searchFieldOpen]);
+  // Leaving Read for a Study page leaves search behind. Study Tools no longer
+  // closes it on the way, and open but out of sight it would still hold
+  // Android's Back, which would then take two presses to get anywhere.
+  useEffect(()=>{if(tab!=='read'){setSearchFieldOpen(false);setReadSearchResultsOpen(false);abandonSearch();}},[tab]);
+  // The verse list can come (back) on screen without a scroll -- new results,
+  // or a return from another tab -- so the book label looks again then too.
+  useEffect(()=>{
+    if(searchViewOn==='verses'&&readSearchRes&&readSearchResultsOpen)trackSearchBook(readRef.current);
+  },[searchViewOn,readSearchRes,readSearchResultsOpen]);
   // iOS scrolls the whole web view up to keep a focused input clear of the
   // keyboard, and leaves it pannable afterwards. The search field is already at
   // the top of the screen, so nothing needed revealing — all that gave was a
@@ -8692,8 +8703,11 @@ function App(){
             // since results stay open after a search, the marker stayed pinned to
             // search however many other sheets were opened afterwards. Results
             // still light it, but only when no sheet is open to speak for itself.
-            const rOpen=searchFieldOpen?'search':((!readSheetClosing&&(readMobileSheet==='nav'||readMobileSheet==='version'))?readMobileSheet:null);
-            const rSearch=rOpen?rOpen==='search':readSearchResultsOpen;
+            // Study Tools open over a search speaks for itself too: the search
+            // waiting underneath doesn't light the magnifier.
+            const studySheetUp=readMobileSheet==='studyTools'&&!readSheetClosing;
+            const rOpen=studySheetUp?null:searchFieldOpen?'search':((!readSheetClosing&&(readMobileSheet==='nav'||readMobileSheet==='version'))?readMobileSheet:null);
+            const rSearch=rOpen?rOpen==='search':(!studySheetUp&&readSearchResultsOpen);
             const rVersion=rOpen==='version';
             const rNav=rOpen==='nav';
             const rAny=rSearch||rVersion||rNav; // any right-pill sheet open
@@ -8726,7 +8740,10 @@ function App(){
                 {/* Sliding background indicator */}
                 <div style={{position:'absolute',top:3,left:3,width:'calc(50% - 4px)',transform:studyIsActive?'translateX(calc(100% + 2px))':'translateX(0px)',willChange:'transform',height:'calc(100% - 6px)',background:nonMajorSheet?T.bgCH:T.gF,border:`1px solid ${nonMajorSheet?T.bdA:T.gD}`,borderRadius:5,pointerEvents:'none',zIndex:0,transition:`transform .15s cubic-bezier(0.4,0,0.2,1),background-color .04s ease-out,border-color .04s ease-out`}}/>
                 <button type="button" onClick={()=>{closeSearch();if(readIsActive&&!readMobileSheet&&!readSearchResultsOpen&&!modal&&!readFullScreen.current){if(strongsPopup)closeStrongsPopup();setModal({type:'plan'});return;}closeModal();if(readFullScreen.current)exitFullScreen();if(readMobileSheet)closeReadSheet();if(tab==='parallel'){const same=parallelBk===readBook&&parallelCh===readCh;setReadBook(parallelBk);setReadCh(parallelCh);readScrollToVerse.current=parallelVs;if(same){setTimeout(()=>{const el=document.getElementById(`rv-${parallelVs}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([parallelVs]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}if(tab==='commentaries'){const v=cmFocus?.v||null,same=cmBook===readBook&&cmCh===readCh;setReadBook(cmBook);setReadCh(cmCh);readScrollToVerse.current=v;if(same&&v){setTimeout(()=>{const el=document.getElementById(`rv-${v}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});setReadSelVerses(new Set([v]));setStripOpen(true);autoSel.current=true;readScrollToVerse.current=null;},80);}}setTab('read');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:readIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:readIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#10022; Read</button>
-                <button type="button" onClick={()=>{setSearchFieldOpen(false);if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
+                {/* Study Tools sits over a search rather than ending it. Taking only
+                    the field left the results up with no field or tabs to go with
+                    them once the sheet closed, and put the tabs back on Verses. */}
+                <button type="button" onClick={()=>{if(searchInputRef.current)searchInputRef.current.blur();if(readFullScreen.current)exitFullScreen();readMobileSheet==='studyTools'?closeReadSheet():setReadMobileSheet('studyTools');}} style={{position:'relative',zIndex:1,flex:1,display:'flex',alignItems:'center',justifyContent:'center',background:'transparent',border:'1px solid transparent',borderRadius:6,cursor:'pointer',fontFamily:FS,letterSpacing:'0.07em',fontSize:UL(10.5),fontWeight:studyIsActive?600:400,whiteSpace:'nowrap',padding:'0 2px',color:studyIsActive?nonMajorSheet?T.dim:T.gT:T.dim,transition:'color .04s ease-out'}}>&#9998; Study</button>
               </div>
               {/* Tools pill: Search, Navigate, Version — sliding indicator anchored to Navigate */}
               <div style={{...pill,position:'relative'}}>
@@ -9897,6 +9914,22 @@ function App(){
           {searchBarOn&&(()=>{
             const lang=versionLang(readVid);
             const summary=readSearchRes&&readSearchResultsOpen&&!searchShowRecents&&!(searchRef&&readSearchRes.length===0);
+            // What the open tab has found, for the bar's bottom row.
+            const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
+            const dictFor=searchDict&&searchDict.q===searchWord?searchDict:null;
+            const strongsFor=searchStrongs&&searchStrongs.q===searchWord?searchStrongs:null;
+            const barCount=searchViewOn==='verses'
+              ?(summary?(readSearching?'Searching…':(<>
+                  <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
+                  {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
+                </>)):null)
+              :searchViewOn==='dict'
+              ?(dictFor&&(dictFor.entries.length
+                  ?`Webster’s 1828 · ${plural(new Set(dictFor.entries.map(e=>String(e.word).toLowerCase())).size,'word','words')} · ${plural(dictFor.entries.length,'entry','entries')}`
+                  :dictFor.wiki?'From Wiktionary':'No entries'))
+              // A typed number's count would be 1 before anyone knew whether it existed.
+              :(strongsFor&&!STRONGS_NUM_RX.test(searchWord)
+                  ?plural(strongsFor.list.length+strongsFor.spelled.length+strongsFor.meaning.length,'entry','entries'):null);
             const bookWheelWanted=bookWheelOpen&&searchBooks.length>1&&!!bookLabelBox;
             return (<>
             {/* A sibling of the bar, not a child: the bar's backdrop-filter makes
@@ -9995,16 +10028,13 @@ function App(){
                   coming and going as you type. */}
               {searchFieldOpen&&(
                 <div role="tablist" style={{display:'flex',gap:6}}>
-                  {[['verses','Verses',summary&&searchQT&&!readSearching?`${readSearchRes.length}${readSearchCapped?'+':''}`:''],
-                    ['dict','Dictionary',''],
-                    // A typed number's count would be 1 before anyone knew whether it existed.
-                    ['strongs',"Strong's",searchStrongs&&searchStrongs.q===searchWord&&!STRONGS_NUM_RX.test(searchWord)?String(searchStrongs.list.length+searchStrongs.spelled.length+searchStrongs.meaning.length):'']].map(([k,label,n])=>{
+                  {[['verses','Verses'],['dict','Dictionary'],['strongs',"Strong's"]].map(([k,label])=>{
                     const off=k!=='verses'&&!searchExtrasOk;
                     return(
                       <button key={k} type="button" role="tab" aria-selected={searchViewOn===k} disabled={off} onClick={()=>setSearchView(k)}
                         title={off?(searchEn?'One word at a time':'English versions only'):undefined}
                         style={{flex:1,...(searchViewOn===k?ctrlOnSoft:ctrlRest),...(off?searchTabOff:{cursor:'pointer'}),borderRadius:6,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.05em',padding:'6px 4px',whiteSpace:'nowrap',transition:'background .12s,border-color .12s,color .12s,box-shadow .12s,opacity .12s'}}>
-                        {label}{n?` ${n}`:''}
+                        {label}
                       </button>
                     );
                   })}
@@ -10026,14 +10056,14 @@ function App(){
                   the field, and the label's negative margin pulled them closer still;
                   this is the air that buys back. The wheel is positioned from the
                   label, so it moves down with it. */}
-              {searchFieldOpen&&summary&&searchViewOn==='verses'&&(
+              {/* It speaks for whichever tab is open; the counts used to sit on
+                  the tabs themselves. The book label, which opens the wheel, is
+                  the Verses tab's alone. */}
+              {searchFieldOpen&&barCount&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
-                  {searchTopBook&&topBookLabel(9.5,'46%')}
+                  {searchViewOn==='verses'&&searchTopBook&&topBookLabel(9.5,'46%')}
                   <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
-                    {readSearching?'Searching…':(<>
-                      <span>{readSearchRes.length}{readSearchCapped?'+':''} verse{readSearchRes.length!==1?'s':''}</span>
-                      {readSearchOccurrences!==null&&<span> · {readSearchOccurrences} occurrence{readSearchOccurrences!==1?'s':''}</span>}
-                    </>)}
+                    {barCount}
                   </div>
                 </div>
               )}
