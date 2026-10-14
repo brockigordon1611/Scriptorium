@@ -6277,6 +6277,10 @@ function App(){
   // wheel that changes it.
   const[bookWheelOpen,setBookWheelOpen]=useState(false);
   const bookLabelRef=useRef(null);
+  // The Strong's tab's counterpart: its section name opens a menu of the others.
+  const[strongsSecOpen,setStrongsSecOpen]=useState(false);
+  const strongsSecLabelRef=useRef(null);
+  const[strongsSecBox,setStrongsSecBox]=useState(null);
   // The wheel stands exactly where this label is, so its box is measured rather
   // than derived: the label is the last line of a bar whose height already
   // varies with the filters and the counts row.
@@ -7822,7 +7826,8 @@ function App(){
   // verses name their book.
   const strongsSecRaf=useRef(0);
   function trackStrongsSection(el){
-    if(!el)return;
+    // A jump from the menu is flying past on purpose; the label lands with it.
+    if(!el||el._glide)return;
     if(strongsSecRaf.current)cancelAnimationFrame(strongsSecRaf.current);
     strongsSecRaf.current=requestAnimationFrame(()=>{
       strongsSecRaf.current=0;
@@ -7834,8 +7839,21 @@ function App(){
         if(h.getBoundingClientRect().top<=line)cur=h.dataset.strongsSec;
         else break;
       }
+      // A short last section never reaches the line: at the bottom of the list
+      // it is the one being read, so it is the one named.
+      if(el.scrollTop>0&&el.scrollTop+el.clientHeight>=el.scrollHeight-2)cur=heads[heads.length-1].dataset.strongsSec;
       setSearchStrongsSec(p=>p===cur?p:cur);
     });
+  }
+  // From the section menu: the section's first row lands just under the bar, as
+  // a book does from the wheel.
+  function jumpToStrongsSection(k){
+    setStrongsSecOpen(false);
+    const el=readRef.current,a=el&&el.querySelector(`[data-strongs-sec="${k}"]`);
+    if(!a)return;
+    const pad=parseFloat(getComputedStyle(el).paddingTop)||0;
+    setSearchStrongsSec(k);
+    glideTo(el,el.scrollTop+a.getBoundingClientRect().top-el.getBoundingClientRect().top-pad-8,()=>trackStrongsSection(el));
   }
   // Which book the reader has scrolled to, for the bar above the results. The
   // anchors are the ones the wheel jumps to, so this needs nothing
@@ -8446,16 +8464,18 @@ function App(){
     return(
       <div style={{padding:'0 0 24px'}}>
         {sections.map(([k,rows],i)=>(
-          <div key={k} data-strongs-sec={k} style={i?{borderTop:`1px solid ${T.gD}`,marginTop:14}:undefined}>
-            {rows.map(strongsRow)}
+          <div key={k} data-strongs-sec={k} style={i?{borderTop:`1px solid ${T.gD}`}:undefined}>
+            {/* The gold line stands in for the last row's own, which drawn as
+                well made a doubled rule around a short section. */}
+            {rows.map((r,j)=>strongsRow(r,j===rows.length-1&&i<sections.length-1))}
           </div>
         ))}
       </div>
     );
   };
-  const strongsRow=r=>(
+  const strongsRow=(r,noRule)=>(
     <div key={r.sn} role="button" tabIndex={0} onClick={()=>handleStrongsWordTap(r.sn,searchWord)}
-      style={{padding:'10px 12px',cursor:'pointer',borderBottom:`1px solid ${T.bd}`}}>
+      style={{padding:'10px 12px',cursor:'pointer',borderBottom:noRule?'none':`1px solid ${T.bd}`}}>
       {/* Sized from Scripture Size, as the Dictionary tab is: at fixed sizes
           the entries read a size or two smaller than the definitions there. */}
       <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2,minWidth:0}}>
@@ -8576,6 +8596,23 @@ function App(){
     if(idx>=readSearchLimit){readSearchJumpTo.current=String(bn);setReadSearchLimit(Math.min(readSearchRes.length,idx+51));}
     else scrollBookUnderBar(bn);
   }
+  // The Strong's section the bar is showing, which opens the menu of the others
+  // -- the book label's counterpart, in its type and at its place.
+  const strongsSecLabel=(text,many)=>{
+    const txt={fontFamily:FS,fontSize:9.5,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0};
+    if(!many)return <div style={{...txt,flexShrink:1,maxWidth:'64%'}}>{text}</div>;
+    return(
+      <button ref={strongsSecLabelRef} type="button" title="Jump to section" aria-label={`Jump to section — showing ${text}`}
+        onClick={()=>setStrongsSecOpen(o=>!o)}
+        style={{visibility:strongsSecOpen?'hidden':'visible',display:'flex',alignItems:'center',gap:4,flexShrink:1,maxWidth:'64%',minWidth:0,
+          background:'none',border:'none',cursor:'pointer',WebkitTapHighlightColor:'transparent',padding:'7px 0',margin:'-7px 0'}}>
+        <span style={txt}>{text}</span>
+        <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.mut}}>
+          <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    );
+  };
   // The book the bar is showing, which doubles as the way into the others the
   // results touch. Both rows of the bar show it at their own size, so it is built
   // once here the way optBtn and searchFilterRows are rather than written twice.
@@ -8678,6 +8715,23 @@ function App(){
   useEffect(()=>{
     if(searchViewOn==='strongs')trackStrongsSection(readRef.current);
   },[searchViewOn,searchStrongs]);
+  // The section menu goes when its tab, its word or the bar does.
+  useEffect(()=>{setStrongsSecOpen(false);},[searchBarOn,searchViewOn,searchWord]);
+  // Drawn where the label is, measured before paint as the book wheel is.
+  useLayoutEffect(()=>{
+    const el=strongsSecLabelRef.current;
+    if(!strongsSecOpen||!el){setStrongsSecBox(null);return;}
+    const r=el.getBoundingClientRect();
+    setStrongsSecBox({top:Math.round(r.top),left:Math.round(r.left)});
+  },[strongsSecOpen,searchBarH,searchBarOn]);
+  // A touch or a wheel anywhere else closes it, and goes on to do its own thing.
+  useEffect(()=>{
+    if(!strongsSecOpen)return;
+    const away=e=>{if(!(e.target instanceof Element)||!e.target.closest('[data-strongsmenu]'))setStrongsSecOpen(false);};
+    document.addEventListener('pointerdown',away,true);
+    document.addEventListener('wheel',away,{capture:true,passive:true});
+    return()=>{document.removeEventListener('pointerdown',away,true);document.removeEventListener('wheel',away,{capture:true});};
+  },[strongsSecOpen]);
   // iOS scrolls the whole web view up to keep a focused input clear of the
   // keyboard, and leaves it pannable afterwards. The search field is already at
   // the top of the screen, so nothing needed revealing — all that gave was a
@@ -10413,6 +10467,37 @@ function App(){
               <BookWheel key={searchBooks.join('-')} books={searchBooks} value={searchTopBook}
                 lang={lang} T={T} onJump={jumpToBook} box={bookLabelBox} onClose={()=>setBookWheelOpen(false)}/>
             )}
+            {/* The Strong's sections, three at most: a short list rather than a
+                wheel. Its first line is the label it opened from, in place, and
+                closes it again; the sections follow, the current one in gold. */}
+            {strongsSecOpen&&strongsSecBox&&searchViewOn==='strongs'&&strongsSecs.length>1&&(()=>{
+              const cur=strongsSecs.includes(searchStrongsSec)?searchStrongsSec:strongsSecs[0];
+              const line={fontFamily:FS,fontSize:9.5,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,whiteSpace:'nowrap'};
+              return(
+                <div data-strongsmenu role="menu" style={{position:'fixed',zIndex:196,top:strongsSecBox.top-1,left:strongsSecBox.left-8,minWidth:200,maxWidth:'calc(100vw - 32px)',
+                  background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',
+                  boxShadow:'0 4px 14px rgba(0,0,0,0.22)',padding:'0 8px 4px',transformOrigin:'50% 0',animation:'slideDown .2s cubic-bezier(0.32,0.72,0,1) both'}}>
+                  <div onClick={()=>setStrongsSecOpen(false)} style={{...line,color:T.gT,height:30,display:'flex',alignItems:'center',gap:4,cursor:'pointer'}}>
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{strongsSecTitle(cur,searchWord)}</span>
+                    <svg width="9" height="6" viewBox="0 0 10 6" style={{flexShrink:0,display:'block',color:T.mut,transform:'rotate(180deg)'}}>
+                      <path d="M0 0L5 6L10 0" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div aria-hidden style={{height:1,background:`${T.gD}55`,marginBottom:2}}/>
+                  {strongsSecs.map(k=>(
+                    <button key={k} type="button" role="menuitem" onClick={()=>jumpToStrongsSection(k)}
+                      style={{...line,display:'block',width:'100%',textAlign:'left',background:'none',border:'none',padding:'0',height:30,cursor:'pointer',
+                        color:k===cur?T.gT:T.mut,overflow:'hidden',textOverflow:'ellipsis'}}>
+                      {strongsSecTitle(k,searchWord)}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+            {/* The gap above the bar, between it and the nav (or, full screen,
+                the status-bar mask). Results scrolled up through it, so the tops
+                of tall letters -- Hebrew, Greek -- showed above the bar. */}
+            <div aria-hidden="true" style={{position:'fixed',top:fsActive?'var(--sat,0px)':navH,left:0,right:0,height:fsActive?'calc(max(var(--sat,0px),var(--sat-min,0px)) + 8px - var(--sat,0px))':8,background:T.bg,zIndex:194,pointerEvents:'none'}}/>
             <div ref={searchBarRef} className={"srch-bar-fixed "+(searchClosing?'srch-lift':'srch-drop')} style={{position:'fixed',top:fsActive?'calc(max(var(--sat,0px),var(--sat-min,0px)) + 8px)':navH+8,transition:'top .18s ease',left:14,right:14,zIndex:195, /* under the nav's 200: the bar slides up behind it, not over it */
               display:'flex',flexDirection:'column',gap:6,padding:'7px 10px',
               background:'var(--ac-glass-bg)',border:`1px solid ${T.gD}55`,borderRadius:8,
@@ -10533,7 +10618,8 @@ function App(){
               {searchFieldOpen&&(barCount||barLeft)&&(
                 <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,paddingLeft:2,marginTop:4}}>
                   {searchViewOn==='verses'&&searchTopBook&&topBookLabel(9.5,'46%')}
-                  {barLeft&&<div style={{fontFamily:FS,fontSize:9.5,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1,maxWidth:'64%'}}>{barLeft}</div>}
+                  {barLeft&&(searchViewOn==='strongs'?strongsSecLabel(barLeft,strongsSecs.length>1):
+                    <div style={{fontFamily:FS,fontSize:9.5,color:T.gT,letterSpacing:'0.12em',textTransform:'uppercase',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',minWidth:0,flexShrink:1,maxWidth:'64%'}}>{barLeft}</div>)}
                   <div style={{fontFamily:FS,fontSize:UL(9),color:T.mut,letterSpacing:'0.08em',fontWeight:500,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'right'}}>
                     {barCount}
                   </div>
@@ -10840,7 +10926,9 @@ function App(){
             const totalCount=verses[0]?.total_count??new Set(verses.map(r=>`${r.book_num}|${r.chapter}|${r.verse}`)).size;
 
             // Above the bottom bar (150), which stays put and is simply covered.
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:160,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+            // Opened from search, the sheet clears the search bar: at its usual
+            // height it slid in behind the bar's last row.
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:160,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:searchBarOn?Math.max(navH+100,Math.round((fsActive?(safeAreaTopRef.current||0):navH)+8+searchBarH+10)):navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
                 animation:strongsDragMode?'none':(strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both')},ref:strongsPanelRef},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
