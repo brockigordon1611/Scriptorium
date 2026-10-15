@@ -348,7 +348,7 @@ def usage_stems(kjv_usage):
     return out
 
 
-def fill_ot(app, italic, tags, old_words, usage, listed):
+def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset()):
     """Add the Hebrew words the source leaves out, and the rest of the KJV
     phrase for the ones it tags by their last word. Returns (words, phrases)."""
     if not old_words:
@@ -387,6 +387,8 @@ def fill_ot(app, italic, tags, old_words, usage, listed):
                         break
                     if (w in SEPARATE or w in ABSORB_BACK or (w in CONNECT and w != 'let')) and not ok(sn, x):
                         break      # "Let there be" (H1961) keeps its "Let"
+                    if w in AUX and sn not in verbs:
+                        break      # "hath God said": the "hath" is the verb's
                     if w not in small and not ok(sn, x):
                         break
                     tags[x] = tags[mine[0]]
@@ -478,6 +480,18 @@ AFFIX_BEFORE = {k: set(v.split()) for k, v in _AFFIX_WORDS.items()}
 AFFIX_AFTER = {k: set(v.split()) for k, v in _AFFIX_AFTER.items()}
 PREFIXES = {'H9001', 'H9002', 'H9003', 'H9004', 'H9005', 'H9006', 'H9007', 'H9009', 'H9010'}
 GAP_WORDS = ABSORB_BACK | {'the'}
+# A Hebrew verb's English helpers, which the KJV can part from it: "Let the
+# earth bring forth" (H1876), "Ye shall not eat", "hath God said".
+AUX = set('let shall shalt will wilt doth dost did didst do does hath hast had hadst have can canst could '
+          'may mayest might must should shouldest would wouldest'.split())
+# A causing verb's: "made me swear", "made the white appear".
+CAUSE = set('made make maketh cause caused causeth'.split())
+REFLEXIVE = set('himself herself itself themselves myself thyself ourselves yourselves'.split())
+# Words the KJV sets between a verb's helper and the verb that are their own
+# Hebrew words: "Ye shall not eat", "she hath also born".
+BETWEEN = set('not also again yet now surely never'.split())
+# Untagged words a subject can carry: "Let the waters under the heaven be gathered".
+STEP_OVER = GAP_WORDS | BETWEEN | OBJECT | {'it'} | set('under over above below beneath before after about between among beside toward'.split())
 
 
 # ── New Testament: what the source leaves out or puts one word off ─────────
@@ -621,14 +635,64 @@ def fill_nt(app, italic, tags, old_words, usage):
     return words, phrases
 
 
+def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None):
+    """A verb's helpers on the far side of its subject, a "not" or the like
+    ("Let the earth bring forth", "Ye shall not eat", "made me swear"), and
+    its "himself" after ("bowed himself"). Returns the phrase's new ends."""
+    x, crossed = lo - 1, False
+    while x >= 0 and lo - x <= 7 and not pause[x]:
+        w = key(app[x])
+        if x in tags:
+            o = order_of.get(tags[x])
+            later = o > order if o is not None else verbs is not None and tags[x][0] not in verbs
+            if later or w in BETWEEN:
+                x -= 1
+                crossed = True
+                continue
+            break
+        if x in added:
+            break
+        if italic[x]:                               # "the dry land", "land" supplied
+            x -= 1
+            continue
+        if w in AUX or w in CAUSE:
+            added[x] = t
+            if not crossed:                         # "made me swear", "cause it to rain": all of it
+                for y in range(x + 1, lo):
+                    if y not in tags and y not in added and not italic[y] and key(app[y]) in OBJECT | GAP_WORDS | {'it'}:
+                        added[y] = t
+            y = x - 1                               # "Ye shall", "I will"
+            while y >= 0 and y not in tags and y not in added and not italic[y] and not pause[y] \
+                    and key(app[y]) in SUBJECTS | AUX:
+                added[y] = t
+                y -= 1
+            lo = y + 1
+            break
+        if w in STEP_OVER:
+            x -= 1
+            continue
+        break
+    x = hi + 1
+    if x < len(app) and x not in tags and x not in added and not italic[x] and not pause[hi] and key(app[x]) in REFLEXIVE:
+        added[x] = t
+        hi = x
+    return lo, hi
+
+
 def link_ot(app, italic, pause, tags, hebrew, verbs):
     """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
     are written on. Returns {word position: tag} for the words added."""
-    if not hebrew:
-        return {}
     phrases = collections.OrderedDict()
     for i in sorted(tags):
         phrases.setdefault(tags[i], []).append(i)
+    if not hebrew:
+        # About 2,000 verses (titled Psalms, Joel, Nahum) have no Hebrew word
+        # data; there a verb's helper may cross any phrase but another verb's.
+        added = {}
+        for t, idx in phrases.items():
+            if t[0] in verbs:
+                verb_helpers(app, italic, pause, tags, added, {}, 0, t, min(idx), max(idx), verbs)
+        return added
     by_sn = collections.defaultdict(list)
     for t in phrases:
         by_sn[t[0]].append(t)
@@ -654,6 +718,8 @@ def link_ot(app, italic, pause, tags, hebrew, verbs):
                 added[x] = t
                 lo = x
                 x -= 1
+        if t[0] in verbs:
+            lo, hi = verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi)
         before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
                  [a for a in reversed(affixes) if a in PREFIXES]
         for a in before:
@@ -666,6 +732,9 @@ def link_ot(app, italic, pause, tags, hebrew, verbs):
                         stepped = True
                         continue
                     break
+                if added.get(x) == t:                   # "and let the dry land appear"
+                    x -= 1
+                    continue
                 if x in added or italic[x]:
                     break
                 w = key(app[x])
@@ -809,7 +878,7 @@ def main():
         if repair(app, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all):
             repaired.append(f'{b}|{c}|{v}')
         if b <= 39:
-            fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage)
+            fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage, verbs)
             filled_words += fw; filled += fp
         else:
             fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all)
