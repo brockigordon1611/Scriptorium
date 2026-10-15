@@ -10808,9 +10808,10 @@ function App(){
                     </span>
                   </button>
                 )}
+                {/* What might have hidden the verses comes first, where it's seen
+                    before the verdict, then the verdict itself. */}
                 {readSearchRes.length===0&&!searchRef&&(
                   <div>
-                    {searchExtraNote(`No verses found for “${readSearchResQ}”.`)}
                     {searchOpts.caseSensitive&&(
                       <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
@@ -10819,16 +10820,17 @@ function App(){
                     )}
                     {searchOpts.partial===false&&(
                       <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠︎ Whole Word mode — partial matches excluded.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Enable Partial Match →</button>
+                        ⚠︎ Only whole words are matched. Not sure of the spelling, or looking for part of a word?{' '}
+                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Try Partial Match →</button>
                       </div>
                     )}
                     {searchOpts.scope!=='all'&&(
-                      <div style={{fontSize:U(12),padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
+                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
                         <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Search All Scripture →</button>
                       </div>
                     )}
+                    {searchExtraNote(`No verses found for “${readSearchResQ}”.`)}
                   </div>
                 )}
                 {(()=>{let lastBk=null;return readSearchRes.slice(0,readSearchLimit).map(r=>{const b=BIBLE.find(x=>x.n===r.book_num);const firstOfBook=r.book_num!==lastBk;if(firstOfBook)lastBk=r.book_num;return(
