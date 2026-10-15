@@ -2074,8 +2074,10 @@ let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
 // `link` on a mapping marks a Hebrew or Greek word whose English is in pieces
 // ("And God saw": And … saw is H7200). Its pieces are drawn with a dashed
-// underline, where a word in one piece has a dotted one.
-function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
+// underline, where a word in one piece has a dotted one, each such word of the
+// verse in its own colour so its pieces can be told from its neighbour's.
+const LINK_COLORS={dark:['#6fb3a6','#c98a8a','#9b92cf','#93b46a','#7aa6d8'],light:['#2f7f73','#a3504f','#5e54a8','#5b7a2c','#2f6aa8']};
+function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
   const redSet=new Set();
   const italicSet=new Set();
@@ -2149,9 +2151,22 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     }
   }
 
-  // A split word opens its popup under its last piece ("saw", not "And").
-  const linkWord={};
-  for(const it of items)if(it.kind==='word'&&it.link)linkWord[it.link]=it.text.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+  // A split word opens its popup under its last piece ("saw", not "And"), and
+  // tells the popup all its pieces ("And … saw").
+  const linkWord={},linkPieces={};
+  let lastLink=null;
+  for(const it of items){
+    if(it.kind!=='word')continue;
+    const wt=it.text.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    if(it.link){
+      linkWord[it.link]=wt;
+      const ps=linkPieces[it.link]||(linkPieces[it.link]=[]);
+      if(lastLink===it.link)ps[ps.length-1]+=' '+wt;else ps.push(wt);
+    }
+    lastLink=it.link;
+  }
+  const linkColors=LINK_COLORS[dark?'dark':'light'];
+  const linkColor=l=>linkColors[(l-1)%linkColors.length];
 
   // Group consecutive same-sNum words with bridging spaces into single phrase spans
   // so the dotted underline is unbroken across the whole phrase.
@@ -2185,13 +2200,14 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
     const ws={...(ec?{color:ec}:{}),...(fw?.isItalic?{fontStyle:'italic'}:{})};
     const groupText=group.map(x=>x.text).join('');
     const tapWord=link?linkWord[link]:fw.text;
+    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link)}:null;
     elems.push(React.createElement('span',{
       key:i,
-      onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord);},
-      onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord);},500);},
+      onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,split);},
+      onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord,split);},500);},
       onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
       onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
-      style:{borderBottom:`1.5px ${link?'dashed':'dotted'} ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
+      style:{borderBottom:link?`1.5px dashed ${linkColor(link)}`:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
     },groupText));
     i=j;
   }
@@ -3988,7 +4004,7 @@ const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 // definition, and each English rendering as a card that opens to its verses.
 // The popup over Read and the Strong's Concordance page both draw it, so the
 // two cannot drift apart.
-function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,reserveRight=0}){
+function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   // The small caps grow with the entry too, or a count sits at 9px beside
@@ -4011,6 +4027,11 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
               longer fit beside the close button. */}
           {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
+        {/* Opened from a word the KJV splits: its pieces, in their colour. */}
+        {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
+          <span style={{color:T.gM}}>In {split.ref} — </span>
+          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dashed ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+        </span>}
       </div>
       {trail}
     </div>
@@ -7368,14 +7389,17 @@ function App(){
     if(!versesOffline)strongsCache.current[strongsNum]=res;
     return res;
   }
-  async function handleStrongsWordTap(strongsNum,wordText){
+  // `split`: the pieces of a word the KJV splits ("Let … bring forth"), from
+  // buildStrongsVerse, shown under the number while it is the one open.
+  async function handleStrongsWordTap(strongsNum,wordText,split){
     setStrongsExpandedWords(new Set());
+    const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`}:null;
     const cached=strongsCache.current[strongsNum];
     if(cached){
-      setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:cached.entry,verses:cached.verses,versesLoading:false,history:[]});
+      setStrongsPopup({strongs_number:strongsNum,word_text:wordText,split:sp,entry:cached.entry,verses:cached.verses,versesLoading:false,history:[]});
       return;
     }
-    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,entry:null,verses:null,versesLoading:true,history:[]});
+    setStrongsPopup({strongs_number:strongsNum,word_text:wordText,split:sp,entry:null,verses:null,versesLoading:true,history:[]});
     const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
   }
@@ -10511,7 +10535,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent',...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                         {' '}
                       </span>
@@ -10531,7 +10555,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                       </div>
                     );
@@ -10608,6 +10632,7 @@ function App(){
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
                   derivation:strongsPopup.entry?.full_def?renderDerivation(strongsPopup.entry.full_def):null,
                   readFont:{family:fontFamilyMap[readFontFamily],size:readFontSize},lang:versionLang(readVid),reserveRight:44,
+                  split:strongsPopup.split&&strongsPopup.split.sn===strongsPopup.strongs_number?strongsPopup.split:null,
                   lead:(strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}})}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
@@ -12146,7 +12171,7 @@ function App(){
                   Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
-                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word, and either piece opens it.
+                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it, with the pieces named under the number.
                 </Row>
                 <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
