@@ -2073,9 +2073,9 @@ function normStrongsNum(n){
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
 // `link` on a mapping marks a Hebrew or Greek word whose English is in pieces
-// ("And God saw": And … saw is H7200). Its pieces are drawn with a dashed
-// underline, where a word in one piece has a dotted one, each such word of the
-// verse in its own colour so its pieces can be told from its neighbour's.
+// ("And God saw": And … saw is H7200). Its pieces are underlined in a colour of
+// their own, where a word in one piece is gold, each such word of the verse in
+// a different colour so its pieces can be told from its neighbour's.
 const LINK_COLORS={dark:['#6fb3a6','#c98a8a','#9b92cf','#93b46a','#7aa6d8'],light:['#2f7f73','#a3504f','#5e54a8','#5b7a2c','#2f6aa8']};
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
@@ -2202,15 +2202,15 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     const tapWord=link?linkWord[link]:fw.text;
     // What the popup names under its number: the whole of the English it was
     // opened from -- "In the beginning", or "Let … bring forth".
-    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link),dashed:true}
-      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM,dashed:false};
+    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link)}
+      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM};
     elems.push(React.createElement('span',{
       key:i,
       onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,split);},
       onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord,split);},500);},
       onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
       onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
-      style:{borderBottom:link?`1.5px dashed ${linkColor(link)}`:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
+      style:{borderBottom:`1.5px dotted ${link?linkColor(link):T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
     },groupText));
     i=j;
   }
@@ -4033,7 +4033,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
         {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
-          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px ${split.dashed?'dashed':'dotted'} ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
         </span>}
       </div>
       {trail}
@@ -12175,7 +12175,7 @@ function App(){
                   Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
-                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it. The popup names the English it was opened from under the number — one word, a phrase, or the pieces.
+                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>coloured underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it. The popup names the English it was opened from under the number — one word, a phrase, or the pieces.
                 </Row>
                 <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
