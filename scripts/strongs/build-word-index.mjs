@@ -14,9 +14,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MAP = join(ROOT, 'public/bundled/strongs_map.json');
 const OUT = join(ROOT, 'src/kjvWordStrongs.json');
 
-// The tagging hangs small words on the word they belong to -- "a" lands on
-// H376 (man), "the" on H3068 (LORD) -- so these would point at the wrong
-// Hebrew and Greek. Pronouns too: in Hebrew they are endings on other words.
+// Small words stand for no Hebrew or Greek word of their own; where the
+// tagging gives one a number, it is the number of the word it belongs to --
+// "ye" in "Know ye not" carries G1492 (know), "the" in "the holy angels" G32.
+// Pronouns too: in Hebrew they are endings on other words.
 const STOP = new Set(`a an and are as at be been but by did do doth for from had hast hath have he her
 him his i if in into is it its me my nor not o of on or our out shall shalt she so than that the thee
 their them then there these they this those thou thy to unto up upon us was we were what when which who
