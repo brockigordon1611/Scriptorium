@@ -2513,6 +2513,15 @@ function BookmarkGlyph({filled,style}){
       style={{display:'inline-block',verticalAlign:'-0.125em',flexShrink:0,...style}}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
   );
 }
+// The Memorize heart, drawn to match the bookmark ribbon: outline, or filled
+// once the verse is among the reader's memory verses. Study Tools uses it for
+// Memory Verses, so the two say the same thing the same way.
+function HeartGlyph({filled}){
+  return(
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill={filled?'currentColor':'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{display:'inline-block',verticalAlign:'-0.125em',flexShrink:0}}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+  );
+}
 function GhostBtn({ch,onClick,active,T,title}){return <button className="s-btn s-ghost" onClick={onClick} title={title} style={{background:active?T.gF:'transparent',border:`1px solid ${active?T.gD:'transparent'}`,borderRadius:6,color:active?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.08em',padding:'5px 11px',whiteSpace:'nowrap',fontWeight:active?600:400,cursor:'pointer',transition:'all .15s'}}>{ch}</button>;}
 function TBtn({ch,onClick,active,primary,T}){const p=primary||active;return <button className="s-btn s-tbtn" onClick={onClick} style={{background:p?T.gF:'transparent',border:`1px solid ${p?T.gD:T.bd}`,borderRadius:6,color:p?T.gT:T.dim,fontFamily:FS,fontSize:UL(9.5),letterSpacing:'0.1em',textTransform:'uppercase',padding:'7px 14px',whiteSpace:'nowrap',fontWeight:500}}>{ch}</button>;}
 function IBtn({ch,onClick,danger,T,title,disabled}){return <button className={`s-btn${danger?' s-danger':' s-ghost'}`} onClick={onClick} title={title} disabled={disabled} style={{background:danger?T.red:'transparent',border:`1px solid ${danger?T.redTxt+'33':T.bd+'40'}`,borderRadius:5,color:danger?T.redTxt:T.dim,padding:'4px 9px',fontSize:U(13),fontFamily:FB,lineHeight:1,fontWeight:500,opacity:disabled?.3:1,cursor:disabled?'default':'pointer'}}>{ch}</button>;}
@@ -9622,7 +9631,7 @@ function App(){
             ))}
           </div>
           {[
-            {icon:'♡',label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
+            {icon:null,iconSvg:<HeartGlyph/>,label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
             {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
             {icon:'▦',label:'Charts',sub:'Timelines and visual references',key:'charts',fn:()=>{setTab('charts');closeReadSheet();}},
             {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');closeReadSheet();}},
