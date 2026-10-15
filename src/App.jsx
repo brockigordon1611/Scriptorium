@@ -7844,8 +7844,9 @@ function App(){
   const searchWord=searchQT&&!/\s/.test(searchQT)&&searchEn?searchQT:'';
   const searchExtrasOk=searchEn&&(!searchQT||!!searchWord);
   const searchViewOn=searchFieldOpen&&searchExtrasOk?searchView:'verses';
-  // Recent searches are verse searches, so they belong to the Verses tab.
-  const searchShowRecents=searchFieldOpen&&!searchLive&&searchViewOn==='verses';
+  // An empty field offers recent searches on every tab; tapping one searches it
+  // on whichever tab is open.
+  const searchShowRecents=searchFieldOpen&&!searchLive;
   const searchOptsDirty=Object.keys(SEARCH_DEFAULTS).some(k=>searchOpts[k]!==SEARCH_DEFAULTS[k]);
   // The field, both bar buttons and the filter buttons share one pair of faces:
   // barely tinted while they wait, gold with a soft glow while they are the
@@ -7939,7 +7940,14 @@ function App(){
   // put while results scroll under them. Unpinned, they appear only on the
   // opening page, alongside the recent searches, and typing puts them away.
   const searchFiltersPinned=searchFieldOpen&&searchFiltersOpen;
-  const searchFiltersInFlow=searchShowRecents&&!searchFiltersOpen;
+  // The filters are the verses' own, so they come with the recents on Verses only.
+  const searchFiltersInFlow=searchShowRecents&&searchViewOn==='verses'&&!searchFiltersOpen;
+  // Dictionary and Strong's look up one word, so a phrase among the recents is
+  // nothing they can use.
+  const searchRecents=searchViewOn==='verses'?recentSearches:recentSearches.filter(r=>!/\s/.test(String(r).trim()));
+  const searchPrompt=searchViewOn==='dict'?'Type a word to look it up in Webster’s 1828.'
+    :searchViewOn==='strongs'?'Type an English word to see the Hebrew and Greek behind it, or a Strong’s number like G25.'
+    :'Type a word, a phrase or a reference to search this version.';
   const searchExtraNote=t=>(
     <div style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>{t}</div>
   );
@@ -7996,7 +8004,7 @@ function App(){
           )))}
           <div style={{fontFamily:FB,fontStyle:'italic',fontSize:UL(11),color:T.dim,lineHeight:1.5,paddingTop:4}}>Definitions from Wiktionary, the free dictionary, used under CC BY-SA 4.0.</div>
         </>)}
-        {!own.length&&!d.wiki&&!others.length&&searchExtraNote(`Nothing found for “${searchWord}”.`)}
+        {!own.length&&!d.wiki&&!others.length&&searchExtraNote(`No dictionary entries found for “${searchWord}”.`)}
         {others.length>0&&(
           <div style={{marginTop:own.length?14:0}}>
             {own.length>0?label('Related words'):label(`Words starting with “${q}”`)}
@@ -8036,9 +8044,8 @@ function App(){
     const rowsOf=(sns,counts)=>sns.map((sn,i)=>({sn,count:counts?counts[i]:null,entry:st.entries?st.entries[sn]:null})).filter(r=>r.entry);
     const kjv=rowsOf(st.list.map(x=>x.sn),st.list.map(x=>x.count));
     const spelled=rowsOf(st.spelled),meaning=rowsOf(st.meaning);
-    if(!kjv.length&&!spelled.length&&!meaning.length)return searchExtraNote(STRONGS_NUM_RX.test(searchWord)
-      ?`There is no Strong’s entry ${normStrongsNum(searchWord.toUpperCase())}.`
-      :`No Hebrew or Greek words to show for “${searchWord}”.`);
+    if(!kjv.length&&!spelled.length&&!meaning.length)return searchExtraNote(
+      `No Strong’s entries found for “${STRONGS_NUM_RX.test(searchWord)?normStrongsNum(searchWord.toUpperCase()):searchWord}”.`);
     // Each section is named in the bar while it's at the top of the list; here
     // a gold line marks where one gives way to the next.
     const sections=[['kjv',kjv],['spelled',spelled],['meaning',meaning]].filter(([,r])=>r.length);
@@ -10017,7 +10024,7 @@ function App(){
               :searchViewOn==='dict'
               ?(dictFor&&(dictFor.entries.length
                   ?`${plural(new Set(dictFor.entries.map(e=>String(e.word).toLowerCase())).size,'word','words')} · ${plural(dictFor.entries.length,'entry','entries')}`
-                  :dictFor.wiki?'Not in Webster’s 1828':'No entries'))
+                  :dictFor.wiki?'Not in Webster’s 1828':'0 entries'))
               // A typed number's count would be 1 before anyone knew whether it existed.
               :(strongsFor&&!STRONGS_NUM_RX.test(searchWord)
                   ?plural(strongsFor.list.length+strongsFor.spelled.length+strongsFor.meaning.length,'entry','entries'):null);
@@ -10322,32 +10329,29 @@ function App(){
                 {searchFilterRows()}
               </div>
             )}
-            {/* Nothing to search for yet: offer what was searched before. */}
+            {/* Nothing to search for yet: offer what was searched before, the
+                same on every tab, or say what to type. */}
             {searchShowRecents&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'} style={{padding:'6px 10px'}}>
-                {recentSearches.length>0?(<>
+                {searchRecents.length>0?(<>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
                     <div style={{fontFamily:FS,fontSize:UL(8),letterSpacing:'0.14em',color:T.gM,textTransform:'uppercase',fontWeight:600}}>Recent Searches</div>
                     <button type="button" onClick={()=>{setRecentSearches([]);try{localStorage.removeItem('scrip_recent_searches');}catch{}}}
                       style={{background:'none',border:'none',color:T.dim,fontFamily:FS,fontSize:UL(8),letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',padding:0}}>Clear</button>
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
-                    {recentSearches.map(r=>(
+                    {searchRecents.map(r=>(
                       <button key={r} type="button" onClick={()=>{searchTypedRef.current=false;doReadSearch(r);}}
                         style={{background:T.bgSec,border:`1px solid ${T.bd}`,borderRadius:6,color:T.mut,fontFamily:FB,fontSize:U(13),padding:'6px 13px',cursor:'pointer'}}>
                         {r}
                       </button>
                     ))}
                   </div>
-                </>):(
-                  <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),padding:'10px 2px'}}>
-                    Type a word, a phrase or a reference to search this version.
-                  </div>
-                )}
+                </>):searchExtraNote(searchPrompt)}
               </div>
             )}
             {/* The Dictionary and Strong's tabs, in place of the verses. */}
-            {searchViewOn!=='verses'&&(
+            {searchViewOn!=='verses'&&!searchShowRecents&&(
               <div className={searchClosing?'srch-body-out':'srch-body-in'}>
                 {searchViewOn==='dict'?searchDictPanel():searchStrongsPanel()}
               </div>
@@ -10374,7 +10378,7 @@ function App(){
                 )}
                 {readSearchRes.length===0&&!searchRef&&(
                   <div>
-                    <div style={{fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(15),marginBottom:10}}>No verses found.</div>
+                    {searchExtraNote(`No verses found for “${readSearchResQ}”.`)}
                     {searchOpts.caseSensitive&&(
                       <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
                         ⚠︎ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
