@@ -9,6 +9,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { MEEK_WEEKS } from './meekPlan.js';
 import { cmtiToMarkup, dropSelfLine, markupRuns } from './commentary.js';
+import STRONGS_OCC_FIXES from './strongsOccFixes.json';
 
 // ── Boot timeline ──
 // What the app did as it started and when, kept for the last few launches in
@@ -2292,13 +2293,30 @@ async function strongsLooseSearch(q){
   const meaning=idx.filter(r=>rx.test(r.def)).sort((a,b)=>b.n-a.n).slice(0,15).map(r=>r.sn);
   return{spelled,meaning};
 }
+// The occurrence data calls 44 occurrences of H3068 and H3069 "Yahweh", a word
+// the KJV never prints. This puts back the word it does print there -- LORD,
+// LORD'S, JEHOVAH or GOD -- and drops the two it doesn't have at all (Psalm
+// 25:21 and 145:13, which follow other manuscripts), with the total to match.
+// Built by scripts/strongs/build-occ-fixes.mjs; only "Yahweh" rows are touched.
+function fixStrongsOcc(sn,rows){
+  const fx=STRONGS_OCC_FIXES[sn];
+  if(!fx||!rows.length)return rows;
+  const out=[];let dropped=0;
+  for(const r of rows){
+    const w=/yahweh/i.test(r.word_text||'')?fx[`${r.book_num}|${r.chapter}|${r.verse}`]:undefined;
+    if(w===undefined)out.push(r);
+    else if(w)out.push({...r,word_text:w});
+    else dropped+=r.verse_count||1;
+  }
+  return dropped?out.map(r=>r.total_count!=null?{...r,total_count:r.total_count-dropped}:r):out;
+}
 async function dbGetStrongsVerses(strongsNum){
   // Once the index is complete a missing record means the number genuinely has no
   // occurrences — which is what the server returns too — so don't fall back.
-  try{if(await idbIsDownloaded('strongsocc')){return (await idbGetStrongsOccLocal(strongsNum))||[];}}catch{}
+  try{if(await idbIsDownloaded('strongsocc')){return fixStrongsOcc(strongsNum,(await idbGetStrongsOccLocal(strongsNum))||[]);}}catch{}
   const token=getToken();
   const {data}=await sbRpc('get_strongs_verses',{p_strongs_num:strongsNum},token);
-  return Array.isArray(data)?data:[];
+  return Array.isArray(data)?fixStrongsOcc(strongsNum,data):[];
 }
 async function dbGetVerse(versionId,bookNum,chapter,verse){
   const token=getToken();
