@@ -201,8 +201,12 @@ def align(app, src):
 
 def usage_word(words, italic):
     ws = list(zip(words, italic))
-    # A phrase of small words only ("shall be", "and of") is kept whole.
-    if not leading(w for w, _ in ws):
+    # A phrase of small words only ("shall be", "and of") is kept whole, but
+    # for the case word in front: "unto him" is "him", "of the" "the".
+    if leading(w for w, _ in ws):
+        while len(ws) > 1 and ws[0][0].lower() in ABSORB_BACK:
+            ws.pop(0)
+    else:
         while leading([ws[0][0]]) and ws[1][0].lower() not in KEEP.get(ws[0][0].lower(), ()):
             ws.pop(0)
         while len(ws) > 1 and ws[-1][0].lower() in TRAIL:
@@ -476,6 +480,147 @@ PREFIXES = {'H9001', 'H9002', 'H9003', 'H9004', 'H9005', 'H9006', 'H9007', 'H900
 GAP_WORDS = ABSORB_BACK | {'the'}
 
 
+# ── New Testament: what the source leaves out or puts one word off ─────────
+#
+# The source tags the last word of a Greek word's English ("the midst of
+# heaven" is "heaven", G3321; "by reason of" is "reason", G1537), leaves the
+# article (G3588) out or folds it into its noun ("the way side", G3598), and
+# here and there puts a number one word off: in Rev 8:13 G1722 (en) is on
+# "with" where the KJV's "through" is its word. interlinear-nt-words.json.gz,
+# the KJV-word numbering of Strong's concordance (see INTERLINEAR_OT for where
+# it comes from), has each of these right; it folds other words into their
+# neighbour ("is not quenched", "is" G3756), so it is used only for these.
+
+MOVES = {}   # numbers moved one word over, for the build's report
+ARTICLE_WORDS = set('the he she it they them which who whom that those these this'.split())
+CASE_WORDS = set('of to unto for'.split())     # "of the", "to the": the article's case
+
+
+def fill_nt(app, italic, tags, old_words, usage):
+    """Returns (words, phrases) added; see the section comment."""
+    if not old_words:
+        return 0, 0
+    sm = difflib.SequenceMatcher(None, [key(w) for w in app], [key(w) for w, _ in old_words], autojunk=False)
+    osn = [None] * len(app)
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == 'equal':
+            for d in range(i2 - i1):
+                osn[i1 + d] = old_words[j1 + d][1]
+    ok = lambda sn, x: bool(stems(app[x]) & usage.get(sn, set())) or (sn == 'G3588' and key(app[x]) in ARTICLE_WORDS)
+
+    def run_of(x):
+        i = j = x
+        while i > 0 and osn[i - 1] == osn[x]:
+            i -= 1
+        while j + 1 < len(app) and osn[j + 1] == osn[x]:
+            j += 1
+        return i, j
+
+    words = phrases = 0
+    pid = 200000
+    moves = MOVES.setdefault('list', [])
+    # A number on the wrong word: Rev 8:13 has G1722 (en) on "with", where the
+    # interlinear has it on "through", untagged, and "with" in "with a loud"
+    # (G3173). Only where the number is in the verse once in each, its own
+    # word is one Strong's lists for it, and the word it leaves reaches its
+    # phrase over untagged words; the number goes to its word.
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
+    for x in sorted(tags):
+        n, o = tags[x][0], osn[x]
+        if not o or o == n or n == 'G3588':
+            continue
+        if sum(1 for t in set(tags.values()) if t[0] == n) != 1 or osn.count(n) != 1:
+            continue
+        y = osn.index(n)
+        if y in tags or italic[y] or key(app[y]) in small or not ok(n, y):
+            continue
+        # A preposition, away from its word -- never "spake he", "Know ye".
+        if key(app[x]) not in ABSORB_BACK or abs(x - y) < 2:
+            continue
+        i, j = run_of(x)
+        mate = next((z for z in range(i, j + 1) if z != x and z in tags and tags[z][0] == o
+                     and not any(q in tags for q in range(min(x, z) + 1, max(x, z)))), None)
+        if mate is None:
+            continue
+        moves.append((x, n, o))
+        own = tags[x]
+        for q in [q for q in tags if tags[q][0] == n]:
+            del tags[q]
+        tags[y] = own
+        tags[x] = tags[mate]
+        words += 2
+    # The article: "the", or "he" in "And he answered", folded into another word.
+    for x in sorted(tags):
+        if osn[x] == 'G3588' and tags[x][0] != 'G3588' and key(app[x]) in ARTICLE_WORDS and not ok(tags[x][0], x):
+            pid += 1
+            tags[x] = ('G3588', pid)
+            words += 1
+            phrases += 1
+    runs, i = [], 0
+    while i < len(app):
+        j = i
+        while j + 1 < len(app) and osn[j + 1] == osn[i]:
+            j += 1
+        if osn[i]:
+            runs.append((osn[i], i, j))
+        i = j + 1
+    # How many more times the interlinear has a number in the verse than the
+    # source: only that many new occurrences. The rest of a run is the source's
+    # occurrence, tagged by another of its words: "will ye" (G2309), the
+    # source's "ye" and the interlinear's "will".
+    missing = collections.Counter(sn for sn, _, _ in runs)
+    missing.subtract(collections.Counter(t[0] for t in set(tags.values())))
+    for sn, i, j in runs:
+        idx = [x for x in range(i, j + 1) if not italic[x]]
+        mine = [x for x in idx if x in tags and tags[x][0] == sn]
+        if mine:
+            # The rest of the phrase: "the midst of" heaven, "by" reason "of".
+            for direction in (-1, 1):
+                x = (min(mine) if direction < 0 else max(mine)) + direction
+                while i <= x <= j and x not in tags and not italic[x]:
+                    w = key(app[x])
+                    if direction < 0 and w in OBJECT:
+                        break
+                    if (w in SEPARATE or w in CONNECT) and not ok(sn, x):
+                        break
+                    if w not in small and not ok(sn, x):
+                        break
+                    tags[x] = tags[mine[0]]
+                    words += 1
+                    x += direction
+            continue
+        if any(x in tags for x in idx):
+            continue
+        # A word the source left out: "through" (G1722), "of the" (G3588).
+        allowed = [x for x in idx if ok(sn, x)]
+        if not allowed:
+            continue
+        first = allowed[0]
+        block = [first]
+        lead = HELPERS - {'not'} | (CASE_WORDS if sn == 'G3588' else set())
+        x = first - 1
+        while x >= i and x not in tags and not italic[x] and (ok(sn, x) or key(app[x]) in lead):
+            block.insert(0, x)
+            x -= 1
+        x = first + 1
+        while x <= j and x not in tags and not italic[x] and (ok(sn, x) or key(app[x]) in OBJECT):
+            block.append(x)
+            x += 1
+        if missing[sn] > 0:
+            missing[sn] -= 1
+            pid += 1
+            tag = (sn, pid)
+            phrases += 1
+        else:
+            tag = next((tags[y] for y in (block[0] - 1, block[-1] + 1) if y in tags and tags[y][0] == sn), None)
+            if tag is None:
+                continue
+        for x in block:
+            tags[x] = tag
+        words += len(block)
+    return words, phrases
+
+
 def link_ot(app, italic, pause, tags, hebrew, verbs):
     """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
     are written on. Returns {word position: tag} for the words added."""
@@ -655,7 +800,7 @@ def main():
             phrases_used[sn][' '.join(ws)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = filled_words = filled = affixed = 0
+    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
@@ -666,6 +811,9 @@ def main():
         if b <= 39:
             fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage)
             filled_words += fw; filled += fp
+        else:
+            fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all)
+            nt_words += fw; nt_filled += fp
         widened += widen(app, italic, pause, tags, phrases_used, usage)
         added = link_ot(app, italic, pause, tags, hebrew.get(f'{b}|{c}|{v}'), verbs) if b <= 39 else {}
         affixed += len(added)
@@ -748,6 +896,7 @@ def main():
           f'{widened} of them by widen; {joined} parted words joined')
     print(f'Old Testament: {filled} Hebrew words the source leaves out added, {filled_words} words tagged from the interlinear, '
           f'{affixed} small words given to the Hebrew word they are written on')
+    print(f'New Testament: {nt_filled} Greek words the source leaves out added, {nt_words} words tagged or moved from the interlinear')
     print(f'{links} words whose English is in pieces, linked')
     print(f'{len(repaired)} verses whose source numbers were out of place, repaired: {" ".join(repaired)}')
     print(f'{len(recs)} chapters -> {OUT_MAP.relative_to(ROOT)}; {len(occ_recs)} numbers -> {OUT_OCC.relative_to(ROOT)}')
