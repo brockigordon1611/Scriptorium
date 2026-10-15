@@ -8398,13 +8398,13 @@ function App(){
   const searchPrompt=searchViewOn==='dict'?'Type a word to look it up in Webster’s 1828.'
     :searchViewOn==='strongs'?'Type an English word to see the Hebrew and Greek behind it, or a Strong’s number like G25.'
     :'Type a word, a phrase or a reference to search this version.';
-  // What might have hidden the verses: a caution, in the gold, not an error in
-  // red -- nothing has gone wrong, a filter is doing its job. The way out sits
-  // on the right.
+  // What might have hidden the verses: a quiet aside, not an error -- nothing
+  // has gone wrong, a filter is doing its job. No fill, a hairline, the dim
+  // text; red, and then gold, both shouted. The way out sits on the right.
   const searchHint=(msg,label,onClick)=>(
-    <div style={{display:'flex',alignItems:'center',gap:10,fontSize:U(12),marginBottom:6,padding:'6px 10px',borderRadius:6,background:T.gF,border:`1px solid ${T.gD}`,color:T.mut,fontFamily:FB}}>
-      <span style={{flex:1,minWidth:0}}><span style={{color:T.gM}}>⚠︎</span> {msg}</span>
-      <button type="button" onClick={onClick} style={{flexShrink:0,background:'none',border:'none',color:T.gT,textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB,whiteSpace:'nowrap'}}>{label}</button>
+    <div style={{display:'flex',alignItems:'center',gap:10,fontSize:U(12),marginBottom:6,padding:'6px 10px',borderRadius:6,background:'transparent',border:`1px solid ${T.bdS}`,color:T.dim,fontFamily:FB}}>
+      <span style={{flex:1,minWidth:0}}>⚠︎ {msg}</span>
+      <button type="button" onClick={onClick} style={{flexShrink:0,background:'none',border:'none',color:T.mut,textDecoration:'underline',textDecorationColor:T.bd,textUnderlineOffset:2,cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB,whiteSpace:'nowrap'}}>{label}</button>
     </div>
   );
   const searchExtraNote=t=>(
