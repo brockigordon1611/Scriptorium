@@ -27,6 +27,15 @@ verses match the source word for word; the rest differ by spelling (Judea and
 Judaea) or by a word written as one or two (whosoever, who soever), and are
 matched word by word. The app's spelling is always the one kept.
 
+In the Old Testament the source leaves out most of the small Hebrew words and
+hayah (H1961: "it came to pass", "and there was"), and tags only the last
+English word of the rest ("Let there be" is "be"). Those are filled from the
+interlinear the app used before (source/interlinear-ot-words.json.gz; see
+fill_ot), only where the source has nothing and only with words Strong's KJV
+usage allows: Gen 1:3 is "Let there be" and "there was" (H1961), Gen 1:26
+"Let us make" (H6213). Of the 846 Hebrew numbers used 40 or more times, 588
+come within 10% of the Hebrew text's count and 799 within 25%.
+
 Where the source tags only part of a phrase here that it tags whole elsewhere
 -- "yet" for "not yet" (G3768) in John 3:24 -- the rest is tagged too (see
 widen).
@@ -45,7 +54,7 @@ public/bundled/strongs_occ.json, and raise both versions in the manifest again.
 
 Usage: python3 scripts/strongs/build-kjv-strongs.py
 """
-import collections, difflib, json, re, zipfile
+import collections, difflib, gzip, json, re, zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -55,6 +64,7 @@ LEX = ROOT / 'public/bundled/strongs_lex.json'
 OUT_MAP = ROOT / 'public/bundled/strongs_map.json'
 OUT_OCC = ROOT / 'public/bundled/strongs_occ.json'
 MANIFEST = ROOT / 'public/bundled/manifest.json'
+INTERLINEAR_OT = ROOT / 'scripts/strongs/source/interlinear-ot-words.json.gz'
 
 CODES = ['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV']
 # The app's word rule: split on spaces, trim this punctuation from both ends.
@@ -249,6 +259,182 @@ def widen(app, italic, pause, tags, phrases_used, usage):
     return added
 
 
+# ── Old Testament: the words the source leaves out ─────────────────────────
+#
+# The source tags most Hebrew words, but not the small ones, and not hayah
+# (H1961) in "it came to pass", "and there was", "shall be": H1961 is tagged
+# 76 times where the Hebrew has it 3,361 times; kol "all" (H3605) 24 times of
+# 5,033, lo "not" (H3808) 73 of 4,808. CrossWire's own KJV module is the same.
+# And it tags only the last word of a Hebrew word's English: "Let there be"
+# is "be", "without form" is "form".
+#
+# interlinear-ot-words.json.gz has, for each KJV word of the Old Testament, the
+# Hebrew word behind it, as the app had it before this rebuild (tag
+# strongs-before-rebuild): the Masoretic Hebrew of tahmmee/interlinear_bibledata
+# (public domain, via kennethreitz/kjvstudy.org), each Hebrew word's gloss
+# matched to the KJV's words (import tool, commit db4ba72). It gives every KJV
+# word a number, folding small words into a neighbour, and a Hebrew word with
+# two numbers (min + a noun, "of the fruit") only the first. So it is used only
+# where the source has nothing, and a word is taken from it only when Strong's
+# own KJV usage for that number allows it.
+
+PRONOUNS = set('i me my mine thou thee thy thine he him his she her it its we us our ye you your they them their'.split())
+OBJECT = set('me thee him her us you them'.split())
+SUBJECTS = set('i thou he she it we ye they'.split())
+NEGATIONS = set('not no nay neither nor none never'.split())
+# "Let" belongs to a verb: "Let there be", "Let us make" -- not "Let thy hand".
+LET_BEFORE = SUBJECTS | OBJECT | {'there'}
+# Words in front of a Hebrew verb's English that are part of it.
+HELPERS = SUBJECTS | {'there', 'let', 'not'} | set(
+    'shall shalt will wilt should would may might must can could hath have had has doth do did be been was were '
+    'is are am hast hadst dost didst art wast canst shouldest wouldest'.split())
+# KJV forms Strong's lists under another: "was" under "be", "came" under "come".
+IRREGULAR = dict(
+    be='was were is are am been being art wast wert', come='came cometh', go='went goeth gone', say='said saith',
+    make='made maketh', take='took taken', give='gave given', see='saw seen', bring='brought', speak='spake spoke spoken',
+    tell='told', sit='sat', stand='stood', know='knew known', find='found', hear='heard', slay='slew slain',
+    smite='smote smitten', build='built', flee='fled', bear='bare born borne', beget='begat begotten', dwell='dwelt',
+    leave='left', keep='kept', send='sent', lay='laid', do='did done doeth doth', have='had hath hast', shall='shalt',
+    will='wilt', eat='ate eaten', drink='drank drunk', fall='fell fallen', get='got gat gotten', hold='held',
+    lead='led', lie='lay lain', rise='rose risen', run='ran', sell='sold', seek='sought', swear='sware sworn swore',
+    teach='taught', think='thought', weep='wept', write='wrote written', forsake='forsook forsaken', arise='arose',
+    begin='began begun', bind='bound', break_='brake broke broken', choose='chose chosen', cleave='clave',
+    draw='drew drawn', drive='drove driven', feed='fed', fight='fought', fly='flew', forget='forgot forgotten',
+    grow='grew grown', hide='hid hidden', lend='lent', lose='lost', meet='met', rend='rent', ride='rode ridden',
+    shake='shook shaken', shine='shone', sleep='slept', strive='strove striven', strike='struck stricken',
+    tear='tare torn', tread='trod trodden', wear='wore worn', work='wrought', understand='understood', sing='sang sung',
+    sink='sank sunk', spring='sprang sprung', stink='stank', steal='stole stolen', burn='burnt', cast='cast',
+    catch='caught', buy='bought', fight_='fought', overthrow='overthrew overthrown', withdraw='withdrew withdrawn')
+FORM_OF = {f: base.rstrip('_') for base, forms in IRREGULAR.items() for f in forms.split()}
+
+
+def stems(w):
+    """The forms a KJV word may be listed under: "blessed" -> bless, "cometh" -> come."""
+    w = w.lower().replace('’', "'").split("'")[0]
+    out = {w}
+    if w in FORM_OF:
+        out.add(FORM_OF[w])
+    for suf, rep_ in (('ieth', 'y'), ('ied', 'y'), ('ies', 'y'), ('eth', ''), ('eth', 'e'), ('est', ''), ('est', 'e'),
+                      ('ed', ''), ('ed', 'e'), ('ing', ''), ('ing', 'e'), ('es', ''), ('s', ''), ('d', ''),
+                      ('th', ''), ('st', ''), ('ly', ''), ('er', ''), ('en', '')):
+        if w.endswith(suf) and len(w) - len(suf) >= 2:
+            base = w[:len(w) - len(suf)] + rep_
+            out.add(base)
+            if len(base) > 2 and base[-1] == base[-2]:
+                out.add(base[:-1])   # "smitten" -> smit -> smite is IRREGULAR; "stopped" -> stop
+    return out
+
+
+def usage_stems(kjv_usage):
+    """Every word Strong's KJV usage line lists, expanding its shorthand:
+    "who(-m, -soever)" is who, whom, whosoever; "(be-)come" is come, become."""
+    text = (kjv_usage or '').lower()
+    text = re.sub(r'\[[a-z]+\]|\b[hg]\d+|\bx\b|\bcompare\b', ' ', text)   # [idiom], H3069, X
+    words = set(re.findall(r'[a-z]+', text))
+    for base, sufs in re.findall(r'([a-z]+)\s*\(([^)]*)\)', text):
+        for suf in re.findall(r'-\s*([a-z]+)', sufs):
+            words.add(base + suf)
+    for pre, base in re.findall(r'\(([a-z]+)-\)\s*([a-z]+)', text):
+        words.add(pre + base)
+    out = set()
+    for w in words:
+        out |= {st for st in stems(w) if len(st) >= 2 or st == w}   # "I" stays
+    return out
+
+
+def fill_ot(app, italic, tags, old_words, usage, listed):
+    """Add the Hebrew words the source leaves out, and the rest of the KJV
+    phrase for the ones it tags by their last word. Returns (words, phrases)."""
+    if not old_words:
+        return 0, 0
+    sm = difflib.SequenceMatcher(None, [key(w) for w in app], [key(w) for w, _ in old_words], autojunk=False)
+    osn = [None] * len(app)
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == 'equal':
+            for d in range(i2 - i1):
+                osn[i1 + d] = old_words[j1 + d][1]
+    runs, i = [], 0
+    while i < len(app):
+        j = i
+        while j + 1 < len(app) and osn[j + 1] == osn[i]:
+            j += 1
+        if osn[i] and osn[i] != 'H853':   # the untranslated object marker
+            runs.append((osn[i], i, j))
+        i = j + 1
+    ok = lambda sn, x: bool(stems(app[x]) & usage.get(sn, set()))
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
+    words = phrases = 0
+    pid = 100000
+    for sn, i, j in runs:
+        idx = [x for x in range(i, j + 1) if not italic[x]]
+        mine = [x for x in idx if x in tags and tags[x][0] == sn]
+        if mine:
+            # The source tagged its last word: the run's other words join it,
+            # outwards from the tagged ones and never past another number.
+            for direction in (-1, 1):
+                x = (min(mine) if direction < 0 else max(mine)) + direction
+                while i <= x <= j and x not in tags and not italic[x]:
+                    w = key(app[x])
+                    if direction < 0 and (w in ABSORB_BACK or (w in OBJECT and not (x and key(app[x - 1]) == 'let'))):
+                        break      # the reader joins "the", "of"; "him" belongs before, but "Let us make"
+                    if w == 'let' and (x + 1 >= len(app) or key(app[x + 1]) not in LET_BEFORE):
+                        break
+                    if (w in SEPARATE or w in ABSORB_BACK or (w in CONNECT and w != 'let')) and not ok(sn, x):
+                        break      # "Let there be" (H1961) keeps its "Let"
+                    if w not in small and not ok(sn, x):
+                        break
+                    tags[x] = tags[mine[0]]
+                    words += 1
+                    x += direction
+            continue
+        if any(x in tags for x in idx):
+            continue           # the source put another number here
+        # A Hebrew word the source left out. Its English is the word Strong's
+        # usage allows, with the helpers in front of a verb ("there was", "it
+        # came to pass", "he will not") and a pronoun after ("unto him") --
+        # never a "for", "the" or "and" that Strong's doesn't list for it.
+        allowed = [x for x in idx if ok(sn, x)]
+        if not allowed:
+            continue
+        first = allowed[0]
+        block = [first]
+        # "I shall not want": "I shall" is the verb's, not the "not"'s.
+        negation = all(key(app[x]) in NEGATIONS for x in allowed)
+        x = first - 1
+        while x >= i and x not in tags and not italic[x] and (ok(sn, x) or (key(app[x]) in HELPERS and not negation)) \
+                and not (key(app[x]) == 'let' and key(app[x + 1]) not in LET_BEFORE):
+            block.insert(0, x)
+            x -= 1
+        x = first + 1
+        while x <= j and x not in tags and not italic[x] and (ok(sn, x) or key(app[x]) in OBJECT):
+            block.append(x)
+            x += 1
+        while len(block) > 1 and key(app[block[0]]) in HELPERS and not ok(sn, block[0]) \
+                and key(app[block[0]]) not in SUBJECTS | {'there', 'let'}:
+            block.pop(0)   # "shall" alone in front of nothing
+        pid += 1
+        for x in block:
+            tags[x] = (sn, pid)
+        words += len(block)
+        phrases += 1
+    # A word next to a phrase that Strong's lists for that phrase's number,
+    # and isn't a small word, is the rest of it: the source tags "thereof" in
+    # "the fruit thereof" (H6529) and leaves "fruit".
+    changed = True
+    while changed:
+        changed = False
+        for x in range(len(app)):
+            if x in tags or italic[x] or key(app[x]) in small:
+                continue
+            for y in (x - 1, x + 1):
+                if y in tags and tags[y][0] != 'H853' and ok(tags[y][0], x):
+                    tags[x] = tags[y]
+                    words += 1
+                    changed = True
+                    break
+    return words, phrases
+
+
 def leading(words):
     return all(w.lower() in LEAD or w.lower() in CONNECT for w in words)
 
@@ -296,6 +482,9 @@ def main():
     lex = {r['strongs_number'] for r in lex_rows}
     # Strong's own list of how the KJV renders each number, as words.
     usage = {r['strongs_number']: set(re.findall(r'[a-z]+', (r.get('kjv_usage') or '').lower())) for r in lex_rows}
+    usage_ot = {r['strongs_number']: usage_stems(r.get('kjv_usage')) for r in lex_rows if r['strongs_number'][0] == 'H'}
+    with gzip.open(INTERLINEAR_OT, 'rt', encoding='utf-8') as f:
+        interlinear = json.load(f)
     # The phrases the source tags, per number: "not yet" for G3768.
     phrases_used = collections.defaultdict(collections.Counter)
     for vtext in src.values():
@@ -307,12 +496,15 @@ def main():
             phrases_used[sn][' '.join(ws)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = 0
+    words_total = tagged_total = widened = filled_words = filled = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
         app, italic, pause = app_tokens(r['text'])
         tags = align(app, source_tokens(src.get((b, c, v), '')))
+        if b <= 39:
+            fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage)
+            filled_words += fw; filled += fp
         widened += widen(app, italic, pause, tags, phrases_used, usage)
         words_total += len(app); tagged_total += len(tags)
         phrases = collections.OrderedDict()
@@ -367,6 +559,7 @@ def main():
     MANIFEST.write_text(json.dumps(man, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(f'{words_total} KJV words, {tagged_total} tagged ({100 * tagged_total / words_total:.1f}%), '
           f'{widened} of them by widen; {joined} parted words joined')
+    print(f'Old Testament: {filled} Hebrew words the source leaves out added, {filled_words} words tagged from the interlinear')
     print(f'{len(recs)} chapters -> {OUT_MAP.relative_to(ROOT)}; {len(occ_recs)} numbers -> {OUT_OCC.relative_to(ROOT)}')
     return len(recs), len(occ_recs)
 
