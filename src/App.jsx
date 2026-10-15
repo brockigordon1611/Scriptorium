@@ -2201,7 +2201,10 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     const ws={...(ec?{color:ec}:{}),...(fw?.isItalic?{fontStyle:'italic'}:{})};
     const groupText=group.map(x=>x.text).join('');
     const tapWord=link?linkWord[link]:fw.text;
-    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link)}:null;
+    // What the popup names under its number: the whole of the English it was
+    // opened from -- "In the beginning", or "Let … bring forth".
+    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link),dashed:true}
+      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM,dashed:false};
     elems.push(React.createElement('span',{
       key:i,
       onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,split);},
@@ -4028,10 +4031,10 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
               longer fit beside the close button. */}
           {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
-        {/* Opened from a word the KJV splits: its pieces, in their colour. */}
+        {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
-          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dashed ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px ${split.dashed?'dashed':'dotted'} ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
         </span>}
       </div>
       {trail}
@@ -7801,8 +7804,9 @@ function App(){
     if(!versesOffline)strongsCache.current[strongsNum]=res;
     return res;
   }
-  // `split`: the pieces of a word the KJV splits ("Let … bring forth"), from
-  // buildStrongsVerse, shown under the number while it is the one open.
+  // `split`: the English the word was opened from ("In the beginning", or the
+  // pieces of a split word, "Let … bring forth"), from buildStrongsVerse, shown
+  // under the number while it is the one open.
   async function handleStrongsWordTap(strongsNum,wordText,split){
     setStrongsExpandedWords(new Set());
     const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`}:null;
@@ -12616,7 +12620,7 @@ function App(){
                   Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
-                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it, with the pieces named under the number.
+                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it. The popup names the English it was opened from under the number — one word, a phrase, or the pieces.
                 </Row>
                 <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
