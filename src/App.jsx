@@ -6694,6 +6694,37 @@ function App(){
   const loadMorePendingRef=useRef(false);
   const navRef=useRef(null);
   const [navH,setNavH]=useState(0);
+  // The nav mounts after the sign-in screen, and again after every sign-in, a
+  // recovery or a reload of the data. The observer below was attached once, in
+  // an effect keyed on loading, and went on watching a nav that was no longer
+  // there -- or none at all -- so navH moved only with window resizes. An
+  // iPhone back from the background sends one while the status-bar inset still
+  // reads 0, and everything placed from navH then sat a status bar too high
+  // until the next. A ref callback observes whichever nav is on screen -- and
+  // its border box: the inset is padding, and an observer of the content box,
+  // the default, never hears it change.
+  const navObserver=useRef(null);
+  const setNavEl=React.useCallback(el=>{
+    navRef.current=el;
+    if(navObserver.current){navObserver.current.disconnect();navObserver.current=null;}
+    if(!el)return;
+    const measure=()=>setNavH(el.getBoundingClientRect().height);
+    measure();
+    navObserver.current=new RObserver(measure);
+    navObserver.current.observe(el,{box:'border-box'});
+  },[]);
+  // The chapter bar likewise, and more so: it belongs to Read, so leaving Read
+  // and coming back mounts a new one every time.
+  const bottomBarObserver=useRef(null);
+  const setBottomBarEl=React.useCallback(el=>{
+    bottomBarRef.current=el;
+    if(bottomBarObserver.current){bottomBarObserver.current.disconnect();bottomBarObserver.current=null;}
+    if(!el)return;
+    const measure=()=>setBottomBarH(el.offsetHeight);
+    measure();
+    bottomBarObserver.current=new RObserver(measure);
+    bottomBarObserver.current.observe(el,{box:'border-box'});
+  },[]);
   const [bottomBarH,setBottomBarH]=useState(0);
   // The install screen replaces the whole tree rather than covering it, so what
   // was measured from the mounted app -- both bars, the chapter on screen -- is
@@ -9206,7 +9237,7 @@ function App(){
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div ref={navRef} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none',
+      <div ref={setNavEl} className="no-print app-header" style={{background:T.bgCard,borderBottom:`1px solid ${T.bdA}`,padding:'max(calc(var(--sat,0px) + 12px),var(--sat-min,20px)) 6px 6px',position:'fixed',top:0,left:0,right:0,zIndex:200,touchAction:'none',userSelect:'none',WebkitUserSelect:'none',
         transition:'transform .18s ease',...(FEED_ON&&tab==='feed'?{transform:'translateY(-100%)',pointerEvents:'none'}:{})/* verse feed: the nav steps aside */}}>
         <div style={{height:3,background:T.accentLine,position:'absolute',top:'max(var(--sat,0px),var(--sat-min,0px))',left:0,right:0}}/>
         <div className="app-header-row" style={{display:'flex',alignItems:'center',gap:4,minHeight:0,overflow:'hidden',flexWrap:'nowrap'}}>
@@ -10820,7 +10851,7 @@ function App(){
                     )}
                     {searchOpts.partial===false&&(
                       <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠︎ Only whole words are matched. Not sure of the spelling, or looking for part of a word?{' '}
+                        ⚠︎ Not sure of the spelling?{' '}
                         <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Try Partial Match →</button>
                       </div>
                     )}
@@ -11086,7 +11117,7 @@ function App(){
               it has gone — which is the half of this that is not decoration:
               tapping a chapter arrow from the results took you somewhere else
               entirely. */}
-          <div ref={bottomBarRef} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,
+          <div ref={setBottomBarEl} style={{position:'fixed',bottom:0,left:0,right:0,zIndex:150,background:T.bgCard,borderTop:`1px solid ${T.bdS}`,
             transform:readingHidden?'translateY(100%)':'none',pointerEvents:readingHidden?'none':'auto',
             transition:'transform .22s cubic-bezier(0.32,0.72,0,1)'}}>
             <div className="bottom-nav-safe" style={{padding:'5px 12px 0 12px',display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:49,boxSizing:'border-box'}}>
