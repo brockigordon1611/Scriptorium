@@ -8831,7 +8831,9 @@ function App(){
             const anySheet=sheetOpen;
             const studyModalOpen=modal?.type==='bookmarks'||modal?.type==='highlights'||modal?.type==='recents';
             const studyIsActive=studyActive||studyModalOpen||((readMobileSheet==='studyTools')&&!readSheetClosing);
-            const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen; // settings/search/version/nav, or search results visible
+            // Search counts whenever its field is open, not only once results show:
+            // an empty field, or the Dictionary and Strong's tabs, left Read lit.
+            const nonMajorSheet=(sheetOpen&&readMobileSheet!=='studyTools')||readSearchResultsOpen||searchFieldOpen; // settings/search/version/nav, or search open
             const readIsActive=tab==='read'&&!studyIsActive;
             // Right pill indicator state. Whichever of the three sheets is open
             // wins: search used to light up for open search *results* as well, and
