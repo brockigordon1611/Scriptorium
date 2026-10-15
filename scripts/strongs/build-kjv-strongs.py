@@ -27,6 +27,10 @@ verses match the source word for word; the rest differ by spelling (Judea and
 Judaea) or by a word written as one or two (whosoever, who soever), and are
 matched word by word. The app's spelling is always the one kept.
 
+Where the source tags only part of a phrase here that it tags whole elsewhere
+-- "yet" for "not yet" (G3768) in John 3:24 -- the rest is tagged too (see
+widen).
+
 The usage lists count one occurrence per Hebrew or Greek word. Where the KJV
 parts one word around others ("the holy angels", "have we not prophesied",
 "send them away") the source tags each part, and the parts are joined again
@@ -195,6 +199,56 @@ def usage_word(words, italic):
     return ' '.join(f'[{w}]' if it else w for w, it in ws)
 
 
+# Small words the reader already joins to the tagged word after them
+# (src/App.jsx buildStrongsVerse, ABSORB_BACK).
+ABSORB_BACK = set('the a an in of from without upon unto to for by with at into on'.split())
+# Words that are usually a Hebrew or Greek word of their own.
+SEPARATE = set('and but or nor neither not no'.split())
+
+
+def widen(app, italic, pause, tags, phrases_used, usage):
+    """Tag the untagged words next to a tagged phrase that belong to it.
+
+    The source is not consistent about how much of a phrase it tags: "not yet"
+    is G3768 whole in John 2:4 and 7:6, but only "yet" in 3:24 and 7:30; "it is
+    written" (G1125), "he said" (G2036), "these things" (G5023) likewise. A
+    neighbour joins when the longer phrase is one the source itself tags for
+    that number elsewhere -- three times, or twice if Strong's KJV usage for
+    the number has the word. Never an italic (supplied) word, never across a
+    comma or stop, and never "the", "of" and such in front (the reader joins
+    those itself). After the phrase, and for "and", "not" and the like
+    anywhere, Strong's usage must have the word: "out of" (G1537) and "not yet"
+    (G3768) join; "one of" (G1520) and "and said" (G2036) don't."""
+    added = 0
+    changed = True
+    while changed:
+        changed = False
+        phrases = collections.OrderedDict()
+        for i in sorted(tags):
+            phrases.setdefault(tags[i], []).append(i)
+        for (sn, pid), idx in phrases.items():
+            for j, before in ((idx[0] - 1, True), (idx[-1] + 1, False)):
+                if j < 0 or j >= len(app) or j in tags or italic[j] or pause[j if before else idx[-1]]:
+                    continue
+                w = key(app[j])
+                if before and w in ABSORB_BACK:
+                    continue
+                words = [key(app[i]) for i in idx]
+                n = phrases_used[sn][' '.join([w] + words if before else words + [w])]
+                listed = w in usage.get(sn, ())
+                if n < 2 or (n < 3 and not listed):
+                    continue
+                if (w in SEPARATE or w in CONNECT or (not before and w in ABSORB_BACK)) and not listed:
+                    continue
+                tags[j] = (sn, pid)
+                added += 1
+                changed = True
+                break
+            if changed:
+                break
+    return added
+
+
 def leading(words):
     return all(w.lower() in LEAD or w.lower() in CONNECT for w in words)
 
@@ -238,15 +292,28 @@ def text(app, idx):
 def main():
     src = source_verses()
     kjv = json.loads(KJV.read_text(encoding='utf-8'))
-    lex = {r['strongs_number'] for r in json.loads(LEX.read_text(encoding='utf-8'))}
+    lex_rows = json.loads(LEX.read_text(encoding='utf-8'))
+    lex = {r['strongs_number'] for r in lex_rows}
+    # Strong's own list of how the KJV renders each number, as words.
+    usage = {r['strongs_number']: set(re.findall(r'[a-z]+', (r.get('kjv_usage') or '').lower())) for r in lex_rows}
+    # The phrases the source tags, per number: "not yet" for G3768.
+    phrases_used = collections.defaultdict(collections.Counter)
+    for vtext in src.values():
+        ph = collections.OrderedDict()
+        for w, sn, pid in source_tokens(vtext):
+            if sn:
+                ph.setdefault((sn, pid), []).append(key(w))
+        for (sn, _), ws in ph.items():
+            phrases_used[sn][' '.join(ws)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = 0
+    words_total = tagged_total = widened = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
         app, italic, pause = app_tokens(r['text'])
         tags = align(app, source_tokens(src.get((b, c, v), '')))
+        widened += widen(app, italic, pause, tags, phrases_used, usage)
         words_total += len(app); tagged_total += len(tags)
         phrases = collections.OrderedDict()
         for i in sorted(tags):
@@ -298,7 +365,8 @@ def main():
             print(f'{name}: changed, now version {d["version"]}')
         d['rows'] = len(data)
     MANIFEST.write_text(json.dumps(man, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
-    print(f'{words_total} KJV words, {tagged_total} tagged ({100 * tagged_total / words_total:.1f}%); {joined} parted words joined')
+    print(f'{words_total} KJV words, {tagged_total} tagged ({100 * tagged_total / words_total:.1f}%), '
+          f'{widened} of them by widen; {joined} parted words joined')
     print(f'{len(recs)} chapters -> {OUT_MAP.relative_to(ROOT)}; {len(occ_recs)} numbers -> {OUT_OCC.relative_to(ROOT)}')
     return len(recs), len(occ_recs)
 
