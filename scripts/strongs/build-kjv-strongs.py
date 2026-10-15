@@ -65,6 +65,8 @@ OUT_MAP = ROOT / 'public/bundled/strongs_map.json'
 OUT_OCC = ROOT / 'public/bundled/strongs_occ.json'
 MANIFEST = ROOT / 'public/bundled/manifest.json'
 INTERLINEAR_OT = ROOT / 'scripts/strongs/source/interlinear-ot-words.json.gz'
+HEBREW_OT = ROOT / 'scripts/strongs/source/tahot-ot-structure.json.gz'
+INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
 
 CODES = ['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV']
 # The app's word rule: split on spaces, trim this punctuation from both ends.
@@ -435,6 +437,156 @@ def fill_ot(app, italic, tags, old_words, usage, listed):
     return words, phrases
 
 
+# ── Old Testament: the small words written on a Hebrew word ────────────────
+#
+# A Hebrew word carries its "and", "in", "to", "the" in front and its "his",
+# "him", "them" at the end, and the KJV spells them out as English words --
+# not always beside the rest: "And God saw" (Gen 1:4) is one word, wayyar,
+# with "God" in the middle. tahot-ot-structure.json.gz lists, per verse, each
+# Hebrew word's numbers and the affixes written on it (STEPBible's TAHOT; see
+# scripts/strongs/export-tahot-structure.mjs), so each such English word can be
+# given to the Hebrew word it belongs to. Its counts don't change: the words
+# join an occurrence that is already there.
+
+_AFFIX_WORDS = {
+    # in front of the word
+    'H9001': 'and but then so now yet or', 'H9002': 'and but then so now yet or',
+    'H9003': 'in on upon with by at among into through when within',
+    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward',
+    'H9006': 'from of out than because since above after', 'H9007': 'that who which whom whose',
+    'H9009': 'the', 'H9010': 'the', 'H9011': 'toward towards unto to into',
+    # endings the KJV puts in front: his house, I said
+    'H9020': 'my mine', 'H9021': 'thy thine your', 'H9022': 'thy thine your', 'H9023': 'his its',
+    'H9024': 'her its', 'H9025': 'our', 'H9026': 'your thy', 'H9027': 'your thy', 'H9028': 'their',
+    'H9029': 'their', 'H9040': 'i', 'H9041': 'thou', 'H9042': 'thou', 'H9043': 'he', 'H9044': 'she',
+    'H9045': 'we', 'H9046': 'ye', 'H9047': 'ye', 'H9048': 'they', 'H9049': 'they',
+}
+# Endings the KJV puts after: smote him, unto me.
+_AFFIX_AFTER = {
+    'H9020': 'me', 'H9021': 'thee you', 'H9022': 'thee you', 'H9023': 'him it', 'H9024': 'her it',
+    'H9025': 'us', 'H9026': 'you', 'H9027': 'you', 'H9028': 'them', 'H9029': 'them',
+    'H9030': 'me myself', 'H9031': 'thee thyself you', 'H9032': 'thee thyself you',
+    'H9033': 'him it himself', 'H9034': 'her it herself', 'H9035': 'us ourselves',
+    'H9036': 'you yourselves ye', 'H9037': 'you yourselves ye', 'H9038': 'them themselves',
+    'H9039': 'them themselves',
+}
+AFFIX_BEFORE = {k: set(v.split()) for k, v in _AFFIX_WORDS.items()}
+AFFIX_AFTER = {k: set(v.split()) for k, v in _AFFIX_AFTER.items()}
+PREFIXES = {'H9001', 'H9002', 'H9003', 'H9004', 'H9005', 'H9006', 'H9007', 'H9009', 'H9010'}
+GAP_WORDS = ABSORB_BACK | {'the'}
+
+
+def link_ot(app, italic, pause, tags, hebrew, verbs):
+    """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
+    are written on. Returns {word position: tag} for the words added."""
+    if not hebrew:
+        return {}
+    phrases = collections.OrderedDict()
+    for i in sorted(tags):
+        phrases.setdefault(tags[i], []).append(i)
+    by_sn = collections.defaultdict(list)
+    for t in phrases:
+        by_sn[t[0]].append(t)
+    # The k-th Hebrew word with a number goes with the KJV's k-th phrase of it.
+    seen, order_of, plan = collections.Counter(), {}, []
+    for order, (_, mains, affixes) in enumerate(hebrew):
+        for sn in mains:
+            k = seen[sn]
+            seen[sn] += 1
+            if k < len(by_sn[sn]) and by_sn[sn][k] not in order_of:
+                order_of[by_sn[sn][k]] = order
+                plan.append((order, by_sn[sn][k], affixes))
+                break
+    added = {}
+    taken = lambda x: x in tags or x in added
+    for order, t, affixes in plan:
+        idx = phrases[t]
+        lo, hi = min(idx), max(idx)
+        # A verb's English carries its subject and helpers: "he said", "shall go".
+        if t[0] in verbs:
+            x = lo - 1
+            while x >= 0 and not taken(x) and not italic[x] and not pause[x] and key(app[x]) in (HELPERS - {'not'}):
+                added[x] = t
+                lo = x
+                x -= 1
+        before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
+                 [a for a in reversed(affixes) if a in PREFIXES]
+        for a in before:
+            x, stepped = lo - 1, False
+            while x >= 0 and lo - x <= 6 and not pause[x]:
+                if x in tags:
+                    o = order_of.get(tags[x])
+                    if o is not None and o > order:     # "God" in "And God saw"
+                        x -= 1
+                        stepped = True
+                        continue
+                    break
+                if x in added or italic[x]:
+                    break
+                w = key(app[x])
+                if w in AFFIX_BEFORE[a]:
+                    added[x] = t
+                    if not stepped:                     # "and the earth": all of it
+                        for y in range(x + 1, lo):
+                            added[y] = t
+                    while x and not taken(x - 1) and not italic[x - 1] and not pause[x - 1] \
+                            and key(app[x - 1]) in AFFIX_BEFORE[a]:
+                        x -= 1                          # "out of", "according as"
+                        added[x] = t
+                    lo = x
+                    break
+                if w not in GAP_WORDS:
+                    break
+                x -= 1
+        for a in affixes:
+            if a not in AFFIX_AFTER:
+                continue
+            x = hi + 1
+            while x < len(app) and x - hi <= 3 and not pause[x - 1] and not taken(x) and not italic[x]:
+                w = key(app[x])
+                if w in AFFIX_AFTER[a]:
+                    for y in range(hi + 1, x + 1):
+                        added[y] = t
+                    hi = x
+                    break
+                if w not in GAP_WORDS:
+                    break
+                x += 1
+    return added
+
+
+def repair(app, tags, old_words, usage):
+    """A few verses of the source carry their numbers in the wrong places --
+    Acts 20:32 has "brethren" G3588, "commend" G5209, "you" G80 -- as if laid
+    in Greek order. A verse is taken as such when Strong's usage confirms
+    under 55% of its tagged words and the interlinear (see INTERLINEAR_*)
+    agrees on under half; its numbers are then the interlinear's, word by
+    word. Returns True if the verse was repaired."""
+    if not old_words:
+        return False
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS
+    content = [i for i in tags if key(app[i]) not in small]
+    if len(content) < 5:
+        return False
+    confirmed = sum(1 for i in content if stems(app[i]) & usage.get(tags[i][0], set()))
+    if confirmed >= 0.55 * len(content):
+        return False
+    sm = difflib.SequenceMatcher(None, [key(w) for w in app], [key(w) for w, _ in old_words], autojunk=False)
+    old = {}
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == 'equal':
+            for d in range(i2 - i1):
+                old[i1 + d] = old_words[j1 + d][1]
+    if sum(1 for i in content if old.get(i) == tags[i][0]) >= 0.5 * len(content):
+        return False
+    for i in list(tags):
+        if old.get(i):
+            tags[i] = (old[i], tags[i][1])
+        else:
+            del tags[i]
+    return True
+
+
 def leading(words):
     return all(w.lower() in LEAD or w.lower() in CONNECT for w in words)
 
@@ -485,6 +637,13 @@ def main():
     usage_ot = {r['strongs_number']: usage_stems(r.get('kjv_usage')) for r in lex_rows if r['strongs_number'][0] == 'H'}
     with gzip.open(INTERLINEAR_OT, 'rt', encoding='utf-8') as f:
         interlinear = json.load(f)
+    with gzip.open(HEBREW_OT, 'rt', encoding='utf-8') as f:
+        hebrew = json.load(f)
+    verbs = {r['strongs_number'] for r in lex_rows if 'primitive root' in (r.get('full_def') or '').lower()}
+    with gzip.open(INTERLINEAR_NT, 'rt', encoding='utf-8') as f:
+        interlinear.update(json.load(f))
+    usage_all = {r['strongs_number']: usage_stems(r.get('kjv_usage')) for r in lex_rows}
+    repaired = []
     # The phrases the source tags, per number: "not yet" for G3768.
     phrases_used = collections.defaultdict(collections.Counter)
     for vtext in src.values():
@@ -496,47 +655,75 @@ def main():
             phrases_used[sn][' '.join(ws)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = filled_words = filled = 0
+    words_total = tagged_total = widened = filled_words = filled = affixed = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
         app, italic, pause = app_tokens(r['text'])
         tags = align(app, source_tokens(src.get((b, c, v), '')))
+        if repair(app, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all):
+            repaired.append(f'{b}|{c}|{v}')
         if b <= 39:
             fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage)
             filled_words += fw; filled += fp
         widened += widen(app, italic, pause, tags, phrases_used, usage)
-        words_total += len(app); tagged_total += len(tags)
+        added = link_ot(app, italic, pause, tags, hebrew.get(f'{b}|{c}|{v}'), verbs) if b <= 39 else {}
+        affixed += len(added)
+        words_total += len(app); tagged_total += len(tags) + len(added)
         phrases = collections.OrderedDict()
         for i in sorted(tags):
-            sn, pid = tags[i]
-            chapters[f'{b}|{c}'].append([v, i, app[i], sn])
-            phrases.setdefault((sn, pid), []).append(i)
-        verses.append(((b, c, v), app, italic, pause, list(phrases.items())))
+            phrases.setdefault(tags[i], []).append(i)
+        verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added))
     # What each number's phrases say where it is the only one in its verse:
     # "and" for G2532, "him" for G846, "for" for G1223. A part that is also a
     # rendering of its own -- at least 1 in 20 of the number's phrases -- is
     # counted on its own. Where the source tags just the "ye" of "Know ye not"
     # (G1492), that is not.
     alone, phrase_count = collections.Counter(), collections.Counter()
-    for _, app, _, _, phrases in verses:
+    for _, app, _, _, phrases, _ in verses:
         once = collections.Counter(sn for (sn, _), _ in phrases)
         phrase_count.update(once)
         for (sn, _), idx in phrases:
             if once[sn] == 1:
                 alone[sn, text(app, idx)] += 1
-    joined = 0
-    for ref, app, italic, pause, phrases in verses:
+    joined = links = 0
+    for ref, app, italic, pause, phrases, added in verses:
         idxs = [list(idx) for _, idx in phrases]
+        into = list(range(len(phrases)))      # the phrase each one was joined into
         for n, m, part, check in parted(app, pause, phrases):
             sn = phrases[part][0][0]
             if check and alone[sn, text(app, phrases[part][1])] >= max(2, phrase_count[sn] / 20):
                 continue
             if idxs[n] and idxs[m]:
-                idxs[m] = idxs[n] + idxs[m]; idxs[n] = None; joined += 1
+                idxs[m] = idxs[n] + idxs[m]; idxs[n] = None; into[n] = m; joined += 1
         for ((sn, _), _), idx in zip(phrases, idxs):
             if idx:
                 occ[sn][ref][usage_word([app[i] for i in idx], [italic[i] for i in idx])] += 1
+        # The map: each Hebrew or Greek word's English, with the small words
+        # written on it. One whose English is in pieces gets a link number, so
+        # the reader can show the pieces as one word.
+        n_of = {t: n for n, (t, _) in enumerate(phrases)}
+        groups = [list(idx) if idx else None for idx in idxs]
+        for x, t in added.items():
+            n = n_of[t]
+            while into[n] != n:
+                n = into[n]
+            groups[n].append(x)
+        tagged = {i for g in groups if g for i in g}
+        rows, link = [], 0
+        for ((sn, _), _), g in zip(phrases, groups):
+            if not g:
+                continue
+            g = sorted(set(g))
+            gap = [y for y in range(g[0], g[-1] + 1) if y not in g]
+            if gap and all(y not in tagged and not italic[y] and key(app[y]) in GAP_WORDS for y in gap):
+                g, gap = list(range(g[0], g[-1] + 1)), []
+                tagged.update(g)
+            if gap:
+                link += 1
+                links += 1
+            rows += [[ref[2], i, app[i], sn] + ([link] if gap else []) for i in g]
+        chapters[f'{ref[0]}|{ref[1]}'] += sorted(rows, key=lambda r: r[1])
     unknown = sorted(sn for sn in occ if sn not in lex)
     if unknown:
         raise SystemExit(f'numbers not in the lexicon: {unknown[:20]}')
@@ -559,7 +746,10 @@ def main():
     MANIFEST.write_text(json.dumps(man, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(f'{words_total} KJV words, {tagged_total} tagged ({100 * tagged_total / words_total:.1f}%), '
           f'{widened} of them by widen; {joined} parted words joined')
-    print(f'Old Testament: {filled} Hebrew words the source leaves out added, {filled_words} words tagged from the interlinear')
+    print(f'Old Testament: {filled} Hebrew words the source leaves out added, {filled_words} words tagged from the interlinear, '
+          f'{affixed} small words given to the Hebrew word they are written on')
+    print(f'{links} words whose English is in pieces, linked')
+    print(f'{len(repaired)} verses whose source numbers were out of place, repaired: {" ".join(repaired)}')
     print(f'{len(recs)} chapters -> {OUT_MAP.relative_to(ROOT)}; {len(occ_recs)} numbers -> {OUT_OCC.relative_to(ROOT)}')
     return len(recs), len(occ_recs)
 
