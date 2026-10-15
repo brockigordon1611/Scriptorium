@@ -16,15 +16,15 @@
       ]
     },
     "strongs_map": {
-      "version": 5,
+      "version": 6,
       "rows": 1189,
       "files": [
         "strongs_map.json"
       ]
     },
     "strongs_occ": {
-      "version": 5,
-      "rows": 14048,
+      "version": 6,
+      "rows": 14054,
       "files": [
         "strongs_occ.json"
       ]
