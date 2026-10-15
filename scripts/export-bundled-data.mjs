@@ -6,8 +6,9 @@
  * Run from the repo root:  node scripts/export-bundled-data.mjs
  * Output:                  public/bundled/
  *
- * The heavy grouping (785k mapping rows, 574k occurrence rows) happens here, on
- * a machine with memory to spare, instead of on a phone.
+ * The heavy grouping happens here, on a machine with memory to spare, instead
+ * of on a phone. Strong's mapping and occurrences are built separately, by
+ * scripts/strongs/build-kjv-strongs.py.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -78,61 +79,11 @@ console.log("Strong's lexicon");
   manifest.datasets.strongs_lex = { version: 1, rows: rows.length, files: [f.file] };
 }
 
-// ── Strong's mapping, grouped one record per chapter ───────────────────────
-console.log("Strong's mapping");
-let mapping;
-{
-  mapping = await fetchAll('strongs_mapping', 'book_num,chapter,verse,word_pos,word_text,strongs_num',
-    { order: 'book_num.asc,chapter.asc,verse.asc,word_pos.asc', label: 'mapping' });
-  const byChapter = new Map();
-  for (const r of mapping) {
-    const k = `${r.book_num}|${r.chapter}`;
-    let a = byChapter.get(k); if (!a) { a = []; byChapter.set(k, a); }
-    a.push([r.verse, r.word_pos, r.word_text, r.strongs_num]);
-  }
-  const recs = [...byChapter].map(([pk, rows]) => ({ pk, rows }));
-  const f = write('strongs_map.json', recs);
-  manifest.datasets.strongs_map = { version: 1, rows: recs.length, files: [f.file] };
-  console.log(`  ${mapping.length.toLocaleString()} words → ${recs.length.toLocaleString()} chapters`);
-}
-
-// ── Occurrences, reproducing get_strongs_verses exactly ────────────────────
-console.log("Strong's occurrences");
-{
-  const occ = await fetchAll('strongs_word_occurrences', 'strongs_num,book_num,chapter,verse,gloss',
-    { order: 'strongs_num.asc,book_num.asc,chapter.asc,verse.asc', label: 'occurrences' });
-
-  // KJV English word per (strongs, verse). Ascending word_pos means the last
-  // write wins, matching the server's DISTINCT ON ... ORDER BY word_pos DESC.
-  const kjvWord = new Map();
-  for (const r of mapping) kjvWord.set(`${r.strongs_num}|${r.book_num}|${r.chapter}|${r.verse}`, r.word_text);
-
-  const totals = new Map();
-  const lex = JSON.parse(fs.readFileSync(path.join(OUT, 'strongs_lex.json'), 'utf8'));
-  for (const e of lex) if (e.occurrence_count != null) totals.set(e.strongs_number, e.occurrence_count);
-
-  const bySn = new Map();
-  for (const r of occ) {
-    let m = bySn.get(r.strongs_num); if (!m) { m = new Map(); bySn.set(r.strongs_num, m); }
-    const k = `${r.book_num}|${r.chapter}|${r.verse}`;
-    const cur = m.get(k);
-    if (cur) { cur[3]++; if (r.gloss && (!cur[4] || r.gloss > cur[4])) cur[4] = r.gloss; }
-    else m.set(k, [r.book_num, r.chapter, r.verse, 1, r.gloss || null]);
-  }
-  const recs = [];
-  for (const [sn, verses] of bySn) {
-    const refs = [];
-    for (const [, v] of verses) {
-      const kw = kjvWord.get(`${sn}|${v[0]}|${v[1]}|${v[2]}`);
-      refs.push([v[0], v[1], v[2], (kw !== undefined && kw !== null) ? kw : v[4], v[3]]);
-    }
-    refs.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
-    recs.push({ sn, total: totals.has(sn) ? totals.get(sn) : null, refs });
-  }
-  const f = write('strongs_occ.json', recs);
-  manifest.datasets.strongs_occ = { version: 1, rows: recs.length, files: [f.file] };
-  console.log(`  ${occ.length.toLocaleString()} rows → ${recs.length.toLocaleString()} numbers`);
-}
+// ── Strong's mapping and occurrences ───────────────────────────────────────
+// Not from the server any more: scripts/strongs/build-kjv-strongs.py builds
+// strongs_map.json and strongs_occ.json from the KJV with Strong's numbers, and
+// they are carried over here like the TSK. (The server's strongs_mapping and
+// strongs_word_occurrences are the older data, tag strongs-before-rebuild.)
 
 // ── Webster's 1828, chunked so a phone never parses one huge blob ──────────
 console.log("Webster's 1828");

@@ -856,7 +856,7 @@ async function installBundledDatasets(onProgress,{background=false,only=null}={}
   if(!ds){await idbPutMeta('bundled:status',{ok:false,stage:'manifest',error:'no datasets in manifest',at:Date.now()}).catch(()=>{});return false;}
   const jobs=[];
   for(const name of Object.keys(BUNDLED_DATASETS)){
-    if(only){if(name!==only)continue;}
+    if(only){if(![].concat(only).includes(name))continue;}
     else{
       // Two passes: what the app needs to open, behind the install screen, and
       // what it does not, once it is open.
@@ -900,6 +900,15 @@ async function installBundledDatasets(onProgress,{background=false,only=null}={}
   // Stamp the payload version, or the freshness check would clear what we just wrote.
   if(touchedStrongs)await idbPutMeta('dlver:strongs',STRONGS_DL_VERSION);
   return true;
+}
+// Strong's comes with the app, so getting it back after it was removed
+// reinstalls the copy shipped with it. The server's copy is older data (see
+// scripts/strongs/build-kjv-strongs.py), used only while none is on the device.
+async function reinstallBundledStrongs(onProgress){
+  const names=['strongs_lex','strongs_map','strongs_occ'];
+  for(const n of names)await idbPutMeta(`bundled:${n}`,null);
+  await installBundledDatasets(onProgress,{only:names});
+  if(!await idbIsDownloaded('strongsocc').catch(()=>false))throw new Error("Strong's could not be installed");
 }
 const STRONGS_LEX_ROWS=14197;
 const STRONGS_MAP_ROWS=785856;
@@ -6222,7 +6231,7 @@ function App(){
     setDlState(vid,{downloading:true,downloaded:false,progress:0,total:initTotal,err:null});
     try{
       const progressCb=(done,total)=>setDlState(vid,{downloading:true,progress:done,total});
-      if(vid==='strongs')await downloadStrongsLocally(progressCb,ctrl.signal);
+      if(vid==='strongs')await reinstallBundledStrongs(progressCb);
       else if(vid==='webster')await downloadWebsterLocally(progressCb,ctrl.signal);
       else await downloadVersionLocally(vid,progressCb,ctrl.signal);
       setDlState(vid,{downloaded:true,downloading:false,progress:0,total:0});
