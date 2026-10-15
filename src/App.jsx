@@ -8398,6 +8398,15 @@ function App(){
   const searchPrompt=searchViewOn==='dict'?'Type a word to look it up in Webster’s 1828.'
     :searchViewOn==='strongs'?'Type an English word to see the Hebrew and Greek behind it, or a Strong’s number like G25.'
     :'Type a word, a phrase or a reference to search this version.';
+  // What might have hidden the verses: a caution, in the gold, not an error in
+  // red -- nothing has gone wrong, a filter is doing its job. The way out sits
+  // on the right.
+  const searchHint=(msg,label,onClick)=>(
+    <div style={{display:'flex',alignItems:'center',gap:10,fontSize:U(12),marginBottom:6,padding:'6px 10px',borderRadius:6,background:T.gF,border:`1px solid ${T.gD}`,color:T.mut,fontFamily:FB}}>
+      <span style={{flex:1,minWidth:0}}><span style={{color:T.gM}}>⚠︎</span> {msg}</span>
+      <button type="button" onClick={onClick} style={{flexShrink:0,background:'none',border:'none',color:T.gT,textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB,whiteSpace:'nowrap'}}>{label}</button>
+    </div>
+  );
   const searchExtraNote=t=>(
     <div style={{padding:'22px 12px',fontFamily:FB,fontStyle:'italic',color:T.dim,fontSize:U(14),textAlign:'center'}}>{t}</div>
   );
@@ -10843,24 +10852,12 @@ function App(){
                     before the verdict, then the verdict itself. */}
                 {readSearchRes.length===0&&!searchRef&&(
                   <div>
-                    {searchOpts.caseSensitive&&(
-                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠︎ Case Sensitive is on — "{readSearchQ}" must match exact case.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Disable it →</button>
-                      </div>
-                    )}
-                    {searchOpts.partial===false&&(
-                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠︎ Not sure of the spelling?{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Try Partial Match →</button>
-                      </div>
-                    )}
-                    {searchOpts.scope!=='all'&&(
-                      <div style={{fontSize:U(12),marginBottom:6,padding:'5px 9px',borderRadius:5,background:'rgba(210,60,60,0.08)',border:'1px solid rgba(210,60,60,0.22)',color:dark?'#e08888':'#bf4040',fontFamily:FB}}>
-                        ⚠︎ Scope: {searchOpts.scope==='ot'?'OT Only':'NT Only'} — results limited.{' '}
-                        <button type="button" onClick={()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);}} style={{background:'none',border:'none',color:'inherit',textDecoration:'underline',cursor:'pointer',fontSize:U(12),padding:0,fontFamily:FB}}>Search All Scripture →</button>
-                      </div>
-                    )}
+                    {searchOpts.caseSensitive&&searchHint(`Case Sensitive is on — “${readSearchQ}” must match exact case.`,'Turn it off →',
+                      ()=>{const o={...searchOpts,caseSensitive:false};setSearchOpts(o);doReadSearch(undefined,o);})}
+                    {searchOpts.partial===false&&searchHint('Not sure of the spelling?','Try Partial Match →',
+                      ()=>{const o={...searchOpts,partial:true};setSearchOpts(o);doReadSearch(undefined,o);})}
+                    {searchOpts.scope!=='all'&&searchHint(`Searching the ${searchOpts.scope==='ot'?'Old':'New'} Testament only.`,'Search all →',
+                      ()=>{const o={...searchOpts,scope:'all'};setSearchOpts(o);doReadSearch(undefined,o);})}
                     {searchExtraNote(`No verses found for “${readSearchResQ}”.`)}
                   </div>
                 )}
