@@ -2074,9 +2074,9 @@ function normStrongsNum(n){
 let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 
 // `link` on a mapping marks a Hebrew or Greek word whose English is in pieces
-// ("And God saw": And … saw is H7200). Its pieces are drawn with a solid
-// underline and light up together; `litKey` is the one whose popup is open.
-function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse,litKey){
+// ("And God saw": And … saw is H7200). Its pieces are drawn with a dashed
+// underline, where a word in one piece has a dotted one.
+function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter){
   // Build red/italic word position sets
   const redSet=new Set();
   const italicSet=new Set();
@@ -2153,8 +2153,6 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse,litKey){
   // A split word opens its popup under its last piece ("saw", not "And").
   const linkWord={};
   for(const it of items)if(it.kind==='word'&&it.link)linkWord[it.link]=it.text.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
-  const hl=dark?T.gD:`${T.gD}80`;
-  const paint=(key,on)=>{for(const el of document.querySelectorAll(`[data-slink="${key}"]`))el.style.background=on||el.dataset.lit==='1'?hl:'';};
 
   // Group consecutive same-sNum words with bridging spaces into single phrase spans
   // so the dotted underline is unbroken across the whole phrase.
@@ -2187,20 +2185,14 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse,litKey){
     const ec=fw?.isRed?redColor:undefined;
     const ws={...(ec?{color:ec}:{}),...(fw?.isItalic?{fontStyle:'italic'}:{})};
     const groupText=group.map(x=>x.text).join('');
-    const lk=link?`${verse}:L${link}`:`${verse}:${fw.wordIdx}`;
-    const lit=lk===litKey;
     const tapWord=link?linkWord[link]:fw.text;
     elems.push(React.createElement('span',{
       key:i,
-      'data-slink':lk,'data-lit':lit?'1':'0',
-      onMouseEnter:()=>paint(lk,true),
-      onMouseLeave:()=>paint(lk,false),
-      onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,lk);},
-      onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord,lk);},500);},
+      onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord);},
+      onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord);},500);},
       onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
       onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
-      style:{borderBottom:link?`1.5px solid ${T.g}`:`1.5px dotted ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',
-        ...(lit?{background:hl,borderRadius:2}:{}),...ws}
+      style:{borderBottom:`1.5px ${link?'dashed':'dotted'} ${T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
     },groupText));
     i=j;
   }
@@ -6555,14 +6547,12 @@ function App(){
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsClosing,setStrongsClosing]=useState(false);
-  // The word in Read whose popup is open, lit with all its pieces (buildStrongsVerse).
-  const[strongsLitKey,setStrongsLitKey]=useState(null);
   // This panel keeps its animation in a style prop rather than a class, so React
   // would write over the hook's override on the next render. One flag, set as the
   // drag begins, keeps the two agreeing.
   const[strongsDragMode,setStrongsDragMode]=useState(false);
   const closeStrongsPopup=React.useCallback(()=>{
-    setStrongsClosing(true);setStrongsLitKey(null);
+    setStrongsClosing(true);
     setTimeout(()=>{
       setStrongsPopup(null);setStrongsVersePreview(null);setStrongsClosing(false);
       setStrongsDragMode(false);
@@ -7790,8 +7780,7 @@ function App(){
     if(!versesOffline)strongsCache.current[strongsNum]=res;
     return res;
   }
-  async function handleStrongsWordTap(strongsNum,wordText,litKey){
-    setStrongsLitKey(litKey||null);
+  async function handleStrongsWordTap(strongsNum,wordText){
     setStrongsExpandedWords(new Set());
     const cached=strongsCache.current[strongsNum];
     if(cached){
@@ -10947,7 +10936,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent',...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v,strongsLitKey):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                         {' '}
                       </span>
@@ -10967,7 +10956,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v,strongsLitKey):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                       </div>
                     );
@@ -12233,7 +12222,7 @@ function App(){
           loading={strongsVersePreview.loading}
           rows={strongsVersePreview.loading||!strongsVersePreview.text?[]:[{key:'v',label:strongsVersePreview.vs,html:processRedLetter(wojWrap(strongsVersePreview.bn,strongsVersePreview.ch,strongsVersePreview.vs,strongsVersePreview.text),readRedLetter,dark)}]}
           onClose={()=>setStrongsVersePreview(null)}
-          onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);setStrongsLitKey(null);
+          onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);
             if(p.bn===readBook&&p.ch===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(p.vs,true);}
             else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
       )}
@@ -12602,7 +12591,7 @@ function App(){
                   Enable via the <strong style={{color:T.gT}}>Strong's toggle</strong> in Settings. Requires the <strong style={{color:T.gT}}>KJV</strong> version to be selected.
                 </Row>
                 <Row icon="﹏">
-                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>solid underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Press either piece and both light up.
+                  Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>dashed underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word, and either piece opens it.
                 </Row>
                 <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
