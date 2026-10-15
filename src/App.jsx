@@ -9603,14 +9603,12 @@ function App(){
           </div>
           {[
             {icon:'♡',label:'Memory Verses',sub:'Learn passages by heart',key:'memory',fn:()=>{setTab('memory');closeReadSheet();}},
-            {icon:'Δ',label:'Dictionary',sub:'Biblical definitions and references',key:'dictionary',fn:()=>{setTab('dictionary');closeReadSheet();}},
             {icon:'¶',label:'Commentaries',sub:'Cross-references and notes on the passage',key:'commentaries',fn:()=>{setCmBook(readBook);setCmCh(readCh);setCmFocus(readSelVerses.size>0?{v:Math.min(...readSelVerses)}:null);setTab('commentaries');closeReadSheet();}},
             {icon:'▦',label:'Charts',sub:'Timelines and visual references',key:'charts',fn:()=>{setTab('charts');closeReadSheet();}},
             {icon:null,iconSvg:<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,label:'Maps',sub:'Biblical maps and geography',key:'maps',fn:()=>{setTab('maps');closeReadSheet();}},
             {icon:'☰',label:'Parallel',sub:'Compare the same verse across versions',key:'parallel',fn:()=>{setParallelVids(pv=>pv.length?pv:data.versions.map(v=>v.id));setParallelBk(readBook);setParallelCh(readCh);setParallelVs(readSelVerses.size>0?Math.min(...readSelVerses):1);setTab('parallel');closeReadSheet();}},
             {icon:'✎',label:'Compare',sub:'Study notes and verse analysis',key:'compare',fn:()=>{setTab('compare');closeReadSheet();}},
             ...(FEED_ON?[{icon:'⇅',label:'Verse Feed',sub:'Swipe through well-known verses',key:'feed',fn:()=>{if(tab!=='feed')feedFrom.current=tab;setTab('feed');closeReadSheet();}}]:[]), // verse feed
-            {icon:'ℍ',label:"Strong's Concordance",sub:'Hebrew & Greek word study',key:'strongs',fn:()=>{setTab('strongs');closeReadSheet();}},
             {icon:'⋯',label:'Other Resources',sub:'Additional study materials',key:'other',fn:()=>{setTab('other');closeReadSheet();}},
           ].map(item=>(
             <button key={item.key} type="button" className="s-btn s-ghost" onClick={item.fn}
@@ -12559,6 +12557,9 @@ function App(){
                 <Row icon="⊙">
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
                 </Row>
+                <Row icon="⌕">
+                  Or search a word and open the <strong style={{color:T.gT}}>Strong's</strong> tab under the search field: the Hebrew and Greek behind it in the KJV, words spelled like it (agape, logos), and entries whose definition mentions it. A number such as G25 or H430 shows that entry.
+                </Row>
                 <Row icon="✓">
                   The full concordance is included with the app, so lookups work with no connection from the moment you install it — 14,197 Hebrew and Greek entries, plus the word-by-word mapping behind the underlines and every KJV occurrence.
                 </Row>
@@ -12581,7 +12582,7 @@ function App(){
                 {/* ── WEBSTER'S 1828 ── */}
                 <Hdg label="Webster's 1828 Dictionary"/>
                 <Row icon="W">
-                  Access the full <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> from the Study tab. Search any English word for its historical definition — written in the same era as many classic Bible translations.
+                  Search any English word and open the <strong style={{color:T.gT}}>Dictionary</strong> tab under the search field for its entry in <strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — written in the same era as many classic Bible translations — with the other words that start with it.
                 </Row>
                 <Row icon="✓">
                   All 107,793 entries are included with the app and work with no connection.
