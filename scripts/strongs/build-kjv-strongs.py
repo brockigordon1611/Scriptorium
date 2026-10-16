@@ -457,7 +457,7 @@ def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset()):
 _AFFIX_WORDS = {
     # in front of the word
     # the KJV gives an "and" as "And when" too: "And when the woman saw" (Gen 3:6)
-    'H9001': 'and but then so now yet or when', 'H9002': 'and but then so now yet or when',
+    'H9001': 'and but then so now yet or when therefore', 'H9002': 'and but then so now yet or when therefore',
     'H9003': 'in on upon with by at among into through when within',
     # "that ... not" (Gen 3:11, levilti): a "to" of purpose
     'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward that',
@@ -508,7 +508,9 @@ INF_ABS = set('surely freely utterly diligently greatly certainly indeed altoget
 HEAD_WORDS = {'a', 'an', 'every', 'of'}
 # Small Hebrew words the source can leave out, and the KJV's words for them:
 # "Of every tree" (Gen 2:16), kol.
-UNPAIRED_WORDS = {'H3605': {'all', 'every', 'any', 'whole'}}
+UNPAIRED_WORDS = {'H3605': {'all', 'every', 'any', 'whole'},
+                  # asher: "from whence he was taken" (Gen 3:23)
+                  'H834': {'which', 'whom', 'whose', 'whence', 'whereof', 'wherein', 'whereby', 'whither', 'wherewith'}}
 PRONOUN_WORDS_H = {'H1931', 'H1992', 'H1958', 'H1933'}
 STEP_OVER = GAP_WORDS | BETWEEN | OBJECT | {'it'} | set('under over above below beneath before after about between among beside toward'.split())
 
@@ -654,11 +656,21 @@ def fill_nt(app, italic, tags, old_words, usage):
     return words, phrases
 
 
-def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None):
+def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None, usage=None):
     """A verb's helpers on the far side of its subject, a "not" or the like
     ("Let the earth bring forth", "Ye shall not eat", "there was not found",
     "made me swear"), and after it a "himself" ("bowed himself") or its subject
     ("made he"). Returns the phrase's new ends."""
+    # The verb itself, untagged before its object and a tagged "forth": the
+    # source tags "forth" of "sent him forth" (Gen 3:23, H7971).
+    y = lo - 1
+    while y >= 0 and y not in tags and y not in added and not italic[y] and key(app[y]) in OBJECT | {'it'}:
+        y -= 1
+    if usage and y >= 0 and y < lo - 1 and y not in tags and y not in added and not italic[y] \
+            and stems(app[y]) & usage.get(t[0], set()):
+        for z in range(y, lo):
+            added[z] = t
+        lo = y
     x, crossed = lo - 1, False
     while x >= 0 and lo - x <= 12:
         w = key(app[x])
@@ -740,6 +752,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                 plan.append((order, by_sn[sn][k], affixes))
                 break
     has_article = {order for order, (_, _, affixes) in enumerate(hebrew) if {'H9009', 'H9010'} & set(affixes)}
+    has_and = {order for order, (_, _, affixes) in enumerate(hebrew) if {'H9001', 'H9002'} & set(affixes)}
     added = {}
     taken = lambda x: x in tags or x in added
     for order, t, affixes in plan:
@@ -756,17 +769,19 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                 added[x] = t
                 lo = x
                 x -= 1
-            lo, hi = verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi)
+            lo, hi = verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, usage=usage)
         before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
                  [a for a in reversed(affixes) if a in PREFIXES]
         for a in before:
-            x, stepped, found = lo - 1, False, False
+            x, stepped, found, also_only = lo - 1, False, False, False
             while x >= 0 and lo - x <= 12:
                 if x in tags:
                     o = order_of.get(tags[x])
                     if o is not None and o > order:     # "God" in "And God saw"
                         if a in ('H9009', 'H9010') and o in has_article:
                             break                       # "the third river": the "the" is the third's
+                        if a in ('H9001', 'H9002') and o in has_and:
+                            also_only = True            # "and to his wife did ... make": that "and" is the wife's
                         x -= 1
                         stepped = True
                         continue
@@ -779,6 +794,15 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                 if x in added:
                     break
                 w = key(app[x])
+                if also_only:
+                    if w == 'also':                     # "Unto Adam also and to his wife did ... make" (Gen 3:21)
+                        added[x] = t
+                        found = True
+                        break
+                    if w in AFFIX_BEFORE[a] or w in GAP_WORDS:
+                        x -= 1
+                        continue
+                    break
                 if w in AFFIX_BEFORE[a]:
                     added[x] = t
                     found = True
@@ -914,6 +938,20 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
                 for i in adv:
                     tags[i] = (sn, pid)
                 by[sn].append((sn, pid))
+    # A preposition the source numbers as a word the Hebrew verse hasn't got
+    # (H4480 "from" in Gen 3:23) is the prefix of a word whose own number has
+    # no phrase yet: "from whence" is misham, "there" with "from" (H8033).
+    ph, by = phrases_of()
+    for t in list(ph):
+        if t[0] in heb_count or not all(key(app[i]) in ABSORB_BACK for i in ph[t]):
+            continue
+        homes = [mains[0] for _, mains, affixes in hebrew if mains and not by[mains[0]]
+                 and any(all(key(app[i]) in AFFIX_BEFORE.get(a, ()) for i in ph[t]) for a in affixes if a in PREFIXES)]
+        if len(homes) == 1:
+            pid += 1
+            for i in ph[t]:
+                tags[i] = (homes[0], pid)
+            by[homes[0]].append((homes[0], pid))
     # "thou shalt surely die": the source can give "thou shalt" to "surely";
     # they are the finite verb's.
     ph, by = phrases_of()
