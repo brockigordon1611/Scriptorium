@@ -308,7 +308,7 @@ IRREGULAR = dict(
     draw='drew drawn', drive='drove driven', feed='fed', fight='fought', fly='flew', forget='forgot forgotten',
     grow='grew grown', hide='hid hidden', lend='lent', lose='lost', meet='met', rend='rent', ride='rode ridden',
     shake='shook shaken', shine='shone', sleep='slept', strive='strove striven', strike='struck stricken',
-    tear='tare torn', tread='trod trodden', wear='wore worn', work='wrought', understand='understood', sing='sang sung',
+    tear='tare torn', become='became', overcome='overcame', tread='trod trodden', wear='wore worn', work='wrought', understand='understood', sing='sang sung',
     sink='sank sunk', spring='sprang sprung', stink='stank', steal='stole stolen', burn='burnt', cast='cast',
     catch='caught', buy='bought', fight_='fought', overthrow='overthrew overthrown', withdraw='withdrew withdrawn')
 FORM_OF = {f: base.rstrip('_') for base, forms in IRREGULAR.items() for f in forms.split()}
@@ -491,6 +491,16 @@ REFLEXIVE = set('himself herself itself themselves myself thyself ourselves your
 # Hebrew words: "Ye shall not eat", "she hath also born".
 BETWEEN = set('not also again yet now surely never'.split())
 # Untagged words a subject can carry: "Let the waters under the heaven be gathered".
+BE = set('was were is are be been am art wast'.split())
+NEGATIONS_H = {'H3808', 'H408', 'H369', 'H1077', 'H1115'}
+# Adverbs the KJV gives a doubled verb's first word: "thou shalt surely die".
+INF_ABS = set('surely freely utterly diligently greatly certainly indeed altogether wholly verily'.split())
+# Words that go with the Hebrew word that comes first after them (link_ot).
+HEAD_WORDS = {'a', 'an', 'every', 'of'}
+# Small Hebrew words the source can leave out, and the KJV's words for them:
+# "Of every tree" (Gen 2:16), kol.
+UNPAIRED_WORDS = {'H3605': {'all', 'every', 'any', 'whole'}}
+PRONOUN_WORDS_H = {'H1931', 'H1992', 'H1958', 'H1933'}
 STEP_OVER = GAP_WORDS | BETWEEN | OBJECT | {'it'} | set('under over above below beneath before after about between among beside toward'.split())
 
 
@@ -637,51 +647,65 @@ def fill_nt(app, italic, tags, old_words, usage):
 
 def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None):
     """A verb's helpers on the far side of its subject, a "not" or the like
-    ("Let the earth bring forth", "Ye shall not eat", "made me swear"), and
-    its "himself" after ("bowed himself"). Returns the phrase's new ends."""
+    ("Let the earth bring forth", "Ye shall not eat", "there was not found",
+    "made me swear"), and after it a "himself" ("bowed himself") or its subject
+    ("made he"). Returns the phrase's new ends."""
     x, crossed = lo - 1, False
-    while x >= 0 and lo - x <= 7 and not pause[x]:
+    while x >= 0 and lo - x <= 12:
         w = key(app[x])
         if x in tags:
             o = order_of.get(tags[x])
             later = o > order if o is not None else verbs is not None and tags[x][0] not in verbs
-            if later or w in BETWEEN:
+            if tags[x][0] in NEGATIONS_H and w in AUX | BE:
+                del tags[x]                         # "had not": the source gives the "had" to the "not"
+            elif later or w in BETWEEN or tags[x][0] == t[0]:   # "thou shalt surely die"
                 x -= 1
                 crossed = True
                 continue
+            else:
+                break
+        elif pause[x] or x in added:
             break
-        if x in added:
-            break
-        if italic[x]:                               # "the dry land", "land" supplied
+        elif italic[x]:                             # "the dry land", "land" supplied
             x -= 1
             continue
-        if w in AUX or w in CAUSE:
+        if w in AUX or w in BE or w in CAUSE:
             added[x] = t
             if not crossed:                         # "made me swear", "cause it to rain": all of it
                 for y in range(x + 1, lo):
                     if y not in tags and y not in added and not italic[y] and key(app[y]) in OBJECT | GAP_WORDS | {'it'}:
                         added[y] = t
-            y = x - 1                               # "Ye shall", "I will"
-            while y >= 0 and y not in tags and y not in added and not italic[y] and not pause[y] \
-                    and key(app[y]) in SUBJECTS | AUX:
+            y = x - 1                               # "Ye shall", "I will", "there was"
+            while y >= 0 and y not in added and not italic[y] and not pause[y] \
+                    and key(app[y]) in SUBJECTS | AUX | BE | {'there'} \
+                    and (y not in tags or tags[y][0] in NEGATIONS_H):
+                tags.pop(y, None)                   # "thou shalt not": the "thou" too
                 added[y] = t
                 y -= 1
             lo = y + 1
+            if w in CAUSE:                          # "had not caused it to rain": on to the "had"
+                x, crossed = lo - 1, False
+                continue
             break
         if w in STEP_OVER:
             x -= 1
             continue
         break
     x = hi + 1
-    if x < len(app) and x not in tags and x not in added and not italic[x] and not pause[hi] and key(app[x]) in REFLEXIVE:
+    if x < len(app) and x not in tags and x not in added and not italic[x] and not pause[hi] \
+            and key(app[x]) in REFLEXIVE | SUBJECTS - {'it'}:
         added[x] = t
         hi = x
     return lo, hi
 
 
-def link_ot(app, italic, pause, tags, hebrew, verbs):
+def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
     """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
-    are written on. Returns {word position: tag} for the words added."""
+    are written on, and its helpers to a verb. Where the Hebrew and the KJV's
+    phrases of a number disagree, mend the phrases first (see mend_ot).
+    Returns {word position: tag} for the words added."""
+    if hebrew:
+        mend_ot(app, italic, pause, tags, hebrew, usage or {}, verbs)
     phrases = collections.OrderedDict()
     for i in sorted(tags):
         phrases.setdefault(tags[i], []).append(i)
@@ -706,52 +730,81 @@ def link_ot(app, italic, pause, tags, hebrew, verbs):
                 order_of[by_sn[sn][k]] = order
                 plan.append((order, by_sn[sn][k], affixes))
                 break
+    has_article = {order for order, (_, _, affixes) in enumerate(hebrew) if {'H9009', 'H9010'} & set(affixes)}
     added = {}
     taken = lambda x: x in tags or x in added
     for order, t, affixes in plan:
-        idx = phrases[t]
+        if t not in phrases or not any(tags.get(i) == t for i in phrases[t]):
+            continue
+        idx = [i for i in phrases[t] if tags.get(i) == t]
         lo, hi = min(idx), max(idx)
         # A verb's English carries its subject and helpers: "he said", "shall go".
-        if t[0] in verbs:
+        # Not a doubled verb's adverb: "thou mayest freely eat" is "thou mayest
+        # ... eat" and "freely".
+        if t[0] in verbs and not all(key(app[i]) in INF_ABS for i in idx):
             x = lo - 1
             while x >= 0 and not taken(x) and not italic[x] and not pause[x] and key(app[x]) in (HELPERS - {'not'}):
                 added[x] = t
                 lo = x
                 x -= 1
-        if t[0] in verbs:
             lo, hi = verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi)
         before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
                  [a for a in reversed(affixes) if a in PREFIXES]
         for a in before:
-            x, stepped = lo - 1, False
-            while x >= 0 and lo - x <= 6 and not pause[x]:
+            x, stepped, found = lo - 1, False, False
+            while x >= 0 and lo - x <= 12:
                 if x in tags:
                     o = order_of.get(tags[x])
                     if o is not None and o > order:     # "God" in "And God saw"
+                        if a in ('H9009', 'H9010') and o in has_article:
+                            break                       # "the third river": the "the" is the third's
                         x -= 1
                         stepped = True
                         continue
                     break
-                if added.get(x) == t:                   # "and let the dry land appear"
+                if pause[x]:
+                    break
+                if added.get(x) == t or italic[x]:      # "and let the dry land appear"; "there was" supplied
                     x -= 1
                     continue
-                if x in added or italic[x]:
+                if x in added:
                     break
                 w = key(app[x])
                 if w in AFFIX_BEFORE[a]:
                     added[x] = t
+                    found = True
                     if not stepped:                     # "and the earth": all of it
                         for y in range(x + 1, lo):
-                            added[y] = t
+                            if not taken(y) and key(app[y]) in GAP_WORDS:
+                                added[y] = t
                     while x and not taken(x - 1) and not italic[x - 1] and not pause[x - 1] \
                             and key(app[x - 1]) in AFFIX_BEFORE[a]:
                         x -= 1                          # "out of", "according as"
                         added[x] = t
                     lo = x
                     break
-                if w not in GAP_WORDS:
-                    break
-                x -= 1
+                if w in GAP_WORDS or (a in ('H9001', 'H9002') and w in AUX | BE | SUBJECTS | {'there'}):
+                    x -= 1                              # "and were not ashamed": the "were" is the verb's
+                    continue
+                break
+            if not found and a in ('H9001', 'H9002'):
+                # "the tree of life also": the KJV's "and" put after.
+                x = hi + 1
+                while x < len(app) and x - hi <= 5:
+                    if x in tags:
+                        o = order_of.get(tags[x])
+                        if o is not None and o > order:
+                            x += 1
+                            continue
+                        break
+                    if x in added or italic[x]:
+                        break
+                    if key(app[x]) == 'also':
+                        added[x] = t
+                        break
+                    if key(app[x]) not in GAP_WORDS:
+                        break
+                    x += 1
         for a in affixes:
             if a not in AFFIX_AFTER:
                 continue
@@ -766,7 +819,107 @@ def link_ot(app, italic, pause, tags, hebrew, verbs):
                 if w not in GAP_WORDS:
                     break
                 x += 1
+    # "a", "every", "of" before a noun and its adjective go with the noun, the
+    # Hebrew word that comes first: "a living soul" (H5315), "of that land"
+    # (H776), "of the second river" (H5104).
+    for x in range(len(app)):
+        if taken(x) or italic[x] or pause[x] or key(app[x]) not in HEAD_WORDS:
+            continue
+        best, y, seen_phrases = None, x + 1, []
+        while y < len(app) and y - x <= 5:
+            if y in tags:
+                tg = tags[y]
+                if tg[0] in verbs:
+                    break                               # "a deep sleep to fall": the noun before the verb
+                if tg not in seen_phrases:
+                    seen_phrases.append(tg)
+                if pause[y]:
+                    break
+            elif y in added:
+                pass                                    # "the tree of life also": the "also" is the tree's
+            elif italic[y] or key(app[y]) not in GAP_WORDS:
+                break
+            y += 1
+        ordered = [tg for tg in seen_phrases if tg in order_of]
+        if ordered:
+            best = min(ordered, key=lambda tg: order_of[tg])
+            added[x] = best
+    # "the same is it" (Gen 2:13), "that is it" (2:14): the "it" is the pronoun's.
+    for x in range(2, len(app)):
+        if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
+                and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
+            added[x] = tags[x - 2]
     return added
+
+
+def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
+    """Where the KJV's phrases of a number don't match the Hebrew's words of it.
+    More Hebrew words than phrases: a doubled verb ("thou shalt surely die",
+    two words, H4191) gets its adverb as a word of its own, and a word the
+    source left out gets the one untagged KJV word Strong's lists for it
+    ("and man became", H1961) -- verbs only. Fewer: the extra phrases are pieces of one word
+    ("made ... to grow", H6779)."""
+    heb_count = collections.Counter(sn for _, mains, _ in hebrew for sn in mains)
+
+    def phrases_of():
+        ph = collections.OrderedDict()
+        for i in sorted(tags):
+            ph.setdefault(tags[i], []).append(i)
+        by = collections.defaultdict(list)
+        for t in ph:
+            by[t[0]].append(t)
+        return ph, by
+
+    ph, by = phrases_of()
+    pid = 300000
+    for sn, n in heb_count.items():
+        if len(by[sn]) >= n or not by[sn]:
+            continue
+        for t in list(by[sn]):
+            words = ph[t]
+            adv = [i for i in words if key(app[i]) in INF_ABS and len(words) > 1]
+            if adv and len(by[sn]) < n:
+                pid += 1
+                for i in adv:
+                    tags[i] = (sn, pid)
+                by[sn].append((sn, pid))
+    # "thou shalt surely die": the source can give "thou shalt" to "surely";
+    # they are the finite verb's.
+    ph, by = phrases_of()
+    for sn in heb_count:
+        for t in list(by[sn]):
+            words = ph[t]
+            if not any(key(app[i]) in INF_ABS for i in words):
+                continue
+            helpers = [i for i in words if key(app[i]) in SUBJECTS | AUX | BE]
+            after = [t2 for t2 in by[sn] if t2 != t and min(ph[t2]) > max(words)]
+            if helpers and after:
+                for i in helpers:
+                    tags[i] = after[0]
+    ph, by = phrases_of()
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
+    for sn, n in heb_count.items():
+        if by[sn] or sn not in usage or (sn not in verbs and sn not in UNPAIRED_WORDS):
+            continue
+        cands = [i for i in range(len(app)) if i not in tags and not italic[i]
+                 and (key(app[i]) in UNPAIRED_WORDS[sn] if sn in UNPAIRED_WORDS
+                      else key(app[i]) not in small and stems(app[i]) & usage[sn])]
+        if len(cands) == 1:
+            pid += 1
+            tags[cands[0]] = (sn, pid)
+    ph, by = phrases_of()
+    for sn, n in heb_count.items():
+        while len(by[sn]) > n >= 1:
+            # Join the last phrase to the one before it, when they are near:
+            # "made the LORD God to grow" (H6779). Not "Adam ... Adam" a clause
+            # apart, where the Hebrew has two numbers (H120, H121).
+            extra, keep = by[sn][-1], by[sn][-2]
+            a, b = max(ph[keep]), min(ph[extra])
+            if b - a > 7 or any(pause[i] for i in range(a, b)):
+                break
+            by[sn].pop()
+            for i in ph[extra]:
+                tags[i] = keep
 
 
 def repair(app, tags, old_words, usage):
@@ -884,7 +1037,7 @@ def main():
             fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all)
             nt_words += fw; nt_filled += fp
         widened += widen(app, italic, pause, tags, phrases_used, usage)
-        added = link_ot(app, italic, pause, tags, hebrew.get(f'{b}|{c}|{v}'), verbs) if b <= 39 else {}
+        added = link_ot(app, italic, pause, tags, hebrew.get(f'{b}|{c}|{v}'), verbs, usage_ot) if b <= 39 else {}
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added)
         phrases = collections.OrderedDict()
