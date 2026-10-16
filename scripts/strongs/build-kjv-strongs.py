@@ -456,15 +456,17 @@ def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset()):
 
 _AFFIX_WORDS = {
     # in front of the word
-    'H9001': 'and but then so now yet or', 'H9002': 'and but then so now yet or',
+    # the KJV gives an "and" as "And when" too: "And when the woman saw" (Gen 3:6)
+    'H9001': 'and but then so now yet or when', 'H9002': 'and but then so now yet or when',
     'H9003': 'in on upon with by at among into through when within',
-    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward',
+    # "that ... not" (Gen 3:11, levilti): a "to" of purpose
+    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward that',
     'H9006': 'from of out than because since above after', 'H9007': 'that who which whom whose',
     'H9009': 'the', 'H9010': 'the', 'H9011': 'toward towards unto to into',
     # endings the KJV puts in front: his house, I said
     'H9020': 'my mine', 'H9021': 'thy thine your', 'H9022': 'thy thine your', 'H9023': 'his its',
-    'H9024': 'her its', 'H9025': 'our', 'H9026': 'your thy', 'H9027': 'your thy', 'H9028': 'their',
-    'H9029': 'their', 'H9040': 'i', 'H9041': 'thou', 'H9042': 'thou', 'H9043': 'he', 'H9044': 'she',
+    'H9024': 'her its', 'H9025': 'our', 'H9026': 'your thy', 'H9027': 'your thy', 'H9028': 'their them',
+    'H9029': 'their them', 'H9040': 'i', 'H9041': 'thou', 'H9042': 'thou', 'H9043': 'he', 'H9044': 'she',
     'H9045': 'we', 'H9046': 'ye', 'H9047': 'ye', 'H9048': 'they', 'H9049': 'they',
 }
 # Endings the KJV puts after: smote him, unto me.
@@ -478,6 +480,13 @@ _AFFIX_AFTER = {
 }
 AFFIX_BEFORE = {k: set(v.split()) for k, v in _AFFIX_WORDS.items()}
 AFFIX_AFTER = {k: set(v.split()) for k, v in _AFFIX_AFTER.items()}
+# The KJV's one word for a preposition with "it", "him", "them": "thereof"
+# (Gen 3:5, H4480), "therein", "thereon"; or for "its" after a noun: "the
+# length thereof".
+THERE = set('thereof therein thereon thereto therewith thereby therefrom thereat thereupon thereunto'.split())
+THIRD_PERSON = {'H9023', 'H9024', 'H9028', 'H9029', 'H9033', 'H9034', 'H9038', 'H9039'}
+for _a in THIRD_PERSON:
+    AFFIX_AFTER.setdefault(_a, set()).update(THERE)
 PREFIXES = {'H9001', 'H9002', 'H9003', 'H9004', 'H9005', 'H9006', 'H9007', 'H9009', 'H9010'}
 GAP_WORDS = ABSORB_BACK | {'the'}
 # A Hebrew verb's English helpers, which the KJV can part from it: "Let the
@@ -782,10 +791,28 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                         x -= 1                          # "out of", "according as"
                         added[x] = t
                     lo = x
+                    if a == 'H9006' and w == 'than':
+                        # min of comparison: "more subtil than any" (Gen 3:1),
+                        # the "more" before the adjective too.
+                        y = x - 1
+                        while y >= 0 and x - y <= 4 and not pause[y]:
+                            if y in tags:
+                                y -= 1
+                                continue
+                            if y in added or italic[y]:
+                                break
+                            if key(app[y]) == 'more':
+                                added[y] = t
+                                break
+                            if key(app[y]) not in GAP_WORDS:
+                                break
+                            y -= 1
                     break
-                if w in GAP_WORDS or (a in ('H9001', 'H9002') and w in AUX | BE | SUBJECTS | {'there'}):
-                    x -= 1                              # "and were not ashamed": the "were" is the verb's
-                    continue
+                if w in GAP_WORDS or (a in ('H9001', 'H9002') and w in AUX | BE | PRONOUNS | {'there', 'of'}) \
+                        or (a in PREFIXES and w in AUX | BE | SUBJECTS):
+                    x -= 1                              # "and were not ashamed": the "were" is the verb's;
+                    continue                            # "And the eyes of them both were opened";
+                                                        # "that thou shouldest not eat"
                 break
             if not found and a in ('H9001', 'H9002'):
                 # "the tree of life also": the KJV's "and" put after.
@@ -826,18 +853,22 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
         if taken(x) or italic[x] or pause[x] or key(app[x]) not in HEAD_WORDS:
             continue
         best, y, seen_phrases = None, x + 1, []
+        # Within the noun's own phrase: across "the" and adjectives, not a
+        # preposition ("a mark upon Cain"), a "not" ("of the law shall not
+        # depart") or another word's piece ("the tree of life also").
         while y < len(app) and y - x <= 5:
             if y in tags:
                 tg = tags[y]
-                if tg[0] in verbs:
+                if tg[0] in verbs or tg[0] in NEGATIONS_H:
                     break                               # "a deep sleep to fall": the noun before the verb
                 if tg not in seen_phrases:
                     seen_phrases.append(tg)
                 if pause[y]:
                     break
             elif y in added:
-                pass                                    # "the tree of life also": the "also" is the tree's
-            elif italic[y] or key(app[y]) not in GAP_WORDS:
+                if key(app[y]) != 'the':
+                    break
+            elif italic[y] or key(app[y]) != 'the':
                 break
             y += 1
         ordered = [tg for tg in seen_phrases if tg in order_of]
@@ -904,9 +935,45 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
         cands = [i for i in range(len(app)) if i not in tags and not italic[i]
                  and (key(app[i]) in UNPAIRED_WORDS[sn] if sn in UNPAIRED_WORDS
                       else key(app[i]) not in small and stems(app[i]) & usage[sn])]
-        if len(cands) == 1:
+        # One word for each left-out Hebrew word: "than any", "of every" (Gen 3:1).
+        if len(cands) == 1 or len(cands) == n:
+            for i in cands:
+                pid += 1
+                tags[i] = (sn, pid)
+    # A preposition with "it" the source left out: "ye eat thereof" (Gen 3:5,
+    # H4480). The Hebrew words of a number past the KJV's phrases of it go,
+    # in order, to the verse's untagged "there-" words, when they number the same.
+    ph, by = phrases_of()
+    left = []
+    for order, (_, mains, affixes) in enumerate(hebrew):
+        if mains and THIRD_PERSON & set(affixes):
+            left.append((order, mains[0]))
+    unpaired = []
+    for sn in {m for _, m in left}:
+        missing = heb_count[sn] - len(by[sn])
+        if missing > 0:
+            orders = [o for o, (_, mains, _) in enumerate(hebrew) if sn in mains]
+            tail = set(orders[len(orders) - missing:])
+            unpaired += [(o, m) for o, m in left if m == sn and o in tail]
+    unpaired.sort()
+    there = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in THERE]
+    if unpaired and len(unpaired) == len(there):
+        for (_, sn), i in zip(unpaired, there):
             pid += 1
-            tags[cands[0]] = (sn, pid)
+            tags[i] = (sn, pid)
+    ph, by = phrases_of()
+    # A pronoun the source tags as the Hebrew pronoun, though the Hebrew has
+    # fewer of it, right before a verb: the verb's subject ("and they knew",
+    # Gen 3:7, where only the second "they" is hem, H1992).
+    for sn, n in heb_count.items():
+        while len(by[sn]) > n:
+            spare = next((t for t in by[sn] if all(key(app[i]) in SUBJECTS for i in ph[t])
+                          and max(ph[t]) + 1 in tags and tags[max(ph[t]) + 1][0] in verbs), None)
+            if spare is None:
+                break
+            for i in ph[spare]:
+                tags[i] = tags[max(ph[spare]) + 1]
+            by[sn].remove(spare)
     ph, by = phrases_of()
     for sn, n in heb_count.items():
         while len(by[sn]) > n >= 1:
