@@ -523,7 +523,7 @@ async function idbGetStrongsMapChapter(bookNum,chapter){
   const db=await idbOpen();
   const rec=await _idbReq(db.transaction('strongs_map','readonly').objectStore('strongs_map').get(`${bookNum}|${chapter}`));
   if(!rec||!Array.isArray(rec.rows))return null;
-  return rec.rows.map(([verse,word_pos,word_text,strongs_num,link])=>({verse,word_pos,word_text,strongs_num,link}));
+  return rec.rows.map(([verse,word_pos,word_text,strongs_num,link,start])=>({verse,word_pos,word_text,strongs_num,link,start}));
 }
 
 // ── Webster's 1828 ────────────────────────────────────────
@@ -2119,16 +2119,16 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
     if(!wordText){items.push({kind:'punct',text:w});continue;} // punct-only: no wordIdx increment
     const mapped=posMap[wordIdx];
-    let sNum=null,link=null;
+    let sNum=null,link=null,start=false;
     if(mapped&&mapped.length>0){
       const wl=wordText.toLowerCase();
       const best=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wl)||mapped[0];
-      sNum=best.strongs_num;link=best.link||null;
+      sNum=best.strongs_num;link=best.link||null;start=!!best.start;
     }
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
-    items.push({kind:'word',text:w,wordIdx,sNum,link,isRed:isRed||isContextRed,isItalic});
+    items.push({kind:'word',text:w,wordIdx,sNum,link,start,isRed:isRed||isContextRed,isItalic});
     wordIdx++;
   }
 
@@ -2140,13 +2140,13 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   for(let ii=0;ii<items.length;ii++){
     const it=items[ii];
     if(it.kind!=='word'||!it.sNum)continue;
-    let scanned=0,k=ii-1;
+    let scanned=0,k=ii-1,head=it;
     while(k>=0&&scanned<3){
       const prev=items[k];
       if(prev.kind==='space'){k--;continue;}
       if(prev.kind==='word'&&!prev.sNum){
         const pw=prev.text.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'').toLowerCase();
-        if(ABSORB_BACK.has(pw)){prev.sNum=it.sNum;prev.link=it.link;scanned++;k--;}
+        if(ABSORB_BACK.has(pw)){prev.sNum=it.sNum;prev.link=it.link;if(head.start){prev.start=true;head.start=false;}head=prev;scanned++;k--;}
         else break;
       }else break;
     }
@@ -2181,18 +2181,19 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
       elems.push((item.isRed||item.isItalic)?React.createElement('span',{key:i,style:ws},item.text):item.text);
       i++;continue;
     }
-    // Collect all items in this phrase group
+    // Collect all items in this phrase group -- up to a word that starts one of
+    // its own ("Verily, verily": two words of one number side by side).
     const sNum=item.sNum,link=item.link;
     let j=i;
     while(j<items.length){
       const cur=items[j];
       if(cur.kind==='word'){
-        if(cur.sNum===sNum&&cur.link===link){j++;}else break;
+        if(cur.sNum===sNum&&cur.link===link&&!(cur.start&&j>i)){j++;}else break;
       }else if(cur.kind==='space'||cur.kind==='punct'){
         // Bridge this gap only if the next word continues the same phrase
         let nk=j+1;
         while(nk<items.length&&items[nk].kind!=='word')nk++;
-        if(nk<items.length&&items[nk].sNum===sNum&&items[nk].link===link){j++;}else break;
+        if(nk<items.length&&items[nk].sNum===sNum&&items[nk].link===link&&!items[nk].start){j++;}else break;
       }else break;
     }
     const group=items.slice(i,j);

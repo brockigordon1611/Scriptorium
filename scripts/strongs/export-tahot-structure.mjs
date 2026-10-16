@@ -66,10 +66,23 @@ for (let book = 1; book <= 39; book++) {
     if (!m) continue;
     const n = +m[1];
     if (n >= 9000) w.affix.push(n);
-    else if (n !== 853 && !w.main.includes(`H${n}`)) w.main.push(`H${n}`);
+    else if (n === 853) w.et = true;
+    else if (!w.main.includes(`H${n}`)) w.main.push(`H${n}`);
   }
-  for (const w of byWord.values()) {
-    if (!w.main.length) continue;   // the object marker alone: nothing for an affix to join
+  // The object marker (et, H853) has no English, so it is left out; the "and"
+  // or preposition written on it ("and the tabernacle", "ve'et") goes on to
+  // the word after it, whose English the KJV puts it with.
+  let carry = [];
+  for (const w of [...byWord.values()].sort((a, b) => a.ref === b.ref ? a.i - b.i : 0)) {
+    if (carry.length && carry.ref !== w.ref) carry = [];
+    if (!w.main.length) {
+      // A word of affixes only ("lah", to her) keeps them to itself.
+      carry = w.et ? w.affix.filter(n => rank(n) < 5) : [];
+      carry.ref = w.ref;
+      continue;
+    }
+    for (const n of carry) if (!w.affix.includes(n)) w.affix.push(n);
+    carry = [];
     w.affix.sort((a, b) => rank(a) - rank(b) || a - b);
     (out[w.ref] = out[w.ref] || []).push([w.i, w.main, w.affix.map(n => `H${n}`)]);
     words++;
