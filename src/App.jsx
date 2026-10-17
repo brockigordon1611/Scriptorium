@@ -2105,9 +2105,11 @@ function themeLinkColors(T,dark){
   // Dark: as Brock approved them (2026-10-16).
   if(dark)return hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
   // And a yellow-green sits too near the brown of the plain dots on cream: a
-  // true green instead.
-  const lightH=x=>x>=80&&x<=135?Math.round(140+(x-107)*0.3):x;
-  if(_oklch)return hues.map(x=>`oklch(${lightL(lightH(x)).toFixed(3)} ${grey?0.2:0.32} ${lightH(x)})`);
+  // true green instead -- and a light one. Deepened like the yellows it read
+  // as black dots too (Brock, 2026-10-17); light, it shows as green.
+  const lightH=x=>x>=80&&x<=135?Math.round(150+(x-107)*0.3):x;
+  const lightG=x=>x>=136&&x<=170?0.66:lightL(x);
+  if(_oklch)return hues.map(x=>`oklch(${lightG(lightH(x)).toFixed(3)} ${grey?0.2:0.32} ${lightH(x)})`);
   return hues.map(x=>`hsl(${x},${grey?70:100}%,${x>=225&&x<=305?50:45}%)`);
 }
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
