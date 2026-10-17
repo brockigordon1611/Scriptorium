@@ -2099,7 +2099,8 @@ function themeLinkColors(T,dark){
   // dark: deep tones all read as black dots. So full colour (past the screen's
   // gamut; the browser maps it to the most vivid it can show), fairly light,
   // blue a little deeper since pure blue is dark by nature.
-  const lightL=x=>0.68-0.12*Math.max(0,Math.cos((x-270)*Math.PI/180));
+  // Yellow-green is the lightest hue there is, so it goes deepest of all.
+  const lightL=x=>0.68-0.12*Math.max(0,Math.cos((x-270)*Math.PI/180))-0.19*Math.max(0,Math.cos((x-125)*Math.PI/180));
   // Dark: as Brock approved them (2026-10-16).
   if(dark)return hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
   if(_oklch)return hues.map(x=>`oklch(${lightL(x).toFixed(3)} ${grey?0.2:0.32} ${x})`);

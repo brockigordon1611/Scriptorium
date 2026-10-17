@@ -1064,7 +1064,7 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
             x -= 1
             if w in ('which', 'who', 'when', 'let'):
                 break
-    return added
+    return live(tags, added)
 
 
 def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None, usage=None):
@@ -1360,14 +1360,30 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
-    return live(tags, added)
+    return live(tags, added, app, hebrew)
 
 
-def live(tags, added):
+def live(tags, added, app=None, hebrew=None):
     """The added words whose phrase is still there: a later rule can take a
-    phrase's last word ("had" of "had not", given to the verb)."""
+    phrase's last word ("had" of "had not", given to the verb). And an "it"
+    right after a preposition whose Hebrew word ends in "it" is that word's
+    (aleyha), not a verb's subject (see object_it)."""
     have = set(tags.values())
-    return {x: t for x, t in added.items() if t in have and x not in tags}
+    out = {x: t for x, t in added.items() if t in have and x not in tags}
+    if app and hebrew:
+        ends = object_it(hebrew)
+        for y in [y for y in out if key(app[y]) == 'it' and y > 0 and key(app[y - 1]) in ABSORB_BACK | PREPOSITIONS]:
+            before = tags.get(y - 1, out.get(y - 1))
+            if before and before != out[y] and before[0] in ends:
+                out[y] = before
+    return out
+
+
+def object_it(hebrew):
+    """Numbers of the verse's Hebrew words with a he/she/it ending: "the burden
+    that was upon it shall be cut off" (Isa 22:25) is aleyha -- where "for it
+    was cruel" (Gen 49:7) is ki, no ending, and its "it" the verb's."""
+    return {m for _, mains, affixes in hebrew if {'H9023', 'H9024', 'H9033', 'H9034'} & set(affixes) for m in mains}
 
 
 def head_words(app, italic, pause, tags, added, verbs, order_of):
@@ -1419,6 +1435,14 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
     # reader never shows. Let that "and" go to the word it belongs with.
     for i in [i for i, t in tags.items() if t[0] == 'H853']:
         del tags[i]
+    # "the burden that was upon it shall be cut off" (Isa 22:25): an "it" right
+    # after a preposition of another word is that word's object (aleyha), not
+    # the start of the next verb's phrase.
+    ends = object_it(hebrew)
+    for i in sorted(tags):
+        if key(app[i]) == 'it' and i > 0 and key(app[i - 1]) in ABSORB_BACK | PREPOSITIONS \
+                and i - 1 in tags and tags[i - 1] != tags[i] and tags.get(i + 1) == tags[i] and tags[i - 1][0] in ends:
+            tags[i] = tags[i - 1]
     # "Then said he unto Zebah" (Judg 8:18): the source gives "he unto" to el
     # (H413); the "he" is the verb's.
     for i in sorted(tags):
