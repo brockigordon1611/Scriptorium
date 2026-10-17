@@ -40,7 +40,8 @@ def main():
     tags = {}
     for ch in json.loads((ROOT / 'public/bundled/strongs_map.json').read_text(encoding='utf-8')):
         for row in ch['rows']:
-            tags.setdefault(f"{ch['pk']}|{row[0]}", {})[row[1]] = (row[3], row[4] if len(row) > 4 else None)
+            # the first row at a position is the word's number (a second one is offered)
+            tags.setdefault(f"{ch['pk']}|{row[0]}", {}).setdefault(row[1], (row[3], row[4] if len(row) > 4 else None))
     expected = json.loads((ROOT / 'scripts/strongs/expected-links.json').read_text(encoding='utf-8'))
     bad = 0
     for ref, groups in expected.items():

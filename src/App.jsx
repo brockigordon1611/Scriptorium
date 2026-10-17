@@ -2146,16 +2146,20 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     const wordText=w.replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
     if(!wordText){items.push({kind:'punct',text:w});continue;} // punct-only: no wordIdx increment
     const mapped=posMap[wordIdx];
-    let sNum=null,link=null,start=false;
+    let sNum=null,link=null,start=false,also=null;
     if(mapped&&mapped.length>0){
       const wl=wordText.toLowerCase();
       const best=mapped.find(m=>m.word_text&&m.word_text.toLowerCase()===wl)||mapped[0];
       sNum=best.strongs_num;link=best.link||null;start=!!best.start;
+      // An English word that is two Hebrew words ("therefore", al-ken) has a
+      // second number; the popup offers it.
+      const more=[...new Set(mapped.filter(m=>m!==best&&m.strongs_num!==sNum).map(m=>m.strongs_num))];
+      if(more.length)also=more;
     }
     const isRed=redLetter&&redSet.has(wordIdx);
     const isItalic=italicSet.has(wordIdx);
     const isContextRed=redLetter&&isItalic&&!isRed&&(redSet.has(wordIdx-1)||redSet.has(wordIdx+1));
-    items.push({kind:'word',text:w,wordIdx,sNum,link,start,isRed:isRed||isContextRed,isItalic});
+    items.push({kind:'word',text:w,wordIdx,sNum,link,start,also,isRed:isRed||isContextRed,isItalic});
     wordIdx++;
   }
 
@@ -2231,8 +2235,9 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     const tapWord=link?linkWord[link]:fw.text;
     // What the popup names under its number: the whole of the English it was
     // opened from -- "In the beginning", or "Let … bring forth".
-    const split=link?{verse,pieces:linkPieces[link],color:linkColor(link)}
-      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM};
+    const also=[...new Set(group.flatMap(x=>x.also||[]))];
+    const split={...(link?{verse,pieces:linkPieces[link],color:linkColor(link)}
+      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM}),also};
     elems.push(React.createElement('span',{
       key:i,
       onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,split);},
@@ -4036,7 +4041,7 @@ const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 // definition, and each English rendering as a card that opens to its verses.
 // The popup over Read and the Strong's Concordance page both draw it, so the
 // two cannot drift apart.
-function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,reserveRight=0}){
+function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   // The small caps grow with the entry too, or a count sits at 9px beside
@@ -4063,6 +4068,10 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
           {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {/* One English word for two Hebrew words: "therefore" is al and ken. */}
+          {split.others&&split.others.length>0&&<span style={{color:T.gM}}> · also {split.others.map((sn,i)=><React.Fragment key={sn}>{i?', ':''}
+            <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
+              style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span></React.Fragment>)}</span>}
         </span>}
       </div>
       {trail}
@@ -10665,7 +10674,9 @@ function App(){
                   onRef:(bn,ch,vs)=>openStrongsVersePreview(bn,ch,vs),
                   derivation:strongsPopup.entry?.full_def?renderDerivation(strongsPopup.entry.full_def):null,
                   readFont:{family:fontFamilyMap[readFontFamily],size:readFontSize},lang:versionLang(readVid),reserveRight:44,
-                  split:strongsPopup.split&&strongsPopup.split.sn===strongsPopup.strongs_number?strongsPopup.split:null,
+                  split:(sp=>sp&&(sp.sn===strongsPopup.strongs_number||(sp.also||[]).includes(strongsPopup.strongs_number))
+                    ?{...sp,others:[sp.sn,...(sp.also||[])].filter(n=>n!==strongsPopup.strongs_number)}:null)(strongsPopup.split),
+                  onAlso:sn=>loadStrongsEntry(sn),
                   lead:(strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}})}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
