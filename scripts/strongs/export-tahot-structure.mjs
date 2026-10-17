@@ -12,6 +12,11 @@
 // data, Tyndale House Cambridge, CC BY 4.0 (credited in About & Legal). Only
 // the structure is kept: numbers and their order, no glosses and no readings.
 //
+// Superseded (2026-10-16) by export-tahot-files.py, which reads STEPBible's
+// files themselves: the server copy is missing ~2,000 verses (Joel, Nahum,
+// chapters numbered differently in Hebrew) and carries Septuagint words. Running
+// this again would write the file without those fixes; run that one after it.
+//
 // Run from the repo root:  node scripts/strongs/export-tahot-structure.mjs
 // Output:                  scripts/strongs/source/tahot-ot-structure.json.gz
 //   {"b|c|v": [[word_index, [main numbers], [affix numbers]], ...]}
