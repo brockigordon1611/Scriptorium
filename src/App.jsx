@@ -2096,14 +2096,15 @@ function themeLinkColors(T,dark){
   }
   // Ordered so the first three, which most verses use, are the furthest apart.
   const hues=[180,36,252,108,324].map(o=>Math.round((h+o)%360));
-  // On a light page a thin dotted line only shows its hue at full colour: mid
-  // dark tones all read as the same brown dots there. And the eye barely sees
-  // fine blue or violet detail, so those go deep, like a link's blue.
-  const lightL=x=>0.58-0.16*Math.max(0,Math.cos((x-275)*Math.PI/180));
+  // On a light page small dots only show their colour when it is vivid and not
+  // dark: deep tones all read as black dots. So full colour (past the screen's
+  // gamut; the browser maps it to the most vivid it can show), fairly light,
+  // blue a little deeper since pure blue is dark by nature.
+  const lightL=x=>0.68-0.12*Math.max(0,Math.cos((x-270)*Math.PI/180));
   // Dark: as Brock approved them (2026-10-16).
   if(dark)return hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
-  if(_oklch)return hues.map(x=>`oklch(${lightL(x).toFixed(3)} ${grey?0.18:0.25} ${x})`);
-  return hues.map(x=>`hsl(${x},${grey?65:85}%,${x>=225&&x<=305?33:45}%)`);
+  if(_oklch)return hues.map(x=>`oklch(${lightL(x).toFixed(3)} ${grey?0.2:0.32} ${x})`);
+  return hues.map(x=>`hsl(${x},${grey?70:100}%,${x>=225&&x<=305?50:45}%)`);
 }
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
