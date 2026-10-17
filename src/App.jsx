@@ -4048,7 +4048,11 @@ const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 // definition, and each English rendering as a card that opens to its verses.
 // The popup over Read and the Strong's Concordance page both draw it, so the
 // two cannot drift apart.
-function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,reserveRight=0}){
+// Strong's own word for a number the KJV gives no English: "(as such
+// unrepresented in English)", H853 (et).
+const UNTRANSLATED_RE=/unrepresented in English/i;
+const UNTRANSLATED=new Set(['H853']);
+function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,back,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   // The small caps grow with the entry too, or a count sits at 9px beside
@@ -4057,7 +4061,16 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
   // One block, not a fragment: the popup scrolls a flex column, and loose
   // cards in it shrank to nothing instead of scrolling.
+  const untranslated=UNTRANSLATED.has(num)||UNTRANSLATED_RE.test(entry?.kjv_usage||'');
   return(<div style={{flexShrink:0}}>
+    {/* Back to the number this one was opened from: a line of its own above
+        the number, saying where it goes, so the header stays where it was. */}
+    {back&&<button type="button" onClick={e=>{e.stopPropagation();back.onClick();}}
+      style={{...small,fontSize:Math.min(13,Math.round(px*0.48)),letterSpacing:'0.1em',color:T.gM,background:'none',border:'none',
+        padding:'4px 12px 10px 0',margin:'-4px 0 0',cursor:'pointer',display:'flex',alignItems:'center',gap:6,WebkitTapHighlightColor:'transparent'}}>
+      <svg aria-hidden="true" width="0.5em" height="0.85em" viewBox="0 0 6 10" style={{flexShrink:0}}><path d="M5 1 1 5l4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      <span>Back to <span style={{color:T.gT}}>{back.to}</span></span>
+    </button>}
     {/* The number, and under it what it is, from the left and level with the
         close button. */}
     <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
@@ -4069,7 +4082,8 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
         <span style={{...small,fontSize:Math.min(13,Math.round(px*0.48)),letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
           {/* The number already says Strong's; at this size the full line no
               longer fit beside the close button. */}
-          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||"Strong's"}
+          {/* Or, for a word the KJV leaves without English (et), that it does. */}
+          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
         {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
@@ -4077,8 +4091,8 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
           {/* One English word for two Hebrew words: "therefore" is al and ken. */}
           {split.others&&split.others.length>0&&<span style={{color:T.gM}}> · also {split.others.map((sn,i)=><React.Fragment key={sn}>{i?', ':''}
-            <span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
-              style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span></React.Fragment>)}</span>}
+            <span style={{whiteSpace:'nowrap'}}><span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
+              style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span>{UNTRANSLATED.has(sn)?' (not translated)':''}</span></React.Fragment>)}</span>}
         </span>}
       </div>
       {trail}
@@ -4098,6 +4112,18 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
         </div>
       </div>
+      {/* A word the KJV gives no English (et): no renderings to list, so say
+          so, and why, in Strong's words. */}
+      {untranslated&&groupList.length===0&&<>
+        <div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>
+        <div style={{...card,padding:'10px 14px'}}>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>Not translated</div>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),color:T.mut,lineHeight:1.5,marginTop:6}}>
+            {num==='H853'&&<>It marks the object{split?.pieces?.length?<> (here, “{split.pieces.join(' … ')}”)</>:null}; English shows the object by word order, so the KJV has no word for it. </>}
+            Strong’s: “{String(entry.kjv_usage||'').trim()}”
+          </div>
+        </div>
+      </>}
       {groupList.length>0&&<div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>}
       {/* Each English rendering is a card, folded until tapped, like a verse's
           Reciprocal list. The word is in the reading font: Cinzel has no lower
@@ -10684,7 +10710,7 @@ function App(){
                   split:(sp=>sp&&(sp.sn===strongsPopup.strongs_number||(sp.also||[]).includes(strongsPopup.strongs_number))
                     ?{...sp,others:[sp.sn,...(sp.also||[])].filter(n=>n!==strongsPopup.strongs_number)}:null)(strongsPopup.split),
                   onAlso:sn=>loadStrongsEntry(sn),
-                  lead:(strongsPopup.history||[]).length>0&&React.createElement(NavIconBtn,{ch:'‹',label:'Back',T,title:'Back',size:34,onClick:e=>{e.stopPropagation();goBackStrongs();}})}),
+                  back:(strongsPopup.history||[]).length>0?{to:strongsPopup.history[strongsPopup.history.length-1].strongs_number,onClick:goBackStrongs}:null}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
                     groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}},'Loading verses…'),
