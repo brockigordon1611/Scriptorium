@@ -43,3 +43,6 @@ public/timestamps/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# STEPBible raw downloads (CC BY 4.0); only the derived structure file is committed
+scripts/strongs/source/stepbible/
