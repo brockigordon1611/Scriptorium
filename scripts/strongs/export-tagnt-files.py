@@ -72,10 +72,24 @@ def fit(kjv, words):
     return len(kjv & have) / len(kjv) if kjv else 0.0
 
 
+def counts_fit(key, words, src):
+    """As export-tahot-files.py: how alike the KJV's phrases per number and the
+    Greek words per number are, counting repeats."""
+    seen, kjv = set(), collections.Counter()
+    for _, sn, pid in BK.source_tokens(src.get(key, '')):
+        if sn and (sn, pid) not in seen:
+            seen.add((sn, pid))
+            kjv[sn] += 1
+    grk = collections.Counter(next((n for n in ns if n in kjv), ns[0]) for ns, _, _ in words)
+    union = sum((kjv | grk).values())
+    return sum((kjv & grk).values()) / union if union else 0.0
+
+
 def main():
     parsed = parse()
     nums = {}
-    for (b, c, v), text in BK.source_verses().items():
+    src = BK.source_verses()
+    for (b, c, v), text in src.items():
         if b >= 40:
             nums[(b, c, v)] = {sn for _, sn, _ in BK.source_tokens(text) if sn}
     out, skipped = {}, collections.Counter()
@@ -91,8 +105,11 @@ def main():
             skipped['KJV numbers not among the Greek words'] += 1
             continue
         if score - other < MARGIN and other >= NEED:
-            skipped['fits a neighbouring verse as well'] += 1
-            continue
+            rivals = [parsed[n] for n in ((b, c, v - 1), (b, c, v + 1)) if n in parsed and fit(kn, parsed[n]) >= NEED]
+            mine = counts_fit(key, words, src)
+            if not all(mine >= counts_fit(key, r, src) + 0.1 for r in rivals):
+                skipped['fits a neighbouring verse as well'] += 1
+                continue
         index = {wn: i for i, (_, wn, _) in enumerate(words)}
         out['|'.join(map(str, key))] = [[ns, index.get(to)] for ns, _, to in words]
     print(f'{len(out)} NT verses kept, {sum(skipped.values())} left out: {dict(skipped)}')

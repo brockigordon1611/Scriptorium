@@ -146,11 +146,29 @@ def fit(kjv, rows):
     return len(kjv & heb) / len(kjv)
 
 
+def counts_fit(key, rows):
+    """How alike the KJV verse's phrases per number and the Hebrew words per
+    number are, counting repeats (0..1): the tie-break where two Hebrew verses
+    both hold all the KJV's numbers."""
+    seen, kjv = set(), collections.Counter()
+    for _, sn, pid in BK.source_tokens(SOURCE.get(key, '')):
+        if sn and sn != 'H853' and (sn, pid) not in seen:
+            seen.add((sn, pid))
+            kjv[sn] += 1
+    heb = collections.Counter(m[0] for _, m, _ in rows if m)
+    union = sum((kjv | heb).values())
+    return sum((kjv & heb).values()) / union if union else 0.0
+
+
+SOURCE = {}
+
+
 def main():
     with gzip.open(OUT, 'rt', encoding='utf-8') as f:
         have = json.load(f)
     parsed, extra = parse()
     nums = kjv_numbers()
+    SOURCE.update(BK.source_verses())
     # The server copy kept the Septuagint's words: numbered 501, 502... they
     # sorted to the end of the verse, and numbered 0001, 0002... they were
     # merged into the Hebrew words 1, 2 (Deut 30:16). Those verses are taken
@@ -192,7 +210,7 @@ def main():
     print(f'{len(better)} of those taken from the files, which the KJV fits better: {better[:10]}')
 
     missing = sorted(k for k in kjv_text if k[0] <= 39 and '|'.join(map(str, k)) not in have)
-    added, skipped = {}, collections.Counter()
+    added, skipped, tiebroken = {}, collections.Counter(), 0
     notes = []
     for key in missing:
         rows = parsed.get(key)
@@ -214,6 +232,17 @@ def main():
                 notes.append(f'  skip {key}: fit {score:.2f}')
             continue
         if score - best_other < MARGIN and best_other >= NEED:
+            # Then by how many of each: the right verse's counts match. Or the
+            # neighbour is the same words ("And the LORD spake unto Moses,
+            # saying"), and either gives the same.
+            mine = counts_fit(key, rows)
+            rivals = [r for r in nearby if fit(kn, r) >= NEED]
+            same = all(collections.Counter(m[0] for _, m, _ in r if m) == collections.Counter(m[0] for _, m, _ in rows if m)
+                       for r in rivals)
+            if same or all(mine >= counts_fit(key, r) + 0.1 for r in rivals):
+                added['|'.join(map(str, key))] = rows
+                tiebroken += 1
+                continue
             skipped['fits a neighbouring Hebrew verse as well'] += 1
             if len(notes) < 8:
                 notes.append(f'  skip {key}: fit {score:.2f}, neighbour {best_other:.2f}')
@@ -223,6 +252,7 @@ def main():
     print(f'{len(missing)} KJV verses had no Hebrew word data; {len(added)} added, '
           f'{sum(skipped.values())} left out: {dict(skipped)}')
     print('added by book:', {BOOKS[b - 1]: n for b, n in sorted(by_book.items())})
+    print(f'{tiebroken} of them told from a neighbour by how many of each number')
     print('\n'.join(notes))
     if '--write' in sys.argv:
         merged = dict(have)
