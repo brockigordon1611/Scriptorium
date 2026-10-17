@@ -545,9 +545,10 @@ def prefer_greek(app, tags, osn, greek, usage):
     return moved
 
 
-def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), pause=None):
+def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), pause=None, used=None, hebrew=None):
     """Add the Hebrew words the source leaves out, and the rest of the KJV
-    phrase for the ones it tags by their last word. Returns (words, phrases)."""
+    phrase for the ones it tags by their last word. used: per number, how
+    often the source tags each English word with it. Returns (words, phrases)."""
     if not old_words:
         return 0, 0
     osn = interlinear_numbers(app, old_words)
@@ -602,29 +603,69 @@ def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), paus
         allowed = [x for x in idx if ok(sn, x)]
         if not allowed:
             continue
-        first = allowed[0]
-        block = [first]
+        # Of words apart, the one the KJV gives the number most: "whose seed is
+        # in itself, upon the earth" (Gen 1:11) is all al (H5921) in the
+        # interlinear, but "in itself" is bo, a word with no number of its own.
+        # As many as the Hebrew has words of the number not yet in the KJV:
+        # "And it came to pass, while there was war" (2 Sam 3:6) is vayhi ...
+        # bihyot, two.
+        want = 1
+        if hebrew:
+            # less the number's other runs here, which fill their own
+            heb_n = sum(1 for _, mains, _ in hebrew if sn in mains)
+            others = sum(1 for r in runs if r[0] == sn) - 1
+            want = max(1, min(heb_n - others, heb_n - len({t for t in tags.values() if t[0] == sn})))
+        # Words between that are the Hebrew word's own ending keep it one:
+        # "for mine own sake" (2 Kgs 20:6) is lema'ani. And one Hebrew word
+        # round a verb's helpers is one word in pieces: "that I will not
+        # overthrow" (Gen 19:21), levilti -- "that ... not", "I will" the verb's.
+        own_words = set()
+        for _, mains, affixes in (hebrew or []):
+            if sn in mains:
+                for a in affixes:
+                    if a not in PREFIXES:
+                        own_words |= AFFIX_BEFORE.get(a, set()) | AFFIX_AFTER.get(a, set()) | {'own'}
+        apart = []
+        for x in allowed:
+            gap = range(apart[-1][-1] + 1, x) if apart else ()
+            free = apart and all(y not in tags and not italic[y] for y in gap)
+            if free and all(key(app[y]) in own_words for y in gap):
+                apart[-1] += list(range(apart[-1][-1] + 1, x + 1))
+            elif free and want == 1 and all(key(app[y]) in (HELPERS - {'not'}) | AUX for y in gap):
+                apart[-1].append(x)
+            else:
+                apart.append([x])
+        score = lambda part: (max((used or {}).get(sn, {}).get(key(app[x]), 0) for x in part), -part[0])
         # "I shall not want": "I shall" is the verb's, not the "not"'s.
         negation = all(key(app[x]) in NEGATIONS for x in allowed)
-        x = first - 1
-        while x >= i and x not in tags and not italic[x] and (ok(sn, x) or (key(app[x]) in HELPERS and not negation)) \
-                and not (key(app[x]) == 'let' and key(app[x + 1]) not in LET_BEFORE):
-            block.insert(0, x)
-            x -= 1
-        x = first + 1
-        while x <= j and x not in tags and not italic[x] and (ok(sn, x) or key(app[x]) in OBJECT):
-            block.append(x)
-            x += 1
-        while len(block) > 1 and key(app[block[0]]) in HELPERS and not ok(sn, block[0]) \
-                and key(app[block[0]]) not in SUBJECTS | {'there', 'let'}:
-            block.pop(0)   # "shall" alone in front of nothing
-        if sn in FUNC_WORDS and sn not in PRONOUN_LIKE and all(key(app[x]) in PRONOUNS for x in block):
-            continue       # "I" for na (H4994) in "I will now turn aside": "now" is its word
-        pid += 1
-        for x in block:
-            tags[x] = (sn, pid)
-        words += len(block)
-        phrases += 1
+        for part in sorted(sorted(apart, key=score, reverse=True)[:want]):
+            if any(x in tags for x in part):
+                continue
+            block = list(part)
+            x = part[0] - 1
+            # A verb's helpers, not an adverb's: "I have also seen" (Exod 3:9) is
+            # "also" for gam and "I have ... seen" for the verb. But "It may be"
+            # (2 Sam 16:12, ulay).
+            while x >= i and x not in tags and not italic[x] \
+                    and (ok(sn, x) or (key(app[x]) in HELPERS and not negation
+                                       and (sn in verbs or not verbs or key(app[block[0]]) in AUX | BE))) \
+                    and not (key(app[x]) == 'let' and key(app[x + 1]) not in LET_BEFORE):
+                block.insert(0, x)
+                x -= 1
+            x = part[-1] + 1
+            while x <= j and x not in tags and not italic[x] and (ok(sn, x) or key(app[x]) in OBJECT):
+                block.append(x)
+                x += 1
+            while len(block) > 1 and key(app[block[0]]) in HELPERS and not ok(sn, block[0]) \
+                    and key(app[block[0]]) not in SUBJECTS | {'there', 'let'}:
+                block.pop(0)   # "shall" alone in front of nothing
+            if sn in FUNC_WORDS and sn not in PRONOUN_LIKE and all(key(app[x]) in PRONOUNS for x in block):
+                continue       # "I" for na (H4994) in "I will now turn aside": "now" is its word
+            pid += 1
+            for x in block:
+                tags[x] = (sn, pid)
+            words += len(block)
+            phrases += 1
     # A word next to a phrase that Strong's lists for that phrase's number,
     # and isn't a small word, is the rest of it: the source tags "thereof" in
     # "the fruit thereof" (H6529) and leaves "fruit".
@@ -1888,7 +1929,18 @@ def place_ot(app, italic, tags, hebrew, usage=None):
         nxt = next((at[o] for o in range(order + 1, len(hebrew)) if o in at), None)
         lo = max(prev) + 1 if prev else 0
         hi = min(nxt) - 1 if nxt else len(app) - 1
-        cands = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in FUNC_WORDS[sn]]
+        # Not the next word's own prefix ("to remove", Gen 48:17, lehasir), nor a
+        # word before a pronoun this one has no ending for ("to thee", Gen 28:13,
+        # lekha, where the al is aleha).
+        ends = set().union(*(AFFIX_AFTER.get(a, set()) for a in affixes))
+        def theirs(i):
+            o = order_of.get(tags.get(i + 1))
+            if o is not None and any(key(app[i]) in AFFIX_BEFORE.get(a, set()) for a in hebrew[o][2] if a in PREFIXES):
+                return True
+            return key(app[i]) in PREPOSITIONS and i + 1 < len(app) and i + 1 not in tags \
+                and key(app[i + 1]) in OBJECT and key(app[i + 1]) not in ends
+        cands = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in FUNC_WORDS[sn]
+                 and not theirs(i)]
         dist = lambda i: 0 if lo <= i <= hi else (lo - i if i < lo else i - hi)
         if not cands or dist(min(cands, key=lambda i: (dist(i), abs(i - lo)))) > 3:
             # Or its ending, where the KJV folds the preposition into the
@@ -1898,7 +1950,10 @@ def place_ot(app, italic, tags, hebrew, usage=None):
                      and key(app[i]) in ends and key(app[i]) not in claimed[i]]
             if not cands:
                 continue
-        pick = min(cands, key=lambda i: (dist(i), abs(i - lo)))
+        # "concerning this thing" (Gen 19:21), la-davar ha-zeh: a word with the
+        # article after its noun is before it in English.
+        before = 'H9009' in affixes or 'H9010' in affixes
+        pick = min(cands, key=lambda i: (dist(i), not (before and i < lo), abs(i - lo)))
         if dist(pick) > 3:
             continue
         pid += 1
@@ -2080,6 +2135,19 @@ def main():
                 ph.setdefault((sn, pid), []).append(key(w))
         for (sn, _), ws in ph.items():
             phrases_used[sn][' '.join(ws)] += 1
+    # Per number, how often each English word is it: in the source's phrases,
+    # and where the interlinear gives the number one word alone ("upon" for al).
+    used = collections.defaultdict(collections.Counter)
+    for sn, c in phrases_used.items():
+        for phrase, n in c.items():
+            for w in set(phrase.split()):
+                used[sn][w] += n
+    for ref, ws in interlinear.items():
+        if int(ref.split('|')[0]) <= 39:
+            nums = [n for _, n in ws]
+            for x, (w, n) in enumerate(ws):
+                if n and (x == 0 or nums[x - 1] != n) and (x + 1 == len(ws) or nums[x + 1] != n):
+                    used[n][key(w)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
     words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = 0
@@ -2091,7 +2159,8 @@ def main():
         if repair(app, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all):
             repaired.append(f'{b}|{c}|{v}')
         if b <= 39:
-            fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage, verbs, pause)
+            fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage, verbs, pause, used,
+                             hebrew.get(f'{b}|{c}|{v}'))
             filled_words += fw; filled += fp
         else:
             fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all, pause)
