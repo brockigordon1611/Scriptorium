@@ -2095,8 +2095,10 @@ function themeLinkColors(T,dark){
   }
   // Ordered so the first three, which most verses use, are the furthest apart.
   const hues=[180,36,252,108,324].map(o=>Math.round((h+o)%360));
-  if(_oklch)return hues.map(x=>`oklch(${dark?0.76:0.5} ${grey?0.1:0.13} ${x})`);
-  return hues.map(x=>`hsl(${x},${grey?45:60}%,${dark?64:38}%)`);
+  // On a light page a thin dotted line only shows its hue at full colour: mid
+  // dark tones all read as the same brown dots there.
+  if(_oklch)return hues.map(x=>dark?`oklch(0.76 ${grey?0.1:0.13} ${x})`:`oklch(0.6 ${grey?0.18:0.25} ${x})`);
+  return hues.map(x=>dark?`hsl(${x},${grey?45:60}%,64%)`:`hsl(${x},${grey?65:85}%,45%)`);
 }
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
