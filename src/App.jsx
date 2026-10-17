@@ -967,7 +967,7 @@ async function buildKjvWordIndex(onProgress,signal){
         const book=+parts[0],chap=+parts[1];
         for(const row of c.value.rows){
           const verse=row[0],word_text=row[2],sn=row[3];
-          if(_snBucket(sn)!==b)continue;
+          if(sn==='H853'||_snBucket(sn)!==b)continue;   // et: noted, not the word's English
           let w=acc.get(sn);if(!w){w={};acc.set(sn,w);}
           // Ascending word_pos, so the last write wins — matching the server's
           // DISTINCT ON ... ORDER BY word_pos DESC.
@@ -2134,9 +2134,11 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // SWORD attaches it to the adjacent English word (e.g. "and", "created"), producing
   // wrong underlines and wrong popup numbers. Filter it out here so those words become
   // plain fillers (or show H1254 when H1254+H853 share the same position).
-  const posMap={};
+  // It is never a word's own number -- but where the map notes it on the word
+  // it stands before ("the heaven", Gen 1:1), the popup offers it ("also H853").
+  const posMap={},etAt=new Set();
   for(const m of mappings){
-    if(m.strongs_num==='H853')continue;
+    if(m.strongs_num==='H853'){etAt.add(m.word_pos);continue;}
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
@@ -2158,6 +2160,7 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
       // An English word that is two Hebrew words ("therefore", al-ken) has a
       // second number; the popup offers it.
       const more=[...new Set(mapped.filter(m=>m!==best&&m.strongs_num!==sNum).map(m=>m.strongs_num))];
+      if(etAt.has(wordIdx))more.push('H853');
       if(more.length)also=more;
     }
     const isRed=redLetter&&redSet.has(wordIdx);

@@ -33,7 +33,8 @@ const counts = new Map();
 for (const ch of chapters) {
   for (const [, , word, sn] of ch.rows) {
     const k = key(word);
-    if (!k || !sn || STOP.has(k)) continue;
+    // H853 (et) is noted on the word it marks but is not its English.
+    if (!k || !sn || sn === 'H853' || STOP.has(k)) continue;
     let m = counts.get(k);
     if (!m) counts.set(k, m = new Map());
     m.set(sn, (m.get(sn) || 0) + 1);
