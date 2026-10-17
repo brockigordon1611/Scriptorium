@@ -78,6 +78,9 @@ MANIFEST = ROOT / 'public/bundled/manifest.json'
 INTERLINEAR_OT = ROOT / 'scripts/strongs/source/interlinear-ot-words.json.gz'
 HEBREW_OT = ROOT / 'scripts/strongs/source/tahot-ot-structure.json.gz'
 INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
+# The KJV's Greek (TR) words of each NT verse, from STEPBible's TAGNT; see
+# export-tagnt-files.py.
+GREEK_NT = ROOT / 'scripts/strongs/source/tagnt-tr-structure.json.gz'
 
 CODES = ['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV']
 # The app's word rule: split on spaces, trim this punctuation from both ends.
@@ -806,7 +809,64 @@ def fill_nt(app, italic, tags, old_words, usage, pause=None):
     return words, phrases
 
 
-def mend_nt(app, italic, pause, tags, verbs, usage):
+# The KJV's words for the small Greek words, for those the source left out.
+NT_FUNC = {k: set(v.split()) for k, v in {
+    'G2532': 'and also even both', 'G1161': 'but and now then moreover', 'G3361': 'not no lest neither nor',
+    'G3756': 'not no nay neither', 'G3754': 'that because for', 'G1063': 'for', 'G3767': 'therefore then so',
+    'G1722': 'in on with by among at through within', 'G1519': 'into unto to toward', 'G1537': 'of out from',
+    'G575': 'from of', 'G1909': 'on upon over at against', 'G4314': 'to unto toward with against',
+    'G2443': 'that', 'G5613': 'as when like', 'G3739': 'which who whom whose', 'G1223': 'by through for',
+}.items()}
+
+
+def greek_words(app, italic, tags, greek):
+    """With the KJV's Greek words of the verse (GREEK_NT): an article (G3588)
+    on a noun the KJV gives a "the" is that "the" -- "the church", where the
+    source tags only "church"; not an article the KJV leaves unsaid (ho Iesous,
+    "Jesus"). And a small word the source left out goes to the one untagged
+    KJV word for it, when the verse has just as many as are missing."""
+    if not greek:
+        return
+    ours = collections.Counter(t[0] for t in set(tags.values()))
+    gcount = collections.Counter(next((n for n in nums if n in ours), nums[0]) for nums, _ in greek)
+    pid = 700000
+    deficit = gcount['G3588'] - ours['G3588']
+    done = set()
+    for nums, to in greek:
+        if deficit <= 0:
+            break
+        if 'G3588' not in nums or to is None or to >= len(greek):
+            continue
+        noun = set(greek[to][0]) - {'G3588'}
+        starts = []
+        for i in sorted(tags):
+            if tags[i][0] in noun and not (i - 1 in tags and tags[i - 1] == tags[i]) and i not in done:
+                starts.append(i)
+        if not starts:
+            continue
+        i = starts[0]
+        done.add(i)
+        if key(app[i]) == 'the' and not italic[i] and tags.get(i + 1) == tags[i]:
+            pid += 1
+            tags[i] = ('G3588', pid)
+            deficit -= 1
+        elif i > 0 and i - 1 not in tags and not italic[i - 1] and key(app[i - 1]) == 'the':
+            pid += 1
+            tags[i - 1] = ('G3588', pid)
+            deficit -= 1
+    ours = collections.Counter(t[0] for t in set(tags.values()))
+    for sn, words in NT_FUNC.items():
+        missing = gcount[sn] - ours[sn]
+        if missing <= 0:
+            continue
+        cands = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in words]
+        if len(cands) == missing:
+            for i in cands:
+                pid += 1
+                tags[i] = (sn, pid)
+
+
+def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
     """The New Testament's own mending, after fill_nt: what the source and the
     interlinear leave loose around a Greek word. Returns {word position: tag}
     for words added (as link_ot does)."""
@@ -860,6 +920,7 @@ def mend_nt(app, italic, pause, tags, verbs, usage):
                     if tags.get(i) == t2:
                         tags[i] = t
                 break
+    greek_words(app, italic, tags, greek)
     # A helper at the front of another word's phrase is the next verb's: "Doth
     # our law judge any man" (John 7:51), the source's "Doth our" (G2257).
     ph = phrases_of()
@@ -1735,6 +1796,8 @@ def main():
     verbs = verb_numbers(lex_rows)
     with gzip.open(INTERLINEAR_NT, 'rt', encoding='utf-8') as f:
         interlinear.update(json.load(f))
+    with gzip.open(GREEK_NT, 'rt', encoding='utf-8') as f:
+        greek = json.load(f)
     usage_all = {r['strongs_number']: usage_stems(r.get('kjv_usage')) for r in lex_rows}
     repaired = []
     # The phrases the source tags, per number: "not yet" for G3768.
@@ -1767,7 +1830,7 @@ def main():
             swapped += prefer_hebrew(app, tags, interlinear_numbers(app, interlinear.get(f'{b}|{c}|{v}')),
                                      hebrew.get(f'{b}|{c}|{v}'), usage_ot)
         added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot) if b <= 39 \
-            else mend_nt(app, italic, pause, tags, verbs, usage_all)
+            else mend_nt(app, italic, pause, tags, verbs, usage_all, greek.get(f'{b}|{c}|{v}'))
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added)
         phrases = collections.OrderedDict()
