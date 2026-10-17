@@ -55,7 +55,8 @@ parts one word around others ("the holy angels", "have we not prophesied",
 "send them away") the source tags each part, and the parts are joined again
 (see parted) -- in the Old Testament only where there is no Hebrew word data,
 since mend_ot matches the phrases to the Hebrew words. Checked against Strong's own KJV counts: G26 116, G630 69,
-G4102 244, H2617 248, H6944 "holy" 262 -- all exact; G32 185 of 186.
+G4102 244, G32 186 -- exact; H2617 247, one per chesed of the Hebrew text verse by verse (Strong's lists
+248; an earlier build reached 248 only by counting Ps 117:2's "merciful kindness" twice).
 
 Writes the two files only if they change, and then raises their version in
 public/bundled/manifest.json, which is what makes devices reinstall them.
