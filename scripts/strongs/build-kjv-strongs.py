@@ -1048,7 +1048,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
     Returns {word position: tag} for the words added."""
     if hebrew:
         mend_ot(app, italic, pause, tags, hebrew, usage or {}, verbs)
-        place_ot(app, italic, tags, hebrew)
+        place_ot(app, italic, tags, hebrew, usage)
     phrases = collections.OrderedDict()
     for i in sorted(tags):
         phrases.setdefault(tags[i], []).append(i)
@@ -1627,10 +1627,13 @@ def in_order(xs, ys, cost):
     return pairs[::-1]
 
 
-def place_ot(app, italic, tags, hebrew):
+def place_ot(app, italic, tags, hebrew, usage=None):
     """A small Hebrew word with no English yet gets the untagged KJV word for
     it that sits between the English of the Hebrew words either side of it, or
-    the nearest within three words; none if there is none."""
+    the nearest within three words; none if there is none. Then any Hebrew
+    word with no English yet takes an untagged word Strong's lists for it, if
+    one lies right between its neighbours' English: "for forty's sake" (Gen
+    18:29, ba'avur), "on this side" (Ezek 40:34, poh)."""
     phrases, order_of = pair_ot(hebrew, tags)
     at = {o: phrases[t] for t, o in order_of.items()}
     # A pronoun right after a word whose own ending it can be ("smote him").
@@ -1663,6 +1666,36 @@ def place_ot(app, italic, tags, hebrew):
         pid += 1
         tags[pick] = (sn, pid)
         at[order] = [pick]
+    if not usage:
+        return
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | PARTICLE | {'there', 'not', 'o'}
+    small |= set().union(*(AFFIX_BEFORE[a] for a in PREFIXES))     # "than": a prefix's word (Job 6:3)
+    heb_count = collections.Counter(m[0] for _, m, _ in hebrew if m)
+    have = collections.Counter(t[0] for t in set(tags.values()))
+    # Only a word no other Hebrew word of the verse is listed for: not "bring"
+    # beside shuv's "again" (2 Sam 15:8), not "every" where kol is in the verse.
+    listed = lambda i, sn: any(stems(app[i]) & usage.get(m, set()) for m in heb_count if m != sn)
+    for order, (_, mains, affixes) in enumerate(hebrew):
+        if order in at or not mains or have[mains[0]] >= heb_count[mains[0]]:
+            continue
+        sn = mains[0]
+        prev = next((at[o] for o in range(order - 1, -1, -1) if o in at), None)
+        nxt = next((at[o] for o in range(order + 1, len(hebrew)) if o in at), None)
+        if not prev and not nxt:
+            continue
+        lo = max(prev) + 1 if prev else min(nxt) - 6
+        hi = min(nxt) - 1 if nxt else max(prev) + 6
+        if hi - lo > 5:
+            continue                                    # too far apart to say where it is
+        cands = [i for i in range(max(lo, 0), min(hi + 1, len(app)))
+                 if i not in tags and not italic[i] and key(app[i]) not in small and stems(app[i]) & usage.get(sn, set())
+                 and not listed(i, sn)]
+        if len(cands) != 1:
+            continue
+        pid += 1
+        tags[cands[0]] = (sn, pid)
+        at[order] = cands
+        have[sn] += 1
 
 
 def repair(app, tags, old_words, usage):
