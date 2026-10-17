@@ -419,6 +419,48 @@ def two_numbers(app, tags, hebrew):
     return extra
 
 
+# The same for the New Testament: "therefore" dia touto (G1223, G5124),
+# "cannot" ou dunatai, "whosoever" hos an, "whereof" peri hou.
+COMPOUND_NT = {w: set(v.split()) for w, v in {
+    'therefore': 'G1223 G5124 G3767 G5620', 'wherefore': 'G1223 G5101 G1352 G3739 G5620',
+    'cannot': 'G3756 G1410 G3361', 'whatsoever': 'G3739 G302 G1437 G3745 G3956 G5100',
+    'whosoever': 'G3739 G302 G1437 G3956 G3588 G3748 G5100', 'whomsoever': 'G3739 G302 G1437',
+    'wheresoever': 'G3699 G302 G1437', 'whithersoever': 'G3699 G302 G1437', 'whensoever': 'G3752 G302',
+    'thereby': 'G1223 G5026 G3778 G846', 'whereby': 'G1223 G3739 G1722', 'whereof': 'G4012 G3739',
+    'wherein': 'G1722 G3739', 'whereunto': 'G1519 G3739 G5101', 'hereby': 'G1722 G5129',
+    'nothing': 'G3756 G3367 G3762 G5100 G3361',
+}.items()}
+
+
+def two_numbers_nt(app, tags, greek):
+    """two_numbers for the New Testament, with the KJV's Greek words of the
+    verse: the second Greek word must stand right beside one of the first's
+    and have no English of its own in the verse."""
+    if not greek:
+        return {}
+    have = collections.Counter(t[0] for t in set(tags.values()))
+    gcount = collections.Counter(n for nums, _ in greek for n in nums)
+    extra = {}
+    for i in sorted(tags):
+        w = key(app[i])
+        m = tags[i][0]
+        if w not in COMPOUND_NT or m not in COMPOUND_NT[w] or i in extra:
+            continue
+        for k, (nums, _) in enumerate(greek):
+            if m not in nums:
+                continue
+            for k2 in (k - 1, k + 1):
+                if 0 <= k2 < len(greek):
+                    u = next((n for n in greek[k2][0] if n in COMPOUND_NT[w] and n != m and have[n] < gcount[n]), None)
+                    if u:
+                        extra[i] = u
+                        have[u] += 1
+                        break
+            if i in extra:
+                break
+    return extra
+
+
 def prefer_hebrew(app, tags, osn, hebrew, usage):
     """A phrase whose number the Hebrew verse hasn't got, where the interlinear
     gives its words one the verse has, still without a phrase, and Strong's
@@ -1936,7 +1978,8 @@ def main():
         phrases = collections.OrderedDict()
         for i in sorted(tags):
             phrases.setdefault(tags[i], []).append(i)
-        extra = two_numbers(app, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 else {}
+        extra = two_numbers(app, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 \
+            else two_numbers_nt(app, tags, greek.get(f'{b}|{c}|{v}'))
         seconds += len(extra)
         verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added, extra))
     # What each number's phrases say where it is the only one in its verse:
@@ -2040,7 +2083,7 @@ def main():
           f'{affixed} small words given to the Hebrew word they are written on')
     print(f'New Testament: {nt_filled} Greek words the source leaves out added, {nt_words} words tagged or moved from the interlinear')
     print(f'{swapped} source numbers the Hebrew or Greek verse lacks, changed to the one the interlinear, the text and Strong\'s agree on')
-    print(f'{seconds} English words that are two Hebrew words ("therefore", "cannot") given the second number too')
+    print(f'{seconds} English words that are two Hebrew or Greek words ("therefore", "cannot") given the second number too')
     print(f'{links} words whose English is in pieces, linked')
     print(f'{starts} words next to another word of the same number, marked as their own')
     print(f'{len(repaired)} verses whose source numbers were out of place, repaired: {" ".join(repaired)}')
