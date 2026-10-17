@@ -662,8 +662,8 @@ _AFFIX_WORDS = {
     'H9001': 'and but then so now yet or nor when therefore that', 'H9002': 'and but then so now yet or nor when therefore',
     'H9003': 'in on upon with by at among into through when within unto for against over',
     # "that ... not" (Gen 3:11, levilti): a "to" of purpose
-    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward that according against in after among',
-    'H9006': 'from of out than because since above after', 'H9007': 'that who which whom whose',
+    'H9004': 'as like according when after about so', 'H9005': 'to unto for into of toward that according against in after among',
+    'H9006': 'from of out than because since above after with', 'H9007': 'that who which whom whose',
     'H9009': 'the', 'H9010': 'the', 'H9011': 'toward towards unto to into',
     # endings the KJV puts in front: his house, I said
     'H9020': 'my mine', 'H9021': 'thy thine your', 'H9022': 'thy thine your', 'H9023': 'his its',
@@ -1208,6 +1208,12 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                 added[x] = t
                 lo = x
                 x -= 1
+            # An infinitive's "to": "ought to be done" (2 Sam 13:12), "suffer the
+            # righteous to be moved" (Ps 55:22), where the Hebrew has no le-.
+            if lo >= 1 and key(app[lo - 1]) == 'to' and not taken(lo - 1) and not italic[lo - 1] and not pause[lo - 1] \
+                    and (key(app[lo]) in BE | {'be'} or lo in idx):
+                added[lo - 1] = t
+                lo -= 1
             # A participle's "he that", "them that": "He that walketh" (Prov 14:2).
             if lo >= 2 and key(app[lo - 1]) == 'that' and key(app[lo - 2]) in THAT_PRONOUNS \
                     and not any(taken(y) or italic[y] or pause[y] for y in (lo - 2, lo - 1)):
@@ -1520,7 +1526,8 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
         if t[0] in heb_count or not all(key(app[i]) in ABSORB_BACK for i in ph[t]):
             continue
         homes = [mains[0] for _, mains, affixes in hebrew if mains and not by[mains[0]]
-                 and any(all(key(app[i]) in AFFIX_BEFORE.get(a, ()) for i in ph[t]) for a in affixes if a in PREFIXES)]
+                 and any(all(key(app[i]) in AFFIX_BEFORE.get(a, set()) - {'with'} for i in ph[t])
+                         for a in affixes if a in PREFIXES)]          # not "with her suburbs" (Josh 21:36): et's
         if len(homes) == 1:
             pid += 1
             for i in ph[t]:
