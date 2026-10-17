@@ -75,6 +75,8 @@ console.log("Strong's lexicon");
   const rows = await fetchAll('strongs_lexicon',
     'strongs_number,original_word,transliteration,pronunciation,language,short_def,full_def,kjv_usage,occurrence_count',
     { order: 'strongs_number.asc', label: 'lexicon' });
+  // occurrence_count is then replaced with the KJV's own totals by
+  // scripts/strongs/build-kjv-strongs.py -- run that after this.
   const f = write('strongs_lex.json', rows);
   manifest.datasets.strongs_lex = { version: 1, rows: rows.length, files: [f.file] };
 }

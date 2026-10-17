@@ -575,7 +575,7 @@ ARTICLE_WORDS = set('the he she it they them which who whom that those these thi
 CASE_WORDS = set('of to unto for'.split())     # "of the", "to the": the article's case
 
 
-def fill_nt(app, italic, tags, old_words, usage):
+def fill_nt(app, italic, tags, old_words, usage, pause=None):
     """Returns (words, phrases) added; see the section comment."""
     if not old_words:
         return 0, 0
@@ -697,7 +697,118 @@ def fill_nt(app, italic, tags, old_words, usage):
         for x in block:
             tags[x] = tag
         words += len(block)
+    # A word next to a phrase that Strong's lists for its number: "sat down
+    # with" (Matt 9:10, G4873), where the source tags "with". Only a number
+    # with one phrase in the verse: the parts of a parted word ("make ... sit
+    # down", Mark 6:39) are joined later (parted), by what each part says.
+    once = collections.Counter(t[0] for t in set(tags.values()))
+    changed = True
+    while changed:
+        changed = False
+        for x in range(len(app)):
+            if x in tags or italic[x] or key(app[x]) in small:
+                continue
+            for y in (x - 1, x + 1):
+                if y in tags and tags[y][0] != 'G3588' and once[tags[y][0]] == 1 \
+                        and not (pause and pause[min(x, y)]) and ok(tags[y][0], x):
+                    tags[x] = tags[y]
+                    words += 1
+                    changed = True
+                    break
     return words, phrases
+
+
+def mend_nt(app, italic, pause, tags, verbs, usage):
+    """The New Testament's own mending, after fill_nt: what the source and the
+    interlinear leave loose around a Greek word. Returns {word position: tag}
+    for words added (as link_ot does)."""
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | PREPOSITIONS | {'there', 'not'}
+
+    def phrases_of():
+        ph = collections.OrderedDict()
+        for i in sorted(tags):
+            ph.setdefault(tags[i], []).append(i)
+        return ph
+
+    # A phrase across a comma or question mark with a part that is none of its
+    # number's English: "the will of his father? They say" (Matt 21:31), "is
+    # bold, I speak" (2 Cor 11:21). That part is let go.
+    for t, idx in phrases_of().items():
+        cuts = [k for k in range(len(idx) - 1) if pause[idx[k]] and idx[k + 1] == idx[k] + 1]
+        if not cuts:
+            continue
+        pieces, start = [], 0
+        for k in cuts + [len(idx) - 1]:
+            pieces.append(idx[start:k + 1])
+            start = k + 1
+        cored = [pc for pc in pieces if any(key(app[i]) not in small and stems(app[i]) & usage.get(t[0], set())
+                                            or key(app[i]) in usage.get(t[0], set()) for i in pc)]
+        if cored:
+            for pc in pieces:
+                if pc not in cored:
+                    for i in pc:
+                        del tags[i]
+    # Luke 3's "which was the son of Mattathias" is tou Mattathiou: the
+    # source numbers "was" with the name; "which was" is the article.
+    pid = 500000
+    for x in range(len(app) - 5):
+        if key(app[x]) == 'which' and key(app[x + 1]) == 'was' and italic[x + 2] and italic[x + 3] \
+                and key(app[x + 3]) == 'son' and key(app[x + 4]) == 'of' and x + 1 in tags \
+                and x + 5 < len(app) and x + 5 in tags and tags[x + 5][0] == tags[x + 1][0]:
+            pid += 1
+            tags[x] = tags[x + 1] = ('G3588', pid)
+    # A phrase of helpers only ("shall") and a later one of the same number in
+    # the same clause are one Greek word: "so shall also the coming of the Son
+    # of man be" (Matt 24:27, estai).
+    ph = phrases_of()
+    for t, idx in ph.items():
+        if not all(key(app[i]) in AUX for i in idx):
+            continue
+        for t2, idx2 in ph.items():
+            if t2 != t and t2[0] == t[0] and min(idx2) > max(idx) and min(idx2) - max(idx) <= 10 \
+                    and not any(pause[i] for i in range(max(idx), min(idx2))) \
+                    and not any(key(app[i]) in AUX for i in idx2):
+                for i in idx2:
+                    if tags.get(i) == t2:
+                        tags[i] = t
+                break
+    # A helper at the front of another word's phrase is the next verb's: "Doth
+    # our law judge any man" (John 7:51), the source's "Doth our" (G2257).
+    ph = phrases_of()
+    for t, idx in ph.items():
+        if t[0] in verbs or key(app[idx[0]]) not in AUX:
+            continue
+        lead = [i for i in idx[:next((k for k, i in enumerate(idx) if key(app[i]) not in AUX), len(idx))]]
+        if len(lead) == len(idx):
+            continue
+        nxt = next((t2 for t2, idx2 in ph.items() if t2[0] in verbs and max(idx) < min(idx2) <= max(idx) + 8
+                    and not any(pause[i] for i in range(max(idx), min(idx2)))), None)
+        if nxt:
+            for i in lead:
+                tags[i] = nxt
+    # Words before a verb that are its English: its subject ("ye shall not
+    # fulfil", Gal 5:16; "They say"), a "which", "who" or "when" ("which
+    # hast", Rom 2:20; "when he had"), "he that", and "let" ("let him hear").
+    added = {}
+    taken = lambda x: x in tags or x in added
+    for t, idx in phrases_of().items():
+        if t[0] not in verbs:
+            continue
+        lo = min(idx)
+        x = lo - 1
+        while x >= 0 and not taken(x) and not italic[x] and not pause[x] \
+                and key(app[x]) in SUBJECTS | AUX | BE | {'which', 'who', 'when', 'let'} | THAT_PRONOUNS | {'that'} | OBJECT:
+            w = key(app[x])
+            if w == 'that' and not (x and key(app[x - 1]) in THAT_PRONOUNS):
+                break                                   # "that" alone: a "so that", an hoti
+            if w in OBJECT - SUBJECTS and not (x and key(app[x - 1]) == 'let') \
+                    and not (added.get(x + 1) == t and key(app[x + 1]) == 'that'):
+                break                                   # "him" only in "let him hear", "them that"
+            added[x] = t
+            x -= 1
+            if w in ('which', 'who', 'when', 'let'):
+                break
+    return added
 
 
 def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, verbs=None, usage=None):
@@ -1500,7 +1611,25 @@ def verb_numbers(lex_rows):
                 verbs.add(k)
                 sure.add(k)
                 changed = True
-    return verbs
+    # Greek: "to hear", "a primary verb", and their forms ("future of G1510").
+    greek = {r['strongs_number']: r for r in lex_rows if r['strongs_number'][0] == 'G'}
+    other = re.compile(r'\b(preposition|particle|conjunction|adverb|article|pronoun|interjection)\b', re.I)
+    to_do = re.compile(r'(?:^|[;:]\s*|\b(?:properly|figuratively|literally|by implication|by extension|especially|'
+                       r'apparently|primarily|i\.e\.)\s*,?\s*)to\s+(?!the\b|a\b|an\b|be\s+\w+ed\b)[a-z]')
+    gverbs = {k for k, r in greek.items() if not other.search(r.get('full_def') or '')
+              and (to_do.search((r.get('short_def') or '').strip()) or to_do.search((r.get('full_def') or '').strip())
+                   or 'verb' in (r.get('full_def') or ''))}
+    form = re.compile(r'^\s*(?:the\s+)?(?:first|second|third|future|imperfect|aorist|present|perfect|optative|subjunctive|'
+                      r'infinitive|indicative|participle|[a-z ]*?(?:tense|person|mood|voice))[^;]*?\bof (G\d+)', re.I)
+    changed = True
+    while changed:
+        changed = False
+        for k, r in greek.items():
+            m = form.match(r.get('full_def') or '')
+            if k not in gverbs and m and m.group(1) in gverbs:
+                gverbs.add(k)
+                changed = True
+    return verbs | gverbs
 
 
 def main():
@@ -1543,10 +1672,11 @@ def main():
             fw, fp = fill_ot(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_ot, usage, verbs, pause)
             filled_words += fw; filled += fp
         else:
-            fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all)
+            fw, fp = fill_nt(app, italic, tags, interlinear.get(f'{b}|{c}|{v}'), usage_all, pause)
             nt_words += fw; nt_filled += fp
         widened += widen(app, italic, pause, tags, phrases_used, usage)
-        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot) if b <= 39 else {}
+        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot) if b <= 39 \
+            else mend_nt(app, italic, pause, tags, verbs, usage_all)
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added)
         phrases = collections.OrderedDict()
@@ -1626,8 +1756,15 @@ def main():
         occ_recs.append({'sn': sn, 'total': sum(r[4] for r in refs), 'refs': refs})
     # A new version in the manifest is what makes devices reinstall, so it goes
     # up only when a file's contents change.
+    # The lexicon's counts -- search ranking, and the totals a device shows
+    # when it takes Strong's from the server -- are these KJV totals too, not
+    # the Hebrew and Greek texts' (STEPBible's). export-bundled-data.mjs writes
+    # the lexicon from the server; run this after it.
+    totals = {r['sn']: r['total'] for r in occ_recs}
+    lex_out = [{**r, 'occurrence_count': totals.get(r['strongs_number'], 0)} for r in lex_rows]
     man = json.loads(MANIFEST.read_text(encoding='utf-8'))
-    for name, path, data in (('strongs_map', OUT_MAP, recs), ('strongs_occ', OUT_OCC, occ_recs)):
+    for name, path, data in (('strongs_map', OUT_MAP, recs), ('strongs_occ', OUT_OCC, occ_recs),
+                             ('strongs_lex', LEX, lex_out)):
         out = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
         d = man['datasets'][name]
         if not path.exists() or path.read_text(encoding='utf-8') != out:
