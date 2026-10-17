@@ -9,21 +9,21 @@
       ]
     },
     "strongs_lex": {
-      "version": 4,
+      "version": 5,
       "rows": 14271,
       "files": [
         "strongs_lex.json"
       ]
     },
     "strongs_map": {
-      "version": 35,
+      "version": 37,
       "rows": 1189,
       "files": [
         "strongs_map.json"
       ]
     },
     "strongs_occ": {
-      "version": 34,
+      "version": 35,
       "rows": 14053,
       "files": [
         "strongs_occ.json"
