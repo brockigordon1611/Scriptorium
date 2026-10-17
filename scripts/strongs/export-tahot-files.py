@@ -111,10 +111,15 @@ def parse():
                             w['main'].append(f'H{n}')
     out = {}
     for key, words in verses.items():
-        rows, carry = [], []
+        rows, carry, marked = [], [], False
         for i, w in enumerate(words.values(), 1):
             if not w['main']:
                 carry = [n for n in w['affix'] if rank(n) < 5] if w['et'] else []
+                # The object marker with no ending stands before the word it
+                # marks ("et hashamayim", the heaven): noted on that word as
+                # H853 among its affixes. With an ending (otam, "them") it is
+                # the pronoun itself.
+                marked = w['et'] and not any(n >= 9020 for n in w['affix'])
                 continue
             affix = list(w['affix'])
             for n in carry:
@@ -122,9 +127,15 @@ def parse():
                     affix.append(n)
             carry = []
             affix.sort(key=lambda n: (rank(n), n))
-            rows.append([i, w['main'], [f'H{n}' for n in affix]])
+            rows.append([i, w['main'], [f'H{n}' for n in affix] + (['H853'] if marked else [])])
+            marked = False
         out[key] = rows
     return out, extra
+
+
+def plain(rows):
+    """A verse's words without the object-marker notes, for comparing."""
+    return [(m, [x for x in a if x != 'H853']) for _, m, a in rows]
 
 
 def kjv_numbers():
@@ -186,9 +197,8 @@ def main():
     for key, rows in parsed.items():
         k = '|'.join(map(str, key))
         if k in have:
-            a = [(m, x) for _, m, x in have[k]]
-            b = [(m, x) for _, m, x in rows]
-            if a == b:
+            if plain(have[k]) == plain(rows):
+                have[k] = rows                  # the same words, now with the object marker noted
                 same += 1
             else:
                 differ += 1
@@ -203,7 +213,7 @@ def main():
     better = []
     for key, rows in parsed.items():
         k = '|'.join(map(str, key))
-        if k in have and [(m, x) for _, m, x in have[k]] != [(m, x) for _, m, x in rows]:
+        if k in have and plain(have[k]) != plain(rows):
             if fit(nums.get(key, set()), rows) > fit(nums.get(key, set()), have[k]):
                 have[k] = rows
                 better.append(k)
