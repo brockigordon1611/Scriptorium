@@ -1160,11 +1160,12 @@ def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, ve
     return lo, hi
 
 
-def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
+def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
     """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
     are written on, and its helpers to a verb. Where the Hebrew and the KJV's
     phrases of a number disagree, mend the phrases first (see mend_ot).
-    Returns {word position: tag} for the words added."""
+    Returns {word position: tag} for the words added; into own, {word
+    position: number} for an "and" that is a word of its own (see below)."""
     if hebrew:
         mend_ot(app, italic, pause, tags, hebrew, usage or {}, verbs)
         place_ot(app, italic, tags, hebrew, usage)
@@ -1366,13 +1367,51 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                     x += 1
                 if done_end:
                     break
+    # A number twice in the Hebrew and once in the English, the second time
+    # only its "and" in English: "between Beth-el and Hai" (Gen 13:3) is bein
+    # Beth-el u-vein ha-Ai, "unto Moses and Aaron" el Moshe ve-el Aharon, and in
+    # "And the evening and the morning were" (Gen 1:8), wayehi erev wayehi
+    # boqer, "were" is both wayehi. The word with no English of its own gets
+    # the "and" standing where it is, just before the next Hebrew word's
+    # English. A word of its own, not a piece of the other's English (they are
+    # two words), and not counted: the KJV gives it no rendering but "and".
+    paired, shared = {o: t for t, o in order_of.items()}, {}
+    for order, (_, mains, affixes) in enumerate(hebrew):
+        if order in paired or not {'H9001', 'H9002'} & set(affixes):
+            continue
+        sn = next((m for m in mains if any(t[0] == m for t in phrases)), None)
+        prev = next((o for o in range(order - 1, -1, -1) if o in paired), None)
+        nxt = order + 1 if order + 1 in paired else None
+        if sn is None or prev is None or nxt is None or {'H9001', 'H9002'} & set(hebrew[nxt][2]):
+            continue
+        t = min((abs(o - order), o) for o, p in paired.items() if p[0] == sn)
+        t = paired[t[1]]
+        before = [i for i in tags if tags[i] == paired[prev]]
+        after = [i for i in tags if tags[i] == paired[nxt]]
+        if not before or not after or max(before) >= min(after) \
+                or any(tags.get(i) == t or added.get(i) == t for i in range(max(before), min(after))):
+            continue
+        x = min(after) - 1
+        while x > max(before) and not taken(x) and not italic[x] and not pause[x]:
+            if key(app[x]) in AFFIX_BEFORE['H9001']:
+                added[x] = shared[x] = t      # held, so later rules leave it
+                break
+            if key(app[x]) not in GAP_WORDS:
+                break
+            x -= 1
     head_words(app, italic, pause, tags, added, verbs, order_of)
     # "the same is it" (Gen 2:13), "that is it" (2:14): the "it" is the pronoun's.
     for x in range(2, len(app)):
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
-    return live(tags, added, app, hebrew)
+    added = live(tags, added, app, hebrew)
+    for x, t in shared.items():
+        if added.get(x) == t:
+            del added[x]
+            if own is not None:
+                own[x] = t[0]
+    return added
 
 
 def live(tags, added, app=None, hebrew=None):
@@ -2023,7 +2062,7 @@ def main():
             phrases_used[sn][' '.join(ws)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = 0
+    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
@@ -2044,10 +2083,11 @@ def main():
         else:
             swapped += prefer_greek(app, tags, interlinear_numbers(app, interlinear.get(f'{b}|{c}|{v}')),
                                     greek.get(f'{b}|{c}|{v}'), usage_all)
-        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot) if b <= 39 \
+        own = {}
+        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot, own) if b <= 39 \
             else mend_nt(app, italic, pause, tags, verbs, usage_all, greek.get(f'{b}|{c}|{v}'))
         affixed += len(added)
-        words_total += len(app); tagged_total += len(tags) + len(added)
+        words_total += len(app); tagged_total += len(tags) + len(added) + len(own)
         phrases = collections.OrderedDict()
         for i in sorted(tags):
             phrases.setdefault(tags[i], []).append(i)
@@ -2056,21 +2096,22 @@ def main():
         seconds += len(extra)
         marks = object_marks(tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 else {}
         marked += len(marks)
-        verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added, extra, marks))
+        owned += len(own)
+        verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added, extra, marks, own))
     # What each number's phrases say where it is the only one in its verse:
     # "and" for G2532, "him" for G846, "for" for G1223. A part that is also a
     # rendering of its own -- at least 1 in 20 of the number's phrases -- is
     # counted on its own. Where the source tags just the "ye" of "Know ye not"
     # (G1492), that is not.
     alone, phrase_count = collections.Counter(), collections.Counter()
-    for _, app, _, _, phrases, _, _, _ in verses:
+    for _, app, _, _, phrases, _, _, _, _ in verses:
         once = collections.Counter(sn for (sn, _), _ in phrases)
         phrase_count.update(once)
         for (sn, _), idx in phrases:
             if once[sn] == 1:
                 alone[sn, text(app, idx)] += 1
     joined = links = starts = 0
-    for ref, app, italic, pause, phrases, added, extra, marks in verses:
+    for ref, app, italic, pause, phrases, added, extra, marks, own in verses:
         idxs = [list(idx) for _, idx in phrases]
         into = list(range(len(phrases)))      # the phrase each one was joined into
         # Where the Hebrew word data has the verse, mend_ot has already made
@@ -2098,7 +2139,7 @@ def main():
             while into[n] != n:
                 n = into[n]
             groups[n].append(x)
-        tagged = {i for g in groups if g for i in g}
+        tagged = {i for g in groups if g for i in g} | set(own)
         rows, link, done = [], 0, []
         for ((sn, _), _), g in zip(phrases, groups):
             if not g:
@@ -2112,6 +2153,7 @@ def main():
                 link += 1
                 links += 1
             done.append((g, sn, link if gap else None))
+        done += [([i], sn, None) for i, sn in sorted(own.items())]     # "and" of a word, uncounted
         # Two words of one number side by side ("Verily, verily", "most holy",
         # "unto him into"): the second one's first row says it starts a word of
         # its own (6th element; the 5th is then 0, no link), or the reader
@@ -2161,6 +2203,7 @@ def main():
     print(f'{swapped} source numbers the Hebrew or Greek verse lacks, changed to the one the interlinear, the text and Strong\'s agree on')
     print(f'{seconds} English words that are two Hebrew or Greek words ("therefore", "cannot") given the second number too')
     print(f'{marked} words the object marker (et, H853) stands before, noted as their second number (not counted)')
+    print(f'{owned} "and"s of a Hebrew word the KJV renders only by them ("between Beth-el and Hai"), given its number (not counted)')
     print(f'{links} words whose English is in pieces, linked')
     print(f'{starts} words next to another word of the same number, marked as their own')
     print(f'{len(repaired)} verses whose source numbers were out of place, repaired: {" ".join(repaired)}')
