@@ -660,9 +660,9 @@ _AFFIX_WORDS = {
     # the KJV gives an "and" as "And when" too: "And when the woman saw" (Gen 3:6)
     # and "it came to pass ... that God remembered" (Gen 19:29): the second verb's "and"
     'H9001': 'and but then so now yet or nor when therefore that', 'H9002': 'and but then so now yet or nor when therefore',
-    'H9003': 'in on upon with by at among into through when within unto for',
+    'H9003': 'in on upon with by at among into through when within unto for against over',
     # "that ... not" (Gen 3:11, levilti): a "to" of purpose
-    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward that according against in',
+    'H9004': 'as like according when after about', 'H9005': 'to unto for into of toward that according against in after among',
     'H9006': 'from of out than because since above after', 'H9007': 'that who which whom whose',
     'H9009': 'the', 'H9010': 'the', 'H9011': 'toward towards unto to into',
     # endings the KJV puts in front: his house, I said
@@ -1218,7 +1218,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
         before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
                  [a for a in reversed(affixes) if a in PREFIXES]
         for a in before:
-            x, stepped, found, also_only, reserved = lo - 1, False, False, False, 0
+            x, stepped, found, also_only, reserved, also_at = lo - 1, False, False, False, 0, None
             reach = 16 if a in ('H9001', 'H9002') else 12   # "And Moses and Aaron and all ... did" (Num 8:20)
             if a in ('H9009', 'H9010') and t[0] in verbs and x >= 0 and not taken(x) and not italic[x] \
                     and not pause[x] and key(app[x]) in RELATIVE:
@@ -1291,6 +1291,10 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                                 break
                             y -= 1
                     break
+                if w == 'also' and a in ('H9001', 'H9002') and also_at is None and not also_only:
+                    also_at = x                         # "The LORD also spake" (Josh 20:1): the verb's waw,
+                    x -= 1                              # if no "and" of its own comes first
+                    continue
                 if w in GAP_WORDS or w == 'every' or (w == 'own' and a not in PREFIXES) or (w in supplied and a in PREFIXES) \
                         or (a in ('H9001', 'H9002') and w in AUX | BE | PRONOUNS | {'there', 'of', 'these', 'those', 'this'}) \
                         or (a in PREFIXES and w in AUX | BE | SUBJECTS):
@@ -1298,6 +1302,9 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                     continue                            # "And the eyes of them both were opened";
                                                         # "that thou shouldest not eat"
                 break
+            if not found and also_at is not None and not taken(also_at):
+                added[also_at] = t
+                found = True
             if not found and a in ('H9001', 'H9002'):
                 # "the tree of life also": the KJV's "and" put after.
                 x = hi + 1
