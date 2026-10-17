@@ -456,6 +456,40 @@ def prefer_hebrew(app, tags, osn, hebrew, usage):
     return moved
 
 
+def prefer_greek(app, tags, osn, greek, usage):
+    """prefer_hebrew for the New Testament, with the KJV's Greek words of the
+    verse (GREEK_NT): "Lo, he speaketh boldly" (John 7:26) is ide, the
+    interjection (G2396), where the source has eido, "to know" (G1492)."""
+    if not greek or not any(osn):
+        return 0
+    gcount = collections.Counter(n for nums, _ in greek for n in nums)
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
+    phrases = collections.OrderedDict()
+    for i in sorted(tags):
+        phrases.setdefault(tags[i], []).append(i)
+    count = collections.Counter(t[0] for t in phrases)
+    moved, pid = 0, 650000
+    for t, idx in phrases.items():
+        if t[0] in gcount:
+            continue
+        words = [i for i in idx if key(app[i]) not in small]
+        theirs = {osn[i] for i in words if osn[i]}
+        if not words or len(theirs) != 1:
+            continue
+        m = theirs.pop()
+        if m not in gcount or count[m] >= gcount[m]:
+            continue
+        if not any(stems(app[i]) & usage.get(m, set()) for i in words) \
+                or any(stems(app[i]) & usage.get(t[0], set()) for i in words):
+            continue
+        pid += 1
+        for i in idx:
+            tags[i] = (m, pid)
+        count[m] += 1
+        moved += 1
+    return moved
+
+
 def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), pause=None):
     """Add the Hebrew words the source leaves out, and the rest of the KJV
     phrase for the ones it tags by their last word. Returns (words, phrases)."""
@@ -1892,6 +1926,9 @@ def main():
         if b <= 39:
             swapped += prefer_hebrew(app, tags, interlinear_numbers(app, interlinear.get(f'{b}|{c}|{v}')),
                                      hebrew.get(f'{b}|{c}|{v}'), usage_ot)
+        else:
+            swapped += prefer_greek(app, tags, interlinear_numbers(app, interlinear.get(f'{b}|{c}|{v}')),
+                                    greek.get(f'{b}|{c}|{v}'), usage_all)
         added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot) if b <= 39 \
             else mend_nt(app, italic, pause, tags, verbs, usage_all, greek.get(f'{b}|{c}|{v}'))
         affixed += len(added)
@@ -2002,7 +2039,7 @@ def main():
     print(f'Old Testament: {filled} Hebrew words the source leaves out added, {filled_words} words tagged from the interlinear, '
           f'{affixed} small words given to the Hebrew word they are written on')
     print(f'New Testament: {nt_filled} Greek words the source leaves out added, {nt_words} words tagged or moved from the interlinear')
-    print(f'{swapped} source numbers the Hebrew verse lacks, changed to the one the interlinear, the Hebrew and Strong\'s agree on')
+    print(f'{swapped} source numbers the Hebrew or Greek verse lacks, changed to the one the interlinear, the text and Strong\'s agree on')
     print(f'{seconds} English words that are two Hebrew words ("therefore", "cannot") given the second number too')
     print(f'{links} words whose English is in pieces, linked')
     print(f'{starts} words next to another word of the same number, marked as their own')
