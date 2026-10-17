@@ -577,7 +577,7 @@ def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), paus
                         break      # "and they were greatly distressed": the verb's, not "greatly"'s
                     if w not in small and not ok(sn, x):
                         break
-                    tags[x] = tags[mine[0]]
+                    tags[x] = tags[min(mine) if direction < 0 else max(mine)]   # the word it grows from ("have pity upon", Job 19:21)
                     words += 1
                     x += direction
             continue
@@ -832,7 +832,7 @@ def fill_nt(app, italic, tags, old_words, usage, pause=None):
                         break
                     if w not in small and not ok(sn, x):
                         break
-                    tags[x] = tags[mine[0]]
+                    tags[x] = tags[min(mine) if direction < 0 else max(mine)]
                     words += 1
                     x += direction
             continue
@@ -1274,7 +1274,8 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                     if not stepped:                     # "and the earth": all of it; "his own name"
                         for y in range(x + 1, lo):
                             if not taken(y) and (key(app[y]) in GAP_WORDS or key(app[y]) == 'own' and a not in PREFIXES
-                                                 or key(app[y]) in supplied and a in PREFIXES):
+                                                 or key(app[y]) in supplied and a in PREFIXES
+                                                 or key(app[y]) in PREPOSITIONS and a in ('H9001', 'H9002')):
                                 added[y] = t
                     while x and not taken(x - 1) and not italic[x - 1] and not pause[x - 1] \
                             and key(app[x - 1]) in AFFIX_BEFORE[a]:
@@ -1303,6 +1304,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
                     x -= 1                              # if no "and" of its own comes first
                     continue
                 if w in GAP_WORDS or w == 'every' or (w == 'own' and a not in PREFIXES) or (w in supplied and a in PREFIXES) \
+                        or (a in ('H9001', 'H9002') and w in PREPOSITIONS) \
                         or (a in ('H9001', 'H9002') and w in AUX | BE | PRONOUNS | {'there', 'of', 'these', 'those', 'this'}) \
                         or (a in PREFIXES and w in AUX | BE | SUBJECTS):
                     x -= 1                              # "and were not ashamed": the "were" is the verb's;
@@ -1333,17 +1335,25 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None):
         for a in affixes:
             if a not in AFFIX_AFTER:
                 continue
-            x = hi + 1
-            while x < len(app) and x - hi <= 3 and not pause[x - 1] and not taken(x) and not italic[x]:
-                w = key(app[x])
-                if w in AFFIX_AFTER[a]:
-                    for y in range(hi + 1, x + 1):
-                        added[y] = t
-                    hi = x
+            # After each piece: "destroy her utterly" (Jer 50:26), and across a
+            # preposition the KJV supplies: "fought against me" (Ps 109:3).
+            ends = sorted({i for i in range(len(app)) if (tags.get(i) == t or added.get(i) == t)
+                           and tags.get(i + 1) != t and added.get(i + 1) != t})
+            for end in ends:
+                x, done_end = end + 1, False
+                while x < len(app) and x - end <= 3 and not pause[x - 1] and not taken(x) and not italic[x]:
+                    w = key(app[x])
+                    if w in AFFIX_AFTER[a]:
+                        for y in range(end + 1, x + 1):
+                            added[y] = t
+                        hi = max(hi, x)
+                        done_end = True
+                        break
+                    if w not in GAP_WORDS and w not in PREPOSITIONS:
+                        break
+                    x += 1
+                if done_end:
                     break
-                if w not in GAP_WORDS:
-                    break
-                x += 1
     head_words(app, italic, pause, tags, added, verbs, order_of)
     # "the same is it" (Gen 2:13), "that is it" (2:14): the "it" is the pronoun's.
     for x in range(2, len(app)):
@@ -1496,6 +1506,18 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
         if t[0] == 'H5704' and key(app[max(idx)]) == 'even' and j < len(app) and j not in tags \
                 and not italic[j] and not pause[j - 1] and key(app[j]) in ('unto', 'to'):
             tags[j] = t
+    # "two hundred", "two thousand": one Hebrew word, the dual (matayim,
+    # alpayim), where the verse has no separate "two" for it: "a thousand two
+    # hundred twenty and two" (Ezra 2:12) has one shenayim, the last.
+    ph, by = phrases_of()
+    for t, idx in list(ph.items()):
+        if t[0] != 'H8147' or len(by['H8147']) <= heb_count['H8147']:
+            continue
+        nxt = tags.get(max(idx) + 1)
+        if nxt and nxt[0] in ('H3967', 'H505') and all(key(app[i]) == 'two' for i in idx):
+            for i in idx:
+                tags[i] = nxt
+            by['H8147'].remove(t)
     # One phrase with the English of two of a small word: "unto him into the
     # ark" (Gen 8:9) is elav and el, two H413s, which the interlinear gave as
     # one. Where the Hebrew has more of the number than the KJV has phrases,
