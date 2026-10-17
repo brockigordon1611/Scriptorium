@@ -2077,7 +2077,7 @@ let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 // ("And God saw": And … saw is H7200). Its pieces are underlined in a colour of
 // their own, where a word in one piece is gold, each such word of the verse in
 // a different colour so its pieces can be told from its neighbour's.
-const LINK_COLORS={dark:['#6fb3a6','#c98a8a','#9b92cf','#93b46a','#7aa6d8'],light:['#2f7f73','#a3504f','#5e54a8','#5b7a2c','#2f6aa8']};
+const LINK_COLORS={dark:['#22d3ee','#f472b6','#a3e635','#c084fc','#fb923c'],light:['#0891b2','#db2777','#65a30d','#9333ea','#ea580c']};
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
   const redSet=new Set();
@@ -2212,7 +2212,7 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
       onTouchStart:e=>{_wlpActive=true;_wlpFired=false;_wlpStartY=e.touches[0].clientY;_wlpTimer=setTimeout(()=>{_wlpFired=true;_wlpTimer=null;onTap(sNum,tapWord,split);},500);},
       onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
       onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
-      style:{borderBottom:`1.5px dotted ${link?linkColor(link):T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
+      style:{borderBottom:`${link?3:1.5}px dotted ${link?linkColor(link):T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
     },groupText));
     i=j;
   }
@@ -4035,7 +4035,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
         {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
-          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`${split.pieces.length>1?2:1.5}px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
         </span>}
       </div>
       {trail}
