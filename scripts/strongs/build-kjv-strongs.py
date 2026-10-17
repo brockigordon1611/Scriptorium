@@ -1380,20 +1380,39 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
         if order in paired or not {'H9001', 'H9002'} & set(affixes):
             continue
         sn = next((m for m in mains if any(t[0] == m for t in phrases)), None)
+        alone = sn is None and 'H1961' in mains     # a hayah the KJV has no "be" for at all
+        if alone:
+            sn = 'H1961'
         prev = next((o for o in range(order - 1, -1, -1) if o in paired), None)
         nxt = order + 1 if order + 1 in paired else None
         if sn is None or prev is None or nxt is None or {'H9001', 'H9002'} & set(hebrew[nxt][2]):
             continue
-        t = min((abs(o - order), o) for o, p in paired.items() if p[0] == sn)
-        t = paired[t[1]]
+        t = (sn, 'own') if alone else paired[min((abs(o - order), o) for o, p in paired.items() if p[0] == sn)[1]]
         before = [i for i in tags if tags[i] == paired[prev]]
         after = [i for i in tags if tags[i] == paired[nxt]]
         if not before or not after or max(before) >= min(after) \
                 or any(tags.get(i) == t or added.get(i) == t for i in range(max(before), min(after))):
             continue
-        x = min(after) - 1
+        # A hayah is often English only in the next verb's helpers: "and let it
+        # divide" (Gen 1:6) is vihi mavdil, "and let it be" and "dividing" --
+        # "and let it" is the hayah's, "divide" the participle's.
+        of_next = lambda y: tags.get(y) == paired[nxt] or added.get(y) == paired[nxt]
+        helpers, y = [], min(i for i in range(len(app)) if of_next(i))
+        if sn == 'H1961' and paired[nxt][0] in verbs:
+            while of_next(y) and not italic[y] and key(app[y]) in (HELPERS - {'not'}) | AUX:
+                helpers.append(y)
+                y += 1
+            if not of_next(y):
+                helpers = []                    # the verb itself must be left
+        if alone and not helpers:
+            continue
+        x = (min(helpers) if helpers else min(after)) - 1
         while x > max(before) and not taken(x) and not italic[x] and not pause[x]:
             if key(app[x]) in AFFIX_BEFORE['H9001']:
+                for h in helpers:
+                    tags.pop(h, None)
+                    added.pop(h, None)
+                    added[h] = shared[h] = t
                 added[x] = shared[x] = t      # held, so later rules leave it
                 break
             if key(app[x]) not in GAP_WORDS:
@@ -1405,10 +1424,11 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
+    kept = {x for x, t in shared.items() if added.get(x) == t}
     added = live(tags, added, app, hebrew)
     for x, t in shared.items():
-        if added.get(x) == t:
-            del added[x]
+        if added.get(x) == t or (t[1] == 'own' and x in kept and x not in tags):
+            added.pop(x, None)
             if own is not None:
                 own[x] = t[0]
     return added
@@ -2153,7 +2173,11 @@ def main():
                 link += 1
                 links += 1
             done.append((g, sn, link if gap else None))
-        done += [([i], sn, None) for i, sn in sorted(own.items())]     # "and" of a word, uncounted
+        for i, sn in sorted(own.items()):                              # "and" of a word, uncounted;
+            if done and done[-1][1] == sn and done[-1][0][-1] == i - 1 and done[-1][0][0] in own:
+                done[-1][0].append(i)                                   # "and let it", one word
+            else:
+                done.append(([i], sn, None))
         # Two words of one number side by side ("Verily, verily", "most holy",
         # "unto him into"): the second one's first row says it starts a word of
         # its own (6th element; the 5th is then 0, no link), or the reader
