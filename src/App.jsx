@@ -2078,9 +2078,10 @@ let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 // a different colour so its pieces can be told from its neighbour's.
 // Split-word colours, from the theme: five hues spaced evenly round the colour
 // wheel from the theme's accent (so they sit with it and stay far apart), none
-// of them the accent's own hue (the plain underline's). In OKLCH, where equal
-// lightness looks equally bright, so no one colour fades (blue in HSL does).
-const _oklch=typeof CSS!=='undefined'&&CSS.supports&&CSS.supports('color','oklch(0.5 0.1 100)');
+// of them the accent's own hue (the plain underline's). Light pages use OKLCH,
+// where the lightness can be set for each hue to show on cream.
+// window.CSS: this file's own CSS is the app's stylesheet text.
+const _oklch=typeof window!=='undefined'&&!!window.CSS&&!!window.CSS.supports&&window.CSS.supports('color','oklch(0.5 0.1 100)');
 function themeLinkColors(T,dark){
   const m=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(T.g||'');
   let h=80,grey=false;
@@ -2095,9 +2096,13 @@ function themeLinkColors(T,dark){
   // Ordered so the first three, which most verses use, are the furthest apart.
   const hues=[180,36,252,108,324].map(o=>Math.round((h+o)%360));
   // On a light page a thin dotted line only shows its hue at full colour: mid
-  // dark tones all read as the same brown dots there.
-  if(_oklch)return hues.map(x=>dark?`oklch(0.76 ${grey?0.1:0.13} ${x})`:`oklch(0.6 ${grey?0.18:0.25} ${x})`);
-  return hues.map(x=>dark?`hsl(${x},${grey?45:60}%,64%)`:`hsl(${x},${grey?65:85}%,45%)`);
+  // dark tones all read as the same brown dots there. And the eye barely sees
+  // fine blue or violet detail, so those go deep, like a link's blue.
+  const lightL=x=>0.58-0.16*Math.max(0,Math.cos((x-275)*Math.PI/180));
+  // Dark: as Brock approved them (2026-10-16).
+  if(dark)return hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
+  if(_oklch)return hues.map(x=>`oklch(${lightL(x).toFixed(3)} ${grey?0.18:0.25} ${x})`);
+  return hues.map(x=>`hsl(${x},${grey?65:85}%,${x>=225&&x<=305?33:45}%)`);
 }
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
