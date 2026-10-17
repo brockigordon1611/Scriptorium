@@ -819,7 +819,7 @@ NT_FUNC = {k: set(v.split()) for k, v in {
 }.items()}
 
 
-def greek_words(app, italic, tags, greek):
+def greek_words(app, italic, pause, tags, greek):
     """With the KJV's Greek words of the verse (GREEK_NT): an article (G3588)
     on a noun the KJV gives a "the" is that "the" -- "the church", where the
     source tags only "church"; not an article the KJV leaves unsaid (ho Iesous,
@@ -864,6 +864,36 @@ def greek_words(app, italic, tags, greek):
             for i in cands:
                 pid += 1
                 tags[i] = (sn, pid)
+    # More phrases of a number than the Greek has words of it: pieces of one
+    # word -- "We will not have" (Luke 19:14, thelo), "came one running" (Mark
+    # 10:17), "Six hundred threescore and six" (Rev 13:18). The nearest two
+    # (six words apart at most, no comma between) are joined, till they match.
+    # A helper piece goes first ("they ... that sleep sleep", 1 Thess 5:7, is
+    # "they that sleep" and "sleep"); never two articles or two "and"s.
+    small = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | PREPOSITIONS | {'there', 'not'}
+    while True:
+        ph = collections.OrderedDict()
+        for i in sorted(tags):
+            ph.setdefault(tags[i], []).append(i)
+        content = lambda t: any(key(app[i]) not in small for i in ph[t])
+        filler = lambda t: all(key(app[i]) in CONNECT | SEPARATE | ABSORB_BACK | {'the', 'that', 'which'} for i in ph[t])
+        best = None
+        for sn in {t[0] for t in ph} - {'G3588'}:
+            mine = [t for t in ph if t[0] == sn]
+            if not gcount[sn] or len(mine) <= gcount[sn]:
+                continue
+            for t1, t2 in zip(mine, mine[1:]):
+                a1, b2 = max(ph[t1]), min(ph[t2])
+                if b2 - a1 > 6 or any(pause[i] for i in range(a1, b2)) or (filler(t1) and filler(t2)):
+                    continue
+                rank = (content(t1) and content(t2), b2 - a1)
+                if best is None or rank < best[0]:
+                    best = (rank, t1, t2)
+        if best is None:
+            break
+        _, t1, t2 = best
+        for i in ph[t2]:
+            tags[i] = t1
 
 
 def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
@@ -920,7 +950,7 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
                     if tags.get(i) == t2:
                         tags[i] = t
                 break
-    greek_words(app, italic, tags, greek)
+    greek_words(app, italic, pause, tags, greek)
     # A helper at the front of another word's phrase is the next verb's: "Doth
     # our law judge any man" (John 7:51), the source's "Doth our" (G2257).
     ph = phrases_of()
