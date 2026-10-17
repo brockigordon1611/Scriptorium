@@ -2076,7 +2076,27 @@ let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 // ("And God saw": And … saw is H7200). Its pieces are underlined in a colour of
 // their own, where a word in one piece is gold, each such word of the verse in
 // a different colour so its pieces can be told from its neighbour's.
-const LINK_COLORS={dark:['#e8794a','#4fa9d6','#a3c552','#cf82bd','#e2b33d'],light:['#b5491e','#1f6c96','#587c14','#8c3e83','#a3700b']};
+// Split-word colours, from the theme: five hues spaced evenly round the colour
+// wheel from the theme's accent (so they sit with it and stay far apart), none
+// of them the accent's own hue (the plain underline's). In OKLCH, where equal
+// lightness looks equally bright, so no one colour fades (blue in HSL does).
+const _oklch=typeof CSS!=='undefined'&&CSS.supports&&CSS.supports('color','oklch(0.5 0.1 100)');
+function themeLinkColors(T,dark){
+  const m=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(T.g||'');
+  let h=80,grey=false;
+  if(m){
+    const [r,g,b]=[m[1],m[2],m[3]].map(x=>{const c=parseInt(x,16)/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4;});
+    const l=Math.cbrt(0.4122214708*r+0.5363325363*g+0.0514459929*b),
+      mm=Math.cbrt(0.2119034982*r+0.6806995451*g+0.1073969566*b),
+      s=Math.cbrt(0.0883024619*r+0.2817188376*g+0.6299787005*b);
+    const A=1.9779984951*l-2.4285922050*mm+0.4505937099*s,B=0.0259040371*l+0.7827717662*mm-0.8086757660*s;
+    if(Math.hypot(A,B)<0.02)grey=true;else{h=Math.atan2(B,A)*180/Math.PI;if(h<0)h+=360;}
+  }
+  // Ordered so the first three, which most verses use, are the furthest apart.
+  const hues=[180,36,252,108,324].map(o=>Math.round((h+o)%360));
+  if(_oklch)return hues.map(x=>`oklch(${dark?0.76:0.5} ${grey?0.1:0.13} ${x})`);
+  return hues.map(x=>`hsl(${x},${grey?45:60}%,${dark?64:38}%)`);
+}
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
   const redSet=new Set();
@@ -2165,7 +2185,7 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     }
     lastLink=it.link;
   }
-  const linkColors=LINK_COLORS[dark?'dark':'light'];
+  const linkColors=themeLinkColors(T,dark);
   const linkColor=l=>linkColors[(l-1)%linkColors.length];
 
   // Group consecutive same-sNum words with bridging spaces into single phrase spans
