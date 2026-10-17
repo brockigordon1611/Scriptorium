@@ -2076,7 +2076,7 @@ let _wlpTimer=null,_wlpFired=false,_wlpStartY=0,_wlpActive=false;
 // ("And God saw": And … saw is H7200). Its pieces are underlined in a colour of
 // their own, where a word in one piece is gold, each such word of the verse in
 // a different colour so its pieces can be told from its neighbour's.
-const LINK_COLORS={dark:['#22d3ee','#f472b6','#a3e635','#c084fc','#fb923c'],light:['#0891b2','#db2777','#65a30d','#9333ea','#ea580c']};
+const LINK_COLORS={dark:['#e8794a','#4fa9d6','#a3c552','#cf82bd','#e2b33d'],light:['#b5491e','#1f6c96','#587c14','#8c3e83','#a3700b']};
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
   const redSet=new Set();
