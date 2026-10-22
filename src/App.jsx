@@ -4092,7 +4092,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {/* The number already says Strong's; at this size the full line no
               longer fit beside the close button. */}
           {/* Or, for a word the KJV leaves without English (et), that it does. */}
-          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'with an ending':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
+          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'object marker':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
         {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
@@ -4126,11 +4126,11 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
       {untranslated&&groupList.length===0&&<>
         <div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>
         <div style={{...card,padding:'10px 14px'}}>
-          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>{ending?'With an ending':'Not translated'}</div>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>{ending?<>Translated here as “{split.pieces.join(' … ')}”</>:'Not translated'}</div>
           <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),color:T.mut,lineHeight:1.5,marginTop:6}}>
-            {ending?<>Here et carries a pronoun ending, and “{split.pieces.join(' … ')}” is that ending in English. Et itself only marks the object, which English shows by word order. </>
-              :num==='H853'&&<>It marks the object{split?.pieces?.length?<> (here, “{split.pieces.join(' … ')}”)</>:null}; English shows the object by word order, so the KJV has no word for it. </>}
-            Strong’s: “{String(entry.kjv_usage||'').trim()}”
+            {ending?<>Et is a small Hebrew word that points out the object of a verb. On its own it has no English word. Here a pronoun is joined to the end of it, and that pronoun is what the KJV translates as “{split.pieces.join(' … ')}”.</>
+              :num==='H853'?<>Et is a small Hebrew word that points out the object of a verb{split?.pieces?.length?<> (here, “{split.pieces.join(' … ')}”)</>:null}. English shows the object by word order instead, so the KJV has no word for it. Strong’s: “{String(entry.kjv_usage||'').trim()}”</>
+              :<>Strong’s: “{String(entry.kjv_usage||'').trim()}”</>}
           </div>
         </div>
       </>}

@@ -1585,6 +1585,11 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
 
 
 MODALS = set('shall shalt will wilt should shouldest would wouldest may mayest might must can canst could'.split())
+WHO_PRONOUNS = THAT_PRONOUNS | {'thou', 'ye', 'one', 'i', 'we'}
+# The subject a Hebrew ending is in a KJV clause: miqnato "his purchase" is
+# "which he hath bought".
+ENDING_SUBJECT = {'H9020': {'i'}, 'H9021': {'thou'}, 'H9022': {'thou'}, 'H9023': {'he', 'it'}, 'H9024': {'she', 'it'},
+                  'H9025': {'we'}, 'H9026': {'ye'}, 'H9027': {'ye'}, 'H9028': {'they'}, 'H9029': {'they'}}
 SMALL_WORDS = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
 ADDED_PREPOSITIONS = set('to with unto of for in on upon by at from into against over under before'.split())
 PREPOSITION_NUMBERS = {'H5921', 'H413', 'H5973', 'H854', 'H4480', 'H5704', 'H8478', 'H996', 'H6440', 'H5048',
@@ -1613,21 +1618,75 @@ def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectiv
         # "The prince that wanteth" (Prov 28:16), "He that hasteth" (28:22):
         # the relative of a participle, unless the Hebrew has an asher or mi
         # of its own still without English.
-        if (w.endswith('eth') or w in ('hath', 'doth', 'saith')) and free(x - 1) and key(app[x - 1]) in ('that', 'which', 'who') \
+        # And its "Thou that", "that which": "Thou that dwellest" (Song 8:13),
+        # "to that which destroyeth kings" (Prov 31:3).
+        if (w.endswith('eth') or w.endswith('est') or w in ('hath', 'doth', 'saith', 'hast', 'dost')) \
+                and x >= 1 and (free(x - 1) or of(x - 1) == t) and key(app[x - 1]) in ('that', 'which', 'who') \
                 and not {'H834', 'H4310'} & unplaced:
-            added[x - 1] = t
-            if free(x - 2) and key(app[x - 2]) in THAT_PRONOUNS:
+            if free(x - 1):
+                added[x - 1] = t
+            if free(x - 2) and key(app[x - 2]) in WHO_PRONOUNS | {'that'}:
                 added[x - 2] = t
             continue
-        # "He that is of a proud heart" (Prov 28:25), rechav nefesh.
+        if w in ('that', 'which', 'who') and x + 1 < len(app) and of(x + 1) == t and free(x - 1) \
+                and key(app[x - 1]) in WHO_PRONOUNS and (key(app[x + 1]).endswith('eth') or key(app[x + 1]).endswith('est')):
+            added[x - 1] = t                            # "Thou that dwellest" (Song 8:13)
+            continue
+        # "He that is of a proud heart" (Prov 28:25), rechav nefesh; "such as are
+        # appointed" (Prov 31:8), "one that is desperate" (Job 6:26), "Which are
+        # blackish" (Job 6:16), "him that is ready to perish" (Prov 31:6) -- one
+        # Hebrew word (a participle, an adjective) in so many English words.
         y = x - 1
         if free(y) and key(app[y]) == 'of':
             y -= 1
-        if y >= 2 and free(y) and key(app[y]) in BE and free(y - 1) and key(app[y - 1]) == 'that' \
-                and free(y - 2) and key(app[y - 2]) in THAT_PRONOUNS:
-            for z in range(y - 2, x):
-                added[z] = t
-            continue
+        extra = []
+        if t[0] in verbs:
+            while len(extra) < 2 and free(y) and key(app[y]) in ('ready', 'about', 'to', 'like'):
+                extra.insert(0, y)
+                y -= 1
+        if free(y) and key(app[y]) in BE and not {'H834', 'H4310'} & unplaced:
+            if y >= 2 and free(y - 1) and key(app[y - 1]) == 'that' and free(y - 2) and key(app[y - 2]) in WHO_PRONOUNS:
+                lo_ = y - 2
+            elif y >= 2 and free(y - 1) and key(app[y - 1]) == 'as' and free(y - 2) and key(app[y - 2]) == 'such':
+                lo_ = y - 2
+            elif y >= 1 and free(y - 1) and key(app[y - 1]) in ('which', 'who'):
+                lo_ = y - 1
+            else:
+                lo_ = None
+            if lo_ is not None:
+                for z in range(lo_, x):
+                    added[z] = t
+                continue
+        # "a field which he hath bought" (Lev 27:22): miqnato, "his purchase";
+        # "when it is hot" (Job 6:17), be-chummo, "in its heat"; "where they have
+        # been put to shame" (Zeph 3:19), boshtam, "their shame" -- the KJV's
+        # clause for one Hebrew word. Only where the clause's pronoun is the
+        # word's own ending (or "there", for a word with a prefix: "so that there
+        # is no man", Zeph 3:6, mibbeli), and no Hebrew word of the verse that
+        # could be it ("which", "when") is without English.
+        if t[0] not in verbs and not ({'H834', 'H3588', 'H4310', 'H3512', 'H834'} | PREPOSITION_NUMBERS) & unplaced \
+                and order_of.get(t) is not None:
+            run, y = [], x - 1
+            while free(y) and key(app[y]) in SUBJECTS | AUX | BE | MODALS | {'there', 'been', 'being', 'put', 'to'} \
+                    and len(run) < 6:
+                run.insert(0, y)
+                y -= 1
+            affixes = set(hebrew[order_of[t]][2])
+            subj = {key(app[z]) for z in run} & (SUBJECTS | {'there'})
+            own = set().union(*(ENDING_SUBJECT.get(a, set()) for a in affixes))
+            fits = (subj & own) or ('there' in subj and affixes & (PREFIXES - {'H9009', 'H9010'}))
+            # mibbeli, me-ein ("from without"): "that none passeth by", "so that
+            # there is no man" (Zeph 3:6) -- the "that" is the mi-.
+            if t[0] in ('H1097', 'H369') and 'H9006' in affixes and key(app[x]) in ('no', 'none', 'not', 'there'):
+                fits = True
+            if (run or t[0] in ('H1097', 'H369')) and fits and free(y) \
+                    and key(app[y]) in ('which', 'when', 'where', 'whereby', 'wherein', 'that', 'whom'):
+                run.insert(0, y)
+                if key(app[y]) == 'that' and free(y - 1) and key(app[y - 1]) == 'so':
+                    run.insert(0, y - 1)
+                for z in run:
+                    added[z] = t
+                continue
         # "let no man stay him" (Prov 28:17), al yitmekhu: "let ... man stay".
         if t[0] in verbs and x >= 3 and free(x - 1) and key(app[x - 1]) in ('man', 'one') \
                 and of(x - 2) and key(app[x - 2]) in ('no', 'not', 'none') and free(x - 3) and key(app[x - 3]) == 'let' \
@@ -2365,7 +2424,7 @@ _FUNC = {
     'H4100': 'what why how wherefore', 'H4310': 'who whom whose', 'H1571': 'also both even moreover yea',
     'H637': 'also yea even moreover', 'H5750': 'yet again more still', 'H6258': 'now', 'H227': 'then',
     'H4994': 'now pray beseech', 'H3605': 'all every any whole', 'H310': 'after behind afterward',
-    'H8478': 'under instead beneath', 'H5048': 'before against over',
+    'H8478': 'under instead beneath', 'H5048': 'before against over', 'H1097': 'no none not without',
 }
 FUNC_WORDS = {k: set(v.split()) for k, v in _FUNC.items()}
 
