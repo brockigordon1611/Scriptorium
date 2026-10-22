@@ -81,6 +81,8 @@ HEBREW_OT = ROOT / 'scripts/strongs/source/tahot-ot-structure.json.gz'
 # Per verse, the numbers of Hebrew adjectives in the construct state ("great
 # of oppressions"): see export-tahot-adjectives.py.
 ADJECTIVES_OT = ROOT / 'scripts/strongs/source/tahot-adjective-construct.json.gz'
+# Per verse, et with a pronoun ending (oto, otam): see export-tahot-et-endings.py.
+ET_ENDINGS_OT = ROOT / 'scripts/strongs/source/tahot-et-endings.json.gz'
 INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
 # The KJV's Greek (TR) words of each NT verse, from STEPBible's TAGNT; see
 # export-tagnt-files.py.
@@ -1951,6 +1953,59 @@ def affix_repair(app, italic, pause, tags, added, hebrew, order_of, usage=None):
             move(x, t)
 
 
+def et_endings(app, italic, pause, tags, added, hebrew, entries):
+    """{word position: 'H853'} for the KJV's "it", "him", "them" that is et
+    with an ending -- "the priest shall value it" (Lev 27:12, otah): BLB's
+    H853 there, and Brock's (2026-10-22); not counted. Each et is placed
+    after the English of the Hebrew words before it and before the English of
+    the next. A pronoun a verb took that has no such ending of its own is
+    taken back."""
+    if not entries or not hebrew:
+        return {}
+    _, order_of = pair_ot(hebrew, tags)
+    of = lambda x: tags.get(x) or added.get(x)
+    at = collections.defaultdict(list)
+    for x in set(tags) | set(added):
+        o = order_of.get(of(x))
+        if o is not None:
+            at[o].append(x)
+    same = lambda a, b: a == b or SAME_WORD.get(a) == b or SAME_WORD.get(b) == a
+    out, start = {}, 0
+    for before, after, ending in entries:
+        o = next((o for o in range(start, len(hebrew))
+                  if any(same(before, m) for m in hebrew[o][1])
+                  and (after is None or (o + 1 < len(hebrew) and any(same(after, m) for m in hebrew[o + 1][1])))), None)
+        if o is None:
+            continue
+        start = o + 1
+        done = [x for p in range(o + 1) for x in at[p]]
+        if not done:
+            continue
+        e = max(done)
+        later = [x for p in range(o + 1, len(hebrew)) for x in at[p] if x > e]
+        s = min(later) if later else len(app)
+        words = set().union(*(AFFIX_AFTER.get(a, set()) for a in ending))
+        for x in range(e + 1, min(s, e + 5)):
+            if pause[x - 1] and x > e + 1:
+                break
+            if italic[x] or key(app[x]) not in words or x in out:
+                continue
+            if x in tags:
+                u = order_of.get(tags[x])
+                if u is None or u > o or set(ending) & set(hebrew[u][2]) \
+                        or sum(1 for y in tags if tags[y] == tags[x]) < 2:
+                    break                               # its own word, counted
+                del tags[x]                             # "shall estimate it" (Lev 27:14)
+            elif x in added:
+                u = order_of.get(added[x])
+                if u is None or u > o or set(ending) & set(hebrew[u][2]):
+                    break                               # "smote him" with its own ending
+                del added[x]
+            out[x] = 'H853'
+            break
+    return out
+
+
 def live(tags, added, app=None, hebrew=None):
     """The added words whose phrase is still there: a later rule can take a
     phrase's last word ("had" of "had not", given to the verb). And an "it"
@@ -2601,6 +2656,8 @@ def main():
         hebrew = json.load(f)
     with gzip.open(ADJECTIVES_OT, 'rt', encoding='utf-8') as f:
         adjectives = json.load(f)
+    with gzip.open(ET_ENDINGS_OT, 'rt', encoding='utf-8') as f:
+        et_data = json.load(f)
     verbs = verb_numbers(lex_rows)
     with gzip.open(INTERLINEAR_NT, 'rt', encoding='utf-8') as f:
         interlinear.update(json.load(f))
@@ -2632,7 +2689,7 @@ def main():
                     used[n][key(w)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = 0
+    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = et_words = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
@@ -2658,6 +2715,9 @@ def main():
         added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot, own,
                         adjectives.get(f'{b}|{c}|{v}', ())) if b <= 39 \
             else mend_nt(app, italic, pause, tags, verbs, usage_all, greek.get(f'{b}|{c}|{v}'))
+        ets = et_endings(app, italic, pause, tags, added, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags),
+                         et_data.get(f'{b}|{c}|{v}')) if b <= 39 else {}
+        et_words += len(ets)
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added) + len(own)
         phrases = collections.OrderedDict()
@@ -2669,6 +2729,7 @@ def main():
         marks = object_marks(tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 else {}
         marked += len(marks)
         owned += len(own)
+        marks.update({x: sn for x, sn in ets.items() if x not in marks})
         verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added, extra, marks, own))
     # What each number's phrases say where it is the only one in its verse:
     # "and" for G2532, "him" for G846, "for" for G1223. A part that is also a
@@ -2711,7 +2772,7 @@ def main():
             while into[n] != n:
                 n = into[n]
             groups[n].append(x)
-        tagged = {i for g in groups if g for i in g} | set(own)
+        tagged = {i for g in groups if g for i in g} | set(own) | set(marks)
         rows, link, done = [], 0, []
         for ((sn, _), _), g in zip(phrases, groups):
             if not g:
@@ -2779,6 +2840,7 @@ def main():
     print(f'{swapped} source numbers the Hebrew or Greek verse lacks, changed to the one the interlinear, the text and Strong\'s agree on')
     print(f'{seconds} English words that are two Hebrew or Greek words ("therefore", "cannot") given the second number too')
     print(f'{marked} words the object marker (et, H853) stands before, noted as their second number (not counted)')
+    print(f'{et_words} "it", "him", "them" that are et with an ending (oto, otam), given H853 (not counted)')
     print(f'{owned} "and"s of a Hebrew word the KJV renders only by them ("between Beth-el and Hai"), given its number (not counted)')
     print(f'{links} words whose English is in pieces, linked')
     print(f'{starts} words next to another word of the same number, marked as their own')

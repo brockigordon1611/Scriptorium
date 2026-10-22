@@ -2137,14 +2137,17 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // SWORD attaches it to the adjacent English word (e.g. "and", "created"), producing
   // wrong underlines and wrong popup numbers. Filter it out here so those words become
   // plain fillers (or show H1254 when H1254+H853 share the same position).
-  // It is never a word's own number -- but where the map notes it on the word
-  // it stands before ("the heaven", Gen 1:1), the popup offers it ("also H853").
-  const posMap={},etAt=new Set();
+  // It is not the number of a word that has one of its own -- where the map
+  // notes it on the word it stands before ("the heaven", Gen 1:1), the popup
+  // offers it ("also H853"). But a word whose only number it is, is et with an
+  // ending: "shall value it" (Lev 27:12, otah), as BLB has it.
+  const posMap={},etAt=new Set(),etOnly={};
   for(const m of mappings){
-    if(m.strongs_num==='H853'){etAt.add(m.word_pos);continue;}
+    if(m.strongs_num==='H853'){etAt.add(m.word_pos);etOnly[m.word_pos]=m;continue;}
     if(!posMap[m.word_pos])posMap[m.word_pos]=[];
     posMap[m.word_pos].push(m);
   }
+  for(const pos of etAt)if(!posMap[pos]){posMap[pos]=[etOnly[pos]];etAt.delete(pos);}
 
   // Annotate each token
   const items=[];
@@ -4055,6 +4058,9 @@ const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 // unrepresented in English)", H853 (et).
 const UNTRANSLATED_RE=/unrepresented in English/i;
 const UNTRANSLATED=new Set(['H853']);
+// The KJV's "it", "him", "them" for et with an ending (oto, otam): the ending's
+// English, so not "not translated".
+const OBJECT_PRONOUN_RE=/^(me|thee|him|her|it|us|you|ye|them|myself|thyself|himself|herself|itself|ourselves|yourselves|themselves)$/i;
 function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,back,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
@@ -4065,6 +4071,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   // One block, not a fragment: the popup scrolls a flex column, and loose
   // cards in it shrank to nothing instead of scrolling.
   const untranslated=UNTRANSLATED.has(num)||UNTRANSLATED_RE.test(entry?.kjv_usage||'');
+  const ending=num==='H853'&&split?.pieces?.length>0&&split.pieces.every(p=>OBJECT_PRONOUN_RE.test(p));
   return(<div style={{flexShrink:0}}>
     {/* Back to the number this one was opened from: a line of its own above
         the number, saying where it goes, so the header stays where it was. */}
@@ -4086,7 +4093,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {/* The number already says Strong's; at this size the full line no
               longer fit beside the close button. */}
           {/* Or, for a word the KJV leaves without English (et), that it does. */}
-          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
+          {[langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'with an ending':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
         {/* The English it was opened from, underlined as in the verse. */}
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
@@ -4120,9 +4127,10 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
       {untranslated&&groupList.length===0&&<>
         <div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>KJV usage</div>
         <div style={{...card,padding:'10px 14px'}}>
-          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>Not translated</div>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>{ending?'With an ending':'Not translated'}</div>
           <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),color:T.mut,lineHeight:1.5,marginTop:6}}>
-            {num==='H853'&&<>It marks the object{split?.pieces?.length?<> (here, “{split.pieces.join(' … ')}”)</>:null}; English shows the object by word order, so the KJV has no word for it. </>}
+            {ending?<>Here et carries a pronoun ending, and “{split.pieces.join(' … ')}” is that ending in English. Et itself only marks the object, which English shows by word order. </>
+              :num==='H853'&&<>It marks the object{split?.pieces?.length?<> (here, “{split.pieces.join(' … ')}”)</>:null}; English shows the object by word order, so the KJV has no word for it. </>}
             Strong’s: “{String(entry.kjv_usage||'').trim()}”
           </div>
         </div>
