@@ -78,6 +78,9 @@ OUT_OCC = ROOT / 'public/bundled/strongs_occ.json'
 MANIFEST = ROOT / 'public/bundled/manifest.json'
 INTERLINEAR_OT = ROOT / 'scripts/strongs/source/interlinear-ot-words.json.gz'
 HEBREW_OT = ROOT / 'scripts/strongs/source/tahot-ot-structure.json.gz'
+# Per verse, the numbers of Hebrew adjectives in the construct state ("great
+# of oppressions"): see export-tahot-adjectives.py.
+ADJECTIVES_OT = ROOT / 'scripts/strongs/source/tahot-adjective-construct.json.gz'
 INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
 # The KJV's Greek (TR) words of each NT verse, from STEPBible's TAGNT; see
 # export-tagnt-files.py.
@@ -391,7 +394,7 @@ COMPOUND = {w: set(v.split()) for w, v in {
 }.items()}
 
 
-def two_numbers(app, tags, hebrew):
+def two_numbers(app, tags, hebrew, usage=None):
     """{word position: second number} for an English word that is two Hebrew
     words side by side, the second with no English of its own in the verse:
     "Therefore shall a man leave" (Gen 2:24), al-ken, where the source numbers
@@ -417,6 +420,25 @@ def two_numbers(app, tags, hebrew):
                     have[u] += 1
                     used.add(o2)
                     break
+    # Or any English word Strong's lists under the Hebrew word beside it, one
+    # with no English of its own, and not under its own number: "of a
+    # destroyer" (Prov 28:24) is ish mashchit -- H376 and H7843, as BLB has it.
+    if usage:
+        for t, o in sorted(order_of.items(), key=lambda kv: kv[1]):
+            for i in phrases[t]:
+                whole = {st for st in stems(app[i]) if len(st) > 2}
+                if i in extra or not whole or key(app[i]) in SMALL_WORDS or whole & usage.get(t[0], set()):
+                    continue
+                for o2 in (o + 1, o - 1):
+                    if not 0 <= o2 < len(hebrew) or o2 in used or hebrew[o2][2]:
+                        continue
+                    u = next((m for m in hebrew[o2][1] if m != t[0] and have[m] < heb_count[m]
+                              and m not in FUNC_WORDS and whole & usage.get(m, set())), None)
+                    if u:
+                        extra[i] = u
+                        have[u] += 1
+                        used.add(o2)
+                        break
     return extra
 
 
@@ -1231,7 +1253,7 @@ def verb_helpers(app, italic, pause, tags, added, order_of, order, t, lo, hi, ve
     return lo, hi
 
 
-def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
+def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjectives=()):
     """Give the KJV's "and", "in", "the", "his", "him" to the Hebrew word they
     are written on, and its helpers to a verb. Where the Hebrew and the KJV's
     phrases of a number disagree, mend the phrases first (see mend_ot).
@@ -1499,6 +1521,8 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
                 break
             x -= 1
     head_words(app, italic, pause, tags, added, verbs, order_of)
+    blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectives)
+    negation_helpers(app, italic, tags, added, order_of, hebrew)
     # "the same is it" (Gen 2:13), "that is it" (2:14): the "it" is the pronoun's.
     for x in range(2, len(app)):
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
@@ -1512,6 +1536,161 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
             if own is not None:
                 own[x] = t[0]
     return added
+
+
+MODALS = set('shall shalt will wilt should shouldest would wouldest may mayest might must can canst could'.split())
+SMALL_WORDS = LEAD | CONNECT | SEPARATE | ABSORB_BACK | PRONOUNS | {'there', 'not'}
+ADDED_PREPOSITIONS = set('to with unto of for in on upon by at from into against over under before'.split())
+PREPOSITION_NUMBERS = {'H5921', 'H413', 'H5973', 'H854', 'H4480', 'H5704', 'H8478', 'H996', 'H6440', 'H5048',
+                       'H1157', 'H3926', 'H681', 'H5980', 'H5227', 'H3942', 'H4136', 'H8432'}
+
+
+def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectives=()):
+    """The KJV's small words BLB writes on the word they go with, where no
+    Hebrew word of their own is left for them (Prov 28:16-28 as BLB has it):
+    "that wanteth", "He that is of ... proud", "shall abound", "let no man
+    stay", "with the tongue", "of any person"; and an "a" with its noun, not
+    the adjective the Hebrew puts first: "a great oppressor" (rav ma'ashaqot)
+    is "a ... oppressor". All join a phrase already there, so no count moves."""
+    taken = lambda x: x in tags or x in added
+    free = lambda x: 0 <= x < len(app) and not taken(x) and not italic[x] and not pause[x]
+    of = lambda x: tags.get(x) or added.get(x)
+    paired = set(order_of.values())
+    unplaced = set()
+    for o, (_, mains, _) in enumerate(hebrew):
+        if o not in paired:
+            unplaced |= set(mains)
+    starts = [x for x in range(len(app)) if of(x) and (x == 0 or of(x - 1) != of(x))]
+    for x in starts:
+        t = of(x)
+        w = key(app[x])
+        # "The prince that wanteth" (Prov 28:16), "He that hasteth" (28:22):
+        # the relative of a participle, unless the Hebrew has an asher or mi
+        # of its own still without English.
+        if (w.endswith('eth') or w in ('hath', 'doth', 'saith')) and free(x - 1) and key(app[x - 1]) in ('that', 'which', 'who') \
+                and not {'H834', 'H4310'} & unplaced:
+            added[x - 1] = t
+            if free(x - 2) and key(app[x - 2]) in THAT_PRONOUNS:
+                added[x - 2] = t
+            continue
+        # "He that is of a proud heart" (Prov 28:25), rechav nefesh.
+        y = x - 1
+        if free(y) and key(app[y]) == 'of':
+            y -= 1
+        if y >= 2 and free(y) and key(app[y]) in BE and free(y - 1) and key(app[y - 1]) == 'that' \
+                and free(y - 2) and key(app[y - 2]) in THAT_PRONOUNS:
+            for z in range(y - 2, x):
+                added[z] = t
+            continue
+        # "let no man stay him" (Prov 28:17), al yitmekhu: "let ... man stay".
+        if t[0] in verbs and x >= 3 and free(x - 1) and key(app[x - 1]) in ('man', 'one') \
+                and of(x - 2) and key(app[x - 2]) in ('no', 'not', 'none') and free(x - 3) and key(app[x - 3]) == 'let' \
+                and not {'H376', 'H120', 'H259'} & unplaced:
+            added[x - 1] = added[x - 3] = t
+            continue
+        # "shall abound" (Prov 28:20), "shall have many" (28:27): rav, which the
+        # KJV gives as a verb, with its helpers.
+        # Not where a verb follows in the clause: "Now shall Sheba ... do" (2 Sam
+        # 20:6), "I will yet for this be enquired" (Ezek 36:37).
+        z, later = x + 1, False
+        while z < len(app) and not pause[z - 1]:
+            if of(z) and of(z) != t and of(z)[0] in verbs:
+                later = True
+                break
+            z += 1
+        if t[0] not in verbs and t[0] not in NEGATION_NUMBERS and t[0] not in FUNC_WORDS and not later \
+                and w not in {'the', 'a', 'an'} | PRONOUNS:
+            run, y = [], x - 1
+            while free(y) and key(app[y]) in AUX | BE | MODALS:
+                run.insert(0, y)
+                y -= 1
+            while run and key(app[run[0]]) not in MODALS:
+                run.pop(0)
+            if run:
+                for z in run:
+                    added[z] = t
+                continue
+        # "with the tongue" (Prov 28:23), "to the blood" (28:17), "of any
+        # person": a preposition the KJV puts before the word, where no Hebrew
+        # preposition of the verse is still without English.
+        y = x - 1
+        while y >= 0 and italic[y] and not taken(y):
+            y -= 1
+        if free(y) and key(app[y]) in ADDED_PREPOSITIONS and not PREPOSITION_NUMBERS & unplaced \
+                and t[0] not in PREPOSITION_NUMBERS and t[0] not in verbs and (y == x - 1 or key(app[y]) == 'of') \
+                and not (key(app[y]) == 'for' and (y == 0 or pause[y - 1] or {'H3588', 'H3282'} & unplaced)):
+            added[y] = t                                # but "For the king said": ki
+    # "a great oppressor" (Prov 28:16), "an evil eye" (28:22), "a proud heart"
+    # (28:25): an adjective in the construct state ("great of oppressions"),
+    # so the "a" is the noun's.
+    # Not "a piece of bread", "a man afterwards": the noun one word, no adverb.
+    for x in range(len(app) - 2):
+        if key(app[x]) not in ('a', 'an') or italic[x]:
+            continue
+        ta, tb = of(x), of(x + 2)
+        if not ta or ta[0] not in adjectives or of(x + 1) != ta or not tb or tb == ta or of(x + 3) == tb or tb[0] in verbs \
+                or key(app[x + 2]) in ('of', 'the') \
+                or tb[0] in FUNC_WORDS or tb[0] in PREPOSITION_NUMBERS:
+            continue
+        if order_of.get(ta) is None or order_of.get(tb) is None or order_of[ta] > order_of[tb]:
+            continue
+        if x in tags:
+            if sum(1 for y in tags if tags[y] == ta) < 2:
+                continue                                # its phrase keeps a word
+            del tags[x]
+        added[x] = tb
+
+
+NEGATION_NUMBERS = {'H3808', 'H369', 'H408', 'H1077', 'H1097', 'H1115'}
+
+
+def negation_helpers(app, italic, tags, added, order_of, hebrew):
+    """BLB's "shall ... lack" (Prov 28:27, ein machsor) and "shall ... be
+    innocent": a helper the source puts with "not" goes with the word after.
+    And "He that trusteth in his own heart is a fool" (Prov 28:26): a pronoun
+    word (hu) the interlinear set on the "He" of "He that trusteth" is the
+    "is" -- the "He" is the participle's."""
+    of = lambda x: tags.get(x) or added.get(x)
+    phrases = collections.defaultdict(list)
+    for x in sorted(set(tags) | set(added)):
+        phrases[of(x)].append(x)
+    for t, idx in list(phrases.items()):
+        if t[0] not in NEGATION_NUMBERS or len(idx) < 2:
+            continue
+        neg = [x for x in idx if key(app[x]) in NEGATIONS | {'no'}]
+        helpers = [x for x in idx if key(app[x]) in MODALS]           # not "have not" (ein lahem)
+        if len(neg) != 1 or not helpers or len(neg) + len(helpers) != len(idx) or max(helpers) > neg[0]:
+            continue
+        nxt = of(neg[0] + 1)
+        if not nxt or nxt == t or italic[neg[0] + 1]:
+            continue
+        for x in helpers:
+            tags.pop(x, None)
+            added[x] = nxt
+    for t, idx in list(phrases.items()):
+        if t[0] not in ('H1931', 'H1992') or len(idx) != 1 or idx[0] not in tags:
+            continue
+        x = idx[0]
+        if key(app[x]) not in THAT_PRONOUNS or x + 2 >= len(app) or key(app[x + 1]) != 'that':
+            continue
+        tv = of(x + 2)
+        o = order_of.get(t)
+        if not tv or tv == t or order_of.get(tv) is None or o is None or order_of[tv] > o or of(x + 1) not in (None, tv):
+            continue
+        before = {p: q for p, q in order_of.items()}
+        spots = []
+        for y in range(x + 2, len(app)):
+            if y in tags or y in added or italic[y] or key(app[y]) not in BE:
+                continue
+            left = next((before.get(of(z)) for z in range(y - 1, -1, -1) if of(z) and before.get(of(z)) is not None), None)
+            right = next((before.get(of(z)) for z in range(y + 1, len(app)) if of(z) and before.get(of(z)) is not None), None)
+            if left is not None and right is not None and left < o < right:
+                spots.append(y)
+        if len(spots) != 1:
+            continue
+        del tags[x]
+        tags[spots[0]] = t
+        added[x] = added[x + 1] = tv
 
 
 def live(tags, added, app=None, hebrew=None):
@@ -1980,6 +2159,10 @@ def place_ot(app, italic, tags, hebrew, usage=None):
                 and key(app[i + 1]) in OBJECT and key(app[i + 1]) not in ends
         cands = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in FUNC_WORDS[sn]
                  and not theirs(i)]
+        # hu, hem as "is", "are" between subject and predicate: "He that
+        # trusteth in his own heart is a fool" (Prov 28:26).
+        if sn in ('H1931', 'H1992') and prev and nxt:
+            cands += [i for i in range(max(prev) + 1, min(nxt)) if i not in tags and not italic[i] and key(app[i]) in BE]
         dist = lambda i: 0 if lo <= i <= hi else (lo - i if i < lo else i - hi)
         if not cands or dist(min(cands, key=lambda i: (dist(i), abs(i - lo)))) > 3:
             # Or its ending, where the KJV folds the preposition into the
@@ -1992,7 +2175,7 @@ def place_ot(app, italic, tags, hebrew, usage=None):
         # "concerning this thing" (Gen 19:21), la-davar ha-zeh: a word with the
         # article after its noun is before it in English.
         before = 'H9009' in affixes or 'H9010' in affixes
-        pick = min(cands, key=lambda i: (dist(i), not (before and i < lo), abs(i - lo)))
+        pick = min(cands, key=lambda i: (dist(i), key(app[i]) in BE, not (before and i < lo), abs(i - lo)))
         if dist(pick) > 3:
             continue
         pid += 1
@@ -2158,6 +2341,8 @@ def main():
         interlinear = json.load(f)
     with gzip.open(HEBREW_OT, 'rt', encoding='utf-8') as f:
         hebrew = json.load(f)
+    with gzip.open(ADJECTIVES_OT, 'rt', encoding='utf-8') as f:
+        adjectives = json.load(f)
     verbs = verb_numbers(lex_rows)
     with gzip.open(INTERLINEAR_NT, 'rt', encoding='utf-8') as f:
         interlinear.update(json.load(f))
@@ -2212,14 +2397,15 @@ def main():
             swapped += prefer_greek(app, tags, interlinear_numbers(app, interlinear.get(f'{b}|{c}|{v}')),
                                     greek.get(f'{b}|{c}|{v}'), usage_all)
         own = {}
-        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot, own) if b <= 39 \
+        added = link_ot(app, italic, pause, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), verbs, usage_ot, own,
+                        adjectives.get(f'{b}|{c}|{v}', ())) if b <= 39 \
             else mend_nt(app, italic, pause, tags, verbs, usage_all, greek.get(f'{b}|{c}|{v}'))
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added) + len(own)
         phrases = collections.OrderedDict()
         for i in sorted(tags):
             phrases.setdefault(tags[i], []).append(i)
-        extra = two_numbers(app, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 \
+        extra = two_numbers(app, tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags), usage_ot) if b <= 39 \
             else two_numbers_nt(app, tags, greek.get(f'{b}|{c}|{v}'))
         seconds += len(extra)
         marks = object_marks(tags, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)) if b <= 39 else {}
@@ -2274,7 +2460,7 @@ def main():
                 continue
             g = sorted(set(g))
             gap = [y for y in range(g[0], g[-1] + 1) if y not in g]
-            if gap and all(y not in tagged and not italic[y] and key(app[y]) in GAP_WORDS for y in gap):
+            if gap and all(y not in tagged and not italic[y] and key(app[y]) in GAP_WORDS | BE for y in gap):    # "to be rich"
                 g, gap = list(range(g[0], g[-1] + 1)), []
                 tagged.update(g)
             if gap:
