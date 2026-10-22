@@ -328,7 +328,10 @@ IRREGULAR = dict(
     shake='shook shaken', shine='shone', sleep='slept', strive='strove striven', strike='struck stricken',
     tear='tare torn', become='became', overcome='overcame', tread='trod trodden', wear='wore worn', work='wrought', understand='understood', sing='sang sung',
     sink='sank sunk', spring='sprang sprung', stink='stank', steal='stole stolen', burn='burnt', cast='cast',
-    catch='caught', buy='bought', fight_='fought', overthrow='overthrew overthrown', withdraw='withdrew withdrawn')
+    catch='caught', buy='bought', fight_='fought', overthrow='overthrew overthrown', withdraw='withdrew withdrawn',
+    deal='dealt', feel='felt', creep='crept', sweep='swept', spend='spent', bend='bent', mean='meant', shoot='shot',
+    bite='bit bitten', blow='blew blown', throw='threw thrown', cling='clung', beseech='besought', abide='abode',
+    hang='hanged hung', win='won', awake='awoke', strew='strawed strowed', shear='shorn', slide='slid')
 FORM_OF = {f: base.rstrip('_') for base, forms in IRREGULAR.items() for f in forms.split()}
 
 
@@ -745,6 +748,18 @@ def fill_ot(app, italic, tags, old_words, usage, listed, verbs=frozenset(), paus
                             and not (pause and pause[min(x, y)]) and not (pause and pause[z]):
                         tags[z] = tags[x] = tags[y]
                         words += 2
+                        changed = True
+                        break
+                    # A verb's word across its "not": "she drew not near" (Zeph 3:2,
+                    # qarav), "they gnaw not the bones" (3:3) -- the "not" lo's.
+                    if y == x + 2 and y + 1 < len(app) and y not in tags and key(app[y]) in ('the', 'a', 'an') \
+                            and y + 1 in tags and not italic[y]:
+                        y += 1                                  # "gnaw not the bones"
+                    if 0 <= y < len(app) and y in tags and key(app[z]) == 'not' and y in (x + 2, x + 3) \
+                            and tags.get(z, ('',))[0] != tags[y][0] and ok(tags[y][0], x) \
+                            and not (pause and pause[x]) and not (pause and pause[z]):
+                        tags[x] = tags[y]
+                        words += 1
                         changed = True
                         break
     return words, phrases
@@ -1383,6 +1398,24 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                     if w not in AFFIX_BEFORE[a]:
                         break
                     # past them, an "and" of its own: "And Moses and the priests ... spake" (Deut 27:9)
+                if w == 'when' and a in ('H9001', 'H9002') and not also_only:
+                    # "But the field, when it goeth out ... shall be" (Lev 27:21):
+                    # the waw is the "But"; the "when" is be-tseto's.
+                    y = x - 1
+                    while y >= 0 and lo - y <= reach and not pause[y]:
+                        u = tags.get(y) or added.get(y)
+                        if u and order_of.get(u) is not None and order_of[u] > order:
+                            y -= 1
+                            continue
+                        if u or italic[y]:
+                            break
+                        if key(app[y]) in ('and', 'but', 'then', 'so', 'now', 'yet'):
+                            if y < x - 1:                   # not "And when" (Gen 3:6): both the waw's
+                                x, w = y, key(app[y])
+                            break
+                        if key(app[y]) not in GAP_WORDS:
+                            break
+                        y -= 1
                 if w in AFFIX_BEFORE[a]:
                     added[x] = t
                     found = True
@@ -1469,6 +1502,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                     x += 1
                 if done_end:
                     break
+    affix_repair(app, italic, pause, tags, added, hebrew, order_of, usage)
     # A number twice in the Hebrew and once in the English, the second time
     # only its "and" in English: "between Beth-el and Hai" (Gen 13:3) is bein
     # Beth-el u-vein ha-Ai, "unto Moses and Aaron" el Moshe ve-el Aharon, and in
@@ -1509,6 +1543,15 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
         if alone and not helpers:
             continue
         x = (min(helpers) if helpers else min(after)) - 1
+        # Or the "and" the next word's phrase begins with, that word having no
+        # waw: "whether it be good or bad" (Lev 27:14), bein tov u-vein ra --
+        # the "or" is the second bein's, not ra's.
+        if not helpers and min(after) + 1 < len(app) and key(app[min(after)]) in AFFIX_BEFORE['H9001'] \
+                and len(after) > 1 and not italic[min(after)]:
+            y = min(after)
+            del tags[y]
+            added[y] = shared[y] = t
+            continue
         while x > max(before) and not taken(x) and not italic[x] and not pause[x]:
             if key(app[x]) in AFFIX_BEFORE['H9001']:
                 for h in helpers:
@@ -1640,6 +1683,64 @@ def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectiv
                 continue                                # its phrase keeps a word
             del tags[x]
         added[x] = tb
+    for x in range(len(app)):
+        w = key(app[x])
+        if not free(x):
+            continue
+        nxt = of(x + 1) if x + 1 < len(app) else None
+        # "O daughter of Zion" (Zeph 3:14), "the son of my womb" (Prov 31:2):
+        # a vocative "O" or an article with the word after it.
+        if w in ('o', 'the', 'a', 'an') and nxt and not italic[x + 1] and (w == 'o' or nxt[0] not in verbs):
+            added[x] = nxt
+            continue
+        # "a fifth part thereof" (Lev 27:13, chamishito): the ending's English
+        # after the word, where no Hebrew preposition of the verse is without it.
+        if w in THERE:
+            y = x - 1
+            while y >= 0 and italic[y] and not taken(y):
+                y -= 1
+            t = of(y) if y >= 0 else None
+            o = order_of.get(t) if t else None
+            if o is not None and t[0] not in verbs and not PREPOSITION_NUMBERS & unplaced \
+                    and THIRD_PERSON & set(hebrew[o][2]) and not pause[y]:
+                added[x] = t
+                continue
+    # "thou shalt not see" (Zeph 3:15), "shalt thou not be ashamed" (3:11): the
+    # helpers with the verb, round its "not".
+    for x in range(1, len(app) - 1):
+        if key(app[x]) != 'not' or italic[x] or not of(x) or not of(x + 1) or of(x + 1)[0] not in verbs:
+            continue
+        run, y = [], x - 1
+        while free(y) and key(app[y]) in MODALS | AUX | SUBJECTS:
+            run.insert(0, y)
+            y -= 1
+        if run and any(key(app[z]) in MODALS for z in run):
+            for z in run:
+                added[z] = of(x + 1)
+    # "O that thou wert as my brother" (Song 8:1), "Oh that I might have"
+    # (Job 6:8): mi yitten -- "O that" is mi's (H4310), as Strong's lists it.
+    for o in range(len(hebrew) - 1):
+        if 'H4310' not in hebrew[o][1] or 'H5414' not in hebrew[o + 1][1]:
+            continue
+        for x in range(len(app) - 1):
+            if key(app[x]) in ('o', 'oh') and key(app[x + 1]) == 'that' and not italic[x]:
+                t = of(x + 1)
+                if t and t[0] == 'H4310':
+                    if free(x):
+                        added[x] = t
+                elif o not in paired and (not t or (t[0] == 'H5414'
+                                                    and sum(1 for y in set(tags) | set(added) if of(y) == t) > 2)):
+                    rest = [y for y in range(x + 2, len(app)) if of(y) == t]
+                    for y in (x, x + 1):
+                        tags.pop(y, None)
+                        added.pop(y, None)
+                        tags[y] = ('H4310', 800000 + o)
+                    if t and not any(tags.get(y) == t for y in rest):
+                        for y in rest:                  # "thou" is yitten's now (-kha)
+                            added.pop(y, None)
+                            tags[y] = t
+                    paired.add(o)
+                break
 
 
 NEGATION_NUMBERS = {'H3808', 'H369', 'H408', 'H1077', 'H1097', 'H1115'}
@@ -1743,6 +1844,111 @@ def negation_helpers(app, italic, tags, added, order_of, hebrew):
         del tags[x]
         tags[spots[0]] = t
         added[x] = added[x + 1] = tv
+
+
+def affix_repair(app, italic, pause, tags, added, hebrew, order_of, usage=None):
+    """A prefix's or ending's English that the source or the interlinear put
+    with the Hebrew word beside it, one without that prefix or ending, moved
+    to its own word (as BLB has them):
+      "And when a man" (Lev 27:14, ve-ish ki): the "And" is ish's, not ki's;
+      "and in her tongue is the law" (Prov 31:26): ve-torat's, not al's;
+      "She is like the merchants' ships" (31:14): ka-oniyyot's, not hayetah's;
+      "present himself before the priest" (Lev 27:8): he'emido's, not lifnei's;
+      "my fierce anger" (Zeph 3:8, charon appi): appi's, not charon's."""
+    of = lambda x: tags.get(x) or added.get(x)
+    where = collections.defaultdict(list)
+    for x in sorted(set(tags) | set(added)):
+        where[of(x)].append(x)
+    def move(x, t):
+        u = of(x)
+        if x in tags:
+            if sum(1 for y in tags if tags[y] == u) < 2:
+                return False                            # the phrase keeps a word of its own
+            del tags[x]
+        added[x] = t
+        where[u].remove(x)
+        where[t].append(x)
+        return True
+    for t, o in sorted(order_of.items(), key=lambda kv: kv[1]):
+        if t not in where or not where[t]:
+            continue
+        mine = set(hebrew[o][2])
+        first = key(app[min(where[t])])
+        # Not where the word's English already says it: "before" (lifnei), "at
+        # your nostrils", "hence" -- "brought them in before" keeps its "in".
+        rendered = t[0] in PREPOSITION_NUMBERS or first in PREPOSITIONS | ADDED_PREPOSITIONS | THERE \
+            or first in ('hence', 'thence', 'whence', 'hither', 'thither')
+        for a in [a for a in hebrew[o][2] if a in PREFIXES and a not in ('H9009', 'H9010')]:
+            if any(key(app[i]) in AFFIX_BEFORE[a] for i in where[t]) or (rendered and a not in ('H9001', 'H9002')):
+                continue
+            x, lo = min(where[t]) - 1, min(where[t])
+            while x >= 0 and lo - x <= 8 and not (pause[x] and x != lo - 1):
+                if italic[x]:
+                    x -= 1
+                    continue
+                u = of(x)
+                if u is None:
+                    if key(app[x]) in GAP_WORDS and key(app[x]) not in PREPOSITIONS | ADDED_PREPOSITIONS:
+                        x -= 1
+                        continue
+                    break                                   # "out at your nostrils": the "at" is it
+                ou = order_of.get(u)
+                if ou is None or not where[u]:
+                    break
+                theirs = set(hebrew[ou][2])
+                wrong = key(app[x]) in AFFIX_BEFORE[a] - {'that', 'therefore'} and len(where[u]) > 1 and a not in theirs \
+                    and not ({'H9001', 'H9002'} & theirs and a in ('H9001', 'H9002'))
+                if ou > o:
+                    if wrong and of(x - 1) != u:            # the first word of its piece
+                        move(x, t)
+                        break
+                    x -= 1
+                    continue
+                if wrong and of(x + 1) != u and not (usage and stems(app[x]) & usage.get(u[0], set())
+                                                     and key(app[x]) not in ('and', 'but', 'then', 'so', 'like', 'as')):
+                    move(x, t)                              # not "brought in Daniel" (Dan 2:25): "bring in"
+                    if a in ('H9003', 'H9004') and key(app[x]) == 'when' and ('H9001' in theirs or 'H9002' in theirs):
+                        # "But the field, when it goeth out ... shall be" (Lev 27:21):
+                        # the "when" be-tseto's, so the waw's is the "But".
+                        y = x - 1
+                        while y >= 0 and x - y <= 8:
+                            v = of(y)
+                            if v and order_of.get(v) is not None and order_of[v] > ou:
+                                y -= 1
+                                continue
+                            if not v and not italic[y] and key(app[y]) in ('and', 'but', 'then', 'so', 'now', 'yet'):
+                                added[y] = u
+                                where[u].append(y)
+                            if v or key(app[y]) not in GAP_WORDS:
+                                break
+                            y -= 1
+                break
+        for a in [a for a in hebrew[o][2] if a in AFFIX_AFTER]:
+            if any(key(app[i]) in AFFIX_AFTER[a] for i in where[t]):
+                continue
+            x = max(where[t]) + 1
+            if x >= len(app) or pause[x - 1] or italic[x]:
+                continue
+            u = of(x)
+            ou = order_of.get(u) if u else None
+            if ou is not None and ou > o and of(x - 1) != u and len(where[u]) > 1 \
+                    and key(app[x]) in AFFIX_AFTER[a] and a not in set(hebrew[ou][2]):
+                move(x, t)
+    # "my fierce anger": a possessive before a word whose Hebrew has no ending,
+    # the next word's Hebrew having it.
+    for x in range(len(app) - 2):
+        u = of(x)
+        if italic[x] or not u or of(x + 1) != u or order_of.get(u) is None:
+            continue
+        t = of(x + 2)
+        if not t or t == u or order_of.get(t) is None or pause[x + 1] or of(x + 3) not in (t, None) and False:
+            continue
+        if key(app[x + 2]) in SMALL_WORDS:
+            continue                                    # "their wives, and gave their daughters"
+        w = key(app[x])
+        has = lambda o: any(w in AFFIX_BEFORE.get(a, set()) for a in hebrew[o][2] if a not in PREFIXES)
+        if w in POSSESSIVE and not has(order_of[u]) and has(order_of[t]):
+            move(x, t)
 
 
 def live(tags, added, app=None, hebrew=None):
