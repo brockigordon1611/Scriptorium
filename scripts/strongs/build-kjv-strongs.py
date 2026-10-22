@@ -508,6 +508,36 @@ def prefer_hebrew(app, tags, osn, hebrew, usage):
             tags[i] = (m, pid)
         count[m] += 1
         moved += 1
+    # And a word of a phrase that is another Hebrew word's, one with no
+    # English yet: "poverty enough" (Prov 28:19), which the source numbers
+    # all reish (H7389), is "poverty" and "enough" -- the verse's second
+    # yisba (H7646, "have enough"), as the interlinear has it.
+    phrases = collections.OrderedDict()
+    for i in sorted(tags):
+        phrases.setdefault(tags[i], []).append(i)
+    # The fill may have made the "poverty" a phrase of its own, leaving the
+    # source's "enough" alone under a number the KJV now has more often than
+    # the Hebrew.
+    for t, idx in phrases.items():
+        if t[0] not in have:
+            continue
+        for i in idx:
+            m = osn[i]
+            whole = {st for st in stems(app[i]) if len(st) > 2}       # not "thing" as "th" (Prov 22:18)
+            if not m or m == t[0] or m not in heb_count or count[m] >= heb_count[m] or key(app[i]) in small \
+                    or not whole & usage.get(m, set()) or stems(app[i]) & usage.get(t[0], set()):
+                continue
+            if SAME_WORD.get(m) == t[0] or SAME_WORD.get(t[0]) == m:
+                continue                            # one word, two numbers (halak, yalak): the source's stands
+            keeps = any(stems(app[j]) & usage.get(t[0], set()) for j in idx if j != i)
+            surplus = len(idx) == 1 and count[t[0]] > heb_count[t[0]]
+            if not keeps and not surplus:
+                continue
+            pid += 1
+            tags[i] = (m, pid)
+            count[m] += 1
+            count[t[0]] -= surplus
+            moved += 1
     return moved
 
 
@@ -1224,6 +1254,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
         return live(tags, added)
     _, order_of = pair_ot(hebrew, tags)
     plan = sorted((o, t, hebrew[o][2]) for t, o in order_of.items())
+    plan_orders = set(order_of.values())
     has_article = {order for order, (_, _, affixes) in enumerate(hebrew) if {'H9009', 'H9010'} & set(affixes)}
     has_and = {order for order, (_, _, affixes) in enumerate(hebrew) if {'H9001', 'H9002'} & set(affixes)}
     added = {}
@@ -1274,6 +1305,14 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None):
                     and not any(taken(y) or italic[y] or pause[y] for y in (lo - 2, lo - 1)):
                 added[lo - 1] = added[lo - 2] = t
                 lo -= 2
+            # And its "whoso": "but whoso confesseth" (Prov 28:13), umodeh --
+            # unless a "who" of the Hebrew's own is still without English.
+            if lo >= 1 and key(app[lo - 1]) in ('whoso', 'whosoever') \
+                    and not (taken(lo - 1) or italic[lo - 1] or pause[lo - 1]) \
+                    and not any(o not in plan_orders and {'H4310', 'H3605', 'H834', 'H376'} & set(hebrew[o][1])
+                                for o in range(len(hebrew))):
+                added[lo - 1] = t
+                lo -= 1
         # "with her hands" (Prov 30:28, beyadayim): a "her" the word has no ending for
         supplied = set() if any(a not in PREFIXES and a in AFFIX_BEFORE for a in affixes) else POSSESSIVE
         before = [a for a in affixes if a not in PREFIXES and a in AFFIX_BEFORE] + \
