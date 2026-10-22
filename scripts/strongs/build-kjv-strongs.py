@@ -1522,6 +1522,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
             x -= 1
     head_words(app, italic, pause, tags, added, verbs, order_of)
     blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectives)
+    comparative_more(app, italic, tags, added, hebrew, order_of)
     negation_helpers(app, italic, tags, added, order_of, hebrew)
     # "the same is it" (Gen 2:13), "that is it" (2:14): the "it" is the pronoun's.
     for x in range(2, len(app)):
@@ -1642,6 +1643,57 @@ def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectiv
 
 
 NEGATION_NUMBERS = {'H3808', 'H369', 'H408', 'H1077', 'H1097', 'H1115'}
+# Hebrew words that are themselves "more": rav, rabah, rov, ravav, atsam,
+# yasaf, od, yoter, adaf, lifnei, af (and Aramaic rav, yattir).
+MORE_WORDS = {'H7227', 'H7235', 'H7230', 'H7231', 'H6105', 'H3254', 'H5750', 'H3148', 'H3499', 'H5736',
+              'H6440', 'H637', 'H7229', 'H3493', 'H5674'}
+
+
+def comparative_more(app, italic, tags, added, hebrew, order_of):
+    """The KJV's comparative "more" (Brock, 2026-10-22). Where a Hebrew word
+    is itself "more" (rav, yasaf, yoter ...), "more" is that word's. Else the
+    "more" is English for the comparative min ("than"): with a word between
+    it is that word's -- "more subtil than any" (Gen 3:1, arum mi-kol), "more
+    favour than" (Prov 28:23) -- and with none, "more than Leah" (Gen 29:30,
+    mi-Leah), it goes with the "than". Ps 139:18 "they are more in number",
+    yirbun, a "more" word with no English yet, is given it."""
+    of = lambda x: tags.get(x) or added.get(x)
+    paired = set(order_of.values())
+    pid = 700000
+    for x, w in enumerate(app):
+        if key(w) != 'more' or italic[x] or (x and key(app[x - 1]) in ('no', 'any', 'much', 'yet', 'once')):
+            continue
+        than = next((y for y in range(x + 1, min(x + 5, len(app))) if key(app[y]) == 'than'), None)
+        if than is None:
+            continue
+        mine = of(x)
+        number = x + 2 < than and key(app[x + 1]) == 'in' and key(app[x + 2]) == 'number'
+        if mine and mine[0] in MORE_WORDS:
+            if number and not of(x + 1) and not of(x + 2):
+                added[x + 1] = added[x + 2] = mine     # "more in number" (Deut 7:7)
+            continue                                    # "more and mightier" (Exod 1:9): rav
+        o = next((o for o, (_, mains, _) in enumerate(hebrew) if o not in paired and MORE_WORDS & set(mains)), None)
+        if o is not None and not mine:
+            sn = next(m for m in hebrew[o][1] if m in MORE_WORDS)
+            pid += 1
+            tags[x] = (sn, pid)
+            if x + 2 < than and key(app[x + 1]) == 'in' and key(app[x + 2]) == 'number' \
+                    and not of(x + 1) and not of(x + 2):
+                tags[x + 1] = tags[x + 2] = (sn, pid)   # "more in number"
+            paired.add(o)
+            continue
+        target = of(x + 2) if number and of(x + 2) and of(x + 2)[0] in MORE_WORDS else of(x + 1)
+        if not target or target == mine or italic[x + 1]:
+            continue
+        if number and not of(x + 1):
+            added[x + 1] = target                       # "more in number" (Ps 139:18): yirbun
+        if x in tags:
+            if sum(1 for y in tags if tags[y] == tags[x]) < 2:
+                continue                                # a phrase of its own: the source's, counted
+            del tags[x]
+        added[x] = target
+
+
 
 
 def negation_helpers(app, italic, tags, added, order_of, hebrew):
