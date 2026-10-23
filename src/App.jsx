@@ -4224,6 +4224,29 @@ function fullParse(w,num,hebrew){
     :hebrewPart(c,aram)).filter(Boolean).join(' + ')+(aram?' · Aramaic':'');
 }
 const _WAW_WORDS=new Set(['and','but','or','nor','then','so','yet','now','therefore']);
+// A Hebrew word Strong's gives no number -- a one-letter preposition with a
+// pronoun ending, lo "unto him", bahem "in them" (about 5,900 of them) --
+// opened as an entry of its own, made from its parts: the preposition by its
+// letter, the ending by its person, gender and number, as the KJV commonly
+// renders each. Its "number" is the word itself, after a "~".
+const BARE_PREP={'ב':['be','in, at, by, with, among'],'ל':['le','to, for, unto, of'],'כ':['ke','as, like, according to, about']};
+const BARE_ENDING={'1s':'me, my','1p':'us, our','2s':'thee, thy','2p':'you, your','3ms':'him, his, it','3fs':'her, it','3mp':'them, their','3fp':'them, their'};
+function bareEntry(w){
+  const aram=w[2][0]==='A',codes=w[2].slice(1).split('/'),forms=String(w[0]).split('/'),trs=String(w[1]).split('/');
+  const parts=codes.map((c,i)=>{
+    const tr=trs[i]||'',letter=String(forms[i]||'').replace(/[\u0591-\u05c7]/g,'')[0];
+    if(c==='C'||c==='c')return`${tr}- “and”`;
+    if(c[0]==='R'&&BARE_PREP[letter])return`${BARE_PREP[letter][0]}- “${BARE_PREP[letter][1]}”`;
+    if(c[0]==='S'&&c[1]==='p'){
+      const pgn=c.slice(2),key=pgn[0]==='3'?pgn.slice(0,2)+pgn[2]:pgn[0]+pgn[2];
+      return`-${tr} “${BARE_ENDING[key]||''}” (${hebFeatures(pgn)[0]})`;
+    }
+    return`${tr} ${hebrewPart(c,aram).toLowerCase()}`;
+  }).filter(t=>t.trim());
+  return{original_word:forms.join(''),transliteration:trs.join(''),language:'hebrew',aramaic:aram,noNumber:true,kjv_usage:'',
+    short_def:parts.join(' + '),
+    note:'No Strong’s number: a one-letter preposition with a pronoun ending, and Strong’s numbered only whole words.'};
+}
 // The verse a word at a time: at the top the verse as it is written in the
 // Hebrew or Greek -- Hebrew from the right -- the word the reader came from in
 // gold; under it each KJV word or phrase, in the KJV's order, beside the
@@ -4301,20 +4324,24 @@ function VerseWords({T,d,px,fam,onWord,inset}){
   const open=(w,x)=>onWord(x.num,x.pieces[0]||String(w[0]).replace(/\//g,''),{verse:d.verse,pieces:x.pieces,color:T.gM,positions:x.pos,word:w,
     also:[...new Set((d.mappings||[]).filter(r=>x.pos.includes(r.word_pos)&&r.strongs_num!==x.num).map(r=>r.strongs_num))]});
   const keyTap=tap=>tap?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tap();}}:undefined;
+  // A word with no number of its own opens the entry made from its parts.
+  const tapFor=(w,x)=>x.num?()=>open(w,x):hebrew&&!x.own.length&&String(w[0]).replace(/\//g,'').trim()
+    ?()=>onWord(`~${w[0]}`,x.pieces[0]||String(w[0]).replace(/\//g,''),{verse:d.verse,pieces:x.pieces,color:T.gM,positions:x.pos,word:w,also:[],local:bareEntry(w)})
+    :null;
   const side=inset?14:8;
   return(<>
     <div dir={hebrew?'rtl':'ltr'} lang={hebrew?(aramN===words.length?'arc':'he'):'grc'}
       style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.02:0.86)),lineHeight:1.7,color:T.body,textAlign:hebrew?'right':'left',
         padding:`0 ${side}px 10px`,borderBottom:`1px solid ${T.bdS}`}}>
       {rows.map(({w,x},k)=>{
-        const tap=x.num?()=>open(w,x):null;
+        const tap=tapFor(w,x);
         return(<React.Fragment key={k}>{k?' ':''}<span role={tap?'button':undefined} tabIndex={tap?0:undefined} onClick={tap?e=>{e.stopPropagation();tap();}:undefined} onKeyDown={keyTap(tap)}
           style={{color:x.pos.some(p=>mark.has(p))?T.gT:T.body,cursor:tap?'pointer':'default',WebkitTapHighlightColor:'transparent'}}>{String(w[0]).replace(/\//g,'')}</span></React.Fragment>);
       })}{hebrew?'׃':''}
     </div>
     {listed.map(({w,i,x},k)=>{
       const aram=hebrew&&w[2][0]==='A';
-      const tap=x.num?()=>open(w,x):null;
+      const tap=tapFor(w,x);
       const here=x.pos.some(p=>mark.has(p));
       return(
         <div key={i} role={tap?'button':undefined} tabIndex={tap?0:undefined} onClick={tap?e=>{e.stopPropagation();tap();}:undefined} onKeyDown={keyTap(tap)}
@@ -4372,7 +4399,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   // The small caps grow with the entry too, or a count sits at 9px beside
   // a 28px word.
   const small={fontFamily:FS,fontSize:Math.min(14,Math.max(9,Math.round(px*0.46))),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
-  const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
+  const langName=entry?.aramaic?'Aramaic':entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
   const untranslated=UNTRANSLATED.has(num)||UNTRANSLATED_RE.test(entry?.kjv_usage||'');
   const ending=num==='H853'&&split?.pieces?.length>0&&split.pieces.every(p=>OBJECT_PRONOUN_RE.test(p));
   // The word-by-word card stays open from word to word.
@@ -4419,7 +4446,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           :<span style={{fontFamily:FS,fontSize:Math.round(px*1.04),letterSpacing:'0.06em',color:T.gT,fontWeight:600,lineHeight:1}}>{num}</span>}
         <span style={{...small,fontSize:Math.min(13,Math.round(px*0.48)),letterSpacing:'0.1em',color:T.gM,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0,lineHeight:1.2}}>
           {/* Or, for a word the KJV leaves without English (et), that it does. */}
-          {[entry?.original_word?num:null,langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'object marker':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
+          {[entry?.noNumber?'No Strong’s number':entry?.original_word?num:null,langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'object marker':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
       </div>
       {trail}
@@ -4458,7 +4485,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
       <div style={card}>
         <div style={{padding:'12px 14px 10px'}}>
           <div style={{fontFamily:fam,fontSize:Math.round(px*1.08),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
-          {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
+          {(derivation||entry.note)&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation||entry.note}</div>}
         </div>
       </div>
       {/* A word the KJV gives no English (et): no renderings to list, so say
@@ -7836,7 +7863,8 @@ function App(){
     setStrongsExpandedWords(new Set());
     setStrongsVersePreview(null);
     const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`,book:readBook,chapter:readCh}:null;
-    const cached=strongsCache.current[strongsNum];
+    // A word with no number brings its entry with it (bareEntry).
+    const cached=split?.local?{entry:split.local,verses:[]}:strongsCache.current[strongsNum];
     setStrongsPopup(prev=>{
       const hist=prev?[...(prev.history||[]),{strongs_number:prev.strongs_number,entry:prev.entry,verses:prev.verses,word_text:prev.word_text,split:prev.split}]:[];
       const next={...(prev||{}),strongs_number:strongsNum,word_text:wordText,split:sp,history:hist};
@@ -11092,7 +11120,7 @@ function App(){
                     return row&&strongsData[v]?{book:readBook,chapter:readCh,verse:v,ref:`${bookName(BIBLE[readBook-1],versionLang(readVid))} ${readCh}:${v}`,
                       text:row.text,mappings:strongsData[v],mark:sp.positions||[]}:null;})(strongsPopup.split),
                   onWord:openStrongsWordInPopup,
-                  back:(strongsPopup.history||[]).length>0?{to:strongsPopup.history[strongsPopup.history.length-1].strongs_number,onClick:goBackStrongs}:null}),
+                  back:(strongsPopup.history||[]).length>0?(h=>({to:h.entry?.noNumber?h.entry.original_word:h.strongs_number,onClick:goBackStrongs}))(strongsPopup.history[strongsPopup.history.length-1]):null}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
                     groupList.length===0&&strongsPopup.versesLoading&&React.createElement('div',{style:{fontFamily:FB,fontSize:U(13),color:T.dim,paddingTop:8}},'Loading verses…'),
