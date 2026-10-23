@@ -4198,11 +4198,11 @@ function greekPart(code){
 // A word written as two ("kakeinon", CONJ + G1565=D-ASM) is both.
 const greekGrammar=code=>String(code||'').split(' + ').map(c=>greekPart(c.replace(/^G\d+=/,''))).join(' + ');
 
-// The word as it stands in this verse, parsed, as a line of the entry's
-// heading under "In Genesis 1:1 — created": the form used here where it is
+// The word as it stands in this verse, parsed, under "In Genesis 1:1 —
+// created" below the entry's heading: the form used here where it is
 // not the one the entry is headed with (a prefix, an ending, another tense),
-// the parse spelled out -- a prefix or an ending dimmed beside the word's own
-// part -- and the code.
+// the parse spelled out -- a prefix in a word ("and +") and an ending dimmed
+// beside the word's own part -- and the code.
 const _bare=s=>String(s||'').normalize('NFD').replace(/[̀-֑ͯ-ׇ]/g,'').toLowerCase();
 function ParsedWord({T,w,num,book,lemma,px,fam}){
   const hebrew=book<=39,aram=hebrew&&w[2][0]==='A';
@@ -4213,7 +4213,10 @@ function ParsedWord({T,w,num,book,lemma,px,fam}){
     const codes=w[2].slice(1).split('/'),nums=String(w[3]).split('/');
     const at=nums.indexOf(num.slice(1));
     const main=at>=0?at:Math.max(0,nums.findIndex(Boolean));
-    parts=codes.map((c,i)=>({form:forms[i]||'',text:hebrewPart(c,aram),main:i===main||(at>=0&&nums[i]===nums[at])}))
+    // A prefix by what it is ("and", "the", "preposition"), as in the word
+    // by word; the word's own part and an ending spelled out.
+    parts=codes.map((c,i)=>({form:forms[i]||'',main:i===main||(at>=0&&nums[i]===nums[at]),
+      text:i<main?_tagOf(hebrewPart(c==='Rd'&&/^S/.test(codes[i+1]||'')?'R':c,aram),true,true):hebrewPart(c,aram)}))
       .filter(p=>p.form.trim()&&p.text);
   }
   const showForm=(parts&&parts.length>1)||_bare(word)!==_bare(lemma);
@@ -4439,12 +4442,20 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   const parsed=useParsedWord(split,num);
   // The word-by-word card stays open from word to word.
   const[wordsOpen,setWordsOpen]=useState(false);
-  const root=useRef(null);
-  // A word tapped in it is opened in its place, the entry back at its top.
+  const root=useRef(null),wbwCard=useRef(null),anchor=useRef(null);
+  // A word tapped in it opens in the entry's place, the card held where it
+  // was on the screen while the heading above it changes.
   const openWord=(...a)=>{
+    anchor.current=wbwCard.current?wbwCard.current.getBoundingClientRect().top:null;
     onWord(...a);
-    for(let el=root.current?.parentElement;el;el=el.parentElement)if(el.scrollHeight>el.clientHeight&&/auto|scroll/.test(getComputedStyle(el).overflowY)){el.scrollTo({top:0,behavior:'smooth'});break;}
   };
+  useLayoutEffect(()=>{
+    if(anchor.current==null||!wbwCard.current)return;
+    const d=wbwCard.current.getBoundingClientRect().top-anchor.current;
+    for(let el=root.current?.parentElement;el;el=el.parentElement)
+      if(el.scrollHeight>el.clientHeight&&/auto|scroll/.test(getComputedStyle(el).overflowY)){if(Math.abs(d)>0.5)el.scrollTop+=d;break;}
+    if(entry)anchor.current=null;
+  });
   // One block, not a fragment: the popup scrolls a flex column, and loose
   // cards in it shrank to nothing instead of scrolling.
   return(<div ref={root} style={{flexShrink:0}}>
@@ -4457,8 +4468,8 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
       <span>Back to <span style={{color:T.gT}}>{back.to}</span></span>
     </button>}
     {/* The word as written, its transliteration and how Strong's says it;
-        under it the number and how often the KJV has it, and the English it
-        was opened from -- from the left and level with the close button. */}
+        under it the number and how often the KJV has it -- from the left and
+        level with the close button. */}
     <div style={{display:'flex',alignItems:'center',gap:10,minHeight:34,paddingRight:reserveRight,minWidth:0,flexShrink:0}}>
       {lead}
       <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:6}}>
@@ -4475,8 +4486,14 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {/* Or, for a word the KJV leaves without English (et), that it does. */}
           {[entry?.original_word?num:null,langName,totalCount>0?`${totalCount.toLocaleString()} in the KJV`:ending?'object marker':untranslated?'not translated in the KJV':null].filter(Boolean).join(' · ')||"Strong's"}
         </span>
-        {/* The English it was opened from, underlined as in the verse. */}
-        {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
+      </div>
+      {trail}
+    </div>
+    {/* Under the word as Strong's has it, the word as it is in this verse:
+        the English it was opened from, underlined as in the verse, and the
+        word parsed -- the full width, clear of the close button. */}
+    {split&&<div style={{display:'flex',flexDirection:'column',gap:4,marginTop:10}}>
+        <span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
           {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
           {/* Opened from the word-by-word view on a word with no English. */}
@@ -4485,25 +4502,23 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {split.others&&split.others.length>0&&<span style={{color:T.gM}}> · also {split.others.map((sn,i)=><React.Fragment key={sn}>{i?', ':''}
             <span style={{whiteSpace:'nowrap'}}><span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
               style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span>{UNTRANSLATED.has(sn)?' (not translated)':''}</span></React.Fragment>)}</span>}
-        </span>}
-        {/* And what the word is there, parsed. */}
+        </span>
         {parsed&&entry&&<ParsedWord T={T} w={parsed} num={num} book={split.book} lemma={entry.original_word} px={px} fam={fam}/>}
-      </div>
-      {trail}
-    </div>
+    </div>}
     <div style={{height:14,flexShrink:0}}/>
+    {/* The verse word by word, folded like a rendering's card -- drawn while
+        a word opened from it loads, so it does not leave and come back. */}
+    {verseWords&&onWord&&<div ref={wbwCard} style={card}>
+      <div role="button" tabIndex={0} aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
+        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setWordsOpen(o=>!o);}}}
+        style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:wordsOpen?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
+        <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>Word by word</span>
+        <span style={{...small,color:T.dim,flex:1,position:'relative',top:Math.round(px*0.92)*0.065}}>{verseWords.ref}</span>
+        <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={wordsOpen} size={12}/></span>
+      </div>
+      {wordsOpen&&<div style={{padding:'10px 0 2px'}}><VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset/></div>}
+    </div>}
     {!entry?<div style={{textAlign:'center',padding:20,color:T.dim,fontFamily:FB,fontStyle:missing?'italic':'normal'}}>{missing?`There is no Strong’s entry ${num}.`:'Loading…'}</div>:<>
-      {/* The verse word by word, folded like a rendering's card. */}
-      {verseWords&&onWord&&<div style={card}>
-        <div role="button" tabIndex={0} aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
-          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setWordsOpen(o=>!o);}}}
-          style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:wordsOpen?`1px solid ${T.bdS}`:'none',cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-          <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>Word by word</span>
-          <span style={{...small,color:T.dim,flex:1,position:'relative',top:Math.round(px*0.92)*0.065}}>{verseWords.ref}</span>
-          <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={wordsOpen} size={12}/></span>
-        </div>
-        {wordsOpen&&<div style={{padding:'10px 0 2px'}}><VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset/></div>}
-      </div>}
       {/* The definition -- larger than the rest, being what the reader came
           for -- and the derivation under a hairline. */}
       <div style={card}>
@@ -7880,6 +7895,24 @@ function App(){
     const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
   }
+  // A word tapped in an entry's word-by-word card: opened in the popup's place
+  // like a linked number, "Back to" the word it was opened from -- the word,
+  // its English and its verse kept with it, so going back marks it again.
+  async function openStrongsWordInPopup(strongsNum,wordText,split){
+    setStrongsExpandedWords(new Set());
+    setStrongsVersePreview(null);
+    const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`,book:readBook,chapter:readCh}:null;
+    const cached=strongsCache.current[strongsNum];
+    setStrongsPopup(prev=>{
+      const hist=prev?[...(prev.history||[]),{strongs_number:prev.strongs_number,entry:prev.entry,verses:prev.verses,word_text:prev.word_text,split:prev.split}]:[];
+      const next={...(prev||{}),strongs_number:strongsNum,word_text:wordText,split:sp,history:hist};
+      return cached?{...next,entry:cached.entry,verses:cached.verses,versesLoading:false}:{...next,entry:null,verses:null,versesLoading:true};
+    });
+    if(!cached){
+      const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
+      setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
+    }
+  }
   // The verse a word at a time, from the verse strip or a word's Parsing card.
   function openWordByWord(v,mark){
     const row=readVerses.find(r=>r.verse===v);
@@ -11124,7 +11157,7 @@ function App(){
                   verseWords:(sp=>{const v=sp?.verse,row=v&&sp.book===readBook&&sp.chapter===readCh&&readVerses.find(r=>r.verse===v);
                     return row&&strongsData[v]?{book:readBook,chapter:readCh,verse:v,ref:`${bookName(BIBLE[readBook-1],versionLang(readVid))} ${readCh}:${v}`,
                       text:row.text,mappings:strongsData[v],mark:sp.positions||[]}:null;})(strongsPopup.split),
-                  onWord:handleStrongsWordTap,
+                  onWord:openStrongsWordInPopup,
                   back:(strongsPopup.history||[]).length>0?{to:strongsPopup.history[strongsPopup.history.length-1].strongs_number,onClick:goBackStrongs}:null}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
