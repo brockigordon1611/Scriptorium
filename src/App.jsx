@@ -4248,6 +4248,64 @@ function bareEntry(w){
     short_def:parts.join(' + '),
     note:'No Strong’s number: a one-letter preposition with a pronoun ending, and Strong’s numbered only whole words.'};
 }
+// The number each English word has first in the map; et only where it has
+// no other.
+function mainNumbersAt(mappings){
+  const m={};
+  for(const r of mappings||[])if(m[r.word_pos]===undefined||(m[r.word_pos]==='H853'&&r.strongs_num!=='H853'))m[r.word_pos]=r.strongs_num;
+  return m;
+}
+// A verse's Hebrew or Greek words in their own order, each with its English
+// (wbwEnglish), as the word by word lists them and the Read page underlines
+// the ones with no number: kjv is kjvWordList of the verse, mainAt
+// mainNumbersAt of its map rows.
+function verseWordRows(words,hebrew,kjv,mainAt){
+  const lang=hebrew?'H':'G';
+  const r=words.map((w,i)=>({w,i,x:wbwEnglish(w,lang,mainAt,kjv)}));
+  // Ve'et's "and" (Gen 1:1): the map gives a waw's "and" to the word after
+  // it, where et has no English; here it shows with the word it is written on.
+  if(hebrew)r.forEach((q,i)=>{
+    const nx=r[i+1];
+    if(q.x.pos.length||!/^[AH]C\//.test(q.w[2])||!nx||!nx.x.pos.length)return;
+    const p=nx.x.pos[0];
+    if(!_WAW_WORDS.has(String(kjv[p]?.w||'').toLowerCase()))return;
+    q.x={...q.x,pos:[p],pieces:[kjv[p].w],shared:false};
+    nx.x={...nx.x,pos:nx.x.pos.slice(1)};
+  });
+  // A word Strong's gives no number (lo "unto him", bo "in it": a
+  // preposition with an ending): the map has no English for it, so it takes
+  // the run of KJV words with no number -- not ones the KJV supplied -- that
+  // stands next to the English of the word before it or after it.
+  const had=new Set();r.forEach(q=>q.x.pos.forEach(p=>had.add(p)));
+  const runs=[];
+  kjv.forEach((k,p)=>{
+    if(had.has(p)||mainAt[p]!==undefined||k.it)return;
+    const last=runs[runs.length-1];
+    if(last&&last[last.length-1]===p-1)last.push(p);else runs.push([p]);
+  });
+  r.forEach((q,i)=>{
+    if(q.x.own.length||q.x.pos.length||!runs.length)return;
+    const prev=r.slice(0,i).reverse().find(o=>o.x.pos.length),next=r.slice(i+1).find(o=>o.x.pos.length);
+    const after=prev?Math.max(...prev.x.pos)+1:null,before=next?Math.min(...next.x.pos)-1:null;
+    let best=null,bd=3;
+    runs.forEach((run,j)=>{
+      const dist=Math.min(after==null?99:Math.abs(run[0]-after),before==null?99:Math.abs(run[run.length-1]-before));
+      if(dist<bd){bd=dist;best=j;}
+    });
+    if(best==null)return;
+    const run=runs.splice(best,1)[0];
+    q.x={...q.x,pos:run,pieces:[run.map(p=>kjv[p].w).join(' ')],shared:false,noNumber:true};
+  });
+  // In the KJV's order a word with no English goes just before the word
+  // after it: et before the object it marks, an article before its noun.
+  let next=1e9;
+  for(const q of [...r].reverse()){q.key=q.x.pos.length?q.x.pos[0]:next-0.01;next=q.key;}
+  return r;
+}
+// The key a word with no Strong's number opens by, and its entry, made once.
+const bareKey=w=>`~${w[0]}|${w[2]}`;
+const BARE_ENTRIES=new Map();
+const bareEntryOf=w=>{const k=bareKey(w);if(!BARE_ENTRIES.has(k))BARE_ENTRIES.set(k,bareEntry(w));return BARE_ENTRIES.get(k);};
 // The verse a word at a time: at the top the verse as it is written in the
 // Hebrew or Greek -- Hebrew from the right -- the word the reader came from in
 // gold; under it each KJV word or phrase, in the KJV's order, beside the
@@ -4264,57 +4322,9 @@ function VerseWords({T,d,px,fam,onWord,inset}){
     return()=>{live=false;};
   },[d.book,d.chapter,d.verse]);
   const kjv=useMemo(()=>kjvWordList(d.text),[d.text]);
-  // The number each English word has first in the map; et only where it has
-  // no other.
-  const mainAt=useMemo(()=>{
-    const m={};
-    for(const r of d.mappings||[])if(m[r.word_pos]===undefined||(m[r.word_pos]==='H853'&&r.strongs_num!=='H853'))m[r.word_pos]=r.strongs_num;
-    return m;
-  },[d.mappings]);
+  const mainAt=useMemo(()=>mainNumbersAt(d.mappings),[d.mappings]);
   // The words in the original's order, each with its English.
-  const rows=useMemo(()=>{
-    if(!words)return[];
-    const r=words.map((w,i)=>({w,i,x:wbwEnglish(w,lang,mainAt,kjv)}));
-    // Ve'et's "and" (Gen 1:1): the map gives a waw's "and" to the word after
-    // it, where et has no English; here it shows with the word it is written on.
-    if(hebrew)r.forEach((q,i)=>{
-      const nx=r[i+1];
-      if(q.x.pos.length||!/^[AH]C\//.test(q.w[2])||!nx||!nx.x.pos.length)return;
-      const p=nx.x.pos[0];
-      if(!_WAW_WORDS.has(String(kjv[p]?.w||'').toLowerCase()))return;
-      q.x={...q.x,pos:[p],pieces:[kjv[p].w],shared:false};
-      nx.x={...nx.x,pos:nx.x.pos.slice(1)};
-    });
-    // A word Strong's gives no number (lo "unto him", bo "in it": a
-    // preposition with an ending): the map has no English for it, so it takes
-    // the run of KJV words with no number -- not ones the KJV supplied -- that
-    // stands next to the English of the word before it or after it.
-    const had=new Set();r.forEach(q=>q.x.pos.forEach(p=>had.add(p)));
-    const runs=[];
-    kjv.forEach((k,p)=>{
-      if(had.has(p)||mainAt[p]!==undefined||k.it)return;
-      const last=runs[runs.length-1];
-      if(last&&last[last.length-1]===p-1)last.push(p);else runs.push([p]);
-    });
-    r.forEach((q,i)=>{
-      if(q.x.own.length||q.x.pos.length||!runs.length)return;
-      const prev=r.slice(0,i).reverse().find(o=>o.x.pos.length),next=r.slice(i+1).find(o=>o.x.pos.length);
-      const after=prev?Math.max(...prev.x.pos)+1:null,before=next?Math.min(...next.x.pos)-1:null;
-      let best=null,bd=3;
-      runs.forEach((run,j)=>{
-        const dist=Math.min(after==null?99:Math.abs(run[0]-after),before==null?99:Math.abs(run[run.length-1]-before));
-        if(dist<bd){bd=dist;best=j;}
-      });
-      if(best==null)return;
-      const run=runs.splice(best,1)[0];
-      q.x={...q.x,pos:run,pieces:[run.map(p=>kjv[p].w).join(' ')],shared:false,noNumber:true};
-    });
-    // In the KJV's order a word with no English goes just before the word
-    // after it: et before the object it marks, an article before its noun.
-    let next=1e9;
-    for(const q of [...r].reverse()){q.key=q.x.pos.length?q.x.pos[0]:next-0.01;next=q.key;}
-    return r;
-  },[words,hebrew,lang,mainAt,kjv]);
+  const rows=useMemo(()=>words?verseWordRows(words,hebrew,kjv,mainAt):[],[words,hebrew,kjv,mainAt]);
   const listed=useMemo(()=>[...rows].sort((a,b)=>a.key-b.key||a.i-b.i),[rows]);
   const mark=new Set(d.mark||[]);
   const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
@@ -4327,7 +4337,7 @@ function VerseWords({T,d,px,fam,onWord,inset}){
   const keyTap=tap=>tap?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tap();}}:undefined;
   // A word with no number of its own opens the entry made from its parts.
   const tapFor=(w,x)=>x.num?()=>open(w,x):hebrew&&!x.own.length&&String(w[0]).replace(/\//g,'').trim()
-    ?()=>onWord(`~${w[0]}`,x.pieces[0]||String(w[0]).replace(/\//g,''),{verse:d.verse,pieces:x.pieces,color:T.gM,positions:x.pos,word:w,also:[],local:bareEntry(w)})
+    ?()=>onWord(bareKey(w),x.pieces[0]||String(w[0]).replace(/\//g,''),{verse:d.verse,pieces:x.pieces,color:T.gM,positions:x.pos,word:w,also:[],local:bareEntryOf(w)})
     :null;
   const side=inset?14:8;
   return(<>
@@ -7017,6 +7027,29 @@ function App(){
   }
   const[strongsMode,setStrongsMode]=useState(()=>{try{return JSON.parse(localStorage.getItem('scrip:strongsMode'))||false;}catch{return false;}});
   const[strongsData,setStrongsData]=useState({}); // {verse: [{word_pos,word_text,strongs_num}]}
+  // The open book's Hebrew words (parsing/<book>.json), with Strong's on in
+  // the Old Testament: the Read page underlines from them the words Strong's
+  // gives no number (lo "unto him"), as the word by word finds them.
+  const[readWords,setReadWords]=useState(null); // {book,c}
+  useEffect(()=>{
+    if(!strongsMode||readBook>39){setReadWords(null);return;}
+    let live=true;
+    loadParsingBook(readBook).then(d=>{if(live)setReadWords(d?{book:readBook,c:d.c}:null);});
+    return()=>{live=false;};
+  },[strongsMode,readBook]);
+  // Per verse, map rows for those words, drawn only -- never stored or
+  // counted: the word's key (bareKey) on the KJV words it is rendered by.
+  const bareRows=useMemo(()=>{
+    const out={},ch=readWords&&readWords.book===readBook?readWords.c?.[readCh]:null;
+    if(!ch)return out;
+    for(const row of readVerses){
+      const v=row.verse,words=ch[v],maps=strongsData[v];
+      if(!words||!maps)continue;
+      const rs=verseWordRows(words,true,kjvWordList(row.text),mainNumbersAt(maps)).filter(q=>q.x.noNumber);
+      if(rs.length)out[v]=rs.flatMap(q=>{const k=bareKey(q.w);bareEntryOf(q.w);return q.x.pos.map(p=>({word_pos:p,strongs_num:k,word_text:''}));});
+    }
+    return out;
+  },[readWords,readBook,readCh,readVerses,strongsData]);
   const[strongsPopup,setStrongsPopup]=useState(null); // {strongs_number,word_text,entry:{...},verses:[],versesLoading:bool}
   const[strongsClosing,setStrongsClosing]=useState(false);
   // This panel keeps its animation in a style prop rather than a class, so React
@@ -8259,7 +8292,9 @@ function App(){
   async function handleStrongsWordTap(strongsNum,wordText,split){
     setStrongsExpandedWords(new Set());
     const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`,book:readBook,chapter:readCh}:null;
-    const cached=strongsCache.current[strongsNum];
+    // A word with no Strong's number (underlined from bareRows) opens its
+    // entry made from its parts.
+    const cached=BARE_ENTRIES.has(strongsNum)?{entry:BARE_ENTRIES.get(strongsNum),verses:[]}:strongsCache.current[strongsNum];
     if(cached){
       setStrongsPopup({strongs_number:strongsNum,word_text:wordText,split:sp,entry:cached.entry,verses:cached.verses,versesLoading:false,history:[]});
       return;
@@ -11439,7 +11474,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,textDecoration:isAudio&&readParaMode?'underline':'none',textDecorationColor:isAudio?'var(--ac-audio-line)':'transparent',...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),bareRows[v]?[...strongsData[v],...bareRows[v]]:strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                         {' '}
                       </span>
@@ -11459,7 +11494,7 @@ function App(){
                         {readVerseNums==='super'&&<sup style={{fontFamily:FS,fontSize:Math.round(readFontSize*0.45),color:sel?T.gT:T.gM,marginRight:2,userSelect:'none',fontWeight:600}}>{v}</sup>}
                         {readVerseNums==='inline'&&<span style={{fontFamily:FS,fontSize:UL(10),color:sel?T.gT:T.gM,marginRight:6,userSelect:'none',fontWeight:600}}>{v}</span>}
                         <span className="rv-text" style={{fontFamily:fontFamilyMap[readFontFamily],fontSize:readFontSize,color:T.body,lineHeight:readLineHeight,...hlStyle(v)}}>
-                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
+                          {strongsMode&&strongsData[v]?buildStrongsVerse(wojWrap(readBook,readCh,v,text),bareRows[v]?[...strongsData[v],...bareRows[v]]:strongsData[v],handleStrongsWordTap,T,dark,readRedLetter,v):<span dangerouslySetInnerHTML={{__html:processRedLetter(wojWrap(readBook,readCh,v,text),readRedLetter,dark)}}/>}
                         </span>
                       </div>
                     );
