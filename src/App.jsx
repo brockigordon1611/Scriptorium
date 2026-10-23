@@ -4064,39 +4064,6 @@ function loadParsingBook(b){
   if(!_parsingBooks.has(b))_parsingBooks.set(b,_bundledJson(`parsing/${b}.json`).catch(()=>{_parsingBooks.delete(b);return null;}));
   return _parsingBooks.get(b);
 }
-// The word a tapped KJV word is: the one whose KJV words for this number
-// include the tapped ones.
-function findParsedWord(words,book,num,positions){
-  const lang=book<=39?'H':'G';
-  for(const w of words||[]){
-    const own=String(w[3]).split('/').filter(Boolean).map(n=>lang+n);
-    for(const e of w[4]||[]){
-      const sn=typeof e[0]==='string'?e[0]:null;
-      const pos=sn?e.slice(1):e;
-      if((sn?sn===num:own.includes(num))&&pos.some(p=>positions.includes(p)))return w;
-    }
-  }
-  return null;
-}
-function useParsedWord(split,num){
-  const b=split?.book,c=split?.chapter,v=split?.verse;
-  const[words,setWords]=useState(null);
-  useEffect(()=>{
-    setWords(null);
-    if(!b||!c||!v)return;
-    let live=true;
-    loadParsingBook(b).then(d=>{if(live)setWords(d?.c?.[c]?.[v]||null);});
-    return()=>{live=false;};
-  },[b,c,v]);
-  return useMemo(()=>{
-    // Opened from the word-by-word view, the word comes with it -- while the
-    // number open is its own, and not a second one ("also H853").
-    const sw=split?.word;
-    if(sw&&String(sw[3]).split('/').some(n=>n&&(b<=39?'H':'G')+n===num))return sw;
-    return words&&split?.positions?findParsedWord(words,b,num,split.positions):null;
-  },[words,b,num,split?.positions,split?.word]);
-}
-
 // The grammar codes spelled out, as Brock asked: "Verb · Qal · Perfect · 3rd
 // masculine singular" for HVqp3ms. Hebrew: the OpenScriptures codes with
 // STEPBible's additions (its TEHMC list: Tc a conditional particle, c the
@@ -4198,42 +4165,6 @@ function greekPart(code){
 // A word written as two ("kakeinon", CONJ + G1565=D-ASM) is both.
 const greekGrammar=code=>String(code||'').split(' + ').map(c=>greekPart(c.replace(/^G\d+=/,''))).join(' + ');
 
-// The word as it stands in this verse, parsed, under "In Genesis 1:1 —
-// created" below the entry's heading: the form used here where it is
-// not the one the entry is headed with (a prefix, an ending, another tense),
-// the parse spelled out -- a prefix in a word ("and +") and an ending dimmed
-// beside the word's own part -- and the code.
-const _bare=s=>String(s||'').normalize('NFD').replace(/[̀-֑ͯ-ׇ]/g,'').toLowerCase();
-function ParsedWord({T,w,num,book,lemma,px,fam}){
-  const hebrew=book<=39,aram=hebrew&&w[2][0]==='A';
-  const forms=String(w[0]).split('/'),trs=String(w[1]).split('/');
-  const word=forms.join(''),tr=trs.join('');
-  let parts=null;
-  if(hebrew){
-    const codes=w[2].slice(1).split('/'),nums=String(w[3]).split('/');
-    const at=nums.indexOf(num.slice(1));
-    const main=at>=0?at:Math.max(0,nums.findIndex(Boolean));
-    // A prefix by what it is ("and", "the", "preposition"), as in the word
-    // by word; the word's own part and an ending spelled out.
-    parts=codes.map((c,i)=>({form:forms[i]||'',main:i===main||(at>=0&&nums[i]===nums[at]),
-      text:i<main?_tagOf(hebrewPart(c==='Rd'&&/^S/.test(codes[i+1]||'')?'R':c,aram),true,true):hebrewPart(c,aram)}))
-      .filter(p=>p.form.trim()&&p.text);
-  }
-  const showForm=(parts&&parts.length>1)||_bare(word)!==_bare(lemma);
-  return(
-    <span style={{fontFamily:fam,fontSize:Math.round(px*0.72),lineHeight:1.45,color:T.body}}>
-      {showForm&&<><span dir={hebrew?'rtl':'ltr'} lang={hebrew?(aram?'arc':'he'):'grc'} style={{color:T.gT}}>{word}</span>{' '}
-        <span style={{color:T.mut,fontStyle:'italic'}}>{tr}</span>{' — '}</>}
-      {parts&&parts.length>1?parts.map((p,i)=><React.Fragment key={i}>{i?' + ':''}<span style={{color:p.main?T.body:T.mut}}>{p.text}</span></React.Fragment>)
-        :(parts?parts[0]?.text:greekGrammar(w[2]))}
-      {aram&&<span style={{color:T.mut}}> · Aramaic</span>}
-      {/* Not in the small capitals' face: Cinzel has no lower case, and the
-          case is the code's meaning (q Qal, Q Qal passive). */}
-      <span style={{color:T.dim,fontSize:Math.round(px*0.6),letterSpacing:'0.04em',whiteSpace:'nowrap'}}> · {w[2]}</span>
-    </span>
-  );
-}
-
 // The verse's words as the Strong's map counts them, as buildStrongsVerse
 // does: split at the spaces, the punctuation round each trimmed, a token of
 // punctuation alone not counted. Each with whether the KJV prints it in
@@ -4290,6 +4221,16 @@ function shortParse(w,hebrew){
   const nums=String(w[3]).split('/'),main=Math.max(0,nums.findIndex(Boolean));
   // STEPBible codes lo, bo ("unto him", "in it") HRd/Sp3ms: no article there.
   return codes.map((c,i)=>forms[i]?.trim()?_tagOf(hebrewPart(c==='Rd'&&/^S/.test(codes[i+1]||'')?'R':c,aram),i<main,true):'').filter(Boolean).join(' + ');
+}
+// A word's parse in full, for the word-by-word row of the word the entry is
+// open on: its own part spelled out, a prefix as a short word ("and +"), an
+// ending spelled out.
+function fullParse(w,num,hebrew){
+  if(!hebrew)return greekGrammar(w[2]);
+  const aram=w[2][0]==='A',codes=w[2].slice(1).split('/'),forms=String(w[0]).split('/'),nums=String(w[3]).split('/');
+  const at=num?nums.indexOf(num.slice(1)):-1,main=at>=0?at:Math.max(0,nums.findIndex(Boolean));
+  return codes.map((c,i)=>!forms[i]?.trim()?'':i<main?_tagOf(hebrewPart(c==='Rd'&&/^S/.test(codes[i+1]||'')?'R':c,aram),true,true)
+    :hebrewPart(c,aram)).filter(Boolean).join(' + ')+(aram?' · Aramaic':'');
 }
 const _WAW_WORDS=new Set(['and','but','or','nor','then','so','yet','now','therefore']);
 // The verse a word at a time: at the top the verse as it is written in the
@@ -4372,7 +4313,7 @@ function VerseWords({T,d,px,fam,onWord,inset}){
   const side=inset?14:8;
   return(<>
     <div dir={hebrew?'rtl':'ltr'} lang={hebrew?(aramN===words.length?'arc':'he'):'grc'}
-      style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.3:1.1)),lineHeight:1.75,color:T.body,textAlign:hebrew?'right':'left',
+      style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.02:0.86)),lineHeight:1.7,color:T.body,textAlign:hebrew?'right':'left',
         padding:`0 ${side}px 10px`,borderBottom:`1px solid ${T.bdS}`}}>
       {rows.map(({w,x},k)=>{
         const tap=x.num?()=>open(w,x):null;
@@ -4397,9 +4338,15 @@ function VerseWords({T,d,px,fam,onWord,inset}){
           <div style={{textAlign:'right',minWidth:0}}>
             <div dir={hebrew?'rtl':'ltr'} lang={hebrew?(aram?'arc':'he'):'grc'} style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.15:1)),color:T.gT,lineHeight:1.3}}>{String(w[0]).replace(/\//g,'')}</div>
             <div style={{fontFamily:fam,fontSize:Math.round(px*0.64),color:T.mut,lineHeight:1.35,marginTop:1}}>
-              <span style={{fontStyle:'italic'}}>{String(w[1]).replace(/\//g,'')}</span> · {shortParse(w,hebrew)}
+              <span style={{fontStyle:'italic'}}>{String(w[1]).replace(/\//g,'')}</span>{here?null:<> · {shortParse(w,hebrew)}</>}
             </div>
           </div>
+          {/* The word the entry is open on: its parse in full, and the code --
+              not in the small capitals' face: Cinzel has no lower case, and
+              the case is the code's meaning (q Qal, Q Qal passive). */}
+          {here&&<div style={{gridColumn:'1 / -1',fontFamily:fam,fontSize:Math.round(px*0.72),lineHeight:1.4,color:T.body,marginTop:-4}}>
+            {fullParse(w,x.num,hebrew)}<span style={{color:T.dim,fontSize:Math.round(px*0.6),letterSpacing:'0.04em',whiteSpace:'nowrap'}}> · {w[2]}</span>
+          </div>}
         </div>
       );
     })}
@@ -4439,7 +4386,6 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   const langName=entry?.language==='hebrew'?'Hebrew':entry?.language==='greek'?'Greek':null;
   const untranslated=UNTRANSLATED.has(num)||UNTRANSLATED_RE.test(entry?.kjv_usage||'');
   const ending=num==='H853'&&split?.pieces?.length>0&&split.pieces.every(p=>OBJECT_PRONOUN_RE.test(p));
-  const parsed=useParsedWord(split,num);
   // The word-by-word card stays open from word to word.
   const[wordsOpen,setWordsOpen]=useState(false);
   const root=useRef(null),wbwCard=useRef(null),anchor=useRef(null);
@@ -4489,9 +4435,9 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
       </div>
       {trail}
     </div>
-    {/* Under the word as Strong's has it, the word as it is in this verse:
-        the English it was opened from, underlined as in the verse, and the
-        word parsed -- the full width, clear of the close button. */}
+    {/* Under the word as Strong's has it, the English it was opened from,
+        underlined as in the verse -- the full width, clear of the close
+        button. The word as it is there, parsed, is in the word by word. */}
     {split&&<div style={{display:'flex',flexDirection:'column',gap:4,marginTop:10}}>
         <span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
@@ -4503,7 +4449,6 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
             <span style={{whiteSpace:'nowrap'}}><span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
               style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span>{UNTRANSLATED.has(sn)?' (not translated)':''}</span></React.Fragment>)}</span>}
         </span>
-        {parsed&&entry&&<ParsedWord T={T} w={parsed} num={num} book={split.book} lemma={entry.original_word} px={px} fam={fam}/>}
     </div>}
     <div style={{height:14,flexShrink:0}}/>
     {/* The verse word by word, folded like a rendering's card -- drawn while
