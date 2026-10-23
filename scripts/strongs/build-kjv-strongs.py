@@ -314,7 +314,7 @@ LET_BEFORE = SUBJECTS | OBJECT | {'there'}
 # Words in front of a Hebrew verb's English that are part of it.
 HELPERS = SUBJECTS | {'there', 'let', 'not'} | set(
     'shall shalt will wilt should would may might must can could hath have had has doth do did be been was were '
-    'is are am hast hadst dost didst art wast canst shouldest wouldest'.split())
+    'is are am hast hadst dost didst art wast wert canst shouldest wouldest mightest mayest couldest'.split())
 # KJV forms Strong's lists under another: "was" under "be", "came" under "come".
 IRREGULAR = dict(
     be='was were is are am been being art wast wert', come='came cometh', go='went goeth gone', say='said saith',
@@ -798,8 +798,9 @@ _AFFIX_WORDS = {
     # and "it came to pass ... that God remembered" (Gen 19:29): the second verb's "and"
     # and "Yea, I hated" (Ecc 2:18), "even the solemn meeting" (Isa 1:13), "Thus were their faces" (Ezek 1:11)
     # and "For so it was" (2 Kgs 17:7), "Notwithstanding they would not hear" (17:14), "Howbeit" (17:29)
-    'H9001': 'and but then so now yet or nor when therefore that yea even thus for notwithstanding wherefore howbeit',
-    'H9002': 'and but then so now yet or nor when therefore yea even thus for notwithstanding wherefore howbeit',
+    # and "else would I give it" (Ps 51:16)
+    'H9001': 'and but then so now yet or nor when therefore that yea even thus for notwithstanding wherefore howbeit else',
+    'H9002': 'and but then so now yet or nor when therefore yea even thus for notwithstanding wherefore howbeit else',
     'H9003': 'in on upon with by at among into through when within unto for against over concerning throughout',
     # "that ... not" (Gen 3:11, levilti): a "to" of purpose
     'H9004': 'as like according when after about so', 'H9005': 'to unto for into of toward that according against in after among concerning',
@@ -847,7 +848,7 @@ GAP_WORDS = ABSORB_BACK | {'the'}
 # A Hebrew verb's English helpers, which the KJV can part from it: "Let the
 # earth bring forth" (H1876), "Ye shall not eat", "hath God said".
 AUX = set('let shall shalt will wilt doth dost did didst do does hath hast had hadst have can canst could '
-          'may mayest might must should shouldest would wouldest'.split())
+          'may mayest might mightest must should shouldest would wouldest couldest'.split())
 # A causing verb's: "made me swear", "made the white appear".
 CAUSE = set('made make maketh cause caused causeth'.split())
 CONJUNCTIONS = {'H3588', 'H834', 'H518', 'H3651', 'H3541', 'H2009', 'H2005', 'H6435', 'H3282', 'H4616'}
@@ -860,7 +861,7 @@ REFLEXIVE = set('himself herself itself themselves myself thyself ourselves your
 # Hebrew words: "Ye shall not eat", "she hath also born".
 BETWEEN = set('not no also again yet now surely never already'.split())    # "hath been already done" (Ecc 2:12)
 # Untagged words a subject can carry: "Let the waters under the heaven be gathered".
-BE = set('was were is are be been am art wast'.split())
+BE = set('was were is are be been am art wast wert'.split())
 NEGATIONS_H = {'H3808', 'H408', 'H369', 'H1077', 'H1115'}
 # Adverbs the KJV gives a doubled verb's first word: "thou shalt surely die".
 INF_ABS = set('surely freely utterly diligently greatly certainly indeed altogether wholly verily expressly'.split())
@@ -957,10 +958,16 @@ def fill_nt(app, italic, tags, old_words, usage, pause=None):
         tags[x] = tags[mate]
         words += 2
     # The article: "the", or "he" in "And he answered", folded into another word.
+    # And an "of" before it in the same phrase, which it would leave apart:
+    # "of the only begotten Son" (John 3:18), the source's "of the only begotten".
     for x in sorted(tags):
         if osn[x] == 'G3588' and tags[x][0] != 'G3588' and key(app[x]) in ARTICLE_WORDS and not ok(tags[x][0], x):
+            old = tags[x]
             pid += 1
             tags[x] = ('G3588', pid)
+            if x and key(app[x - 1]) in CASE_WORDS and tags.get(x - 1) == old and tags.get(x + 1) == old \
+                    and not ok(old[0], x - 1):
+                tags[x - 1] = tags[x]
             words += 1
             phrases += 1
     runs, i = [], 0
@@ -1132,8 +1139,35 @@ def greek_words(app, italic, pause, tags, greek, verbs=frozenset()):
             pid += 1
             for y in run:
                 tags[y] = ('G3588', pid)
+            # The verb's words left in front of it: "every one that is born"
+            # (John 3:8, pas ho gegennemenos) -- the "one" is pas's.
+            for y in [y for y in mine if y < run[0]]:
+                if key(app[y]) == 'one' and y - 1 in tags and key(app[y - 1]) in ('every', 'any', 'each'):
+                    tags[y] = tags[y - 1]
+                elif key(app[y]) in THAT_PRONOUNS | {'one'}:
+                    tags[y] = ('G3588', pid)
             done_p.add(i)
             budget -= 1
+            deficit -= 1
+            break
+    # And before an adjective: "him who is invisible" (Heb 11:27, ton
+    # aoraton), "him that is true" (1 John 5:20) -- a "he that" the KJV
+    # leaves bare before the word's phrase.
+    for nums, to in greek:
+        if deficit <= 0:
+            break
+        if 'G3588' not in nums or to is None or to >= len(greek):
+            continue
+        target = set(greek[to][0]) - {'G3588'}
+        if target & verbs:
+            continue
+        for i in [i for i in sorted(tags) if tags[i][0] in target and tags.get(i - 1) != tags[i] and i not in done_p]:
+            if i < 2 or any(y in tags or italic[y] or pause[y] for y in (i - 2, i - 1)) \
+                    or key(app[i - 2]) not in THAT_PRONOUNS or key(app[i - 1]) not in ('that', 'who', 'which'):
+                continue
+            pid += 1
+            tags[i - 2] = tags[i - 1] = ('G3588', pid)
+            done_p.add(i)
             deficit -= 1
             break
     ours = collections.Counter(t[0] for t in set(tags.values()))
@@ -1299,6 +1333,16 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
         if key(app[x]) in ('unto', 'to') and v and p and v != p and v[0] in verbs and p[0] in DATIVE_NT \
                 and key(app[x + 1]) in OBJECT and tags.get(x + 2) != p and sum(1 for y in tags if tags[y] == v) > 1:
             tags[x] = p
+    # "Through faith we understand" (Heb 11:3), pistei; "through his poverty"
+    # (2 Cor 8:9): a dative's "through" where the Greek has no dia or en left
+    # without English.
+    if greek:
+        gcount = collections.Counter(nums[0] for nums, _ in greek)
+        have = collections.Counter(t[0] for t in set(tags.values()))
+        if gcount['G1223'] <= have['G1223'] and gcount['G1722'] <= have['G1722']:
+            for x in range(len(app) - 1):
+                if key(app[x]) == 'through' and not taken(x) and not italic[x] and not pause[x] and x + 1 in tags:
+                    added[x] = tags[x + 1]
     # "even so know I" (John 10:15), kago: the "I" is kago's.
     for x in range(2, len(app)):
         if key(app[x]) != 'i' or italic[x]:
@@ -1842,6 +1886,14 @@ def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectiv
         if w in ('that', 'which', 'who') and x + 1 < len(app) and of(x + 1) == t and free(x - 1) \
                 and key(app[x - 1]) in WHO_PRONOUNS and (key(app[x + 1]).endswith('eth') or key(app[x + 1]).endswith('est')):
             added[x - 1] = t                            # "Thou that dwellest" (Song 8:13)
+            continue
+        # "toward them that fear him" (Ps 103:11), yere'av, an adjective;
+        # "those that trouble me" (Ps 13:4), tsarai: a "them that" right
+        # before any word that is not a clause of its own ("that he may rest").
+        if x >= 2 and free(x - 1) and free(x - 2) and key(app[x - 1]) == 'that' and key(app[x - 2]) in THAT_PRONOUNS \
+                and w not in SUBJECTS | POSSESSIVE | {'there', 'the', 'a', 'an', 'all', 'this', 'these', 'those'} \
+                and not WHO_WORDS & unplaced and not who_near(t):
+            added[x - 1] = added[x - 2] = t
             continue
         # And before any verb, the Hebrew having no word for it: "which covered"
         # (Ezek 1:23, mekhassot), "children that are corrupters" (Isa 1:4), "of
@@ -2611,6 +2663,52 @@ def live(tags, added, app=None, hebrew=None):
     return out
 
 
+_USAGE_TEXT = {}
+
+
+def usage_has(sn, words):
+    """Whether Strong's list of the KJV's renderings of sn has these words in
+    a row: "burnt offering" in kalil's "whole burnt offering (sacrifice)"."""
+    if not _USAGE_TEXT:
+        for r in json.loads(LEX.read_text(encoding='utf-8')):
+            _USAGE_TEXT[r['strongs_number']] = ' ' + ' '.join(re.findall(r'[a-z]+', (r.get('kjv_usage') or '').lower())) + ' '
+    return f" {' '.join(words)} " in _USAGE_TEXT.get(sn, '')
+
+
+def small_words(app, italic, pause, tags, added, verbs):
+    """Small words the KJV adds that only go with the phrase beside them, in
+    both Testaments: "such as" (Dan 12:1, ka'asher), "or else" (1 Kgs 20:39),
+    "for ever and ever" (Rev 5:13, ton aionon) -- and an article left at the
+    end of another word's phrase, which is the next word's: "to enjoy the
+    pleasures" (Heb 11:25), "and set a king" (Isa 7:6). Phrases only gain or
+    lose small words, so no count moves."""
+    of = lambda x: tags.get(x) or added.get(x)
+    free = lambda x: 0 <= x < len(app) and not of(x) and not italic[x]
+    for x in range(len(app)):
+        if not free(x):
+            continue
+        w = key(app[x])
+        if w == 'such' and x + 1 < len(app) and key(app[x + 1]) == 'as' and of(x + 1) and not pause[x]:
+            added[x] = of(x + 1)
+        elif w == 'else' and x and key(app[x - 1]) == 'or' and of(x - 1) and not pause[x - 1]:
+            added[x] = of(x - 1)
+        elif w == 'and' and 0 < x < len(app) - 1 and key(app[x - 1]) == 'ever' == key(app[x + 1]) \
+                and of(x - 1) and of(x + 1) and not pause[x - 1]:
+            added[x] = of(x + 1)
+    for x in range(1, len(app) - 1):
+        t, u = of(x), of(x + 1)
+        if not t or not u or t == u or key(app[x]) not in ('the', 'a', 'an') or italic[x] or pause[x] \
+                or t[0] == 'G3588' or u[0] in verbs or of(x - 1) != t:
+            continue
+        mine = sorted(y for y in range(len(app)) if of(y) == t)
+        if mine[-1] != x or mine != list(range(mine[0], x + 1)) or not any(y in tags for y in mine if y != x):
+            continue                                    # a word in pieces ("unto the Red sea") keeps its article
+        if x in tags:
+            tags[x] = u
+        else:
+            added[x] = u
+
+
 def object_it(hebrew):
     """Numbers of the verse's Hebrew words with a he/she/it ending: "the burden
     that was upon it shall be cut off" (Isa 22:25) is aleyha -- where "for it
@@ -2920,6 +3018,24 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
                 by[sn].remove(t)
                 by[homes[0]].append((homes[0], pid))
                 ph[homes[0], pid] = ph[t]
+    # A spare phrase right after another word's, where the two are one of
+    # that word's renderings in Strong's: "and whole burnt offering" (Ps
+    # 51:19) is kalil (H3632), the source giving its "offering" to the olah
+    # before it (H5930); "ten thousand" (Deut 32:30) is revavah.
+    ph, by = phrases_of()
+    for sn, n in heb_count.items():
+        for t in list(by[sn]):
+            if len(by[sn]) <= n:
+                break
+            idx = ph[t]
+            prev = tags.get(min(idx) - 1)
+            if not prev or prev[0] == sn or prev[0] not in heb_count or pause[min(idx) - 1] \
+                    or tags.get(max(idx) + 1, (None,))[0] == sn \
+                    or not usage_has(prev[0], [key(app[min(idx) - 1])] + [key(app[i]) for i in idx]):
+                continue                            # not "every wise hearted man" (Exod 36:8), chakham-lev
+            for i in idx:
+                tags[i] = prev
+            by[sn].remove(t)
     ph, by = phrases_of()
     for sn, n in heb_count.items():
         while len(by[sn]) > n >= 1:
@@ -3398,6 +3514,7 @@ def main():
         ets = et_endings(app, italic, pause, tags, added, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags),
                          et_data.get(f'{b}|{c}|{v}')) if b <= 39 else {}
         et_words += len(ets)
+        small_words(app, italic, pause, tags, added, verbs)
         affixed += len(added)
         words_total += len(app); tagged_total += len(tags) + len(added) + len(own)
         phrases = collections.OrderedDict()
