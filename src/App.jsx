@@ -4199,9 +4199,8 @@ function wbwEnglish(w,lang,mainAt,kjv){
   pos.forEach((p,i)=>{if(i&&p===pos[i-1]+1)pieces[pieces.length-1]+=' '+kjv[p].w;else pieces.push(kjv[p].w);});
   return{num:num||own[own.length-1]||null,own,pos,pieces,shared:!main.size};
 }
-// A word's grammar as a short tag for the word-by-word list: "verb · Qal
-// perfect", "the + noun", "preposition + noun", "verb · aorist indicative".
-// The full parse is in the word's Strong's entry, a tap away.
+// A prefix's grammar as a short word in a word's full parse: "the", "and",
+// "preposition" ("and + Verb · Qal · ...").
 const _STEM_NAMES=new Set([...Object.values(HEB_STEMS),...Object.values(ARAM_STEMS)]);
 function _tagOf(text,prefix,hebrew){
   const[pos,...rest]=String(text||'').split(' · ');
@@ -4215,16 +4214,8 @@ function _tagOf(text,prefix,hebrew){
   if(pos==='Proper name')return'name';
   return pos.toLowerCase().replace('personal pronoun','pronoun');
 }
-function shortParse(w,hebrew){
-  if(!hebrew)return String(w[2]||'').split(' + ').map(c=>_tagOf(greekPart(c.replace(/^G\d+=/,'')),false,false)).join(' + ');
-  const aram=w[2][0]==='A',codes=w[2].slice(1).split('/'),forms=String(w[0]).split('/');
-  const nums=String(w[3]).split('/'),main=Math.max(0,nums.findIndex(Boolean));
-  // STEPBible codes lo, bo ("unto him", "in it") HRd/Sp3ms: no article there.
-  return codes.map((c,i)=>forms[i]?.trim()?_tagOf(hebrewPart(c==='Rd'&&/^S/.test(codes[i+1]||'')?'R':c,aram),i<main,true):'').filter(Boolean).join(' + ');
-}
-// A word's parse in full, for the word-by-word row of the word the entry is
-// open on: its own part spelled out, a prefix as a short word ("and +"), an
-// ending spelled out.
+// A word's parse in full, for its word-by-word row: its own part spelled
+// out, a prefix as a short word ("and +"), an ending spelled out.
 function fullParse(w,num,hebrew){
   if(!hebrew)return greekGrammar(w[2]);
   const aram=w[2][0]==='A',codes=w[2].slice(1).split('/'),forms=String(w[0]).split('/'),nums=String(w[3]).split('/');
@@ -4236,8 +4227,8 @@ const _WAW_WORDS=new Set(['and','but','or','nor','then','so','yet','now','theref
 // The verse a word at a time: at the top the verse as it is written in the
 // Hebrew or Greek -- Hebrew from the right -- the word the reader came from in
 // gold; under it each KJV word or phrase, in the KJV's order, beside the
-// Hebrew or Greek word it translates, with its transliteration and a short
-// tag of its grammar. Any word, tapped, is opened with onWord. Drawn in a
+// Hebrew or Greek word it translates, with its transliteration and its
+// parse in full under it. Any word, tapped, is opened with onWord. Drawn in a
 // Strong's entry's "Word by word" card and in the verse strip's view.
 function VerseWords({T,d,px,fam,onWord,inset}){
   const hebrew=d.book<=39,lang=hebrew?'H':'G';
@@ -4327,7 +4318,7 @@ function VerseWords({T,d,px,fam,onWord,inset}){
       const here=x.pos.some(p=>mark.has(p));
       return(
         <div key={i} role={tap?'button':undefined} tabIndex={tap?0:undefined} onClick={tap?e=>{e.stopPropagation();tap();}:undefined} onKeyDown={keyTap(tap)}
-          style={{display:'grid',gridTemplateColumns:'minmax(0,0.85fr) minmax(0,1.15fr)',gap:12,alignItems:'center',padding:`8px ${side}px`,
+          style={{display:'grid',gridTemplateColumns:'minmax(0,0.7fr) minmax(0,1.3fr)',gap:12,alignItems:'center',padding:`8px ${side}px`,
             borderTop:k?`1px solid ${T.bdS}`:'none',background:here?`color-mix(in srgb, ${T.gT} 13%, transparent)`:'transparent',
             cursor:tap?'pointer':'default',WebkitTapHighlightColor:'transparent'}}>
           <div style={{fontFamily:fam,fontSize:Math.round(px*0.92),color:x.shared?T.mut:T.body,lineHeight:1.3,overflowWrap:'anywhere'}}>
@@ -4337,16 +4328,14 @@ function VerseWords({T,d,px,fam,onWord,inset}){
           </div>
           <div style={{textAlign:'right',minWidth:0}}>
             <div dir={hebrew?'rtl':'ltr'} lang={hebrew?(aram?'arc':'he'):'grc'} style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.15:1)),color:T.gT,lineHeight:1.3}}>{String(w[0]).replace(/\//g,'')}</div>
-            <div style={{fontFamily:fam,fontSize:Math.round(px*0.64),color:T.mut,lineHeight:1.35,marginTop:1}}>
-              <span style={{fontStyle:'italic'}}>{String(w[1]).replace(/\//g,'')}</span>{here?null:<> · {shortParse(w,hebrew)}</>}
+            <div style={{fontFamily:fam,fontSize:Math.round(px*0.64),color:T.mut,fontStyle:'italic',lineHeight:1.35,marginTop:1}}>{String(w[1]).replace(/\//g,'')}</div>
+            {/* Its parse in full under it, and the code -- not in the small
+                capitals' face: Cinzel has no lower case, and the case is the
+                code's meaning (q Qal, Q Qal passive). */}
+            <div style={{fontFamily:fam,fontSize:Math.round(px*0.66),color:T.body,lineHeight:1.4,marginTop:2}}>
+              {fullParse(w,x.num,hebrew)}<span style={{color:T.dim,fontSize:Math.round(px*0.58),letterSpacing:'0.04em',whiteSpace:'nowrap'}}> · {w[2]}</span>
             </div>
           </div>
-          {/* The word the entry is open on: its parse in full, and the code --
-              not in the small capitals' face: Cinzel has no lower case, and
-              the case is the code's meaning (q Qal, Q Qal passive). */}
-          {here&&<div style={{gridColumn:'1 / -1',fontFamily:fam,fontSize:Math.round(px*0.72),lineHeight:1.4,color:T.body,marginTop:-4}}>
-            {fullParse(w,x.num,hebrew)}<span style={{color:T.dim,fontSize:Math.round(px*0.6),letterSpacing:'0.04em',whiteSpace:'nowrap'}}> · {w[2]}</span>
-          </div>}
         </div>
       );
     })}
