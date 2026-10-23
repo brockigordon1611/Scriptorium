@@ -881,6 +881,17 @@ UNPAIRED_WORDS = {'H3605': {'all', 'every', 'any', 'whole'},
                   # asher: "from whence he was taken" (Gen 3:23)
                   'H834': {'which', 'whom', 'whose', 'whence', 'whereof', 'wherein', 'whereby', 'whither', 'wherewith'}}
 PRONOUN_WORDS_H = {'H1931', 'H1992', 'H1958', 'H1933'}
+# Small Hebrew words the KJV gives a word of their own, which the source can
+# leave untagged, often where the verse has the word twice: "for his name's
+# sake" (Ps 23:3, lema'an), "beside the ram" (Num 5:8, milvad), "nor commanded
+# them" (Jer 23:32, velo), "as we be" (Gen 34:15, kamonu), "before them that
+# fear him" (Ps 22:25, neged), "get thee down quickly from hence" (Deut 9:12,
+# mizzeh), "it is a sweet savour" (Exod 29:18, hu).
+LEFT_OUT = {k: set(v.split()) for k, v in {
+    'H4616': 'sake sakes', 'H5668': 'sake sakes', 'H905': 'beside besides',
+    'H3808': 'not no nor neither never', 'H408': 'not no nor neither', 'H369': 'not no none',
+    'H1077': 'not nor neither', 'H3644': 'as like', 'H5048': 'before against', 'H2088': 'hence',
+    'H1931': 'it he she', 'H1992': 'they them'}.items()}
 # The KJV can give these a pronoun of their own: "He also bringeth tidings"
 # (zeh, 2 Sam 18:26), "whether they be strong" (hu, Num 13:18).
 PRONOUN_LIKE = PRONOUN_WORDS_H | {'H2088', 'H2063', 'H428', 'H2090', 'H2097', 'H2098', 'H1975', 'H1976', 'H1977', 'H411', 'H479'}
@@ -1055,6 +1066,10 @@ def fill_nt(app, italic, tags, old_words, usage, pause=None):
 
 # The KJV's words for the small Greek words, for those the source left out.
 DATIVE_NT = {'G2254', 'G5213', 'G3427', 'G4671', 'G846', 'G1698', 'G1473', 'G4771'}
+# Greek words mend_nt's left-out fill leaves alone: the article, "to be", autos, pas, prepositions.
+NT_FILL_SKIP = set('G3588 G1510 G2076 G2258 G1526 G2071 G1511 G5607 G5600 G2070 G2075 G1488 G2277 G5604 G5606 G1498 '
+                   'G2468 G846 G3956 G303 G473 G575 G1223 G1519 G1537 G1722 G1909 G2596 G3326 G3844 G4012 G4253 '
+                   'G4314 G4862 G5228 G5259 G1715 G1799 G3694 G1715 G2193 G891 G3360'.split())
 NT_FUNC = {k: set(v.split()) for k, v in {
     'G2532': 'and also even both', 'G1161': 'but and now then moreover', 'G3361': 'not no lest neither nor',
     'G3756': 'not no nay neither', 'G3754': 'that because for', 'G1063': 'for', 'G3767': 'therefore then so',
@@ -1343,6 +1358,29 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
             for x in range(len(app) - 1):
                 if key(app[x]) == 'through' and not taken(x) and not italic[x] and not pause[x] and x + 1 in tags:
                     added[x] = tags[x + 1]
+    # A Greek word the source left without English, where the KJV has just as
+    # many bare words Strong's lists for it and no other left-out word could be
+    # them: the subscriptions ("The first epistle to the Corinthians was
+    # written from Philippi", 1 Cor 16:24), "in the Red sea" (Acts 7:36). Not
+    # the small words, which NT_FUNC and the article rules place.
+    # Nor "to be" (the source's esti, G2076, is TAGNT's G1510, so "being
+    # interpreted" would get one), autos, pas or a preposition ("let no man
+    # dwell", "a wise man among you"), nor where a small word could be it
+    # ("now at this time", nun).
+    if greek:
+        have = collections.Counter(t[0] for t in set(tags.values()))
+        gcount = collections.Counter(next((n for n in nums if n in have), nums[0]) for nums, _ in greek)
+        short = {sn: gcount[sn] - have[sn] for sn in gcount if gcount[sn] > have[sn] and sn not in NT_FILL_SKIP
+                 and sn not in NT_FUNC}
+        loose = [i for i in range(len(app)) if not taken(i) and not italic[i] and key(app[i]) not in {'the', 'a', 'an', 'such'}]
+        fits = {sn: [i for i in loose if stems(app[i]) & usage.get(sn, set())] for sn in short}
+        pid = 510000
+        for sn, k in short.items():
+            if fits[sn] and len(fits[sn]) == k and not any(key(app[i]) in small | CONNECT for i in fits[sn]) \
+                    and not any(i in fits[o] for i in fits[sn] for o in short if o != sn):
+                for i in fits[sn]:
+                    pid += 1
+                    tags[i] = (sn, pid)
     # "even so know I" (John 10:15), kago: the "I" is kago's.
     for x in range(2, len(app)):
         if key(app[x]) != 'i' or italic[x]:
@@ -2957,6 +2995,65 @@ def mend_ot(app, italic, pause, tags, hebrew, usage, verbs):
             for i in cands:
                 pid += 1
                 tags[i] = (sn, pid)
+    # LEFT_OUT: as many bare words for the word as the Hebrew has of it
+    # unplaced, each where that Hebrew word stands among its neighbours, and
+    # none another left-out word could be. Which of the word's Hebrew words is
+    # unplaced: the ones no phrase is nearest. Not 1 Sam 2:16's "Let them not
+    # fail", where the lo is the KJV's italic "Nay". A pronoun only as a "to
+    # be" the KJV supplies ("it is a sweet savour"), not "to possess it, is
+    # not". And kamoni's "I" ("as I do"), and lema'an's "for" ("for ... sake",
+    # the "for" the source gives the name).
+    ph, by = phrases_of()
+    short = {sn: heb_count[sn] - len(by[sn]) for sn in LEFT_OUT if heb_count.get(sn, 0) > len(by[sn])}
+
+    def windows(sn):
+        free = [o for o, (_, mains, _) in enumerate(hebrew) if sn in mains]
+        for x in sorted(min(ph[t]) for t in by[sn]):
+            if free:
+                free.remove(min(free, key=lambda o: abs(o / len(hebrew) - x / len(app))))
+        once = lambda q: hebrew[q][1] and heb_count[hebrew[q][1][0]] == 1 and len(by[hebrew[q][1][0]]) == 1
+        out = []
+        for o in free:
+            before = [hebrew[q][1][0] for q in range(o - 1, -1, -1) if once(q)][:2]
+            after = [hebrew[q][1][0] for q in range(o + 1, len(hebrew)) if once(q)][:2]
+            out.append((max(ph[by[before[-1]][0]]) - 1 if before else -1,
+                        min(ph[by[after[-1]][0]]) + 1 if after else len(app)))
+        return out
+    for sn, missing in short.items():
+        spans = windows(sn)
+        cands = [i for i in range(len(app)) if i not in tags and not italic[i] and key(app[i]) in LEFT_OUT[sn]
+                 and (sn not in PRONOUN_WORDS_H or i + 1 < len(app) and italic[i + 1] and key(app[i + 1]) in BE
+                      and (i == 0 or pause[i - 1] or key(app[i - 1]) in CONNECT | SEPARATE | {'because', 'for'}))]
+        if len(cands) != missing or not all(any(a <= i <= b for a, b in spans) for i in cands) \
+                or any(key(app[i]) in LEFT_OUT[o] for i in cands for o in short if o != sn):
+            continue                        # not Jer 44:23's third "nor", the first still bare
+        for i in cands:
+            pid += 1
+            tags[i] = (sn, pid)
+            if sn == 'H3644' and i + 1 < len(app) and i + 1 not in tags and key(app[i + 1]) in SUBJECTS:
+                tags[i + 1] = tags[i]
+    ph, by = phrases_of()
+    for t, idx in ph.items():
+        if t[0] in ('H4616', 'H5668') and key(app[max(idx)]) == 'for':     # "for mine own sake" (Isa 37:35)
+            run, x = [], max(idx) + 1
+            while x < len(app) and x not in tags and not italic[x] and key(app[x]) in POSSESSIVE | {'own'}:
+                run.append(x)
+                x += 1
+            if run and x < len(app) and x not in tags and key(app[x]) in ('sake', 'sakes'):
+                for y in run + [x]:
+                    tags[y] = t
+            continue
+        if t[0] not in ('H4616', 'H5668') or not all(key(app[i]) in ('sake', 'sakes') for i in idx):
+            continue
+        for x in range(min(idx) - 1, max(min(idx) - 7, -1), -1):
+            if pause[x]:
+                break
+            if key(app[x]) == 'for' and not italic[x]:
+                o = tags.get(x)
+                if o is None or (o[0] not in FUNC_WORDS or 'for' not in FUNC_WORDS[o[0]]) \
+                        and len(ph.get(o, ())) > 1 and min(ph[o]) == x:
+                    tags[x] = t
+                break
     # A preposition with "it" the source left out: "ye eat thereof" (Gen 3:5,
     # H4480). The Hebrew words of a number past the KJV's phrases of it go,
     # in order, to the verse's untagged "there-" words, when they number the same.
