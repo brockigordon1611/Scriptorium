@@ -2249,8 +2249,10 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
     // What the popup names under its number: the whole of the English it was
     // opened from -- "In the beginning", or "Let … bring forth".
     const also=[...new Set(group.flatMap(x=>x.also||[]))];
+    // And which words of the verse it is, for its Hebrew or Greek word's parsing.
+    const positions=(link?items.filter(x=>x.kind==='word'&&x.link===link):group.filter(x=>x.kind==='word')).map(x=>x.wordIdx);
     const split={...(link?{verse,pieces:linkPieces[link],color:linkColor(link)}
-      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM}),also};
+      :{verse,pieces:[groupText.trim().replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'')],color:T.gM}),also,positions};
     elems.push(React.createElement('span',{
       key:i,
       onDoubleClick:e=>{e.stopPropagation();onTap(sNum,tapWord,split);},
@@ -4049,6 +4051,307 @@ function CommentaryPage({T,navH,vid,lang,book,ch,focus,list,cid,onPick,onStep,on
 // these doesn't mean changing the setting; 60% was a jump down from Read.
 const cmPx=size=>Math.max(14,Math.min(48,Math.round(size*0.8)));
 
+// ── Parsing: the Hebrew or Greek word behind a KJV word ───────────────────
+// public/bundled/parsing/<book>.json, built by scripts/strongs/build-parsing.py
+// from STEPBible's TAHOT (Leningrad Hebrew) and TAGNT (the KJV's TR Greek):
+// per verse, each word as [form, transliteration, grammar code, Strong's
+// numbers, KJV words]. A Hebrew word's parts are split by "/" in the first
+// four ("be/reshit", "HR/Ncfsa", "/7225"). The KJV words are, per number the
+// map gives it, the word positions, led by the number when it is not one of
+// the word's own ([["H853",6]] for et before "the heaven"). A book's file is
+// read the first time one of its words is opened; it is not installed.
+const _parsingBooks=new Map();
+function loadParsingBook(b){
+  if(!_parsingBooks.has(b))_parsingBooks.set(b,_bundledJson(`parsing/${b}.json`).catch(()=>{_parsingBooks.delete(b);return null;}));
+  return _parsingBooks.get(b);
+}
+// The word a tapped KJV word is: the one whose KJV words for this number
+// include the tapped ones.
+function findParsedWord(words,book,num,positions){
+  const lang=book<=39?'H':'G';
+  for(const w of words||[]){
+    const own=String(w[3]).split('/').filter(Boolean).map(n=>lang+n);
+    for(const e of w[4]||[]){
+      const sn=typeof e[0]==='string'?e[0]:null;
+      const pos=sn?e.slice(1):e;
+      if((sn?sn===num:own.includes(num))&&pos.some(p=>positions.includes(p)))return w;
+    }
+  }
+  return null;
+}
+function useParsedWord(split,num){
+  const b=split?.book,c=split?.chapter,v=split?.verse;
+  const[words,setWords]=useState(null);
+  useEffect(()=>{
+    setWords(null);
+    if(!b||!c||!v)return;
+    let live=true;
+    loadParsingBook(b).then(d=>{if(live)setWords(d?.c?.[c]?.[v]||null);});
+    return()=>{live=false;};
+  },[b,c,v]);
+  return useMemo(()=>{
+    // Opened from the word-by-word view, the word comes with it -- while the
+    // number open is its own, and not a second one ("also H853").
+    const sw=split?.word;
+    if(sw&&String(sw[3]).split('/').some(n=>n&&(b<=39?'H':'G')+n===num))return sw;
+    return words&&split?.positions?findParsedWord(words,b,num,split.positions):null;
+  },[words,b,num,split?.positions,split?.word]);
+}
+
+// The grammar codes spelled out, as Brock asked: "Verb · Qal · Perfect · 3rd
+// masculine singular" for HVqp3ms. Hebrew: the OpenScriptures codes with
+// STEPBible's additions (its TEHMC list: Tc a conditional particle, c the
+// consecutive waw, Rd a preposition with the article, Npt the name of a
+// deity, rank or month, gender b either; Aramaic Ta the article, state d
+// determined). The verb's form letter c is the cohortative before a person
+// and the infinitive construct before a state ("Vqcc"). Greek: Robinson's
+// codes with STEPBible's name types (-P a person, -L a place, -T a title).
+const HEB_PERSON={1:'1st',2:'2nd',3:'3rd'};
+const HEB_GENDER={m:'masculine',f:'feminine',c:'common',b:'masculine or feminine'};
+const HEB_NUMBER={s:'singular',p:'plural',d:'dual'};
+const HEB_STATE={a:'absolute',c:'construct',d:'determined'};
+const HEB_STEMS={q:'Qal',N:'Niphal',p:'Piel',P:'Pual',h:'Hiphil',H:'Hophal',t:'Hithpael',o:'Polel',O:'Polal',r:'Hithpolel',m:'Poel',M:'Poal',
+  k:'Palel',K:'Pulal',Q:'Qal passive',l:'Pilpel',L:'Polpal',f:'Hithpalpel',D:'Nithpael',j:'Pealal',i:'Pilel',u:'Hothpaal',c:'Tiphil',v:'Hishtaphel',
+  w:'Nithpalel',y:'Nithpoel',z:'Hithpoel'};
+const ARAM_STEMS={q:'Peal',Q:'Peil',u:'Hithpeel',p:'Pael',P:'Ithpaal',M:'Hithpaal',a:'Aphel',h:'Haphel',s:'Saphel',e:'Shaphel',H:'Hophal',
+  i:'Ithpeel',t:'Hishtaphel',v:'Ishtaphel',w:'Hithaphel',o:'Polel',z:'Ithpoel',r:'Hithpolel',f:'Hithpalpel',b:'Hephal',c:'Tiphel',m:'Poel',
+  l:'Palpel',L:'Ithpalpel',O:'Ithpolel',G:'Ittaphal'};
+const HEB_FORMS={p:'Perfect',q:'Consecutive perfect',i:'Imperfect',n:'Imperfect',w:'Consecutive imperfect',u:'Imperfect with conjunction',
+  h:'Cohortative',j:'Jussive',v:'Imperative',r:'Participle',s:'Passive participle',a:'Infinitive absolute'};
+const _cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+// "3ms" -> ["3rd masculine singular"], "fsa" -> ["feminine singular","absolute"].
+// The 1st person is always common: "1st singular".
+function hebFeatures(s){
+  let i=0;const pgn=[];
+  const person=HEB_PERSON[s[i]];if(person){pgn.push(person);i++;}
+  if(HEB_GENDER[s[i]]){if(!(person==='1st'&&'cb'.includes(s[i])))pgn.push(HEB_GENDER[s[i]]);i++;}
+  if(HEB_NUMBER[s[i]]){pgn.push(HEB_NUMBER[s[i]]);i++;}
+  return[pgn.join(' '),HEB_STATE[s[i]]].filter(Boolean);
+}
+// One part of a Hebrew word: "Vqp3ms", "R", "Ncfsa".
+function hebrewPart(seg,aram){
+  const x=seg.slice(1);let out;
+  switch(seg[0]){
+    case 'V':{
+      const f=x[1],rest=x.slice(2),person=/^[123]/.test(rest);
+      const form=f==='c'?(person?'Cohortative':'Infinitive construct'):HEB_FORMS[f];
+      out=['Verb',(aram?ARAM_STEMS:HEB_STEMS)[x[0]],form,...(f==='a'||(f==='c'&&!person)?[]:hebFeatures(rest))];break;}
+    case 'N':
+      out=x[0]==='p'?['Proper name',{m:'masculine',f:'feminine',l:'place',t:'title'}[x[1]]]
+        :['Noun',x[0]==='g'?'gentilic':x[0]==='t'?'title':null,...hebFeatures(x.slice(1))];break;
+    case 'A':out=[{a:'Adjective',c:'Number',o:'Ordinal number',g:'Gentilic adjective'}[x[0]]||'Adjective',...hebFeatures(x.slice(1))];break;
+    case 'P':out=[{p:'Personal pronoun',d:'Demonstrative pronoun',f:'Indefinite pronoun',i:'Interrogative pronoun',r:'Relative pronoun'}[x[0]]||'Pronoun',...hebFeatures(x.slice(1))];break;
+    case 'S':out=x[0]==='p'?['Pronoun suffix',...hebFeatures(x.slice(1))]:['Suffix',{d:'directional',h:'paragogic he',n:'paragogic nun'}[x[0]]];break;
+    case 'T':out=[aram&&x[0]==='a'?'Definite article':{a:'Affirmation particle',c:'Conditional particle',d:'Definite article',e:'Exhortation particle',
+      i:'Interrogative particle',j:'Interjection',m:'Demonstrative particle',n:'Negative particle',o:'Object marker',r:'Relative particle'}[x[0]]||'Particle'];break;
+    case 'R':out=['Preposition',x==='d'?'with the article':null];break;
+    case 'C':out=['Conjunction'];break;
+    case 'c':out=['Conjunction','consecutive'];break;
+    case 'D':out=['Adverb'];break;
+    default:out=[];
+  }
+  return out.filter(Boolean).map(_cap).join(' · ');
+}
+const GK_POS={N:'Noun',A:'Adjective',T:'Definite article',P:'Personal pronoun',R:'Relative pronoun',C:'Reciprocal pronoun',D:'Demonstrative pronoun',
+  K:'Correlative pronoun',I:'Interrogative pronoun',X:'Indefinite pronoun',Q:'Correlative or interrogative pronoun',F:'Reflexive pronoun',
+  S:'Possessive pronoun',V:'Verb',ADV:'Adverb',CONJ:'Conjunction',COND:'Conditional conjunction',PRT:'Particle',PREP:'Preposition',
+  INJ:'Interjection',ARAM:'Aramaic word',HEB:'Hebrew word'};
+const GK_CASE={N:'nominative',G:'genitive',D:'dative',A:'accusative',V:'vocative'};
+const GK_NUM={S:'singular',P:'plural'};
+const GK_GEN={M:'masculine',F:'feminine',N:'neuter'};
+const GK_TENSE={P:'present',I:'imperfect',F:'future',A:'aorist',R:'perfect',L:'pluperfect'};
+const GK_VOICE={A:'active',M:'middle',P:'passive',E:'middle or passive',D:'middle deponent',O:'passive deponent',N:'middle or passive deponent',
+  Q:'impersonal active',X:'no voice stated'};
+const GK_MOOD={I:'indicative',S:'subjunctive',O:'optative',M:'imperative',N:'infinitive',P:'participle',R:'imperative participle'};
+const GK_EXTRA={N:'negative',I:'interrogative',C:'comparative',S:'superlative',P:'name of a person',L:'name of a place',T:'title',
+  PG:'name of a people',LG:'gentilic, of a place',ARAM:'Aramaic',HEB:'Hebrew',ATT:'Attic form',LI:'letter'};
+// The words with no case: what follows the dash is an extra ("PRT-N", not).
+const GK_UNDECLINED=new Set(['ADV','CONJ','COND','PRT','PREP','INJ','ARAM','HEB']);
+const GK_INDECL={PRI:'proper name',NUI:'number',LI:'letter',OI:null};
+// "NSM" -> ["nominative","masculine singular"]
+const gkCase=s=>[GK_CASE[s[0]],[GK_GEN[s[2]],GK_NUM[s[1]]].filter(Boolean).join(' ')];
+function greekPart(code){
+  const[pos,feat='',...extra]=code.split('-');
+  const out=[GK_POS[pos]||pos];
+  if(pos==='V'){
+    const second=feat[0]==='2',t=second?feat.slice(1):feat;
+    out.push((second?'2nd ':'')+(GK_TENSE[t[0]]||''),GK_VOICE[t[1]],GK_MOOD[t[2]]);
+    const pn=extra[0]||'';
+    if(/^[123]/.test(pn))out.push(`${HEB_PERSON[pn[0]]} ${GK_NUM[pn[1]]||''}`.trim());
+    else if(pn)out.push(...gkCase(pn));
+  }else if(GK_UNDECLINED.has(pos)){
+    if(feat)extra.unshift(feat);
+  }else if(feat in GK_INDECL){
+    out.push([GK_INDECL[feat],'indeclinable'].filter(Boolean).join(', '));
+  }else if(/^[123]/.test(feat)){
+    // Possessive: the possessor's person and number, then the word's own
+    // case, number and gender ("S-1SNPM"). The others: person, then case.
+    if(pos==='S')out.push(`${HEB_PERSON[feat[0]]} person ${GK_NUM[feat[1]]}`,...gkCase(feat.slice(2)));
+    else if(pos==='F')out.push(`${HEB_PERSON[feat[0]]} person`,...gkCase(feat.slice(1)));
+    else out.push(`${HEB_PERSON[feat[0]]} ${GK_NUM[feat[2]]}`,GK_CASE[feat[1]]);
+  }else if(feat&&GK_CASE[feat[0]]){
+    out.push(...gkCase(feat));
+  }else if(feat)extra.unshift(feat);
+  // A name type means nothing on an adverb ("Hebraisti", ADV-T).
+  for(const e of extra)if(!(e==='T'&&pos!=='N'))out.push(GK_EXTRA[e]);
+  return out.filter(Boolean).map(_cap).join(' · ');
+}
+// A word written as two ("kakeinon", CONJ + G1565=D-ASM) is both.
+const greekGrammar=code=>String(code||'').split(' + ').map(c=>greekPart(c.replace(/^G\d+=/,''))).join(' + ');
+
+// What the popup shows: the word as written, its transliteration, its code,
+// and each part spelled out -- for a Hebrew word with a prefix or an ending,
+// one line a part, the part that is this number set in full colour.
+function ParsedWord({T,w,num,book,px,fam,small,card,onWords}){
+  const hebrew=book<=39,aram=hebrew&&w[2][0]==='A';
+  const forms=String(w[0]).split('/'),trs=String(w[1]).split('/');
+  const word=forms.join(''),tr=trs.join('');
+  let parts=null;
+  if(hebrew){
+    const codes=w[2].slice(1).split('/'),nums=String(w[3]).split('/');
+    const at=nums.indexOf(num.slice(1));
+    const main=at>=0?at:Math.max(0,nums.findIndex(Boolean));
+    parts=codes.map((c,i)=>({form:forms[i]||'',tr:trs[i]||'',text:hebrewPart(c,aram),main:i===main||(at>=0&&nums[i]===nums[at]),
+      before:i<main,after:i>main})).filter(p=>p.form.trim()&&p.text);
+  }
+  const text=hebrew?null:greekGrammar(w[2]);
+  return(<>
+    <div style={{...small,color:T.gM,margin:'16px 2px 7px'}}>Parsing{aram?' · Aramaic':''}</div>
+    <div style={card}>
+      <div style={{display:'flex',alignItems:'baseline',flexWrap:'wrap',gap:'4px 12px',padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`}}>
+        <span dir={hebrew?'rtl':'ltr'} lang={hebrew?(aram?'arc':'he'):'grc'} style={{fontFamily:fam,fontSize:Math.round(px*1.1),color:T.gT,lineHeight:1.3}}>{word}</span>
+        <span style={{fontFamily:fam,fontSize:px,color:T.mut,fontStyle:'italic',flex:1}}>{tr}</span>
+        {/* Not in the small capitals' face: Cinzel has no lower case, and the
+            case is the code's meaning (q Qal, Q Qal passive). */}
+        <span style={{fontFamily:fam,fontSize:Math.round(px*0.66),color:T.dim,letterSpacing:'0.04em'}}>{w[2]}</span>
+      </div>
+      <div style={{padding:'10px 14px 10px',fontFamily:fam,fontSize:Math.round(px*0.92),lineHeight:1.5,color:T.body}}>
+        {parts&&parts.length>1?parts.map((p,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'baseline',gap:10,color:p.main?T.body:T.mut,marginTop:i?4:0}}>
+            <span dir="rtl" lang={aram?'arc':'he'} style={{color:p.main?T.gT:T.mut,flexShrink:0}}>{p.form}</span>
+            <span style={{fontStyle:'italic',flexShrink:0}}>{p.after?'-':''}{p.tr}{p.before?'-':''}</span>
+            <span>{p.text}</span>
+          </div>)):<div>{parts?parts[0]?.text:text}</div>}
+      </div>
+      {/* The rest of the verse, a word at a time. */}
+      {onWords&&<button type="button" onClick={e=>{e.stopPropagation();onWords();}}
+        style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:'none',border:'none',borderTop:`1px solid ${T.bdS}`,
+          padding:'10px 14px',cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
+        <span style={{...small,color:T.gT}}>The whole verse word by word</span>
+        <svg aria-hidden="true" width="0.5em" height="0.85em" viewBox="0 0 6 10" style={{flexShrink:0,color:T.gM,fontSize:px}}><path d="M1 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>}
+    </div>
+  </>);
+}
+
+// The verse's words as the Strong's map counts them, as buildStrongsVerse
+// does: split at the spaces, the punctuation round each trimmed, a token of
+// punctuation alone not counted. Each with whether the KJV prints it in
+// italics, as a word it supplied.
+function kjvWordList(text){
+  const t=String(text||'').replace(/<i>/g,'\u0001').replace(/<\/i>/g,'\u0002').replace(/<[^>]+>/g,'');
+  const out=[];let inI=false;
+  for(const tok of t.split(/\s+/)){
+    let it=inI;
+    for(const ch of tok){if(ch==='\u0001'){inI=true;it=true;}else if(ch==='\u0002')inI=false;}
+    const w=tok.replace(/[\u0001\u0002]/g,'').replace(/^[.,;:!?'"()]+|[.,;:!?'"()]+$/g,'');
+    if(w)out.push({w,it});
+  }
+  return out;
+}
+// A Hebrew or Greek word's English: the KJV words given its number in the
+// map, where its number is the one the word has there. Where it is only the
+// second number (et standing before "the heaven", Gen 1:1) the word has no
+// English of its own -- et none at all, an article the English shares
+// ("whosoever", pas ho).
+function wbwEnglish(w,lang,mainAt,kjv){
+  const own=String(w[3]).split('/').filter(Boolean).map(n=>lang+n);
+  const main=new Set(),second=new Set();let num=null;
+  for(const e of w[4]||[]){
+    const sn=typeof e[0]==='string'?e[0]:null,nums=sn?[sn]:own;
+    for(const p of sn?e.slice(1):e){
+      if(nums.includes(mainAt[p])){main.add(p);num=mainAt[p];}else second.add(p);
+    }
+  }
+  const pos=[...(main.size?main:own.every(n=>UNTRANSLATED.has(n))?[]:second)].filter(p=>kjv[p]).sort((a,b)=>a-b);
+  const pieces=[];
+  pos.forEach((p,i)=>{if(i&&p===pos[i-1]+1)pieces[pieces.length-1]+=' '+kjv[p].w;else pieces.push(kjv[p].w);});
+  return{num:num||own[own.length-1]||null,own,pos,pieces,shared:!main.size};
+}
+// The verse a word at a time, in the order of the Hebrew or Greek: Hebrew
+// from the right, as it is read. Each word with its transliteration, its KJV
+// English, its Strong's number and its parsing, the code and spelled out;
+// tapped, it opens its Strong's entry over this.
+function WordByWord({T,d,readFont,onClose,onWord}){
+  const px=cmPx(readFont.size),fam=readFont.family;
+  const hebrew=d.book<=39,lang=hebrew?'H':'G';
+  const small={fontFamily:FS,fontSize:Math.min(14,Math.max(9,Math.round(px*0.46))),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600};
+  const[words,setWords]=useState(undefined);
+  useEffect(()=>{
+    let live=true;
+    loadParsingBook(d.book).then(b=>{if(live)setWords(b?b.c?.[d.chapter]?.[d.verse]||[]:null);});
+    return()=>{live=false;};
+  },[d.book,d.chapter,d.verse]);
+  const kjv=useMemo(()=>kjvWordList(d.text),[d.text]);
+  // The number each English word has first in the map; et only where it has
+  // no other.
+  const mainAt=useMemo(()=>{
+    const m={};
+    for(const r of d.mappings||[])if(m[r.word_pos]===undefined||(m[r.word_pos]==='H853'&&r.strongs_num!=='H853'))m[r.word_pos]=r.strongs_num;
+    return m;
+  },[d.mappings]);
+  const aramN=(words||[]).filter(w=>w[2][0]==='A').length;
+  const tongue=!hebrew?'Greek':!aramN?'Hebrew':aramN===words.length?'Aramaic':'Hebrew and Aramaic';
+  const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
+  const open=(w,x)=>onWord(x.num,x.pieces[0]||String(w[0]).replace(/\//g,''),{verse:d.verse,pieces:x.pieces,color:T.gM,positions:x.pos,word:w,
+    also:[...new Set((d.mappings||[]).filter(r=>x.pos.includes(r.word_pos)&&r.strongs_num!==x.num).map(r=>r.strongs_num))]});
+  return(
+    <PopFrame T={T} onClose={onClose} maxWidth={620}
+      head={<PopHead T={T} sub={`Word by word · ${tongue}`} title={d.ref} onBack={onClose}/>}>
+      <div style={{fontFamily:fam,fontSize:Math.round(px*0.95),color:T.body,lineHeight:1.5,padding:'0 2px 12px'}} dangerouslySetInnerHTML={{__html:d.html}}/>
+      {words===undefined?note('Loading…'):words===null?note('The Hebrew and Greek words could not be loaded.'):!words.length?note('There is no word-by-word parsing for this verse.'):<>
+        {hebrew&&<div style={{...small,color:T.gM,textAlign:'right',margin:'0 2px 8px'}}>← Read from right to left</div>}
+        {/* Two across at the least, however large the text: one card under
+            another is no longer read from the right. */}
+        <div style={{display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(min(calc(50% - 4px),${Math.round(px*7.2)}px),1fr))`,gap:8,direction:hebrew?'rtl':'ltr'}}>
+          {words.map((w,i)=>{
+            const x=wbwEnglish(w,lang,mainAt,kjv);
+            const aram=hebrew&&w[2][0]==='A';
+            const forms=String(w[0]).split('/'),trs=String(w[1]).split('/');
+            let parsing;
+            if(hebrew){
+              const codes=w[2].slice(1).split('/'),nums=String(w[3]).split('/');
+              const k=x.num?nums.indexOf(x.num.slice(1)):-1,at=k>=0?k:Math.max(0,nums.findIndex(Boolean));
+              const parts=codes.map((c,j)=>({tr:trs[j]||'',text:hebrewPart(c,aram),j})).filter(p=>forms[p.j]?.trim()&&p.text);
+              parsing=parts.length>1?parts.map(p=><div key={p.j}><span style={{fontStyle:'italic'}}>{p.j>at?'-':''}{p.tr}{p.j<at?'-':''}</span> {p.text}</div>):parts[0]?.text;
+            }else parsing=greekGrammar(w[2]);
+            const tap=x.num?()=>open(w,x):null;
+            return(
+              <div key={i} role={tap?'button':undefined} tabIndex={tap?0:undefined} onClick={tap||undefined}
+                onKeyDown={tap?e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();tap();}}:undefined}
+                style={{direction:'ltr',minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:3,background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,
+                  padding:'10px 8px',cursor:tap?'pointer':'default',WebkitTapHighlightColor:'transparent'}}>
+                <span dir={hebrew?'rtl':'ltr'} lang={hebrew?(aram?'arc':'he'):'grc'} style={{fontFamily:fam,fontSize:Math.round(px*(hebrew?1.4:1.15)),color:T.gT,lineHeight:1.35}}>{forms.join('')}</span>
+                <span style={{fontFamily:fam,fontSize:Math.round(px*0.8),color:T.mut,fontStyle:'italic',lineHeight:1.3,overflowWrap:'anywhere'}}>{trs.join('')}</span>
+                <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),color:x.shared?T.mut:T.body,lineHeight:1.35,marginTop:2,overflowWrap:'anywhere'}}>
+                  {x.pos.length?x.pos.map((p,j)=><React.Fragment key={p}>{j?(p===x.pos[j-1]+1?' ':' … '):''}<span style={kjv[p].it?{fontStyle:'italic'}:undefined}>{kjv[p].w}</span></React.Fragment>)
+                    :<span style={{color:T.dim,fontStyle:'italic'}}>not translated</span>}
+                </span>
+                <span style={{alignSelf:'stretch',height:1,background:T.bdS,margin:'5px 4px 3px'}}/>
+                {x.own.length>0&&<span style={{...small,letterSpacing:'0.08em',color:T.gM}}>{x.own.join(' · ')}</span>}
+                {/* Not in the small capitals' face: Cinzel has no lower case. */}
+                <span style={{fontFamily:fam,fontSize:Math.round(px*0.66),color:T.dim,letterSpacing:'0.04em'}}>{w[2]}</span>
+                <div style={{fontFamily:fam,fontSize:Math.round(px*0.72),color:T.mut,lineHeight:1.35}}>{parsing}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{fontFamily:FB,fontSize:U(12),color:T.dim,textAlign:'center',padding:'14px 0 8px'}}>Tap a word for its Strong’s entry.</div>
+      </>}
+    </PopFrame>
+  );
+}
+
 // A Strong's entry laid out as Commentaries lays out a verse: the number and
 // what it is on one line over the gold rule, the word as a card holding its
 // definition, and each English rendering as a card that opens to its verses.
@@ -4061,7 +4364,7 @@ const UNTRANSLATED=new Set(['H853']);
 // The KJV's "it", "him", "them" for et with an ending (oto, otam): the ending's
 // English, so not "not translated".
 const OBJECT_PRONOUN_RE=/^(me|thee|him|her|it|us|you|ye|them|myself|thyself|himself|herself|itself|ourselves|yourselves|themselves)$/i;
-function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,back,reserveRight=0}){
+function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggle,onRef,derivation,readFont,lang,lead,trail,split,onAlso,onWords,back,reserveRight=0}){
   const px=cmPx(readFont.size),fam=readFont.family;
   const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,marginBottom:10,overflow:'hidden'};
   // The small caps grow with the entry too, or a count sits at 9px beside
@@ -4072,6 +4375,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
   // cards in it shrank to nothing instead of scrolling.
   const untranslated=UNTRANSLATED.has(num)||UNTRANSLATED_RE.test(entry?.kjv_usage||'');
   const ending=num==='H853'&&split?.pieces?.length>0&&split.pieces.every(p=>OBJECT_PRONOUN_RE.test(p));
+  const parsed=useParsedWord(split,num);
   return(<div style={{flexShrink:0}}>
     {/* Back to the number this one was opened from: a line of its own above
         the number, saying where it goes, so the header stays where it was. */}
@@ -4099,6 +4403,8 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
         {split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
           {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {/* Opened from the word-by-word view on a word with no English. */}
+          {split.pieces.length===0&&<span style={{fontStyle:'italic'}}>not translated</span>}
           {/* One English word for two Hebrew words: "therefore" is al and ken. */}
           {split.others&&split.others.length>0&&<span style={{color:T.gM}}> · also {split.others.map((sn,i)=><React.Fragment key={sn}>{i?', ':''}
             <span style={{whiteSpace:'nowrap'}}><span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
@@ -4122,6 +4428,8 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {derivation&&<div style={{fontFamily:fam,fontSize:Math.round(px*1.05),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{derivation}</div>}
         </div>
       </div>
+      {/* The word as it stands in this verse, parsed. */}
+      {parsed&&<ParsedWord T={T} w={parsed} num={num} book={split.book} px={px} fam={fam} small={small} card={card} onWords={onWords}/>}
       {/* A word the KJV gives no English (et): no renderings to list, so say
           so, and why, in Strong's words. */}
       {untranslated&&groupList.length===0&&<>
@@ -4236,10 +4544,10 @@ function VerseRows({T,rows,readFont,size}){
 }
 // A passage read where its reference was tapped -- a Strong's occurrence or a
 // commentary's cross-reference.
-function VersePreview({T,title,sub,rows,loading,emptyText,onClose,onGo,readFont}){
+function VersePreview({T,title,sub,rows,loading,emptyText,onClose,onGo,readFont,zIndex}){
   const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
   return(
-    <PopFrame T={T} onClose={onClose}
+    <PopFrame T={T} onClose={onClose} zIndex={zIndex}
       head={<PopHead T={T} sub={sub} title={title} onBack={onClose}/>}
       foot={<button type="button" onClick={onGo}
         style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>Go to passage</button>}>
@@ -6668,6 +6976,7 @@ function App(){
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
   const[strongsVersePreview,setStrongsVersePreview]=useState(null); // {bn,ch,vs,label,text,loading}
   const[strongsInfoVisible,setStrongsInfoVisible]=useState(false);
+  const[wordByWord,setWordByWord]=useState(null); // {book,chapter,verse,ref,text,html,mappings}
   // Strong's tab search state (must be at component level for hooks)
   const[strongsSearchQ,setStrongsSearchQ]=useState('');
   const[strongsSearchRes,setStrongsSearchRes]=useState(null);
@@ -7890,7 +8199,7 @@ function App(){
   // under the number while it is the one open.
   async function handleStrongsWordTap(strongsNum,wordText,split){
     setStrongsExpandedWords(new Set());
-    const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`}:null;
+    const sp=split?{...split,sn:strongsNum,ref:`${bookName(BIBLE[readBook-1])} ${readCh}:${split.verse}`,book:readBook,chapter:readCh}:null;
     const cached=strongsCache.current[strongsNum];
     if(cached){
       setStrongsPopup({strongs_number:strongsNum,word_text:wordText,split:sp,entry:cached.entry,verses:cached.verses,versesLoading:false,history:[]});
@@ -7899,6 +8208,13 @@ function App(){
     setStrongsPopup({strongs_number:strongsNum,word_text:wordText,split:sp,entry:null,verses:null,versesLoading:true,history:[]});
     const{entry,verses,versesOffline}=await fetchStrongsData(strongsNum);
     setStrongsPopup(prev=>prev&&prev.strongs_number===strongsNum?{...prev,entry,verses,versesOffline,versesLoading:false}:prev);
+  }
+  // The verse a word at a time, from the verse strip or a word's Parsing card.
+  function openWordByWord(v){
+    const row=readVerses.find(r=>r.verse===v);
+    if(!row||!strongsData[v])return;
+    setWordByWord({book:readBook,chapter:readCh,verse:v,ref:`${bookName(BIBLE[readBook-1],versionLang(readVid))} ${readCh}:${v}`,
+      text:row.text,html:processRedLetter(wojWrap(readBook,readCh,v,row.text),readRedLetter,dark),mappings:strongsData[v]});
   }
   async function loadStrongsEntry(strongsNum){
     setStrongsExpandedWords(new Set());
@@ -11113,8 +11429,9 @@ function App(){
 
             // Above the bottom bar (150), which stays put and is simply covered.
             // Opened from search, the sheet clears the search bar: at its usual
-            // height it slid in behind the bar's last row.
-            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:160,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:searchBarOn?Math.max(navH+100,Math.round((fsActive?(safeAreaTopRef.current||0):navH)+8+searchBarH+10)):navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
+            // height it slid in behind the bar's last row. Over the word-by-word
+            // view (250) when a word was opened from it, which waits beneath.
+            return React.createElement('div',{onClick:closeStrongsPopup,style:{position:'fixed',inset:0,zIndex:wordByWord?260:160,background:'rgba(0,0,0,0.2)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',display:'flex',alignItems:'stretch',justifyContent:'center',paddingTop:searchBarOn?Math.max(navH+100,Math.round((fsActive?(safeAreaTopRef.current||0):navH)+8+searchBarH+10)):navH+100,paddingBottom:0,boxSizing:'border-box',animation:strongsClosing?'backdropOut .26s ease both':'backdropIn .15s ease both'}},
               React.createElement('div',{onClick:e=>e.stopPropagation(),style:{position:'relative',background:T.bg,borderRadius:'16px 16px 0 0',borderTop:`2px solid ${T.bdA}`,width:'100%',maxWidth:520,minHeight:260,overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 8px 48px rgba(0,0,0,0.5)',willChange:'transform',
                 animation:strongsDragMode?'none':(strongsClosing?'sheetClose .26s cubic-bezier(0.4,0,1,1) both':'sheetOpen .38s cubic-bezier(0.22,1,0.36,1) both')},ref:strongsPanelRef},
               React.createElement('div',{style:{height:3,background:T.accentLine,flexShrink:0}}),
@@ -11145,6 +11462,7 @@ function App(){
                   split:(sp=>sp&&(sp.sn===strongsPopup.strongs_number||(sp.also||[]).includes(strongsPopup.strongs_number))
                     ?{...sp,others:[sp.sn,...(sp.also||[])].filter(n=>n!==strongsPopup.strongs_number)}:null)(strongsPopup.split),
                   onAlso:sn=>loadStrongsEntry(sn),
+                  onWords:()=>{const v=strongsPopup.split?.verse;closeStrongsPopup();if(!wordByWord&&v)openWordByWord(v);},
                   back:(strongsPopup.history||[]).length>0?{to:strongsPopup.history[strongsPopup.history.length-1].strongs_number,onClick:goBackStrongs}:null}),
                 strongsPopup.entry&&(
                   React.createElement('div',null,
@@ -11245,6 +11563,13 @@ function App(){
                         style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0 4px',whiteSpace:'nowrap',fontWeight:600,height:30,boxSizing:'border-box',transition:'color .15s',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
                         <span>Copy</span>
                       </button>
+                      {/* With Strong's on, one verse's Hebrew or Greek a word at a time. */}
+                      {strongsMode&&readSelVerses.size===1&&strongsData[[...readSelVerses][0]]&&(
+                        <button type="button" onClick={()=>openWordByWord([...readSelVerses][0])}
+                          style={{flex:1,...floatFace,borderRadius:6,color:floatText,fontFamily:FB,fontSize:U(13),letterSpacing:'0.06em',padding:'0 4px',whiteSpace:'nowrap',fontWeight:600,height:30,boxSizing:'border-box',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+                          <span>Parse</span>
+                        </button>
+                      )}
                       <button type="button" onClick={dismissStrip}
                         style={{background:'var(--ac-glass-bg)',border:'1px solid rgba(200,60,60,0.35)',backdropFilter:'blur(7px)',WebkitBackdropFilter:'blur(7px)',boxShadow:'0 4px 14px rgba(0,0,0,0.22)',borderRadius:6,color:'#b86060',cursor:'pointer',fontSize:U(14),fontWeight:600,flexShrink:0,width:32,height:30,display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1,boxSizing:'border-box',transition:'color .15s',padding:0}}>✕</button>
                       </div>
@@ -12327,14 +12652,18 @@ function App(){
             onConfirm={()=>answer(true)} onCancel={()=>answer(false)}/>
         );
       })()}
+      {wordByWord&&(
+        <WordByWord T={T} d={wordByWord} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+          onClose={()=>setWordByWord(null)} onWord={handleStrongsWordTap}/>
+      )}
       {/* A Strong's occurrence, read where it was tapped: in the popup over Read,
           or on the Strong's Concordance page. */}
       {strongsVersePreview&&(
-        <VersePreview T={T} title={strongsVersePreview.label} sub={readVerLabel} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+        <VersePreview T={T} title={strongsVersePreview.label} sub={readVerLabel} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}} zIndex={wordByWord?270:undefined}
           loading={strongsVersePreview.loading}
           rows={strongsVersePreview.loading||!strongsVersePreview.text?[]:[{key:'v',label:strongsVersePreview.vs,html:processRedLetter(wojWrap(strongsVersePreview.bn,strongsVersePreview.ch,strongsVersePreview.vs,strongsVersePreview.text),readRedLetter,dark)}]}
           onClose={()=>setStrongsVersePreview(null)}
-          onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);
+          onGo={()=>{const p=strongsVersePreview;setStrongsPopup(null);setStrongsVersePreview(null);setWordByWord(null);
             if(p.bn===readBook&&p.ch===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(p.vs,true);}
             else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
       )}
@@ -12706,7 +13035,10 @@ function App(){
                   Every word gets a <strong style={{color:T.gT}}>dotted underline</strong> linking it to its original Hebrew or Greek root. Words sharing one root are grouped under a single continuous underline — e.g. "Let there be" is one phrase under one Hebrew word. A <strong style={{color:T.gT}}>coloured underline</strong> marks one Hebrew or Greek word the English splits around others: in "And God saw", <em>And … saw</em> is one Hebrew word. Its pieces share a colour, different from any other split word in the verse, and either piece opens it. The popup names the English it was opened from under the number — one word, a phrase, or the pieces.
                 </Row>
                 <Row icon="⊙">
-                  <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry.
+                  <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry, with the Hebrew or Greek word as it stands in that verse and its <strong style={{color:T.gT}}>parsing</strong>.
+                </Row>
+                <Row icon="א">
+                  Select one verse and tap <strong style={{color:T.gT}}>Parse</strong> to read it <strong style={{color:T.gT}}>word by word</strong>: each Hebrew or Greek word in its own order (Hebrew from the right), with its transliteration, the KJV's English for it, its Strong's number and its parsing. Tap a word for its Strong's entry.
                 </Row>
                 <Row icon="⌕">
                   Or search a word and open the <strong style={{color:T.gT}}>Strong's</strong> tab under the search field: the Hebrew and Greek behind it in the KJV, words spelled like it (agape, logos), and entries whose definition mentions it. A number such as G25 or H430 shows that entry.
@@ -12834,7 +13166,8 @@ function App(){
                 <Li><strong style={{color:T.gT}}>Strong's Hebrew & Greek Lexicon</strong> — James Strong, <em>Exhaustive Concordance of the Bible</em> (1890). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Webster's 1828 American Dictionary</strong> — Noah Webster (1828). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>KJV with Strong's numbers</strong> — the word-by-word Strong's tagging in Read, from the CrossWire Bible Society's KJV (via eBible.org). Public domain.</Li>
-                <Li><strong style={{color:T.gT}}>STEPBible Hebrew data (TAHOT)</strong> — Tyndale House, Cambridge (STEPBible.org). CC BY 4.0. Used only for which Hebrew word each Old Testament "and", "in", "the", "his" or "him" belongs to, for the underlines in Read.</Li>
+                {/* The licence asks for a note of any changes made to the data. */}
+                <Li><strong style={{color:T.gT}}>STEPBible Hebrew and Greek data (TAHOT, TAGNT)</strong> — Tyndale House, Cambridge (STEPBible.org). CC BY 4.0. The Hebrew of the Leningrad codex (following the scribes' Qere) and the Greek the KJV translators used (Scrivener's 1894 Textus Receptus), with their grammar codes, shown under Parsing in a Strong's entry; and which Hebrew or Greek word each "and", "in", "the", "his" or "him" belongs to, for the underlines in Read. Changed here: the Hebrew is shown without its cantillation marks and punctuation, the Greek without punctuation and in the Textus Receptus spelling where STEPBible records it; the Hebrew transliterations lose their syllable marks and give the divine name as Strong's does (Yehovah); the Greek transliterations are Scriptorium's own. STEPBible's English glosses are not used.</Li>
                 <Li><strong style={{color:T.gT}}>Wiktionary</strong> — definitions for words not in Webster's 1828, looked up as you search, from Wiktionary, the free dictionary. CC BY-SA 4.0.</Li>
                 <Li><strong style={{color:T.gT}}>Scofield Reference Bible Notes</strong> — C. I. Scofield (1917 edition). Public domain.</Li>
                 <Li><strong style={{color:T.gT}}>Through the Bible Day by Day</strong> — F. B. Meyer (1914–1918). Public domain.</Li>
