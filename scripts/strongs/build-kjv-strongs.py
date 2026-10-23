@@ -83,6 +83,7 @@ HEBREW_OT = ROOT / 'scripts/strongs/source/tahot-ot-structure.json.gz'
 ADJECTIVES_OT = ROOT / 'scripts/strongs/source/tahot-adjective-construct.json.gz'
 # Per verse, et with a pronoun ending (oto, otam): see export-tahot-et-endings.py.
 ET_ENDINGS_OT = ROOT / 'scripts/strongs/source/tahot-et-endings.json.gz'
+VERB_NUMBERS = ROOT / 'scripts/strongs/source/verb-numbers.json.gz'
 INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
 # The KJV's Greek (TR) words of each NT verse, from STEPBible's TAGNT; see
 # export-tagnt-files.py.
@@ -865,6 +866,12 @@ NEGATIONS_H = {'H3808', 'H408', 'H369', 'H1077', 'H1115'}
 INF_ABS = set('surely freely utterly diligently greatly certainly indeed altogether wholly verily expressly'.split())
 # Words that go with the Hebrew word that comes first after them (link_ot).
 NUMBER_HEADS = {'hundred', 'thousand', 'hundreds', 'thousands'}
+ADJECTIVE_LIKE = re.compile(r'(en|ing|er|ward|ern|ous|ful|ish|ive|al|ic|ble|est|y)$|^(great|holy|high|most|good|evil|old|'
+                            r'new|last|whole|little|small|strong|south|north|east|west|utter|middle|upper|nether|'
+                            r'chief|full|wise|mighty|precious)$')
+NUMBER_WORD = re.compile(r'^(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|'
+                         r'sixty|seventy|eighty|ninety|hundred|thousand|first|second|third|fourth|fifth|sixth|seventh|'
+                         r'eighth|ninth|tenth|eleventh|twelfth|threescore|fourscore|score)|teenth?$|tieth$')
 HEAD_WORDS = {'a', 'an', 'every', 'of', 'the', 'o'}     # "O backsliding children" (Jer 3:14): banim's
 POSSESSIVE = set('my thy his her its our your their mine thine'.split())
 # Small Hebrew words the source can leave out, and the KJV's words for them:
@@ -1086,12 +1093,20 @@ def greek_words(app, italic, pause, tags, greek, verbs=frozenset()):
             tags[i - 1] = ('G3588', pid)
             deficit -= 1
     done_p = set()
+    # As many as the Greek has articles before a verb, less the KJV's words
+    # for them already there (not "the").
+    phr = collections.defaultdict(list)
+    for i in sorted(tags):
+        phr[tags[i]].append(i)
+    budget = sum(1 for nums, to in greek if 'G3588' in nums and to is not None and to < len(greek)
+                 and (set(greek[to][0]) - {'G3588'}) & verbs) \
+        - sum(1 for t, idx in phr.items() if t[0] == 'G3588' and key(app[idx[0]]) not in ('the', 'of', 'to', 'unto'))
     # "He that heareth you" (Luke 10:16), ho akouon; "which have been done"
     # (10:13), tais genomenais: an article before a participle is the KJV's
     # "he that", "which", as BLB has it -- taken from the verb's phrase where
     # the source put it there.
     for nums, to in greek:
-        if deficit <= 0:
+        if budget <= 0 and deficit <= 0:
             break
         if 'G3588' not in nums or to is None or to >= len(greek):
             continue
@@ -1118,6 +1133,7 @@ def greek_words(app, italic, pause, tags, greek, verbs=frozenset()):
             for y in run:
                 tags[y] = ('G3588', pid)
             done_p.add(i)
+            budget -= 1
             deficit -= 1
             break
     ours = collections.Counter(t[0] for t in set(tags.values()))
@@ -1253,6 +1269,29 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
             x -= 1
             if w in ('which', 'who', 'when', 'let'):
                 break
+    # "to you which were afar off" (Eph 2:17), tois makran: where the source
+    # put the article on the "were", it is the "which"'s; the "were" goes
+    # with the word after.
+    for x in range(1, len(app) - 1):
+        t = tags.get(x)
+        if not t or t[0] != 'G3588' or key(app[x]) not in BE or sum(1 for y in tags if tags[y] == t) != 1:
+            continue
+        run = [y for y in (x - 2, x - 1) if y >= 0 and y not in tags and not italic[y] and not pause[y]
+               and (key(app[y]) in ('which', 'who', 'that') or key(app[y]) in THAT_PRONOUNS and key(app[y + 1]) == 'that')]
+        nxt = tags.get(x + 1)
+        if not run or run[-1] != x - 1 or not nxt or nxt == t or pause[x]:
+            continue
+        for y in run:
+            tags[y] = t
+        tags[x] = nxt
+    # "come out of the ship" (Mark 5:2), ek: the "out" of "out of" is ek's,
+    # not the verb's.
+    for x in range(1, len(app) - 1):
+        v, p = tags.get(x), tags.get(x + 1)
+        if key(app[x]) == 'out' and key(app[x + 1]) == 'of' and v and p and v != p and v[0] in verbs \
+                and p[0] in ('G1537', 'G575') and sum(1 for y in tags if tags[y] == p) == 1 \
+                and sum(1 for y in tags if tags[y] == v) > 1:
+            tags[x] = p
     # "are subject unto us" (Luke 10:17), hemin: the "unto" of a pronoun with
     # no Greek preposition is the pronoun's, not the verb's.
     for x in range(len(app) - 1):
@@ -1564,6 +1603,9 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                 if w in AFFIX_BEFORE[a]:
                     added[x] = t
                     found = True
+                    if w in ('according', 'because', 'out', 'as') and x + 1 < lo and not taken(x + 1) \
+                            and not italic[x + 1] and key(app[x + 1]) in ('to', 'of', 'for'):
+                        added[x + 1] = t                # "according to these measures" (Ezek 40:24), ka-middot
                     if not stepped:                     # "and the earth": all of it; "his own name"
                         for y in range(x + 1, lo):
                             if not taken(y) and (key(app[y]) in GAP_WORDS or key(app[y]) == 'own' and a not in PREFIXES
@@ -1994,19 +2036,42 @@ def blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectiv
                 added[x] = of(y)
     # "of the living God" (Dan 6:20), elaha chayya; "the first lot" (1 Chr
     # 25:9), haggoral harishon: an article the source put with the adjective,
-    # the noun first in the Hebrew -- the noun's.
+    # the noun first in the Hebrew -- the noun's. Across more than one: "the
+    # golden image" (Dan 3:5), tselem dahava; "the burning fiery furnace"
+    # (3:6), attun nura yaqidta; "of the inner gate" (Ezek 40:15).
     for x in range(len(app) - 2):
-        if key(app[x]) not in ('the', 'a', 'an') or italic[x] or x not in tags:
+        if key(app[x]) not in ('the', 'a', 'an') or italic[x] or not of(x) or (x and of(x - 1) == of(x)
+                                                                                   and key(app[x - 1]) != 'of'):
             continue
-        ta, tb = tags[x], of(x + 2)
-        if tags.get(x + 1) != ta or sum(1 for y in tags if tags[y] == ta) != 2 or not tb or tb == ta \
-                or tb[0] in verbs or tb[0] in FUNC_WORDS or tb[0] in PREPOSITION_NUMBERS or key(app[x + 2]) in ('of', 'the'):
+        ta = of(x)
+        lead = [x - 1] if x and of(x - 1) == ta else []
+        mine = [y for y in range(len(app)) if of(y) == ta]
+        body = [y for y in mine if y > x]
+        if not body or mine != lead + [x] + body or body != list(range(x + 1, x + 1 + len(body))) or len(body) > 2 \
+                or ta[0] in verbs or order_of.get(ta) is None or any(NUMBER_WORD.search(key(app[z])) or
+                                                                     re.search(r"(['’]s|s['’])$", app[z]) for z in body):
+            continue                                    # but "the second river", "the king's servants"
+        if not ADJECTIVE_LIKE.search(key(app[body[0]])):
+            continue                                    # an adjective first, not "the sand weighty" (Prov 27:3)
+        y, cands = body[-1] + 1, []
+        while y < len(app) and len(cands) < 3 and not pause[y - 1] and of(y) and of(y) != ta:
+            tb = of(y)
+            if tb[0] in verbs or tb[0] in FUNC_WORDS or tb[0] in PREPOSITION_NUMBERS \
+                    or key(app[y]) in {'of', 'the', 'a', 'an', 'and'} | POSSESSIVE | ADDED_PREPOSITIONS | PREPOSITIONS | PARTICLE \
+                    or NUMBER_WORD.search(key(app[y])):
+                break
+            cands.append(tb)
+            while y < len(app) and of(y) == tb:
+                y += 1
+        cands = [tb for tb in cands if order_of.get(tb) is not None]
+        if not cands:
             continue
-        oa, ob = order_of.get(ta), order_of.get(tb)
-        if oa is None or ob is None or ob > oa or ta[0] in verbs:
+        tb = min(cands, key=lambda c: order_of[c])
+        if order_of[tb] > order_of[ta]:
             continue
-        del tags[x]
-        added[x] = tb
+        for z in lead + [x]:
+            tags.pop(z, None)
+            added[z] = tb
     # "O that thou wert as my brother" (Song 8:1), "Oh that I might have"
     # (Job 6:8): mi yitten -- "O that" is mi's (H4310), as Strong's lists it.
     for o in range(len(hebrew) - 1):
@@ -2102,7 +2167,7 @@ def inverted_helpers(app, italic, pause, tags, added, verbs):
     "Wilt thou" are the verb's, as BLB has them."""
     of = lambda x: tags.get(x) or added.get(x)
     for x in range(len(app) - 2):
-        if of(x) or italic[x] or pause[x] or key(app[x]) not in MODALS | BE | BEGAN | {'doth', 'did', 'do', 'does', 'dost', 'didst'}:
+        if of(x) or italic[x] or pause[x] or key(app[x]) not in MODALS | BE | BEGAN | CAUSE | {'doth', 'did', 'do', 'does', 'dost', 'didst'}:
             continue
         if key(app[x]) == 'would' and key(app[x + 1]) in ('god', 'to') and of(x + 1) and of(x + 1)[0] in ('H3863', 'H4310'):
             added[x] = of(x + 1)                        # "Would God" (Num 14:2), lu; "Would to God", mi yitten
@@ -2140,6 +2205,8 @@ def inverted_helpers(app, italic, pause, tags, added, verbs):
         if not v or v[0] not in verbs or not (crossed or subj) or len({of(z) for z in crossed}) > 3 \
                 or any(key(app[z]) in RELATIVE for z in crossed + [y]):
             continue
+        if key(app[x]) in CAUSE and (subj or len({of(z) for z in crossed}) > 2):
+            continue                                    # "made the thing known" (Dan 2:15), hoda: one object
         # A "was", "were" only before a passive: "Then were the king's scribes
         # called" (Esth 3:12) -- not "was the LORD wroth".
         if key(app[x]) in BE and (not (re.search(r'(ed|en|wn|ght)$', key(app[y])) or key(app[y]) in PASSIVE)
@@ -2912,7 +2979,7 @@ FUNC_WORDS = {k: set(v.split()) for k, v in _FUNC.items()}
 PLACE_WORDS = FUNC_WORDS | {k: set(v.split()) for k, v in {
     'H589': 'i', 'H595': 'i', 'H859': 'thou ye', 'H587': 'we',
     # Aramaic: hu "he" (Dan 6:10), di "which", "that", "who" (6:27)
-    'H1932': 'he she it', 'H1768': 'that which who whom whose'}.items()}     # not "Look not upon me" (Song 1:6)
+    'H1932': 'he she it', 'H1768': 'that which who whom whose whereas because'}.items()}     # not "Look not upon me" (Song 1:6)
 
 
 def pair_ot(hebrew, tags):
@@ -3099,6 +3166,27 @@ def place_ot(app, italic, tags, hebrew, usage=None):
             continue
         lo = max(prev) + 1 if prev else min(nxt) - 6
         hi = min(nxt) - 1 if nxt else max(prev) + 6
+        if sn == 'H6311':
+            # poh: "on this side", "on the one side" (Ezek 40:10), all of it
+            runs = []
+            for i in range(max(lo - 2, 0), min(hi + 3, len(app))):
+                if key(app[i]) != 'side' or i in tags or italic[i]:
+                    continue
+                run, y = [i], i - 1
+                while y >= 0 and y not in tags and not italic[y] \
+                        and key(app[y]) in ('on', 'this', 'that', 'the', 'one', 'other'):
+                    run.insert(0, y)
+                    y -= 1
+                if len(run) > 1:
+                    runs.append(run)
+            if runs:
+                run = min(runs, key=lambda r: abs(r[0] - lo))
+                pid += 1
+                for i in run:
+                    tags[i] = (sn, pid)
+                at[order] = run
+                have[sn] += 1
+                continue
         if hi - lo > 5:
             continue                                    # too far apart to say where it is
         cands = [i for i in range(max(lo, 0), min(hi + 1, len(app)))
@@ -3225,6 +3313,12 @@ def verb_numbers(lex_rows):
             if k not in gverbs and m and m.group(1) in gverbs:
                 gverbs.add(k)
                 changed = True
+    # And the numbers STEPBible's grammar codes give as verbs (see
+    # export-verb-numbers.py): Aramaic chaza (H2370), hava (H1934); Greek
+    # atheteo (G114).
+    if VERB_NUMBERS.exists():
+        with gzip.open(VERB_NUMBERS, 'rt', encoding='utf-8') as f:
+            verbs |= set(json.load(f))
     return verbs | gverbs
 
 
