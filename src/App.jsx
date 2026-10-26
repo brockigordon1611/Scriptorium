@@ -4470,8 +4470,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
     </div>
     {/* Under the word as Strong's has it, the English it was opened from,
         underlined as in the verse -- the full width, clear of the close
-        button; or, with the verse's Interlinear, beside its tab on the card
-        (below). The word as it is there, parsed, is in the Interlinear. */}
+        button. The word as it is there, parsed, is in the Interlinear. */}
     {(()=>{
       const line=split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
@@ -4483,18 +4482,17 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
             <span style={{whiteSpace:'nowrap'}}><span role="button" tabIndex={0} onClick={e=>{e.stopPropagation();onAlso&&onAlso(sn);}}
               style={{color:T.gT,cursor:'pointer',fontWeight:600,borderBottom:`1px dotted ${T.gM}`}}>{sn}</span>{UNTRANSLATED.has(sn)?' (not translated)':''}</span></React.Fragment>)}</span>}
         </span>;
-      const tabbed=verseWords&&onWord;
       return(<>
-        {line&&!tabbed&&<div style={{display:'flex',flexDirection:'column',gap:4,marginTop:10}}>{line}</div>}
-        <div style={{height:tabbed?10:14,flexShrink:0}}/>
+        {line&&<div style={{display:'flex',flexDirection:'column',gap:4,marginTop:10}}>{line}</div>}
+        <div style={{height:14,flexShrink:0}}/>
     {/* The definition -- larger than the rest, being what the reader came
         for -- and the derivation under a hairline. Opened from a verse, the
-        card also holds the verse's Interlinear, opened by a tab on its top
-        right corner, the verse's line beside it (not a heading band: that
-        read as the title of the definition under it; nor in the card, where
-        the definition wrapped round it); open, the definition goes under the
-        word the entry is open on. Drawn while a word opened from it loads, so
-        it does not leave and return. */}
+        card also holds the verse's Interlinear, opened by a button set into
+        its top right corner as if cut from the card and lifted -- an edge
+        only where it meets the card, and a shadow (not a heading band: that
+        read as the title of the definition under it); open, the definition
+        goes under the word the entry is open on. Drawn while a word opened
+        from it loads, so it does not leave and return. */}
     {(()=>{
       const def=inList=>!entry
         ?<div style={{textAlign:'center',padding:inList?'6px 0':20,color:T.dim,fontFamily:FB,fontStyle:missing?'italic':'normal'}}>{missing?`There is no Strong’s entry ${num}.`:'Loading…'}</div>
@@ -4503,22 +4501,20 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
           {(derivation||entry.note)&&<div style={{fontFamily:fam,fontSize:Math.round(px*(inList?0.85:1.05)),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:inList?8:10,paddingTop:inList?6:8,clear:'both'}}>{derivation||entry.note}</div>}
         </>;
       if(!(verseWords&&onWord))return entry?<div style={card}><div style={{padding:'12px 14px 10px'}}>{def(false)}</div></div>:def(false);
-      // A tab of the card's own face and edge, its bottom open into the card.
-      return(<div>
-        <div style={{display:'flex',alignItems:'flex-end',gap:10}}>
-          <div style={{flex:1,minWidth:0,paddingBottom:5}}>{line}</div>
-          <button type="button" aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
-            style={{position:'relative',zIndex:1,marginBottom:-1,display:'inline-flex',alignItems:'center',gap:6,padding:'4px 9px 5px 11px',
-              background:T.bgCard,border:`1px solid ${T.bd}`,borderBottomColor:T.bgCard,borderRadius:'8px 8px 0 0',color:T.gT,cursor:'pointer',
-              fontFamily:fam,fontSize:Math.round(px*0.62),fontWeight:700,lineHeight:1.2,WebkitTapHighlightColor:'transparent'}}>
-            Interlinear<Caret open={wordsOpen} size={10}/></button>
-        </div>
-        <div style={{...card,borderTopRightRadius:0}}>
-          {wordsOpen
-            ?<div style={{padding:'10px 0 2px'}}><VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset
+      // In the corner, its top and right the card's own edge (the card's
+      // rounding clips it), its left and bottom an edge of its own.
+      const corner=<button type="button" aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
+        style={{display:'inline-flex',alignItems:'center',gap:6,padding:'5px 10px 6px 12px',background:T.bgSec,border:'none',
+          borderLeft:`1px solid ${T.bd}`,borderBottom:`1px solid ${T.bd}`,borderBottomLeftRadius:10,boxShadow:'-2px 2px 6px rgba(0,0,0,0.28)',
+          color:T.gT,cursor:'pointer',fontFamily:fam,fontSize:Math.round(px*0.62),fontWeight:700,lineHeight:1.2,WebkitTapHighlightColor:'transparent'}}>
+        Interlinear<Caret open={wordsOpen} size={10}/></button>;
+      return(<div style={card}>
+        {wordsOpen
+          ?<div style={{padding:'0 0 2px'}}>
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:4}}>{corner}</div>
+            <VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset
               detail={<div style={{padding:'4px 14px 12px',background:`color-mix(in srgb, ${T.gT} 7%, transparent)`}}>{def(true)}</div>}/></div>
-            :<div style={{padding:'12px 14px 10px'}}>{def(false)}</div>}
-        </div>
+          :<div style={{padding:'12px 14px 10px'}}><div style={{float:'right',margin:'-12px -14px 6px 12px',lineHeight:0}}>{corner}</div>{def(false)}</div>}
       </div>);
     })()}
       </>);
