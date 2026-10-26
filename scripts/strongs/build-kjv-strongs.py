@@ -2326,6 +2326,12 @@ HAVE = set('had hadst hath hast have'.split())
 
 WAW_ENGLISH = set('and but then so now yet or nor'.split())
 WAW_THAT = WAW_ENGLISH | {'that'}             # "that we may live" (Gen 42:2, venichyeh)
+# The waw's English for the words right after it: "seeing the LORD is
+# departed from thee" (1 Sam 28:16, vaYHWH).
+WAW_NEAR = {'that', 'seeing', 'though', 'whereas'}
+# A phrase with one of these has its waw's English: "therefore I have called
+# thee" (1 Sam 28:15, va'eqra'eh).
+WAW_HAS = WAW_ENGLISH | {'therefore', 'notwithstanding', 'howbeit', 'yea', 'else', 'seeing', 'whereas'}
 CLAUSE_END = re.compile(r"[.;:?!]['\"()’”]*$")
 
 
@@ -2347,13 +2353,13 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
     of_order = {o: t for t, o in order_of.items()}
     waw = lambda o: bool({'H9001', 'H9002'} & set(hebrew[o][2]))
     free = {o for o, (_, mains, _) in enumerate(hebrew) if waw(o) and mains and mains[0] != 'H853'
-            and not any(key(app[x]) in WAW_ENGLISH for x in phrase.get(of_order.get(o), ()))}
+            and not any(key(app[x]) in WAW_HAS for x in phrase.get(of_order.get(o), ()))}
     # Not a relative's "that" ("she that hath many children", 1 Sam 2:5,
     # verabbat) or "that which".
     that_ok = lambda x: not (x and key(app[x - 1]) in WHO_PRONOUNS | {'all'}) \
         and not (x + 1 < len(app) and key(app[x + 1]) in ('which', 'whereof', 'wherein', 'whereby'))
     bare = [x for x in range(len(app)) if not taken(x) and not italic[x]
-            and (key(app[x]) in WAW_ENGLISH or key(app[x]) == 'that' and that_ok(x))]
+            and (key(app[x]) in WAW_ENGLISH | WAW_NEAR - {'that'} or key(app[x]) == 'that' and that_ok(x))]
     # "so that", "and that": one waw's English in two words.
     runs = []
     for x in bare:
@@ -2377,6 +2383,20 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
         used.add(o)
     for run in runs:
         x = run[-1]
+        # "Wherefore then dost thou ask of me" (1 Sam 28:16, velammah): a "then"
+        # the KJV puts after its word.
+        t = tags.get(x - 1) or added.get(x - 1)
+        o = order_of.get(t) if t else None
+        if len(run) == 1 and key(app[x]) == 'then' and o is not None and o in free and o not in used \
+                and max(phrase[t]) == x - 1 and not pause[x - 1]:
+            added[x] = t
+            used.add(o)
+            continue
+        # "nor yet the works" (Judg 2:10, vegam): one word.
+        if len(run) == 1 and key(app[x]) == 'yet' and t and t[0] == 'H1571' and key(app[x - 1]) in ('nor', 'neither') \
+                and not pause[x - 1]:
+            added[x] = t
+            continue
         # "And number thee an army" (1 Kgs 20:25, ve'attah timneh): the word
         # right after the "and" has no waw, and the Hebrew word before its
         # one has one but no English -- the "and" is that word's.
@@ -2388,7 +2408,7 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
         # A "that" is the waw of the words right after it ("that the LORD thy
         # God may", Jer 42:3); an "and" goes on past a "that" ("and see that
         # ye hasten", 2 Chr 24:5, ve'attem).
-        that = all(key(app[y]) == 'that' for y in run)
+        that = all(key(app[y]) in WAW_NEAR for y in run)
         for y in range(x + 1, min(len(app), x + (4 if that else 14))):
             if CLAUSE_END.search(app[y - 1]):
                 break
@@ -2397,7 +2417,7 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
             if o is not None and o in free and o not in used and min(phrase[t]) == y:
                 best = (t, o)
                 break
-            if not t and key(app[y]) in (WAW_THAT if that else WAW_ENGLISH) and not italic[y]:
+            if not t and key(app[y]) in (WAW_THAT | WAW_NEAR if that else WAW_ENGLISH) and not italic[y]:
                 break                                   # the next bare "and" is that word's
         if best:
             for x in run:
@@ -3282,7 +3302,7 @@ _FUNC = {
     'H2088': 'this that these', 'H2063': 'this that thus', 'H428': 'these those',
     'H854': 'with by from against toward', 'H5973': 'with by against beside toward',
     'H4480': 'from of out than because', 'H996': 'between among betwixt within',
-    'H4100': 'what why how wherefore', 'H4310': 'who whom whose', 'H1571': 'also both even moreover yea',
+    'H4100': 'what why how wherefore', 'H4310': 'who whom whose', 'H1571': 'also both even moreover yea neither nor',
     'H637': 'also yea even moreover', 'H5750': 'yet again more still', 'H6258': 'now', 'H227': 'then',
     'H4994': 'now pray beseech', 'H3605': 'all every any whole', 'H310': 'after behind afterward',
     'H8478': 'under instead beneath', 'H5048': 'before against over', 'H1097': 'no none not without',
