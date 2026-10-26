@@ -2112,6 +2112,10 @@ function themeLinkColors(T,dark){
   if(_oklch)return hues.map(x=>`oklch(${lightG(lightH(x)).toFixed(3)} ${grey?0.2:0.32} ${lightH(x)})`);
   return hues.map(x=>`hsl(${x},${grey?70:100}%,${x>=225&&x<=305?50:45}%)`);
 }
+// A trial (Brock, 2026-10-26): words with a Strong's number solid, words with
+// none dotted -- the other way round from before. false puts it back.
+const SWAP_UNDERLINES=true;
+const underlineStyle=numberless=>numberless!==SWAP_UNDERLINES?'solid':'dotted';
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
   const redSet=new Set();
@@ -2260,7 +2264,7 @@ function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
       onTouchMove:e=>{if(Math.abs(e.touches[0].clientY-_wlpStartY)>8){if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}}},
       onTouchEnd:e=>{if(_wlpTimer){clearTimeout(_wlpTimer);_wlpTimer=null;}if(_wlpFired){e.stopPropagation();}setTimeout(()=>{_wlpActive=false;},10);},
       // A word with no Strong's number (bareRows) solid, the rest dotted.
-      style:{borderBottom:`1.5px ${String(sNum).startsWith('~')?'solid':'dotted'} ${link?linkColor(link):T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
+      style:{borderBottom:`1.5px ${underlineStyle(String(sNum).startsWith('~'))} ${link?linkColor(link):T.gM}`,cursor:'pointer',paddingBottom:1,WebkitUserSelect:'none',userSelect:'none',...ws}
     },groupText));
     i=j;
   }
@@ -4475,7 +4479,7 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
     {(()=>{
       const line=split&&<span style={{fontFamily:FB,fontSize:Math.round(px*0.66),color:T.mut,lineHeight:1.35}}>
           <span style={{color:T.gM}}>In {split.ref} — </span>
-          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px dotted ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
+          {split.pieces.map((pc,i)=><React.Fragment key={i}>{i?' … ':''}<span style={{borderBottom:`1.5px ${underlineStyle(String(split.sn||'').startsWith('~'))} ${split.color}`,paddingBottom:1}}>{pc}</span></React.Fragment>)}
           {/* Opened from the word-by-word view on a word with no English. */}
           {split.pieces.length===0&&<span style={{fontStyle:'italic'}}>not translated</span>}
           {/* One English word for two Hebrew words: "therefore" is al and ken. */}
@@ -13255,7 +13259,7 @@ function App(){
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry, with the Hebrew or Greek word as it stands in that verse and its <strong style={{color:T.gT}}>parsing</strong>.
                 </Row>
                 <Row icon="א">
-                  Select one verse and tap <strong style={{color:T.gT}}>Parse</strong> to open its <strong style={{color:T.gT}}>Interlinear</strong>: the verse as written in the Hebrew or Greek, and each KJV word beside the word it translates, with its transliteration and parsing. Tap a word to open it there, its definition under it; a Strong's number named in a definition opens in a window of its own. Words with a <strong style={{color:T.gT}}>solid</strong> underline have no Strong's number.
+                  Select one verse and tap <strong style={{color:T.gT}}>Parse</strong> to open its <strong style={{color:T.gT}}>Interlinear</strong>: the verse as written in the Hebrew or Greek, and each KJV word beside the word it translates, with its transliteration and parsing. Tap a word to open it there, its definition under it; a Strong's number named in a definition opens in a window of its own. Words with a <strong style={{color:T.gT}}>{SWAP_UNDERLINES?'dotted':'solid'}</strong> underline have no Strong's number.
                 </Row>
                 <Row icon="⌕">
                   Or search a word and open the <strong style={{color:T.gT}}>Strong's</strong> tab under the search field: the Hebrew and Greek behind it in the KJV, words spelled like it (agape, logos), and entries whose definition mentions it. A number such as G25 or H430 shows that entry.
