@@ -4487,29 +4487,31 @@ function StrongsEntry({T,num,entry,missing,groupList,totalCount,expanded,onToggl
     <div style={{height:14,flexShrink:0}}/>
     {/* The definition -- larger than the rest, being what the reader came
         for -- and the derivation under a hairline. Opened from a verse, the
-        same card is the verse's Interlinear, folded like a rendering's card;
-        open, the definition goes under the word the entry is open on. Drawn
-        while a word opened from it loads, so it does not leave and return. */}
+        card also holds the verse's Interlinear, behind a button at its top
+        right (not a heading band: that read as the title of the definition
+        under it); open, the definition goes under the word the entry is open
+        on. Drawn while a word opened from it loads, so it does not leave and
+        return. */}
     {(()=>{
       const def=inList=>!entry
         ?<div style={{textAlign:'center',padding:inList?'6px 0':20,color:T.dim,fontFamily:FB,fontStyle:missing?'italic':'normal'}}>{missing?`There is no Strong’s entry ${num}.`:'Loading…'}</div>
         :<>
           <div style={{fontFamily:fam,fontSize:Math.round(px*(inList?0.95:1.08)),color:T.body,lineHeight:1.45}}>{String(entry.short_def||'').trim()}</div>
-          {(derivation||entry.note)&&<div style={{fontFamily:fam,fontSize:Math.round(px*(inList?0.85:1.05)),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:inList?8:10,paddingTop:inList?6:8}}>{derivation||entry.note}</div>}
+          {(derivation||entry.note)&&<div style={{fontFamily:fam,fontSize:Math.round(px*(inList?0.85:1.05)),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:inList?8:10,paddingTop:inList?6:8,clear:'both'}}>{derivation||entry.note}</div>}
         </>;
       if(!(verseWords&&onWord))return entry?<div style={card}><div style={{padding:'12px 14px 10px'}}>{def(false)}</div></div>:def(false);
+      // Shaped as a button, with its caret, so it reads as one to open.
+      const toggle=<button type="button" aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
+        style={{display:'inline-flex',alignItems:'center',gap:7,padding:'3px 10px 3px 12px',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:16,
+          color:T.gT,cursor:'pointer',fontFamily:fam,fontSize:Math.round(px*0.72),fontWeight:700,lineHeight:1.2,WebkitTapHighlightColor:'transparent'}}>
+        Interlinear<Caret open={wordsOpen} size={11}/></button>;
       return(<div style={card}>
-        <div role="button" tabIndex={0} aria-expanded={wordsOpen} onClick={()=>setWordsOpen(o=>!o)}
-          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setWordsOpen(o=>!o);}}}
-          style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',background:T.bgSec,borderBottom:`1px solid ${T.bdS}`,cursor:'pointer',userSelect:'none',WebkitUserSelect:'none'}}>
-          <span style={{fontFamily:fam,fontSize:Math.round(px*0.92),fontWeight:700,color:T.gT,lineHeight:1.2}}>Interlinear</span>
-          <span style={{...small,color:T.dim,flex:1,position:'relative',top:Math.round(px*0.92)*0.065}}>{verseWords.ref}</span>
-          <span style={{color:T.gM,display:'inline-flex',flexShrink:0}}><Caret open={wordsOpen} size={12}/></span>
-        </div>
         {wordsOpen
-          ?<div style={{padding:'10px 0 2px'}}><VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset
-            detail={<div style={{padding:'4px 14px 12px',background:`color-mix(in srgb, ${T.gT} 7%, transparent)`}}>{def(true)}</div>}/></div>
-          :<div style={{padding:'12px 14px 10px'}}>{def(false)}</div>}
+          ?<div style={{padding:'10px 0 2px'}}>
+            <div style={{display:'flex',justifyContent:'flex-end',padding:'0 14px 4px'}}>{toggle}</div>
+            <VerseWords T={T} d={verseWords} px={px} fam={fam} onWord={openWord} inset
+              detail={<div style={{padding:'4px 14px 12px',background:`color-mix(in srgb, ${T.gT} 7%, transparent)`}}>{def(true)}</div>}/></div>
+          :<div style={{padding:'12px 14px 10px'}}><div style={{float:'right',margin:'1px 0 0 12px',lineHeight:0}}>{toggle}</div>{def(false)}</div>}
       </div>);
     })()}
     {entry&&<>
