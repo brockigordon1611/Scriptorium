@@ -2102,19 +2102,29 @@ function themeLinkColors(T,dark){
   // blue a little deeper since pure blue is dark by nature.
   // Yellow-green is the lightest hue there is, so it goes deepest of all.
   const lightL=x=>0.68-0.12*Math.max(0,Math.cos((x-270)*Math.PI/180))-0.19*Math.max(0,Math.cos((x-125)*Math.PI/180));
-  // Dark: as Brock approved them (2026-10-16).
-  if(dark)return hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
+  // Dark: as Brock approved them (2026-10-16) -- or, with the solid-line
+  // trial, softer (NATURAL_LINK_COLORS, below).
+  if(dark)return NATURAL_LINK_COLORS?hues.map(x=>`hsl(${x},${grey?20:34}%,60%)`):hues.map(x=>`hsl(${x},${grey?45:60}%,64%)`);
   // And a yellow-green sits too near the brown of the plain dots on cream: a
   // true green instead -- and a light one. Deepened like the yellows it read
   // as black dots too (Brock, 2026-10-17); light, it shows as green.
   const lightH=x=>x>=80&&x<=135?Math.round(150+(x-107)*0.3):x;
   const lightG=x=>x>=136&&x<=170?0.66:lightL(x);
+  // A trial with the solid underlines (Brock, 2026-10-26): a solid line shows
+  // its colour where a dotted one needed it vivid, so softer, more natural
+  // tones -- the same hues, less colour, a shade deeper.
+  if(NATURAL_LINK_COLORS){
+    if(_oklch)return hues.map(x=>`oklch(${(lightG(lightH(x))-0.1).toFixed(3)} ${grey?0.05:0.1} ${lightH(x)})`);
+    return hues.map(x=>`hsl(${x},${grey?22:38}%,${x>=225&&x<=305?46:40}%)`);
+  }
   if(_oklch)return hues.map(x=>`oklch(${lightG(lightH(x)).toFixed(3)} ${grey?0.2:0.32} ${lightH(x)})`);
   return hues.map(x=>`hsl(${x},${grey?70:100}%,${x>=225&&x<=305?50:45}%)`);
 }
 // A trial (Brock, 2026-10-26): words with a Strong's number solid, words with
 // none dotted -- the other way round from before. false puts it back.
 const SWAP_UNDERLINES=true;
+// And softer split-word colours with them (themeLinkColors). false: the vivid ones.
+const NATURAL_LINK_COLORS=true;
 const underlineStyle=numberless=>numberless!==SWAP_UNDERLINES?'solid':'dotted';
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
