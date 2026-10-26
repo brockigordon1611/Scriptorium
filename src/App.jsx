@@ -2295,8 +2295,9 @@ async function dbGetStrongsForChapter(bookNum,chapter){
 }
 // Corrections to the OpenScriptures Strong's dictionary the lexicon was built
 // from, which has them wrong at source: Hebrew numbers given a G (G25, G137,
-// G4460), typos for G3303 μέν and G5590 ψυχή, and a misspelling. Checked
-// against Strong's. The bulk -- Greek words its conversion dropped, Hebrew
+// G4460), typos for G3303 μέν and G5590 ψυχή, a misspelling, and H1777 (din,
+// "judge") given G2113's definition and usage ("sail direct"). Checked
+// against Strong's. (H1777 is in LEX_FIXES in build-kjv-strongs.py too.) The bulk -- Greek words its conversion dropped, Hebrew
 // editors' notes it printed -- is src/strongsFixes.json, built by
 // scripts/strongs/build-fixes.py; these win over it. Both are applied as
 // entries are read, so neither the bundled data on phones nor the server's
@@ -2309,6 +2310,8 @@ const STRONGS_FIXES={
   G3642:{full_def:'from G3641 (ὀλίγος) and G5590 (ψυχή);'},
   G4460:{full_def:'of Hebrew origin (H7343);'},
   G5235:{short_def:' to throw beyond the usual mark, i.e. (figuratively) to surpass (only active participle supereminent)'},
+  H1777:{short_def:'to rule; by implication, to judge (as umpire); also to strive (as at law)',
+    kjv_usage:'contend, execute (judgment), judge, minister judgment, plead (the cause), at strife, strive.'},
 };
 // Loaded the first time Strong's is used, not with the app. If it can't load
 // (offline on the web before it was ever fetched), the hand-made ones still apply.
