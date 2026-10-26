@@ -1861,6 +1861,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
             if key(app[x]) not in GAP_WORDS:
                 break
             x -= 1
+    mah_hayah(app, italic, tags, added, hebrew, order_of)
     hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs)
     head_words(app, italic, pause, tags, added, verbs, order_of)
     blb_words(app, italic, pause, tags, added, verbs, order_of, hebrew, adjectives, usage)
@@ -2744,6 +2745,12 @@ def sidle(app, italic, pause, tags, added, own, reserved, info=lambda t: ((), ''
             finite = lambda c: not re.search(r'V[A-Za-z][rsac]|V-[A-Z0-9]*[PN]-', c or '')
             isverb = lambda y: of(y)[0] == 't' and finite(code(y)) and (of(y)[1][0] in verbs or re.search(r'(^|/)V|^V-', code(y).lstrip('HA') or ''))
             cands.append((reach(run[-1] + 1, 1, isverb), True, 1))
+        if len(run) == 1 and usage and first not in SIDLE_RIGHT | SIDLE_LEFT | PRONOUNS:
+            # a verb's own word past a "no": "would let him go no more home"
+            # (1 Sam 18:2, lashuv, "go" in Strong's usage for shuv)
+            for step in (-1, 1):
+                listed = lambda y: of(y)[0] == 't' and bool(stems(app[run[0]]) & usage.get(of(y)[1][0], set()))
+                cands.append((reach(run[0] + step, step, listed), step > 0, 1))
         if len(run) == 1 and first in PRONOUNS | REFLEXIVE:
             # the word whose ending it is, a few words off: "Peace be
             # multiplied unto you" (Dan 4:1, shelamkhon), "Then should I yet
@@ -2779,6 +2786,38 @@ def pass_that(app, italic, tags, added, sn):
         if key(app[x]) == 'that' and t and t[0] == sn and key(app[x - 1]) == 'pass' \
                 and x not in tags and x not in added and not italic[x]:
             added[x] = t
+
+
+def mah_hayah(app, italic, tags, added, hebrew, order_of):
+    """Mah and a hayah after it, neither with English, and the KJV's "that
+    which shall be", "what hath been": "he knoweth not that which shall be"
+    (Ecc 8:7, mah-sheyihyeh), "it is that which shall be" (1:9). "that which"
+    or "what" is mah's, the rest hayah's -- both counted."""
+    paired = set(order_of.values())
+    taken = lambda x: x in tags or x in added
+    pid = 660000
+    for o in range(1, len(hebrew)):
+        if o in paired or o - 1 in paired or 'H1961' not in hebrew[o][1] or 'H4100' not in hebrew[o - 1][1]:
+            continue
+        for x in range(len(app)):
+            lead = 2 if key(app[x]) == 'that' and x + 1 < len(app) and key(app[x + 1]) == 'which' else 1 if key(app[x]) == 'what' else 0
+            if not lead:
+                continue
+            y = x + lead
+            while y < len(app) and key(app[y]) in MODALS | AUX and y - x - lead < 2:
+                y += 1
+            if y >= len(app) or key(app[y]) not in BE | {'come'}:
+                continue
+            span = list(range(x, y + 1))
+            if any(taken(z) or italic[z] for z in span):
+                continue
+            pid += 1
+            for z in span[:lead]:
+                tags[z] = ('H4100', pid)
+            pid += 1
+            for z in span[lead:]:
+                tags[z] = ('H1961', pid)
+            break
 
 
 def hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs):
