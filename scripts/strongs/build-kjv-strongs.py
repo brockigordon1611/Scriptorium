@@ -1393,6 +1393,9 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
                 if key(app[x]) == 'and' and not taken(x) and not italic[x] and not pause[x] \
                         and x + 1 in tags and tags[x + 1][0] in verbs:
                     added[x] = tags[x + 1]
+    # "And it came to pass, that on the eighth day" (Luke 1:59): the "that"
+    # of egeneto's English.
+    pass_that(app, italic, tags, added, 'G1096')
     # "even so know I" (John 10:15), kago: the "I" is kago's.
     for x in range(2, len(app)):
         if key(app[x]) != 'i' or italic[x]:
@@ -1931,6 +1934,9 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                 if b - a == 2 and key(app[a + 1]) in SUBJECTS and not taken(a + 1) and not italic[a + 1] \
                         and not pause[a] and not pause[a + 1] and key(app[b]) not in RELATIVE:
                     added[a + 1] = t
+    # "And it came to pass, that, when the sun went down" (Gen 15:17): the
+    # "that" of vayhi's English, where no waw after it has taken it.
+    pass_that(app, italic, tags, added, 'H1961')
     # The article the KJV gives as "those that have": "those that have
     # familiar spirits" (1 Sam 28:9, ha'ovot).
     for x in range(len(app) - 3):
@@ -2505,6 +2511,15 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
         po = order_of.get(prev, -1) if prev else -1
         if po + 1 < len(hebrew) and own(po + 1):
             give(run, po + 1)
+
+def pass_that(app, italic, tags, added, sn):
+    """A bare "that" right after "it came to pass" of number sn joins it."""
+    for x in range(1, len(app)):
+        t = tags.get(x - 1) or added.get(x - 1)
+        if key(app[x]) == 'that' and t and t[0] == sn and key(app[x - 1]) == 'pass' \
+                and x not in tags and x not in added and not italic[x]:
+            added[x] = t
+
 
 def hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs):
     """A hayah with no English yet whose English is a "that were", "that
