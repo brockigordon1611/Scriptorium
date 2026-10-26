@@ -7,13 +7,17 @@ group that is one piece of a split word. Run after every rebuild:
 
     python3 scripts/strongs/check-links.py
 
-Prints each verse that lost a confirmed group, and exits 1 if any did.
+Prints each verse that lost a confirmed group, and exits 1 if any did. A
+group still counts as kept when words BLB leaves bare have joined it (the
+build's last pass, sidle, gives every word a neighbour's link): "[him]G3588"
+is kept in "[unto him]G3588", and a piece in the whole it joined up to.
 """
 import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 EDGE = re.compile(r"^[.,;:!?'\"()]+|[.,;:!?'\"()]+$")
+GROUP = re.compile(r"\[([^\]]+)\]([HG]\d+(?:\+[HG]\d+)*~?)")
 
 
 def words(text):
@@ -46,7 +50,13 @@ def main():
     bad = 0
     for ref, groups in expected.items():
         v = view(words(kjv[ref]), tags.get(ref, {}))
-        missing = [g for g in groups if g not in v]
+        have = [(m.group(1).split(), m.group(2)) for m in GROUP.finditer(v)]
+        def kept(g):
+            m = GROUP.fullmatch(g)
+            want, sn = m.group(1).split(), m.group(2)
+            return any(s.rstrip('~') == sn.rstrip('~') and any(w[i:i + len(want)] == want for i in range(len(w) - len(want) + 1))
+                       for w, s in have)
+        missing = [g for g in groups if g not in v and not kept(g)]
         if missing:
             bad += 1
             print(f'{ref}: missing {missing}\n   now: {v}')
