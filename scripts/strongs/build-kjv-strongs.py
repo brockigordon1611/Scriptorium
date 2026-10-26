@@ -1934,6 +1934,41 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                 if b - a == 2 and key(app[a + 1]) in SUBJECTS and not taken(a + 1) and not italic[a + 1] \
                         and not pause[a] and not pause[a + 1] and key(app[b]) not in RELATIVE:
                     added[a + 1] = t
+    # A Hebrew word with no English but its ending's: "the saying displeased
+    # him" (1 Sam 18:8, vayera be'einav, "it was evil in his eyes") -- the one
+    # bare pronoun for the ending between its neighbours' English is that
+    # word's own (not counted).
+    paired = collections.defaultdict(list)
+    for y in range(len(app)):
+        o = order_of.get(tags.get(y) or added.get(y))
+        if o is not None:
+            paired[o].append(y)
+    ending_words = lambda affixes: set().union(*(AFFIX_AFTER.get(a, set()) | AFFIX_BEFORE.get(a, set())
+                                                 for a in affixes if a >= 'H9020')) & PRONOUNS
+    # Not a pronoun after a bare preposition where the verse has a word with
+    # no number (left out of the Hebrew words): "prevailed against thee" (Jer
+    # 38:22) is lekha's, not shelomekha's.
+    nums = [h[0] for h in hebrew]
+    numberless = any(b - a > 1 for a, b in zip(nums, nums[1:]))
+    for o, (_, mains, affixes) in enumerate(hebrew):
+        if o in paired or not mains or mains[0] == 'H853':
+            continue
+        words = ending_words(affixes)
+        if not words:
+            continue
+        prev = next((paired[p] for p in range(o - 1, -1, -1) if p in paired), None)
+        nxt = next((paired[p] for p in range(o + 1, len(hebrew)) if p in paired), None)
+        if not prev or not nxt:
+            continue
+        # between them, or beside either where the KJV has them the other way
+        # round ("the saying displeased him")
+        near = set(range(max(prev) + 1, max(prev) + 3)) | set(range(min(nxt) - 2, min(nxt))) \
+            | set(range(max(prev) + 1, min(nxt)))
+        cands = [y for y in sorted(near) if 0 <= y < len(app) and not taken(y) and not italic[y] and key(app[y]) in words
+                 and not (numberless and y and not taken(y - 1) and key(app[y - 1]) in ABSORB_BACK | PREPOSITIONS)]
+        if len(cands) == 1:
+            added[cands[0]] = shared[cands[0]] = (mains[0], 'own')
+            paired[o].append(cands[0])
     # "And it came to pass, that, when the sun went down" (Gen 15:17): the
     # "that" of vayhi's English, where no waw after it has taken it.
     pass_that(app, italic, tags, added, 'H1961')
