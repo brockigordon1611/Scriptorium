@@ -4636,6 +4636,57 @@ function VersePreview({T,title,sub,rows,loading,emptyText,onClose,onGo,readFont,
     </PopFrame>
   );
 }
+// A Strong's number named in a definition, opened over the entry it is named
+// in, as a KJV usage reference opens its verse -- not in the entry's place,
+// where the Interlinear under it went on marking the word it was opened on.
+// A number named here opens here too, with Back; "Open entry" makes it the
+// popup's entry.
+function StrongsPreview({T,num,readFont,onClose,onOpen}){
+  const[stack,setStack]=useState([num]);
+  const[entries,setEntries]=useState({});
+  const cur=stack[stack.length-1],e=entries[cur];
+  useEffect(()=>{
+    if(entries[cur]!==undefined)return;
+    let live=true;
+    dbGetStrongsEntry(cur).then(r=>{if(live)setEntries(m=>({...m,[cur]:r||null}));},()=>{if(live)setEntries(m=>({...m,[cur]:null}));});
+    return()=>{live=false;};
+  },[cur]);
+  const px=cmPx(readFont.size),fam=readFont.family;
+  const small={fontFamily:FS,fontSize:Math.min(14,Math.max(9,Math.round(px*0.46))),letterSpacing:'0.14em',textTransform:'uppercase',fontWeight:600,color:T.gM};
+  const card={background:T.bgCard,border:`1px solid ${T.bd}`,borderRadius:10,padding:'12px 14px 10px'};
+  const note=t=><div style={{color:T.dim,fontFamily:FB,fontStyle:'italic',fontSize:U(14),textAlign:'center',padding:'14px 0'}}>{t}</div>;
+  const langName=e?.aramaic?'Aramaic':e?.language==='hebrew'?'Hebrew':e?.language==='greek'?'Greek':null;
+  const count=Number(e?.occurrence_count)||0;
+  const links=text=>String(text||'').split(/([HG]\d+)/).map((t,i)=>i%2
+    ?<span key={i} role="button" tabIndex={0} onClick={ev=>{ev.stopPropagation();const n=normStrongsNum(t);if(n!==cur)setStack(st=>[...st,n]);}}
+      style={{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}}>{normStrongsNum(t)}</span>
+    :t);
+  return(
+    <PopFrame T={T} onClose={onClose}
+      head={<PopHead T={T} sub={[langName,count>0?`${count.toLocaleString()} in the KJV`:null].filter(Boolean).join(' · ')||'Strong’s'} title={cur}
+        onBack={stack.length>1?()=>setStack(st=>st.slice(0,-1)):onClose}/>}
+      foot={e?<button type="button" onClick={()=>onOpen(cur)}
+        style={{width:'100%',background:T.gF,border:`1px solid ${T.gD}`,borderRadius:8,color:T.gT,cursor:'pointer',fontFamily:FS,fontSize:U(12),letterSpacing:'0.1em',textTransform:'uppercase',padding:'12px 0',fontWeight:600}}>Open entry</button>:null}>
+      {e===undefined?note('Loading…'):e===null?note(`There is no Strong’s entry ${cur}.`):<>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'center',flexWrap:'wrap',gap:'2px 10px',margin:'2px 0 12px'}}>
+          <span dir={e.language==='hebrew'?'rtl':undefined} lang={e.language==='hebrew'?'he':e.language==='greek'?'grc':undefined}
+            style={{fontFamily:fam,fontSize:Math.round(px*1.3),color:T.gT,lineHeight:1.2}}>{e.original_word}</span>
+          {e.transliteration&&<span style={{fontFamily:fam,fontSize:Math.round(px*0.88),color:T.body,fontStyle:'italic'}}>{e.transliteration}</span>}
+          {e.pronunciation&&<span style={{fontFamily:fam,fontSize:Math.round(px*0.7),color:T.dim}}>{e.pronunciation}</span>}
+        </div>
+        <div style={card}>
+          <div style={{fontFamily:fam,fontSize:Math.round(px*1.0),color:T.body,lineHeight:1.45}}>{String(e.short_def||'').trim()}</div>
+          {e.full_def&&<div style={{fontFamily:fam,fontSize:Math.round(px*0.9),color:T.mut,lineHeight:1.5,borderTop:`1px solid ${T.bdS}`,marginTop:10,paddingTop:8}}>{links(e.full_def)}</div>}
+        </div>
+        {e.kjv_usage&&<>
+          <div style={{...small,margin:'16px 2px 7px'}}>KJV usage</div>
+          <div style={{...card,fontFamily:fam,fontSize:Math.round(px*0.9),color:T.mut,lineHeight:1.5}}>{String(e.kjv_usage).trim()}</div>
+        </>}
+      </>}
+      <div style={{height:8}}/>
+    </PopFrame>
+  );
+}
 // Saving a bookmark, laid out as Commentaries is: the reference as the
 // heading, the verses being saved as a card, then the note and the category.
 function BookmarkDialog({T,d,rows,readFont,categories,canCategorize,onChange,onSave,onCancel}){
@@ -7078,6 +7129,7 @@ function App(){
   const[strongsLoading,setStrongsLoading]=useState(false);
   const[strongsExpandedWords,setStrongsExpandedWords]=useState(()=>new Set());
   const[strongsVersePreview,setStrongsVersePreview]=useState(null); // {bn,ch,vs,label,text,loading}
+  const[strongsNumPreview,setStrongsNumPreview]=useState(null); // {num,at}: a number named in a definition
   const[strongsInfoVisible,setStrongsInfoVisible]=useState(false);
   // Strong's tab search state (must be at component level for hooks)
   const[strongsSearchQ,setStrongsSearchQ]=useState('');
@@ -11539,7 +11591,7 @@ function App(){
               while((m=re.exec(text))!==null){
                 if(m.index>last)parts.push(text.slice(last,m.index));
                 const raw=m[1],num=normStrongsNum(raw);
-                parts.push(React.createElement('span',{key:m.index,onClick:e=>{e.stopPropagation();loadStrongsEntry(num);},style:{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}},num));
+                parts.push(React.createElement('span',{key:m.index,onClick:e=>{e.stopPropagation();setStrongsNumPreview({num,at:Date.now()});},style:{color:T.gT,cursor:'pointer',fontWeight:600,textDecoration:'underline dotted'}},num));
                 last=m.index+raw.length;
               }
               if(last<text.length)parts.push(text.slice(last));
@@ -11593,8 +11645,10 @@ function App(){
                   split:(sp=>sp&&(sp.sn===strongsPopup.strongs_number||(sp.also||[]).includes(strongsPopup.strongs_number))
                     ?{...sp,others:[sp.sn,...(sp.also||[])].filter(n=>n!==strongsPopup.strongs_number)}:null)(strongsPopup.split),
                   onAlso:sn=>loadStrongsEntry(sn),
-                  // The verse it was opened from, word by word, when it is the chapter open.
-                  verseWords:(sp=>{const v=sp?.verse,row=v&&sp.book===readBook&&sp.chapter===readCh&&readVerses.find(r=>r.verse===v);
+                  // The verse it was opened from, word by word, when it is the chapter open
+                  // and the entry is that word's (not one opened from it, which has Back).
+                  verseWords:(sp=>{const v=sp?.verse,row=v&&sp.book===readBook&&sp.chapter===readCh
+                    &&(sp.sn===strongsPopup.strongs_number||(sp.also||[]).includes(strongsPopup.strongs_number))&&readVerses.find(r=>r.verse===v);
                     return row&&strongsData[v]?{book:readBook,chapter:readCh,verse:v,ref:`${bookName(BIBLE[readBook-1],versionLang(readVid))} ${readCh}:${v}`,
                       text:row.text,mappings:strongsData[v],mark:sp.positions||[],markWord:sp.word||null}:null;})(strongsPopup.split),
                   onWord:openStrongsWordInPopup,
@@ -12798,6 +12852,10 @@ function App(){
             if(p.bn===readBook&&p.ch===readCh){readScrollToVerse.current=null;setTab('read');landOnVerse(p.vs,true);}
             else{readScrollToVerse.current=p.vs;landSilent.current=true;setReadBook(p.bn);setReadCh(p.ch);setTab('read');}}}/>
       )}
+      {strongsNumPreview&&(
+        <StrongsPreview key={strongsNumPreview.at} T={T} num={strongsNumPreview.num} readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
+          onClose={()=>setStrongsNumPreview(null)} onOpen={n=>{setStrongsNumPreview(null);loadStrongsEntry(n);}}/>
+      )}
       {memAdd&&(
         <MemoryAddDialog T={T} d={memAdd} versions={data?.versions||[]}
           readFont={{family:fontFamilyMap[readFontFamily],size:readFontSize}}
@@ -13169,7 +13227,7 @@ function App(){
                   <strong style={{color:T.gT}}>Double-tap or press and hold</strong> any underlined word or phrase to open a popup showing the Strong's number, original word, transliteration, pronunciation, short definition, and full lexical entry, with the Hebrew or Greek word as it stands in that verse and its <strong style={{color:T.gT}}>parsing</strong>.
                 </Row>
                 <Row icon="א">
-                  Select one verse and tap <strong style={{color:T.gT}}>Parse</strong> to open its <strong style={{color:T.gT}}>Interlinear</strong>: the verse as written in the Hebrew or Greek, and each KJV word beside the word it translates, with its transliteration and parsing. Tap a word to open it there, its definition under it. Words with a <strong style={{color:T.gT}}>solid</strong> underline have no Strong's number.
+                  Select one verse and tap <strong style={{color:T.gT}}>Parse</strong> to open its <strong style={{color:T.gT}}>Interlinear</strong>: the verse as written in the Hebrew or Greek, and each KJV word beside the word it translates, with its transliteration and parsing. Tap a word to open it there, its definition under it; a Strong's number named in a definition opens in a window of its own. Words with a <strong style={{color:T.gT}}>solid</strong> underline have no Strong's number.
                 </Row>
                 <Row icon="⌕">
                   Or search a word and open the <strong style={{color:T.gT}}>Strong's</strong> tab under the search field: the Hebrew and Greek behind it in the KJV, words spelled like it (agape, logos), and entries whose definition mentions it. A number such as G25 or H430 shows that entry.
