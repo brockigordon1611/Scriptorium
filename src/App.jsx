@@ -2124,7 +2124,7 @@ function themeLinkColors(T,dark){
 // none dotted -- the other way round from before. false puts it back.
 const SWAP_UNDERLINES=true;
 // And softer split-word colours with them (themeLinkColors). false: the vivid ones.
-const NATURAL_LINK_COLORS=true;
+const NATURAL_LINK_COLORS=false;
 const underlineStyle=numberless=>numberless!==SWAP_UNDERLINES?'solid':'dotted';
 function buildStrongsVerse(text,mappings,onTap,T,dark,redLetter,verse){
   // Build red/italic word position sets
