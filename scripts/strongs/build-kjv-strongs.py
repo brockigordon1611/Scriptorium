@@ -1381,6 +1381,18 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
                 for i in fits[sn]:
                     pid += 1
                     tags[i] = (sn, pid)
+    # "as he was teaching, and said" (Matt 21:23), legontes; "he laid his
+    # hands on them, and departed" (19:15): the KJV's "and" between a
+    # participle and a verb, with no kai, de or te left without English, goes
+    # with the verb after it.
+    if greek:
+        have = collections.Counter(t[0] for t in set(tags.values()))
+        gcount = collections.Counter(next((n for n in nums if n in have), nums[0]) for nums, _ in greek)
+        if all(gcount[n] <= have[n] for n in ('G2532', 'G1161', 'G5037')):
+            for x in range(len(app) - 1):
+                if key(app[x]) == 'and' and not taken(x) and not italic[x] and not pause[x] \
+                        and x + 1 in tags and tags[x + 1][0] in verbs:
+                    added[x] = tags[x + 1]
     # "even so know I" (John 10:15), kago: the "I" is kago's.
     for x in range(2, len(app)):
         if key(app[x]) != 'i' or italic[x]:
@@ -1854,6 +1866,7 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
+    waw_and(app, italic, pause, tags, added, shared, hebrew, order_of)
     kept = {x for x, t in shared.items() if added.get(x) == t}
     added = live(tags, added, app, hebrew)
     for x, t in shared.items():
@@ -2309,6 +2322,75 @@ def inverted_helpers(app, italic, pause, tags, added, verbs):
 
 
 HAVE = set('had hadst hath hast have'.split())
+
+
+WAW_ENGLISH = set('and but then so now yet or nor'.split())
+CLAUSE_END = re.compile(r"[.;:?!]['\"()’”]*$")
+
+
+def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
+    """A waw's "and" the KJV sets apart from its word, still bare: "And Ezra
+    the priest, with certain chief of the fathers, ... were separated" (Ezra
+    10:16, vayibadlu). The verse's bare "and"s and its Hebrew words with a waw
+    whose English has none are paired in order: an "and" goes to the nearest
+    phrase after it, in its clause, whose word has such a waw -- a piece of
+    that phrase -- or, where the Hebrew word with the waw has no English at
+    all ("AND Saul eyed David", 1 Sam 18:9, an untranslated vayhi), to that
+    word as its own, uncounted, when it is the next word in the Hebrew."""
+    taken = lambda x: x in tags or x in added
+    phrase = collections.defaultdict(list)
+    for x in range(len(app)):
+        t = tags.get(x) or added.get(x)
+        if t:
+            phrase[t].append(x)
+    of_order = {o: t for t, o in order_of.items()}
+    waw = lambda o: bool({'H9001', 'H9002'} & set(hebrew[o][2]))
+    free = {o for o, (_, mains, _) in enumerate(hebrew) if waw(o) and mains and mains[0] != 'H853'
+            and not any(key(app[x]) in WAW_ENGLISH for x in phrase.get(of_order.get(o), ()))}
+    bare = [x for x in range(len(app)) if not taken(x) and not italic[x] and key(app[x]) in WAW_ENGLISH]
+    used = set()
+    own = lambda x, o: o >= 0 and o in free and o not in used and of_order.get(o) is None and hebrew[o][1]
+
+    def give(x, o):
+        # "And he walked" (2 Kgs 21:21): vayelekh is H1980 in the Hebrew data
+        # and H3212 in the KJV's, so the phrase after is that word.
+        t = next((tags.get(y) or added.get(y) for y in (x + 1, x + 2) if tags.get(y) or added.get(y)), None)
+        if t and order_of.get(t) is None and any(SAME_WORD.get(m) == t[0] for m in hebrew[o][1]):
+            added[x] = t
+        else:
+            added[x] = shared[x] = (hebrew[o][1][0], 'own')
+        used.add(o)
+    for x in bare:
+        # "And number thee an army" (1 Kgs 20:25, ve'attah timneh): the word
+        # right after the "and" has no waw, and the Hebrew word before its
+        # one has one but no English -- the "and" is that word's.
+        o1 = order_of.get(tags.get(x + 1) or added.get(x + 1))
+        if o1 is not None and o1 not in free and own(x, o1 - 1):
+            give(x, o1 - 1)
+            continue
+        best = None
+        for y in range(x + 1, min(len(app), x + 14)):
+            if CLAUSE_END.search(app[y - 1]):
+                break
+            t = tags.get(y) or added.get(y)
+            o = order_of.get(t) if t else None
+            if o is not None and o in free and o not in used and min(phrase[t]) == y:
+                best = (t, o)
+                break
+            if not t and key(app[y]) in WAW_ENGLISH and not italic[y]:
+                break                                   # the next bare "and" is that word's
+        if best:
+            added[x] = best[0]
+            used.add(best[1])
+            continue
+        # An untranslated word with the waw, next in the Hebrew after the
+        # word whose English is just before the "and" (or first, at the
+        # verse's start).
+        prev = next((tags.get(y) or added.get(y) for y in range(x - 1, -1, -1) if tags.get(y) or added.get(y)), None)
+        po = order_of.get(prev, -1) if prev else -1
+        o = po + 1
+        if o < len(hebrew) and own(x, o):
+            give(x, o)
 
 
 def hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs):
