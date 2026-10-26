@@ -43,6 +43,15 @@ the Hebrew words (mend_ot, place_ot). Of the 844 Hebrew numbers used 40 or
 more times, 806 come within 10% of the Hebrew text's count (588 of 846 from
 the source and the interlinear alone).
 
+Last, every non-italic word still with no link -- the KJV's own wording for
+what the Hebrew or Greek says by its grammar or leaves implied ("both time
+and judgment", Ecc 8:5) -- is shown with a neighbouring word's link, the one
+whose word has what it is the English of (a waw, a prefix, the ending, the
+verb's person, from the words' grammar codes: source/stepbible-grammar.json.gz,
+see export-grammar.py), and not counted (see sidle; Brock chose this,
+2026-10-26). The English of a Hebrew word with no Strong's number (lo, "unto
+him") is left for the reader, which shows it as that word's.
+
 Links confirmed against BLB verse by verse are in expected-links.json; run
 check-links.py after every rebuild.
 
@@ -88,6 +97,9 @@ INTERLINEAR_NT = ROOT / 'scripts/strongs/source/interlinear-nt-words.json.gz'
 # The KJV's Greek (TR) words of each NT verse, from STEPBible's TAGNT; see
 # export-tagnt-files.py.
 GREEK_NT = ROOT / 'scripts/strongs/source/tagnt-tr-structure.json.gz'
+# Each Hebrew and Greek word's grammar code, numbered as those are; see
+# export-grammar.py. The Hebrew includes the words with no Strong's number.
+GRAMMAR = ROOT / 'scripts/strongs/source/stepbible-grammar.json.gz'
 
 CODES = ['GEN','EXO','LEV','NUM','DEU','JOS','JDG','RUT','1SA','2SA','1KI','2KI','1CH','2CH','EZR','NEH','EST','JOB','PSA','PRO','ECC','SNG','ISA','JER','LAM','EZK','DAN','HOS','JOL','AMO','OBA','JON','MIC','NAM','HAB','ZEP','HAG','ZEC','MAL','MAT','MRK','LUK','JHN','ACT','ROM','1CO','2CO','GAL','EPH','PHP','COL','1TH','2TH','1TI','2TI','TIT','PHM','HEB','JAS','1PE','2PE','1JN','2JN','3JN','JUD','REV']
 # The app's word rule: split on spaces, trim this punctuation from both ends.
@@ -805,7 +817,7 @@ _AFFIX_WORDS = {
     # "that ... not" (Gen 3:11, levilti): a "to" of purpose
     'H9004': 'as like according when after about so', 'H9005': 'to unto for into of toward that according against in after among concerning',
     # "through the lightness" (Jer 3:9, mi-qol); she-: "wherein I have laboured" (Ecc 2:19)
-    'H9006': 'from of out than because since above after with through by',
+    'H9006': 'from of out than because since above after with through by concerning',
     'H9007': 'that who which whom whose wherein whereby whereof whereunto wherewith where whither',
     # the question's he-: "whether he shall be a wise man" (Ecc 2:19), he-chakham
     'H9008': 'whether', 'H9009': 'the', 'H9010': 'the', 'H9011': 'toward towards unto to into',
@@ -2440,6 +2452,8 @@ HAVE = set('had hadst hath hast have'.split())
 
 
 WAW_ENGLISH = set('and but then so now yet or nor'.split())
+NUMERALS = set('H259 H8147 H7969 H702 H2568 H8337 H7651 H8083 H8672 H6235 H6240 H6242 H7970 H705 H2572 H8346 H7657 '
+               'H8084 H8673 H3967 H505 H7233 H7239 H8141'.split())
 WAW_THAT = WAW_ENGLISH | {'that'}             # "that we may live" (Gen 42:2, venichyeh)
 # The waw's English for the words right after it: "seeing the LORD is
 # departed from thee" (1 Sam 28:16, vaYHWH).
@@ -2539,6 +2553,21 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
                 added[x] = best[0]
             used.add(best[1])
             continue
+        # Between numbers the waw can be on one before it: "eight hundred and
+        # thirty years" (Gen 5:16, shloshim shanah u-shmoneh me'ot).
+        num = lambda y: (tags.get(y) or added.get(y) or ('',))[0] in NUMERALS
+        if key(app[x]) == 'and' and len(run) == 1 and 0 < x < len(app) - 1 and num(x - 1) and num(x + 1):
+            for y in range(x - 1, max(-1, x - 5), -1):
+                t = tags.get(y) or added.get(y)
+                o = order_of.get(t) if t else None
+                if pause[y] or not t:
+                    break
+                if o is not None and o in free and o not in used:
+                    added[x] = t
+                    used.add(o)
+                    break
+            if x in added:
+                continue
         # An untranslated word with the waw, next in the Hebrew after the
         # word whose English is just before the "and" (or first, at the
         # verse's start).
@@ -2546,6 +2575,202 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
         po = order_of.get(prev, -1) if prev else -1
         if po + 1 < len(hebrew) and own(po + 1):
             give(run, po + 1)
+
+def numberless_english(app, italic, tags, added, own, marks, hebrew, words):
+    """The KJV words the reader gives a Hebrew word with no Strong's number
+    (lo, "unto him"; bo, "therein"), as its verseWordRows finds them: the run of
+    unlinked, non-italic words nearest the English of the words either side,
+    within two words. Left for it by the last pass (sidle)."""
+    if not hebrew or not words:
+        return set()
+    phrases, order_of = pair_ot(hebrew, tags)
+    at = collections.defaultdict(list)
+    for y in range(len(app)):
+        o = order_of.get(tags.get(y) or added.get(y))
+        if o is not None:
+            at[hebrew[o][0]].append(y)
+    mapped = set(tags) | set(added) | set(own) | set(marks)
+    runs = []
+    for y in range(len(app)):
+        if y in mapped or italic[y]:
+            continue
+        if runs and runs[-1][-1] == y - 1:
+            runs[-1].append(y)
+        else:
+            runs.append([y])
+    # (the mi- prefix is min, H4480, to the reader, as to Strong's: mehem, "of
+    # them", is a word with a number there -- Lev 25:45)
+    seq = [(w[0], at.get(w[0], []), not w[2] and not w[4] and 'H9006' not in w[3]) for w in words]
+    got = set()
+    for k, (_, _, none) in enumerate(seq):
+        if not none or not runs:
+            continue
+        prev = next((seq[j][1] for j in range(k - 1, -1, -1) if seq[j][1]), None)
+        nxt = next((seq[j][1] for j in range(k + 1, len(seq)) if seq[j][1]), None)
+        after, before = (max(prev) + 1 if prev else None), (min(nxt) - 1 if nxt else None)
+        best, bd = None, 3
+        for j, run in enumerate(runs):
+            d = min(99 if after is None else abs(run[0] - after), 99 if before is None else abs(run[-1] - before))
+            if d < bd:
+                bd, best = d, j
+        if best is not None:
+            got.update(runs.pop(best))
+    return got
+
+
+# The last pass's sides (Brock, 2026-10-26: "Option C"): a word the KJV has with
+# no Hebrew or Greek word of its own is shown with the word beside it -- the
+# words that lead into what follows with the word after them, the rest with
+# the word before.
+SIDLE_RIGHT = ABSORB_BACK | PREPOSITIONS | WAW_THAT | WAW_NEAR | SUBJECTS | AUX | BE | RELATIVE | THAT_PRONOUNS - OBJECT \
+    | set('as when while if because though until till unless lest whether both either neither nor whose what where '
+          'whither whence how why let even there o yea concerning'.split())
+SIDLE_LEFT = OBJECT | REFLEXIVE | THERE | set('also too more again away out up down forth together off thereof'.split())
+
+
+PERSON_WORDS = {('1', 's'): set('i me my mine myself'.split()), ('1', 'p'): set('we us our ourselves'.split()),
+                ('2', 's'): set('thou thee thy thine thyself'.split()), ('2', 'p'): set('ye you your yourselves'.split()),
+                ('3', 'ms'): set('he him his himself it its'.split()), ('3', 'fs'): set('she her herself it its'.split()),
+                ('3', 'p'): set('they them their themselves'.split())}
+
+
+def person_words(code):
+    """The English pronouns a verb's person is: HVqp3ms -> he, him, his, it;
+    Greek V-AAI-3P -> they, them, their."""
+    m = re.search(r'V[A-Za-z]{1,2}[pqiwhjvu]([123])([mfcb]?)([sp])', code or '') or re.search(r'V-[A-Z0-9]+-([123])([SP])', code or '')
+    if not m:
+        return set()
+    if len(m.groups()) == 2:
+        p, n = m.group(1), m.group(2).lower()
+        return PERSON_WORDS.get((p, n), set()) | (PERSON_WORDS[('3', 'ms')] | PERSON_WORDS[('3', 'fs')] if (p, n) == ('3', 's') else set())
+    p, g, n = m.groups()
+    if p == '3' and n == 's':
+        return PERSON_WORDS[('3', 'fs' if g == 'f' else 'ms')]
+    return PERSON_WORDS.get((p, n), set())
+
+
+def sidle(app, italic, pause, tags, added, own, reserved, info=lambda t: ((), '', ()), verbs=frozenset(), usage=None):
+    """Every non-italic word still with no link joins a neighbour's: "and a
+    wise man's heart discerneth both time and judgment" (Ecc 8:5) -- "both" is
+    the KJV's for ve'et u-mishpat, "and time and judgment", and goes with
+    "time"; "what can he have more" (1 Sam 18:8) -- "can" with "he have more"
+    (od); "for he doeth whatsoever pleaseth him" (Ecc 8:3) -- "him" with
+    "pleaseth" (yachpots). Pieces of that word, not counted. Never the English
+    of a word with no number (reserved).
+
+    Which neighbour: the one whose Hebrew or Greek word has what the word is
+    the English of -- a waw for "and", the prefix for "in", "to", "of", the
+    ending or the verb's person for a pronoun, a verb for "shall", Strong's
+    usage for the rest (info(tag) gives the word's affixes, grammar code and
+    numbers) -- then the words that lead into what follows with the word after
+    them, the rest with the word before; across a stop or comma only where
+    nothing else will do. Returns how many words joined."""
+    of = lambda y: ('t', tags.get(y) or added.get(y)) if (y in tags or y in added) else ('o', own[y]) if y in own else None
+    bare = [y for y in range(len(app)) if not italic[y] and y not in tags and y not in added and y not in own and y not in reserved]
+    runs = []
+    for y in bare:
+        if runs and runs[-1][-1] == y - 1 and not pause[y - 1]:
+            runs[-1].append(y)
+        else:
+            runs.append([y])
+
+    def side(start, step):
+        # The next linked word that way, over italics (the KJV's own
+        # additions), and whether a stop or comma lies between.
+        y, crossed = start, False
+        while 0 <= y < len(app):
+            crossed = crossed or pause[y if step < 0 else y - 1]
+            if of(y):
+                return y, crossed
+            if not italic[y]:
+                return None, crossed
+            y += step
+        return None, crossed
+
+    def fits(w, y):
+        kind, t = of(y)
+        affixes, code, nums = info(t) if kind == 't' else ((), '', (t,))
+        sn = t[0] if kind == 't' else t
+        score = 0
+        if w in WAW_HAS | WAW_NEAR | {'and'} and {'H9001', 'H9002'} & set(affixes):
+            score += 3
+        if any(w in AFFIX_BEFORE.get(a, ()) for a in affixes if a in PREFIXES and a not in ('H9001', 'H9002')):
+            score += 3
+        if w in PRONOUNS | REFLEXIVE | THERE and any(w in AFFIX_BEFORE.get(a, set()) | AFFIX_AFTER.get(a, set()) for a in affixes if a >= 'H9020'):
+            score += 3
+        if w in PRONOUNS | REFLEXIVE and w in person_words(code):
+            score += 2
+        if w in AUX | BE | MODALS and (sn in verbs or code.lstrip('HA').split('/')[-1].startswith('V') or code.startswith('V-')):
+            score += 2
+        if w in FUNC_WORDS.get(sn, ()) or w in NT_FUNC.get(sn, ()):
+            score += 2
+        if usage and w not in PRONOUNS and stems(w) & usage.get(sn, set()):
+            score += 2
+        return score
+    def reach(start, step, want):
+        # A linked word up to three words that way, over italics and over
+        # the small words the KJV sets between a helper and its verb ("hast
+        # not been lien with", Jer 3:2), that want(y) accepts.
+        y, crossed, steps = start, False, 0
+        while 0 <= y < len(app) and steps < 4:
+            crossed = crossed or pause[y if step < 0 else y - 1]
+            if of(y) and want(y):
+                return y, crossed
+            if not (italic[y] or of(y) and key(app[y]) in ('not', 'no', 'never', 'yet', 'also', 'surely')):
+                if of(y):
+                    steps += 1
+                else:
+                    return None, crossed
+            y += step
+            steps += 1
+        return None, crossed
+
+    def ends(y):
+        kind, t = of(y)
+        return info(t)[0] if kind == 't' else ()
+
+    def says(y, words):
+        kind, t = of(y)
+        return any(key(app[z]) in words for z in range(len(app)) if of(z) == (kind, t))
+    n = 0
+    for run in runs:
+        first, last = key(app[run[0]]), key(app[run[-1]])
+        right = last in SIDLE_RIGHT and first not in SIDLE_LEFT
+        cands = [(side(run[0] - 1, -1), False, 0), (side(run[-1] + 1, 1), True, 0)]
+        if last in AUX | BE | MODALS:
+            # the verb a helper goes with, past a "not"
+            # (a finite verb: not "him that girdeth on", 1 Kgs 20:11, a participle)
+            code = lambda y: info(of(y)[1])[1]
+            finite = lambda c: not re.search(r'V[A-Za-z][rsac]|V-[A-Z0-9]*[PN]-', c or '')
+            isverb = lambda y: of(y)[0] == 't' and finite(code(y)) and (of(y)[1][0] in verbs or re.search(r'(^|/)V|^V-', code(y).lstrip('HA') or ''))
+            cands.append((reach(run[-1] + 1, 1, isverb), True, 1))
+        if len(run) == 1 and first in PRONOUNS | REFLEXIVE:
+            # the word whose ending it is, a few words off: "Peace be
+            # multiplied unto you" (Dan 4:1, shelamkhon), "Then should I yet
+            # have comfort" (Job 6:10, nechamati) -- where that word's English
+            # has no pronoun for its ending yet
+            for step in (-1, 1):
+                def mine(y):
+                    hits = [a for a in ends(y) if a >= 'H9020' and first in AFFIX_BEFORE.get(a, set()) | AFFIX_AFTER.get(a, set())]
+                    return bool(hits) and not says(y, set().union(*(AFFIX_BEFORE.get(a, set()) | AFFIX_AFTER.get(a, set()) for a in hits)))
+                cands.append((reach(run[0] + step, step, mine), step > 0, 1))
+        best = None
+        for (y, crossed), is_right, far in cands:
+            if y is None:
+                continue
+            score = sum(fits(key(app[x]), y) for x in run) + (1 if is_right == right else 0) - (4 if crossed else 0) - far
+            if best is None or score > best[0]:
+                best = (score, y)
+        if best is None:
+            continue
+        kind, t = of(best[1])
+        for x in run:
+            if kind == 't':
+                added[x] = t
+            else:
+                own[x] = t
+            n += 1
+    return n
 
 def pass_that(app, italic, tags, added, sn):
     """A bare "that" right after "it came to pass" of number sn joins it."""
@@ -3435,7 +3660,9 @@ FUNC_WORDS = {k: set(v.split()) for k, v in _FUNC.items()}
 # And for place_ot only, the pronoun words: "which I had taken" (Ecc 2:18),
 # she'ani amel -- the KJV's "I" for ani, which the source left out.
 PLACE_WORDS = FUNC_WORDS | {k: set(v.split()) for k, v in {
-    'H589': 'i', 'H595': 'i', 'H859': 'thou ye', 'H587': 'we',
+    'H589': 'i myself', 'H595': 'i myself', 'H859': 'thou ye thyself yourselves', 'H587': 'we ourselves',
+    # "themselves are separated" (Hos 4:14), hem
+    'H1931': 'he she it that this same himself herself itself', 'H1992': 'they them those these themselves',
     # Aramaic: hu "he" (Dan 6:10), di "which", "that", "who" (6:27)
     'H1932': 'he she it', 'H1768': 'that which who whom whose whereas because'}.items()}     # not "Look not upon me" (Song 1:6)
 
@@ -3812,6 +4039,8 @@ def main():
         interlinear.update(json.load(f))
     with gzip.open(GREEK_NT, 'rt', encoding='utf-8') as f:
         greek = json.load(f)
+    with gzip.open(GRAMMAR, 'rt', encoding='utf-8') as f:
+        grammar = json.load(f)
     usage_all = {r['strongs_number']: usage_stems(r.get('kjv_usage')) for r in lex_rows}
     repaired = []
     # The phrases the source tags, per number: "not yet" for G3768.
@@ -3838,7 +4067,7 @@ def main():
                     used[n][key(w)] += 1
     chapters = collections.defaultdict(list)
     occ = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
-    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = et_words = 0
+    words_total = tagged_total = widened = filled_words = filled = affixed = nt_words = nt_filled = swapped = seconds = marked = owned = et_words = sidled = 0
     verses = []
     for r in kjv:
         b, c, v = r['book_num'], r['chapter'], r['verse']
@@ -3880,6 +4109,31 @@ def main():
         marked += len(marks)
         owned += len(own)
         marks.update({x: sn for x, sn in ets.items() if x not in marks})
+        reserved = numberless_english(app, italic, tags, added, own, marks, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags),
+                                      grammar['ot'].get(f'{b}|{c}|{v}')) if b <= 39 else set()
+        if b <= 39:
+            heb = as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags)
+            _, order_of = pair_ot(heb, tags) if heb else ({}, {})
+            codes = {w[0]: w[1] for w in grammar['ot'].get(f'{b}|{c}|{v}', [])}
+            def info(t, heb=heb, order_of=order_of, codes=codes):
+                if t in order_of:
+                    w = heb[order_of[t]]
+                    return w[2], codes.get(w[0], ''), w[1]
+                # A phrase the pairing left out: the verse's words of its number.
+                ws = [w for w in heb or () if t[0] in w[1]]
+                return (sorted({a for w in ws for a in w[2]}), codes.get(ws[0][0], ''), ws[0][1]) if ws else ((), '', ())
+        else:
+            grk, codes = greek.get(f'{b}|{c}|{v}') or [], grammar['nt'].get(f'{b}|{c}|{v}') or []
+            info = lambda t, grk=grk, codes=codes: next(((), codes[k], nums) for k, (nums, _) in enumerate(grk)
+                                                        if t[0] in nums and k < len(codes)) if any(t[0] in g[0] for g in grk) else ((), '', ())
+        sidled += sidle(app, italic, pause, tags, added, own, reserved | set(marks), info, verbs,
+                        usage_ot if b <= 39 else usage_all)
+        if reserved:
+            # What the reader then finds for the words with no number, the
+            # rest of the map being in place; any it leaves bare joins too.
+            kept = numberless_english(app, italic, tags, added, own, marks, as_kjv(hebrew.get(f'{b}|{c}|{v}'), tags),
+                                      grammar['ot'].get(f'{b}|{c}|{v}'))
+            sidled += sidle(app, italic, pause, tags, added, own, kept | set(marks), info, verbs, usage_ot)
         verses.append(((b, c, v), app, italic, pause, list(phrases.items()), added, extra, marks, own))
     # What each number's phrases say where it is the only one in its verse:
     # "and" for G2532, "him" for G846, "for" for G1223. A part that is also a
@@ -3995,6 +4249,7 @@ def main():
     print(f'{et_words} "it", "him", "them" that are et with an ending (oto, otam), given H853 (not counted)')
     print(f'{owned} "and"s of a Hebrew word the KJV renders only by them ("between Beth-el and Hai"), given its number (not counted)')
     print(f'{links} words whose English is in pieces, linked')
+    print(f'{sidled} words with no Hebrew or Greek word of their own shown with a neighbour\'s (sidle)')
     print(f'{starts} words next to another word of the same number, marked as their own')
     print(f'{len(repaired)} verses whose source numbers were out of place, repaired: {" ".join(repaired)}')
     print(f'{len(recs)} chapters -> {OUT_MAP.relative_to(ROOT)}; {len(occ_recs)} numbers -> {OUT_OCC.relative_to(ROOT)}')
