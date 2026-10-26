@@ -1381,6 +1381,21 @@ def mend_nt(app, italic, pause, tags, verbs, usage, greek=None):
                 for i in fits[sn]:
                     pid += 1
                     tags[i] = (sn, pid)
+    # "as he was teaching, and said" (Matt 21:23), legontes; "he laid his
+    # hands on them, and departed" (19:15): the KJV's "and" between a
+    # participle and a verb, with no kai, de or te left without English, goes
+    # with the verb after it.
+    if greek:
+        have = collections.Counter(t[0] for t in set(tags.values()))
+        gcount = collections.Counter(next((n for n in nums if n in have), nums[0]) for nums, _ in greek)
+        if all(gcount[n] <= have[n] for n in ('G2532', 'G1161', 'G5037')):
+            for x in range(len(app) - 1):
+                if key(app[x]) == 'and' and not taken(x) and not italic[x] and not pause[x] \
+                        and x + 1 in tags and tags[x + 1][0] in verbs:
+                    added[x] = tags[x + 1]
+    # "And it came to pass, that on the eighth day" (Luke 1:59): the "that"
+    # of egeneto's English.
+    pass_that(app, italic, tags, added, 'G1096')
     # "even so know I" (John 10:15), kago: the "I" is kago's.
     for x in range(2, len(app)):
         if key(app[x]) != 'i' or italic[x]:
@@ -1854,6 +1869,119 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
         if key(app[x]) == 'it' and not taken(x) and not italic[x] and italic[x - 1] and key(app[x - 1]) in BE \
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
+    waw_and(app, italic, pause, tags, added, shared, hebrew, order_of)
+    # A verb's English parted by its subject: "layest thou a snare" (1 Sam
+    # 28:9, mitnaqqesh) -- the bare word one Strong's lists for the verb.
+    for x in range(len(app) - 2):
+        t = tags.get(x + 2) or added.get(x + 2)
+        if t and t[0] in verbs and usage and not taken(x) and not italic[x] and not pause[x] and not pause[x + 1] \
+                and key(app[x + 1]) in SUBJECTS and (tags.get(x + 1) or added.get(x + 1)) != t \
+                and key(app[x]) not in AUX | BE | ABSORB_BACK | PREPOSITIONS | RELATIVE | WAW_HAS | OBJECT | {'not', 'as', 'if'} \
+                and stems(app[x]) & usage.get(t[0], set()):
+            added[x] = t
+    # A verb's own English left bare in front of its phrase, with its helpers
+    # and subject: "he shall minister judgment" (Ps 9:8, yadin, H1777), "none
+    # shall fray them away" (Jer 7:33, across the KJV's italic), "and shall
+    # send him away" (Lev 16:21, between the pieces of veshillach). And a
+    # subject inside a verb's pieces: "Then went he out" (Gen 31:33).
+    # "And they that found him ... brought him" (Num 15:33): the source gives
+    # the "that" to the verb whose "And" it follows; it is the participle's
+    # (hammots'im), with its "they".
+    for x in range(1, len(app) - 1):
+        t, nxt = tags.get(x) or added.get(x), tags.get(x + 1) or added.get(x + 1)
+        if key(app[x]) in RELATIVE and key(app[x - 1]) in THAT_PRONOUNS and t and nxt and t != nxt \
+                and t[0] in verbs and nxt[0] in verbs and not italic[x - 1] and not pause[x - 1] \
+                and (tags.get(x - 1) or added.get(x - 1)) in (None, t) and x - 2 >= 0 \
+                and (tags.get(x - 2) or added.get(x - 2)) == t \
+                and any((tags.get(y) or added.get(y)) == t for y in range(x + 2, len(app))):
+            for y in (x - 1, x):
+                tags.pop(y, None)
+                added[y] = nxt
+    if usage:
+        small = ABSORB_BACK | PREPOSITIONS | RELATIVE | WAW_HAS | OBJECT | SUBJECTS | AUX | BE | {'not', 'no', 'as', 'if'}
+        at = collections.defaultdict(list)
+        for y in range(len(app)):
+            t = tags.get(y) or added.get(y)
+            if t:
+                at[t].append(y)
+        for t, idx in list(at.items()):
+            if t[0] not in verbs:
+                continue
+            for p in [p for p in idx if p - 1 not in idx]:
+                y, run = p - 1, []
+                while y >= 0 and not taken(y) and not pause[y] and (italic[y] or not run or len(run) < 4):
+                    run.append(y)
+                    y -= 1
+                main = []
+                for y in run:
+                    if italic[y]:
+                        if main:
+                            break
+                        continue
+                    if key(app[y]) not in small and stems(app[y]) & usage.get(t[0], set()):
+                        main.append(y)
+                    else:
+                        break
+                if not main:
+                    continue
+                y = min(main) - 1
+                while y >= 0 and not taken(y) and not italic[y] and not pause[y] and key(app[y]) in AUX | SUBJECTS:
+                    main.append(y)
+                    y -= 1
+                for y in main:
+                    added[y] = t
+            for a, b in zip(idx, idx[1:]):
+                if b - a == 2 and key(app[a + 1]) in SUBJECTS and not taken(a + 1) and not italic[a + 1] \
+                        and not pause[a] and not pause[a + 1] and key(app[b]) not in RELATIVE:
+                    added[a + 1] = t
+    # A Hebrew word with no English but its ending's: "the saying displeased
+    # him" (1 Sam 18:8, vayera be'einav, "it was evil in his eyes") -- the one
+    # bare pronoun for the ending between its neighbours' English is that
+    # word's own (not counted).
+    paired = collections.defaultdict(list)
+    for y in range(len(app)):
+        o = order_of.get(tags.get(y) or added.get(y))
+        if o is not None:
+            paired[o].append(y)
+    ending_words = lambda affixes: set().union(*(AFFIX_AFTER.get(a, set()) | AFFIX_BEFORE.get(a, set())
+                                                 for a in affixes if a >= 'H9020')) & PRONOUNS
+    # Not a pronoun after a bare preposition where the verse has a word with
+    # no number (left out of the Hebrew words): "prevailed against thee" (Jer
+    # 38:22) is lekha's, not shelomekha's.
+    nums = [h[0] for h in hebrew]
+    numberless = any(b - a > 1 for a, b in zip(nums, nums[1:]))
+    for o, (_, mains, affixes) in enumerate(hebrew):
+        if o in paired or not mains or mains[0] == 'H853':
+            continue
+        words = ending_words(affixes)
+        if not words:
+            continue
+        prev = next((paired[p] for p in range(o - 1, -1, -1) if p in paired), None)
+        nxt = next((paired[p] for p in range(o + 1, len(hebrew)) if p in paired), None)
+        if not prev or not nxt:
+            continue
+        # between them, or beside either where the KJV has them the other way
+        # round ("the saying displeased him")
+        near = set(range(max(prev) + 1, max(prev) + 3)) | set(range(min(nxt) - 2, min(nxt))) \
+            | set(range(max(prev) + 1, min(nxt)))
+        cands = [y for y in sorted(near) if 0 <= y < len(app) and not taken(y) and not italic[y] and key(app[y]) in words
+                 and not (numberless and y and not taken(y - 1) and key(app[y - 1]) in ABSORB_BACK | PREPOSITIONS)]
+        if len(cands) == 1:
+            added[cands[0]] = shared[cands[0]] = (mains[0], 'own')
+            paired[o].append(cands[0])
+    # "And it came to pass, that, when the sun went down" (Gen 15:17): the
+    # "that" of vayhi's English, where no waw after it has taken it.
+    pass_that(app, italic, tags, added, 'H1961')
+    # The article the KJV gives as "those that have": "those that have
+    # familiar spirits" (1 Sam 28:9, ha'ovot).
+    for x in range(len(app) - 3):
+        t = tags.get(x + 3) or added.get(x + 3)
+        o = order_of.get(t) if t else None
+        if o is not None and t[0] not in verbs and {'H9009', 'H9010'} & set(hebrew[o][2]) \
+                and key(app[x]) in THAT_PRONOUNS and key(app[x + 1]) == 'that' and key(app[x + 2]) in ('have', 'had', 'hath') \
+                and not any(taken(y) or italic[y] or pause[y] for y in (x, x + 1, x + 2)):
+            for y in (x, x + 1, x + 2):
+                added[y] = t
     kept = {x for x, t in shared.items() if added.get(x) == t}
     added = live(tags, added, app, hebrew)
     for x, t in shared.items():
@@ -2309,6 +2437,123 @@ def inverted_helpers(app, italic, pause, tags, added, verbs):
 
 
 HAVE = set('had hadst hath hast have'.split())
+
+
+WAW_ENGLISH = set('and but then so now yet or nor'.split())
+WAW_THAT = WAW_ENGLISH | {'that'}             # "that we may live" (Gen 42:2, venichyeh)
+# The waw's English for the words right after it: "seeing the LORD is
+# departed from thee" (1 Sam 28:16, vaYHWH).
+WAW_NEAR = {'that', 'seeing', 'though', 'whereas'}
+# A phrase with one of these has its waw's English: "therefore I have called
+# thee" (1 Sam 28:15, va'eqra'eh).
+WAW_HAS = WAW_ENGLISH | {'therefore', 'notwithstanding', 'howbeit', 'yea', 'else', 'seeing', 'whereas'}
+CLAUSE_END = re.compile(r"[.;:?!]['\"()’”]*$")
+
+
+def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
+    """A waw's "and" the KJV sets apart from its word, still bare: "And Ezra
+    the priest, with certain chief of the fathers, ... were separated" (Ezra
+    10:16, vayibadlu). The verse's bare "and"s and its Hebrew words with a waw
+    whose English has none are paired in order: an "and" goes to the nearest
+    phrase after it, in its clause, whose word has such a waw -- a piece of
+    that phrase -- or, where the Hebrew word with the waw has no English at
+    all ("AND Saul eyed David", 1 Sam 18:9, an untranslated vayhi), to that
+    word as its own, uncounted, when it is the next word in the Hebrew."""
+    taken = lambda x: x in tags or x in added
+    phrase = collections.defaultdict(list)
+    for x in range(len(app)):
+        t = tags.get(x) or added.get(x)
+        if t:
+            phrase[t].append(x)
+    of_order = {o: t for t, o in order_of.items()}
+    waw = lambda o: bool({'H9001', 'H9002'} & set(hebrew[o][2]))
+    free = {o for o, (_, mains, _) in enumerate(hebrew) if waw(o) and mains and mains[0] != 'H853'
+            and not any(key(app[x]) in WAW_HAS for x in phrase.get(of_order.get(o), ()))}
+    # Not a relative's "that" ("she that hath many children", 1 Sam 2:5,
+    # verabbat) or "that which".
+    that_ok = lambda x: not (x and key(app[x - 1]) in WHO_PRONOUNS | {'all'}) \
+        and not (x + 1 < len(app) and key(app[x + 1]) in ('which', 'whereof', 'wherein', 'whereby'))
+    bare = [x for x in range(len(app)) if not taken(x) and not italic[x]
+            and (key(app[x]) in WAW_ENGLISH | WAW_NEAR - {'that'} or key(app[x]) == 'that' and that_ok(x))]
+    # "so that", "and that": one waw's English in two words.
+    runs = []
+    for x in bare:
+        if runs and runs[-1][-1] == x - 1 and not pause[x - 1]:
+            runs[-1].append(x)
+        else:
+            runs.append([x])
+    used = set()
+    own = lambda o: o >= 0 and o in free and o not in used and of_order.get(o) is None and hebrew[o][1]
+
+    def give(run, o):
+        # "And he walked" (2 Kgs 21:21): vayelekh is H1980 in the Hebrew data
+        # and H3212 in the KJV's, so the phrase after is that word.
+        x = run[-1]
+        t = next((tags.get(y) or added.get(y) for y in (x + 1, x + 2) if tags.get(y) or added.get(y)), None)
+        for x in run:
+            if t and order_of.get(t) is None and any(SAME_WORD.get(m) == t[0] for m in hebrew[o][1]):
+                added[x] = t
+            else:
+                added[x] = shared[x] = (hebrew[o][1][0], 'own')
+        used.add(o)
+    for run in runs:
+        x = run[-1]
+        # "Wherefore then dost thou ask of me" (1 Sam 28:16, velammah): a "then"
+        # the KJV puts after its word.
+        t = tags.get(x - 1) or added.get(x - 1)
+        o = order_of.get(t) if t else None
+        if len(run) == 1 and key(app[x]) == 'then' and o is not None and o in free and o not in used \
+                and max(phrase[t]) == x - 1 and not pause[x - 1]:
+            added[x] = t
+            used.add(o)
+            continue
+        # "nor yet the works" (Judg 2:10, vegam): one word.
+        if len(run) == 1 and key(app[x]) == 'yet' and t and t[0] == 'H1571' and key(app[x - 1]) in ('nor', 'neither') \
+                and not pause[x - 1]:
+            added[x] = t
+            continue
+        # "And number thee an army" (1 Kgs 20:25, ve'attah timneh): the word
+        # right after the "and" has no waw, and the Hebrew word before its
+        # one has one but no English -- the "and" is that word's.
+        o1 = order_of.get(tags.get(x + 1) or added.get(x + 1))
+        if o1 is not None and o1 not in free and own(o1 - 1):
+            give(run, o1 - 1)
+            continue
+        best = None
+        # A "that" is the waw of the words right after it ("that the LORD thy
+        # God may", Jer 42:3); an "and" goes on past a "that" ("and see that
+        # ye hasten", 2 Chr 24:5, ve'attem).
+        that = all(key(app[y]) in WAW_NEAR for y in run)
+        for y in range(x + 1, min(len(app), x + (4 if that else 14))):
+            if CLAUSE_END.search(app[y - 1]):
+                break
+            t = tags.get(y) or added.get(y)
+            o = order_of.get(t) if t else None
+            if o is not None and o in free and o not in used and min(phrase[t]) == y:
+                best = (t, o)
+                break
+            if not t and key(app[y]) in (WAW_THAT | WAW_NEAR if that else WAW_ENGLISH) and not italic[y]:
+                break                                   # the next bare "and" is that word's
+        if best:
+            for x in run:
+                added[x] = best[0]
+            used.add(best[1])
+            continue
+        # An untranslated word with the waw, next in the Hebrew after the
+        # word whose English is just before the "and" (or first, at the
+        # verse's start).
+        prev = next((tags.get(y) or added.get(y) for y in range(run[0] - 1, -1, -1) if tags.get(y) or added.get(y)), None)
+        po = order_of.get(prev, -1) if prev else -1
+        if po + 1 < len(hebrew) and own(po + 1):
+            give(run, po + 1)
+
+def pass_that(app, italic, tags, added, sn):
+    """A bare "that" right after "it came to pass" of number sn joins it."""
+    for x in range(1, len(app)):
+        t = tags.get(x - 1) or added.get(x - 1)
+        if key(app[x]) == 'that' and t and t[0] == sn and key(app[x - 1]) == 'pass' \
+                and x not in tags and x not in added and not italic[x]:
+            added[x] = t
 
 
 def hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs):
@@ -3175,13 +3420,13 @@ _FUNC = {
     'H3808': 'not no neither nor never none', 'H408': 'not no neither nor', 'H369': 'not no none nothing without',
     'H3541': 'thus so here hither', 'H3651': 'so thus therefore wherefore right well',
     'H3588': 'that for because when but surely if though yea since',
-    'H834': 'which that who whom whose when where whence wherein whereof whither as because what',
+    'H834': 'which that who whom whose when where whence wherein whereof whither as because what how',
     'H518': 'if whether or but though', 'H2005': 'behold lo', 'H2009': 'behold lo',
     'H8033': 'there thither thence', 'H1931': 'he she it that this same', 'H1992': 'they them those these',
     'H2088': 'this that these', 'H2063': 'this that thus', 'H428': 'these those',
     'H854': 'with by from against toward', 'H5973': 'with by against beside toward',
     'H4480': 'from of out than because', 'H996': 'between among betwixt within',
-    'H4100': 'what why how wherefore', 'H4310': 'who whom whose', 'H1571': 'also both even moreover yea',
+    'H4100': 'what why how wherefore', 'H4310': 'who whom whose', 'H1571': 'also both even moreover yea neither nor',
     'H637': 'also yea even moreover', 'H5750': 'yet again more still', 'H6258': 'now', 'H227': 'then',
     'H4994': 'now pray beseech', 'H3605': 'all every any whole', 'H310': 'after behind afterward',
     'H8478': 'under instead beneath', 'H5048': 'before against over', 'H1097': 'no none not without',
