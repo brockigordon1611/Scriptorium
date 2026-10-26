@@ -3730,6 +3730,17 @@ def text(app, idx):
     return ' '.join(app[i].lower() for i in idx)
 
 
+# Lexicon text wrong at source (the OpenScriptures dictionary): H1777 din,
+# "judge", has G2113's "a straight course, i.e. sail direct" -- which would
+# keep "minister judgment" (Ps 9:8) from its word. Corrected as read, so the
+# strongs_lex.json written here has it right; the app's STRONGS_FIXES (in
+# src/App.jsx) carries the same for entries read from the server.
+LEX_FIXES = {
+    'H1777': {'short_def': 'to rule; by implication, to judge (as umpire); also to strive (as at law)',
+              'kjv_usage': 'contend, execute (judgment), judge, minister judgment, plead (the cause), at strife, strive.'},
+}
+
+
 def verb_numbers(lex_rows):
     """The Hebrew and Aramaic verbs: Strong's "a primitive root", a verb made
     from a noun ("a denominative from H168", H167), and one Strong's gives as
@@ -3783,7 +3794,7 @@ def verb_numbers(lex_rows):
 def main():
     src = source_verses()
     kjv = json.loads(KJV.read_text(encoding='utf-8'))
-    lex_rows = json.loads(LEX.read_text(encoding='utf-8'))
+    lex_rows = [{**r, **LEX_FIXES.get(r['strongs_number'], {})} for r in json.loads(LEX.read_text(encoding='utf-8'))]
     lex = {r['strongs_number'] for r in lex_rows}
     # Strong's own list of how the KJV renders each number, as words.
     usage = {r['strongs_number']: set(re.findall(r'[a-z]+', (r.get('kjv_usage') or '').lower())) for r in lex_rows}
