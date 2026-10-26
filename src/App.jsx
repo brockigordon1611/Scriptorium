@@ -1850,7 +1850,7 @@ button:focus-visible{outline:2px solid var(--ac-focus,rgba(200,168,78,0.4));outl
 @keyframes backdropIn{from{opacity:0;}to{opacity:1;}}
 @keyframes backdropOut{from{opacity:1;}to{opacity:0;}}
 @keyframes slideUpStrip{from{transform:translateY(100%);}to{transform:translateY(0);}}
-@keyframes slideDownStrip{from{transform:translateY(0);}to{transform:translateY(100%);}}
+@keyframes slideDownStrip{from{transform:translateY(0);opacity:1;}to{transform:translateY(100%);opacity:0;}}
 @keyframes slideUpOut{from{transform:translateY(0);}to{transform:translateY(-100%);}}
 @keyframes slideDownOut{from{transform:translateY(0);}to{transform:translateY(100%);}}
 @keyframes slideDownIn{from{transform:translateY(-100%);}to{transform:translateY(0);}}
@@ -9499,7 +9499,8 @@ function App(){
     await handleAddBookmark({versionId:readVid,bookNum:readBook,chapter:readCh,verse:d.verse,
       label:d.ref,note:d.note.trim()||null,categoryId:catId});
     setBmDialog(null);
-    setReadBmOk(true);setTimeout(()=>{setReadBmOk(false);dismissStrip();},1400);
+    // The confirmation slides away with the strip, not the buttons back first.
+    setReadBmOk(true);setTimeout(()=>{dismissStrip();setTimeout(()=>setReadBmOk(false),220);},1400);
   }
 
   async function copySelectedVerses(){
@@ -9515,7 +9516,7 @@ function App(){
     try{await navigator.clipboard.writeText(output);}catch{
       const ta=document.createElement('textarea');ta.value=output;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     }
-    setReadCopyOk(true);setTimeout(()=>{setReadCopyOk(false);dismissStrip();},1600);
+    setReadCopyOk(true);setTimeout(()=>{dismissStrip();setTimeout(()=>setReadCopyOk(false),220);},1600);
   }
 
   // ── Audio file management ──
@@ -11734,10 +11735,11 @@ function App(){
           })()}
           {stripOpen&&tab==='read'&&!readingHidden&&!audioPlaying&&(
             <div ref={verseStripRef} className={stripClosing?'slide-down-strip':'slide-up-strip'} style={{position:'fixed',bottom:fsActive?Math.max(0,bottomBarH-50):Math.max(0,bottomBarH+8),left:14,right:14,zIndex:135,padding:'7px 0',display:'flex',alignItems:'center',height:'auto',minHeight:44,boxSizing:'border-box',transition:'bottom .18s ease'}}>
+              {/* On the buttons' glass: bare text over the page was hard to see. */}
               {readBmOk
-                ?<span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
+                ?<span style={{...floatFace,borderRadius:8,padding:'8px 0',fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Bookmarked</span>
                 :readCopyOk
-                  ?<span style={{fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
+                  ?<span style={{...floatFace,borderRadius:8,padding:'8px 0',fontFamily:FS,fontSize:U(14),letterSpacing:'0.12em',color:'#62c484',fontWeight:600,flex:1,textAlign:'center'}}>✓ Copied</span>
                   :<div style={{display:'flex',flexDirection:'column',gap:6,width:'100%'}}>
                     {/* The colours, above the bar, while the highlight button is open. */}
                     {hlPickerOpen&&user&&(
