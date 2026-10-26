@@ -1876,6 +1876,61 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                 and key(app[x]) not in AUX | BE | ABSORB_BACK | PREPOSITIONS | RELATIVE | WAW_HAS | OBJECT | {'not', 'as', 'if'} \
                 and stems(app[x]) & usage.get(t[0], set()):
             added[x] = t
+    # A verb's own English left bare in front of its phrase, with its helpers
+    # and subject: "he shall minister judgment" (Ps 9:8, yadin, H1777), "none
+    # shall fray them away" (Jer 7:33, across the KJV's italic), "and shall
+    # send him away" (Lev 16:21, between the pieces of veshillach). And a
+    # subject inside a verb's pieces: "Then went he out" (Gen 31:33).
+    # "And they that found him ... brought him" (Num 15:33): the source gives
+    # the "that" to the verb whose "And" it follows; it is the participle's
+    # (hammots'im), with its "they".
+    for x in range(1, len(app) - 1):
+        t, nxt = tags.get(x) or added.get(x), tags.get(x + 1) or added.get(x + 1)
+        if key(app[x]) in RELATIVE and key(app[x - 1]) in THAT_PRONOUNS and t and nxt and t != nxt \
+                and t[0] in verbs and nxt[0] in verbs and not italic[x - 1] and not pause[x - 1] \
+                and (tags.get(x - 1) or added.get(x - 1)) in (None, t) and x - 2 >= 0 \
+                and (tags.get(x - 2) or added.get(x - 2)) == t \
+                and any((tags.get(y) or added.get(y)) == t for y in range(x + 2, len(app))):
+            for y in (x - 1, x):
+                tags.pop(y, None)
+                added[y] = nxt
+    if usage:
+        small = ABSORB_BACK | PREPOSITIONS | RELATIVE | WAW_HAS | OBJECT | SUBJECTS | AUX | BE | {'not', 'no', 'as', 'if'}
+        at = collections.defaultdict(list)
+        for y in range(len(app)):
+            t = tags.get(y) or added.get(y)
+            if t:
+                at[t].append(y)
+        for t, idx in list(at.items()):
+            if t[0] not in verbs:
+                continue
+            for p in [p for p in idx if p - 1 not in idx]:
+                y, run = p - 1, []
+                while y >= 0 and not taken(y) and not pause[y] and (italic[y] or not run or len(run) < 4):
+                    run.append(y)
+                    y -= 1
+                main = []
+                for y in run:
+                    if italic[y]:
+                        if main:
+                            break
+                        continue
+                    if key(app[y]) not in small and stems(app[y]) & usage.get(t[0], set()):
+                        main.append(y)
+                    else:
+                        break
+                if not main:
+                    continue
+                y = min(main) - 1
+                while y >= 0 and not taken(y) and not italic[y] and not pause[y] and key(app[y]) in AUX | SUBJECTS:
+                    main.append(y)
+                    y -= 1
+                for y in main:
+                    added[y] = t
+            for a, b in zip(idx, idx[1:]):
+                if b - a == 2 and key(app[a + 1]) in SUBJECTS and not taken(a + 1) and not italic[a + 1] \
+                        and not pause[a] and not pause[a + 1] and key(app[b]) not in RELATIVE:
+                    added[a + 1] = t
     # The article the KJV gives as "those that have": "those that have
     # familiar spirits" (1 Sam 28:9, ha'ovot).
     for x in range(len(app) - 3):
