@@ -4268,9 +4268,10 @@ function verseWordRows(words,hebrew,kjv,mainAt){
   const r=words.map((w,i)=>({w,i,x:wbwEnglish(w,lang,mainAt,kjv)}));
   // Ve'et's "and" (Gen 1:1): the map gives a waw's "and" to the word after
   // it, where et has no English; here it shows with the word it is written on.
+  // Only et's: uvekha, "both on thee" (Exod 8:4), has English of its own.
   if(hebrew)r.forEach((q,i)=>{
     const nx=r[i+1];
-    if(q.x.pos.length||!/^[AH]C\//.test(q.w[2])||!nx||!nx.x.pos.length)return;
+    if(q.x.pos.length||!/^[AH]C\/To(\/|$)/.test(q.w[2])||!nx||!nx.x.pos.length)return;
     const p=nx.x.pos[0];
     if(!_WAW_WORDS.has(String(kjv[p]?.w||'').toLowerCase()))return;
     q.x={...q.x,pos:[p],pieces:[kjv[p].w],shared:false};
@@ -4306,6 +4307,8 @@ function verseWordRows(words,hebrew,kjv,mainAt){
   for(const q of [...r].reverse()){q.key=q.x.pos.length?q.x.pos[0]:next-0.01;next=q.key;}
   return r;
 }
+// Words that lead into what follows: a leftover one goes with the word after it.
+const _LEADING_WORDS=new Set('the a an in of from to unto for by with at into on upon and but or nor so that which who as when if both what among'.split(' '));
 // The key a word with no Strong's number opens by, and its entry, made once.
 const bareKey=w=>`~${w[0]}|${w[2]}`;
 const BARE_ENTRIES=new Map();
@@ -7103,12 +7106,27 @@ function App(){
   // counted: the word's key (bareKey) on the KJV words it is rendered by.
   const bareRows=useMemo(()=>{
     const out={},ch=readWords&&readWords.book===readBook?readWords.c?.[readCh]:null;
-    if(!ch)return out;
     for(const row of readVerses){
-      const v=row.verse,words=ch[v],maps=strongsData[v];
-      if(!words||!maps)continue;
-      const rs=verseWordRows(words,true,kjvWordList(row.text),mainNumbersAt(maps)).filter(q=>q.x.noNumber);
-      if(rs.length)out[v]=rs.flatMap(q=>{const k=bareKey(q.w);bareEntryOf(q.w);return q.x.pos.map(p=>({word_pos:p,strongs_num:k,word_text:''}));});
+      const v=row.verse,words=ch?.[v],maps=strongsData[v];
+      if(!maps)continue;
+      const kjv=kjvWordList(row.text);
+      const rows=words?verseWordRows(words,true,kjv,mainNumbersAt(maps)).filter(q=>q.x.noNumber)
+        .flatMap(q=>{const k=bareKey(q.w);bareEntryOf(q.w);return q.x.pos.map(p=>({word_pos:p,strongs_num:k,word_text:''}));}):[];
+      // Any word the KJV does not italicize that still has no link goes with
+      // the nearest word's, as the build gives the rest (its sidle): the few
+      // it left for a word with no number that finds its English elsewhere
+      // here ("shalt thou indeed have dominion over us", Gen 37:8). A word
+      // that leads into what follows looks right first.
+      const has=new Set([...maps.map(r=>r.word_pos),...rows.map(r=>r.word_pos)]),at=new Map();
+      for(const r of maps)if(!at.has(r.word_pos))at.set(r.word_pos,r);
+      kjv.forEach((k,p)=>{
+        if(k.it||has.has(p))return;
+        const ahead=_LEADING_WORDS.has(k.w.toLowerCase());
+        let nb=null;
+        for(let d=1;d<4&&!nb;d++)nb=(ahead?at.get(p+d)||at.get(p-d):at.get(p-d)||at.get(p+d))||null;
+        if(nb)rows.push({...nb,word_pos:p,word_text:''});
+      });
+      if(rows.length)out[v]=rows;
     }
     return out;
   },[readWords,readBook,readCh,readVerses,strongsData]);
