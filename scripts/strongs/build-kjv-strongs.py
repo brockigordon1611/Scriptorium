@@ -2325,6 +2325,7 @@ HAVE = set('had hadst hath hast have'.split())
 
 
 WAW_ENGLISH = set('and but then so now yet or nor'.split())
+WAW_THAT = WAW_ENGLISH | {'that'}             # "that we may live" (Gen 42:2, venichyeh)
 CLAUSE_END = re.compile(r"[.;:?!]['\"()’”]*$")
 
 
@@ -2347,29 +2348,48 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
     waw = lambda o: bool({'H9001', 'H9002'} & set(hebrew[o][2]))
     free = {o for o, (_, mains, _) in enumerate(hebrew) if waw(o) and mains and mains[0] != 'H853'
             and not any(key(app[x]) in WAW_ENGLISH for x in phrase.get(of_order.get(o), ()))}
-    bare = [x for x in range(len(app)) if not taken(x) and not italic[x] and key(app[x]) in WAW_ENGLISH]
+    # Not a relative's "that" ("she that hath many children", 1 Sam 2:5,
+    # verabbat) or "that which".
+    that_ok = lambda x: not (x and key(app[x - 1]) in WHO_PRONOUNS | {'all'}) \
+        and not (x + 1 < len(app) and key(app[x + 1]) in ('which', 'whereof', 'wherein', 'whereby'))
+    bare = [x for x in range(len(app)) if not taken(x) and not italic[x]
+            and (key(app[x]) in WAW_ENGLISH or key(app[x]) == 'that' and that_ok(x))]
+    # "so that", "and that": one waw's English in two words.
+    runs = []
+    for x in bare:
+        if runs and runs[-1][-1] == x - 1 and not pause[x - 1]:
+            runs[-1].append(x)
+        else:
+            runs.append([x])
     used = set()
-    own = lambda x, o: o >= 0 and o in free and o not in used and of_order.get(o) is None and hebrew[o][1]
+    own = lambda o: o >= 0 and o in free and o not in used and of_order.get(o) is None and hebrew[o][1]
 
-    def give(x, o):
+    def give(run, o):
         # "And he walked" (2 Kgs 21:21): vayelekh is H1980 in the Hebrew data
         # and H3212 in the KJV's, so the phrase after is that word.
+        x = run[-1]
         t = next((tags.get(y) or added.get(y) for y in (x + 1, x + 2) if tags.get(y) or added.get(y)), None)
-        if t and order_of.get(t) is None and any(SAME_WORD.get(m) == t[0] for m in hebrew[o][1]):
-            added[x] = t
-        else:
-            added[x] = shared[x] = (hebrew[o][1][0], 'own')
+        for x in run:
+            if t and order_of.get(t) is None and any(SAME_WORD.get(m) == t[0] for m in hebrew[o][1]):
+                added[x] = t
+            else:
+                added[x] = shared[x] = (hebrew[o][1][0], 'own')
         used.add(o)
-    for x in bare:
+    for run in runs:
+        x = run[-1]
         # "And number thee an army" (1 Kgs 20:25, ve'attah timneh): the word
         # right after the "and" has no waw, and the Hebrew word before its
         # one has one but no English -- the "and" is that word's.
         o1 = order_of.get(tags.get(x + 1) or added.get(x + 1))
-        if o1 is not None and o1 not in free and own(x, o1 - 1):
-            give(x, o1 - 1)
+        if o1 is not None and o1 not in free and own(o1 - 1):
+            give(run, o1 - 1)
             continue
         best = None
-        for y in range(x + 1, min(len(app), x + 14)):
+        # A "that" is the waw of the words right after it ("that the LORD thy
+        # God may", Jer 42:3); an "and" goes on past a "that" ("and see that
+        # ye hasten", 2 Chr 24:5, ve'attem).
+        that = all(key(app[y]) == 'that' for y in run)
+        for y in range(x + 1, min(len(app), x + (4 if that else 14))):
             if CLAUSE_END.search(app[y - 1]):
                 break
             t = tags.get(y) or added.get(y)
@@ -2377,21 +2397,20 @@ def waw_and(app, italic, pause, tags, added, shared, hebrew, order_of):
             if o is not None and o in free and o not in used and min(phrase[t]) == y:
                 best = (t, o)
                 break
-            if not t and key(app[y]) in WAW_ENGLISH and not italic[y]:
+            if not t and key(app[y]) in (WAW_THAT if that else WAW_ENGLISH) and not italic[y]:
                 break                                   # the next bare "and" is that word's
         if best:
-            added[x] = best[0]
+            for x in run:
+                added[x] = best[0]
             used.add(best[1])
             continue
         # An untranslated word with the waw, next in the Hebrew after the
         # word whose English is just before the "and" (or first, at the
         # verse's start).
-        prev = next((tags.get(y) or added.get(y) for y in range(x - 1, -1, -1) if tags.get(y) or added.get(y)), None)
+        prev = next((tags.get(y) or added.get(y) for y in range(run[0] - 1, -1, -1) if tags.get(y) or added.get(y)), None)
         po = order_of.get(prev, -1) if prev else -1
-        o = po + 1
-        if o < len(hebrew) and own(x, o):
-            give(x, o)
-
+        if po + 1 < len(hebrew) and own(po + 1):
+            give(run, po + 1)
 
 def hayah_words(app, italic, pause, tags, added, hebrew, order_of, verbs):
     """A hayah with no English yet whose English is a "that were", "that
