@@ -1867,6 +1867,25 @@ def link_ot(app, italic, pause, tags, hebrew, verbs, usage=None, own=None, adjec
                 and (x - 2) in tags and tags[x - 2][0] in PRONOUN_WORDS_H:
             added[x] = tags[x - 2]
     waw_and(app, italic, pause, tags, added, shared, hebrew, order_of)
+    # A verb's English parted by its subject: "layest thou a snare" (1 Sam
+    # 28:9, mitnaqqesh) -- the bare word one Strong's lists for the verb.
+    for x in range(len(app) - 2):
+        t = tags.get(x + 2) or added.get(x + 2)
+        if t and t[0] in verbs and usage and not taken(x) and not italic[x] and not pause[x] and not pause[x + 1] \
+                and key(app[x + 1]) in SUBJECTS and (tags.get(x + 1) or added.get(x + 1)) != t \
+                and key(app[x]) not in AUX | BE | ABSORB_BACK | PREPOSITIONS | RELATIVE | WAW_HAS | OBJECT | {'not', 'as', 'if'} \
+                and stems(app[x]) & usage.get(t[0], set()):
+            added[x] = t
+    # The article the KJV gives as "those that have": "those that have
+    # familiar spirits" (1 Sam 28:9, ha'ovot).
+    for x in range(len(app) - 3):
+        t = tags.get(x + 3) or added.get(x + 3)
+        o = order_of.get(t) if t else None
+        if o is not None and t[0] not in verbs and {'H9009', 'H9010'} & set(hebrew[o][2]) \
+                and key(app[x]) in THAT_PRONOUNS and key(app[x + 1]) == 'that' and key(app[x + 2]) in ('have', 'had', 'hath') \
+                and not any(taken(y) or italic[y] or pause[y] for y in (x, x + 1, x + 2)):
+            for y in (x, x + 1, x + 2):
+                added[y] = t
     kept = {x for x, t in shared.items() if added.get(x) == t}
     added = live(tags, added, app, hebrew)
     for x, t in shared.items():
@@ -3296,7 +3315,7 @@ _FUNC = {
     'H3808': 'not no neither nor never none', 'H408': 'not no neither nor', 'H369': 'not no none nothing without',
     'H3541': 'thus so here hither', 'H3651': 'so thus therefore wherefore right well',
     'H3588': 'that for because when but surely if though yea since',
-    'H834': 'which that who whom whose when where whence wherein whereof whither as because what',
+    'H834': 'which that who whom whose when where whence wherein whereof whither as because what how',
     'H518': 'if whether or but though', 'H2005': 'behold lo', 'H2009': 'behold lo',
     'H8033': 'there thither thence', 'H1931': 'he she it that this same', 'H1992': 'they them those these',
     'H2088': 'this that these', 'H2063': 'this that thus', 'H428': 'these those',
